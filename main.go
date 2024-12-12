@@ -24,6 +24,8 @@ func main() {
 
 	e := echo.New()
 	e.POST("/api/:flow", h.HandleTrigger)
+	e.GET("/view/:flow", h.HandleForm)
+	e.Static("/static", "static")
 
 	e.Start(":7000")
 }

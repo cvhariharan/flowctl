@@ -1,0 +1,38 @@
+package ui
+
+import (
+    "github.com/cvhariharan/autopilot/internal/flow"
+)
+
+templ Form(inputs []flow.Input) {
+    <html>
+        @header("autopilot")
+        <body>
+        <div>
+            @renderForm(inputs)
+        </div>
+        </body>
+    </html>
+}
+
+templ renderForm(inputs []flow.Input) {
+    for _, v := range inputs {
+        @renderField(v)
+    }
+    <button type="submit">Submit</button>
+}
+
+templ renderField(input flow.Input) {
+    switch input.Type {
+    case flow.INPUT_TYPE_STRING:
+        <div>
+            <label for={ input.Name }> { input.Label } </label>
+
+            <input
+                type="text"
+                id={ input.Name }
+                placeholder={ input.Description }
+            />
+        </div>
+    }
+}
