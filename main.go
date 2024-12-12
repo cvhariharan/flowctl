@@ -1,54 +1,65 @@
 package main
 
 import (
+	"fmt"
+	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/cvhariharan/autopilot/internal/handlers"
+	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/labstack/echo/v4"
 	"gopkg.in/yaml.v3"
 )
 
-type Input struct {
-	Name        string `yaml:"name" json:"name"`
-	Type        string `yaml:"type" json:"type"`
-	Label       string `yaml:"label" json:"label"`
-	Description string `yaml:"description" json:"description"`
-	Validation  string `yaml:"validation" json:"validation"`
-	Required    bool   `yaml:"required" json:"required"`
-	Default     string `yaml:"default" json:"default"`
-}
-
-type Action struct {
-	ID         string     `yaml:"id"`
-	Name       string     `yaml:"name"`
-	Image      string     `yaml:"image"`
-	Variables  []Variable `yaml:"variables"`
-	Script     []string   `yaml:"script"`
-	Entrypoint []string   `yaml:"entrypoint"`
-	Artifacts  []string   `yaml:"artifacts"`
-	Condition  string     `yaml:"condition"`
-}
-
-type Variable map[string]any
-
-type Output map[string]any
-
-type Flow struct {
-	Inputs  []Input  `yaml:"inputs"`
-	Actions []Action `yaml:"actions"`
-	Outputs []Output `yaml:"outputs"`
-}
-
 func main() {
-	contents, err := os.ReadFile("flow.example.yaml")
+	flows, err := processYAMLFiles("./testdata")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var flow Flow
-	err = yaml.Unmarshal(contents, &flow)
-	if err != nil {
-		log.Fatal(err)
+	h := handlers.NewHandler(flows)
+
+	e := echo.New()
+	e.POST("/api/:flow", h.HandleTrigger)
+
+	e.Start(":7000")
+}
+
+func processYAMLFiles(dirPath string) (map[string]models.Flow, error) {
+	m := make(map[string]models.Flow)
+
+	if err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		if !strings.HasSuffix(strings.ToLower(path), ".yml") &&
+			!strings.HasSuffix(strings.ToLower(path), ".yaml") {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("error reading file %s: %v", path, err)
+		}
+
+		var f models.Flow
+		if err := yaml.Unmarshal(data, &f); err != nil {
+			return fmt.Errorf("error parsing YAML in %s: %v", path, err)
+		}
+
+		m[f.Meta.ID] = f
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
-	log.Printf("%#v", flow)
+	return m, nil
 }
