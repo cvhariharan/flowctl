@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cvhariharan/autopilot/internal/flow"
 	"github.com/cvhariharan/autopilot/internal/handlers"
-	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/labstack/echo/v4"
 	"gopkg.in/yaml.v3"
 )
@@ -28,8 +28,8 @@ func main() {
 	e.Start(":7000")
 }
 
-func processYAMLFiles(dirPath string) (map[string]models.Flow, error) {
-	m := make(map[string]models.Flow)
+func processYAMLFiles(dirPath string) (map[string]flow.Flow, error) {
+	m := make(map[string]flow.Flow)
 
 	if err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -50,7 +50,7 @@ func processYAMLFiles(dirPath string) (map[string]models.Flow, error) {
 			return fmt.Errorf("error reading file %s: %v", path, err)
 		}
 
-		var f models.Flow
+		var f flow.Flow
 		if err := yaml.Unmarshal(data, &f); err != nil {
 			return fmt.Errorf("error parsing YAML in %s: %v", path, err)
 		}

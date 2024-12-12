@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/cvhariharan/autopilot/internal/flow"
 	"github.com/expr-lang/expr"
 	"github.com/labstack/echo/v4"
 )
 
 type Handler struct {
-	flows map[string]models.Flow
+	flows map[string]flow.Flow
 }
 
-func NewHandler(f map[string]models.Flow) *Handler {
+func NewHandler(f map[string]flow.Flow) *Handler {
 	return &Handler{flows: f}
 }
 
