@@ -1,0 +1,18 @@
+inputs:
+  - name: name
+    type: string
+    label: Name
+    description: The name of the person to greet.
+    validation: len(name) > 3
+    required: true
+    default: "John Doe"
+actions:
+  - id: greet
+    name: Greet User
+    image: docker.io/alpine
+    variables:
+      - person_name: "{{ input.name }}"
+    script:
+      - echo ${{ person_name }}, welcome to the autopilot!
+outputs:
+  - message: "{{ actions.output.greet.msg }}"
