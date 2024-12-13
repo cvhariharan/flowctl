@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/cvhariharan/autopilot/internal/flow"
@@ -19,15 +18,11 @@ func NewHandler(f map[string]flow.Flow) *Handler {
 	return &Handler{flows: f}
 }
 
-// HandleTrigger responds to API calls with an input.
-// Input is of the form name=>value
 func (h *Handler) HandleTrigger(c echo.Context) error {
 	var req map[string]interface{}
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "error validating request bind")
 	}
-
-	log.Println(req)
 
 	f, ok := h.flows[c.Param("flow")]
 	if !ok {

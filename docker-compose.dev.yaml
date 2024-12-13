@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:17.0-alpine3.20
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=autopilot
+      - POSTGRES_USER=autopilot
+      - POSTGRES_DB=autopilot
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autopilot"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    volumes:
+      - type: volume
+        source: autopilot-db-data
+        target: /var/lib/postgresql/data
+
+volumes:
+  autopilot-db-data:
+  
