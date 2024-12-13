@@ -64,3 +64,17 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX idx_users_uuid ON users(uuid);
+
+CREATE OR REPLACE FUNCTION notify_new_execution_entry()
+RETURNS trigger AS $$
+BEGIN
+    PERFORM pg_notify('new_flow', NEW.id::text);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER new_execution_trigger
+    AFTER INSERT
+    ON execution_queue
+    FOR EACH ROW
+    EXECUTE FUNCTION notify_new_execution_entry();

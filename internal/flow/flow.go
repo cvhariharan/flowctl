@@ -45,6 +45,7 @@ type Action struct {
 
 type Metadata struct {
 	ID          string `yaml:"id" validate:"required,alphanum_underscore"`
+	DBID        int32  `yaml:"-"`
 	Name        string `yaml:"name" validate:"required"`
 	Description string `yaml:"description"`
 }
