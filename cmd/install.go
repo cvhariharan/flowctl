@@ -1,16 +1,20 @@
 package cmd
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
 
+	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // installCmd represents the install command
@@ -30,6 +34,11 @@ var installCmd = &cobra.Command{
 		defer db.Close()
 
 		if err := initDB(db); err != nil {
+			log.Fatal(err)
+		}
+
+		s := repo.NewPostgresStore(db)
+		if err := initAdmin(s); err != nil {
 			log.Fatal(err)
 		}
 	},
@@ -86,6 +95,28 @@ func initDB(db *sqlx.DB) error {
 			return nil
 		}
 		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	return nil
+}
+
+func initAdmin(store repo.Store) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(viper.GetString("app.admin_password")), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("error hashing admin password: %w", err)
+	}
+
+	_, err = store.GetUserByUsername(context.Background(), viper.GetString("app.admin_username"))
+	if err != nil {
+		_, err = store.CreateUser(context.Background(), repo.CreateUserParams{
+			Username:  viper.GetString("app.admin_username"),
+			Password:  sql.NullString{String: string(hashedPassword), Valid: true},
+			LoginType: "standard",
+			Role:      "admin",
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
