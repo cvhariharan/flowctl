@@ -23,9 +23,9 @@ func main() {
 	h := handlers.NewHandler(flows)
 
 	e := echo.New()
-	e.POST("/api/:flow", h.HandleTrigger)
-	e.GET("/view/:flow", h.HandleForm)
-	e.Static("/static", "static")
+	views := e.Group("/view")
+	views.POST("/trigger/:flow", h.HandleTrigger)
+	views.GET("/:flow", h.HandleForm)
 
 	e.Start(":7000")
 }

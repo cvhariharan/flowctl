@@ -2,6 +2,7 @@ package flow
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 
 	"github.com/expr-lang/expr"
@@ -52,6 +53,16 @@ type Variable map[string]any
 
 type Output map[string]any
 
+type FlowValidationError struct {
+	FieldName string
+	Msg       string
+	Err       error
+}
+
+func (f *FlowValidationError) Error() string {
+	return fmt.Sprintf("Field: %s, %s: %v", f.FieldName, f.Msg, f.Err)
+}
+
 type Flow struct {
 	Meta    Metadata `yaml:"metadata" validate:"required"`
 	Inputs  []Input  `yaml:"inputs" validate:"required"`
@@ -77,15 +88,15 @@ func (f Flow) Validate() error {
 func (f Flow) ValidateInput(inputs map[string]interface{}) error {
 	for _, input := range f.Inputs {
 		value, exists := inputs[input.Name]
-		if !exists {
+		if !exists || reflect.ValueOf(value).IsZero() {
 			if input.Required {
-				return fmt.Errorf("input %s is required but not provided", input.Name)
+				return &FlowValidationError{FieldName: input.Name, Msg: "This is a required field"}
 			}
 			continue
 		}
 
 		if err := validateType(input.Name, value, InputType(input.Type)); err != nil {
-			return err
+			return &FlowValidationError{FieldName: input.Name, Msg: "Wrong input type"}
 		}
 
 		if input.Validation == "" {
@@ -98,21 +109,21 @@ func (f Flow) ValidateInput(inputs map[string]interface{}) error {
 
 		program, err := expr.Compile(input.Validation, expr.Env(env))
 		if err != nil {
-			return err
+			return &FlowValidationError{FieldName: input.Name, Msg: "Failed running validation", Err: err}
 		}
 
 		output, err := expr.Run(program, env)
 		if err != nil {
-			return err
+			return &FlowValidationError{FieldName: input.Name, Msg: "Failed running validation", Err: err}
 		}
 
 		valid, ok := output.(bool)
 		if !ok {
-			return fmt.Errorf("error running validation for input %s: expected boolean response", input.Name)
+			return &FlowValidationError{FieldName: input.Name, Msg: "Failed running validation", Err: fmt.Errorf("error running validation for input %s: expected boolean response", input.Name)}
 		}
 
 		if !valid {
-			return fmt.Errorf("validation failed for input %s", input.Name)
+			return &FlowValidationError{FieldName: input.Name, Msg: fmt.Sprintf("Validation failed: %s", input.Validation)}
 		}
 	}
 

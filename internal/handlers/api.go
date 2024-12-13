@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/cvhariharan/autopilot/internal/flow"
@@ -25,17 +27,22 @@ func (h *Handler) HandleTrigger(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "error validating request bind")
 	}
 
-	flowName := c.Param("flow")
-	flow, ok := h.flows[flowName]
+	log.Println(req)
+
+	f, ok := h.flows[c.Param("flow")]
 	if !ok {
 		return echo.NewHTTPError(http.StatusNotFound, "requested flow not found")
 	}
 
-	if err := flow.ValidateInput(req); err != nil {
+	if err := f.ValidateInput(req); err != nil {
+		var ferr *flow.FlowValidationError
+		if errors.As(err, &ferr) {
+			return ui.Form(f, map[string]string{ferr.FieldName: ferr.Msg}).Render(c.Request().Context(), c.Response().Writer)
+		}
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("error validating input: %v", err))
 	}
 
-	return c.NoContent(http.StatusOK)
+	return ui.Result(f).Render(c.Request().Context(), c.Response().Writer)
 }
 
 func (h *Handler) HandleForm(c echo.Context) error {
@@ -48,5 +55,5 @@ func (h *Handler) HandleForm(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "requested flow not found")
 	}
 
-	return ui.Form(flow).Render(c.Request().Context(), c.Response().Writer)
+	return ui.Form(flow, make(map[string]string)).Render(c.Request().Context(), c.Response().Writer)
 }

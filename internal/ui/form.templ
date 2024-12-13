@@ -2,44 +2,54 @@ package ui
 
 import (
     "github.com/cvhariharan/autopilot/internal/flow"
+	"fmt"
 )
 
-templ Form(f flow.Flow) {
+templ Form(f flow.Flow, errors map[string]string) {
     <html>
         @header("autopilot")
         <body>
-        <div class="flex h-screen flex-col justify-start items-center">
+        <div id="trigger" class="flex h-screen flex-col justify-start items-center">
             <div class="py-10">
                 <h1 class="font-bold text-5xl">{ f.Meta.Name }</h1>
                 <h3 class="font-light text-xl">{ f.Meta.Description }</h3>
             </div>
-            @renderForm(f.Inputs)
+            @renderForm(f, errors)
         </div>
         </body>
     </html>
 }
 
-templ renderForm(inputs []flow.Input) {
-    <form class="max-w-screen-sm py-16 w-screen mx-auto">
-    for _, v := range inputs {
-        @renderField(v)
+templ renderForm(f flow.Flow, errors map[string]string) {
+    <form hx-post={ fmt.Sprintf("/view/trigger/%s", f.Meta.ID)} hx-target="#trigger" class="max-w-screen-sm py-16 w-screen mx-auto">
+    for _, v := range f.Inputs {
+        {{ err := "" }}
+        if errors != nil {
+            {{ err, _ = errors[v.Name] }}
+        }
+        @renderField(v, err)
     }
     <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center">Submit</button>
     </form>
 }
 
-templ renderField(input flow.Input) {
+templ renderField(input flow.Input, errMsg string) {
+    <div class="mb-5">
     switch input.Type {
     case flow.INPUT_TYPE_STRING:
-        <div class="mb-5">
             <label for={ input.Name } class="block mb-2 text-sm font-medium text-gray-900"> { input.Label } </label>
 
             <input
                 type="text"
                 id={ input.Name }
+                name={ input.Name }
                 placeholder={ input.Description }
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                hx-preserve
             />
-        </div>
     }
+    if errMsg != "" {
+        <p class="text-red-600">{ errMsg }</p>
+    }
+    </div>
 }
