@@ -16,6 +16,7 @@ import (
 
 	"github.com/cvhariharan/autopilot/internal/flow"
 	"github.com/cvhariharan/autopilot/internal/handlers"
+	"github.com/cvhariharan/autopilot/internal/queue"
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
@@ -61,13 +62,14 @@ func startServer() {
 	defer db.Close()
 
 	s := repo.NewPostgresStore(db)
+	q := queue.NewQueue(s)
 
 	flows, err := processYAMLFiles("./testdata", s)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	h := handlers.NewHandler(flows, s)
+	h := handlers.NewHandler(flows, s, q)
 
 	e := echo.New()
 	views := e.Group("/view")
@@ -137,6 +139,15 @@ func processYAMLFiles(dirPath string, store repo.Store) (map[string]flow.Flow, e
 }
 
 func startWorker() {
+	db, err := sqlx.Connect("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", viper.GetString("db.user"), viper.GetString("db.password"), viper.GetString("db.host"), viper.GetInt("db.port"), viper.GetString("db.dbname")))
+	if err != nil {
+		log.Fatalf("could not connect to database: %v", err)
+	}
+	defer db.Close()
+
+	s := repo.NewPostgresStore(db)
+	q := queue.NewQueue(s)
+
 	listener := pq.NewListener(fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", viper.GetString("db.user"), viper.GetString("db.password"), viper.GetString("db.host"), viper.GetInt("db.port"), viper.GetString("db.dbname")), 10*time.Second, time.Minute,
 		func(event pq.ListenerEventType, err error) {
 			if err != nil {
@@ -145,12 +156,12 @@ func startWorker() {
 		})
 	defer listener.Close()
 
-	err := listener.Listen("new_flow")
+	jchan, err := q.ListenForJobs(context.Background(), listener, 4)
 	if err != nil {
-		log.Fatalf("error starting postgres listener for notifications: %v", err)
+		log.Fatalf("error listening for jobs: %v", err)
 	}
 
-	for {
-		log.Println(<-listener.Notify)
+	for job := range jchan {
+		log.Println(job)
 	}
 }

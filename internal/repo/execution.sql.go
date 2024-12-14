@@ -8,6 +8,8 @@ package repo
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/google/uuid"
 )
 
 const addToQueue = `-- name: AddToQueue :one
@@ -16,7 +18,7 @@ INSERT INTO execution_queue (
     input
 ) VALUES (
     $1, $2
-) RETURNING id, uuid, flow_id, input, status, created_at, updated_at
+) RETURNING id, uuid, flow_id, input, status, created_at
 `
 
 type AddToQueueParams struct {
@@ -34,13 +36,66 @@ func (q *Queries) AddToQueue(ctx context.Context, arg AddToQueueParams) (Executi
 		&i.Input,
 		&i.Status,
 		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
 
+const dequeue = `-- name: Dequeue :many
+UPDATE execution_queue SET status = 'running' WHERE id IN (
+    SELECT id FROM execution_queue WHERE status = 'pending' ORDER BY created_at LIMIT $1 FOR UPDATE SKIP LOCKED
+) RETURNING uuid, flow_id, input
+`
+
+type DequeueRow struct {
+	Uuid   uuid.UUID       `db:"uuid" json:"uuid"`
+	FlowID int32           `db:"flow_id" json:"flow_id"`
+	Input  json.RawMessage `db:"input" json:"input"`
+}
+
+func (q *Queries) Dequeue(ctx context.Context, limit int32) ([]DequeueRow, error) {
+	rows, err := q.db.QueryContext(ctx, dequeue, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DequeueRow
+	for rows.Next() {
+		var i DequeueRow
+		if err := rows.Scan(&i.Uuid, &i.FlowID, &i.Input); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const dequeueByID = `-- name: DequeueByID :one
+UPDATE execution_queue SET status = 'running' WHERE id = (
+    SELECT id FROM execution_queue WHERE status = 'pending' AND execution_queue.id = $1 FOR UPDATE SKIP LOCKED
+) RETURNING uuid, flow_id, input
+`
+
+type DequeueByIDRow struct {
+	Uuid   uuid.UUID       `db:"uuid" json:"uuid"`
+	FlowID int32           `db:"flow_id" json:"flow_id"`
+	Input  json.RawMessage `db:"input" json:"input"`
+}
+
+func (q *Queries) DequeueByID(ctx context.Context, id int32) (DequeueByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, dequeueByID, id)
+	var i DequeueByIDRow
+	err := row.Scan(&i.Uuid, &i.FlowID, &i.Input)
+	return i, err
+}
+
 const getFromQueueByID = `-- name: GetFromQueueByID :one
-SELECT id, uuid, flow_id, input, status, created_at, updated_at FROM execution_queue WHERE id = $1
+SELECT id, uuid, flow_id, input, status, created_at FROM execution_queue WHERE id = $1
 `
 
 func (q *Queries) GetFromQueueByID(ctx context.Context, id int32) (ExecutionQueue, error) {
@@ -53,7 +108,6 @@ func (q *Queries) GetFromQueueByID(ctx context.Context, id int32) (ExecutionQueu
 		&i.Input,
 		&i.Status,
 		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }

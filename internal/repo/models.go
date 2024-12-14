@@ -12,15 +12,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 type ExecutionStatus string
 
 const (
-	ExecutionStatusPending   ExecutionStatus = "pending"
-	ExecutionStatusRunning   ExecutionStatus = "running"
-	ExecutionStatusCompleted ExecutionStatus = "completed"
-	ExecutionStatusError     ExecutionStatus = "error"
+	ExecutionStatusPending    ExecutionStatus = "pending"
+	ExecutionStatusRunning    ExecutionStatus = "running"
+	ExecutionStatusSuccessful ExecutionStatus = "successful"
+	ExecutionStatusFailed     ExecutionStatus = "failed"
 )
 
 func (e *ExecutionStatus) Scan(src interface{}) error {
@@ -150,7 +151,6 @@ type ExecutionQueue struct {
 	Input     json.RawMessage `db:"input" json:"input"`
 	Status    ExecutionStatus `db:"status" json:"status"`
 	CreatedAt time.Time       `db:"created_at" json:"created_at"`
-	UpdatedAt time.Time       `db:"updated_at" json:"updated_at"`
 }
 
 type Flow struct {
@@ -163,13 +163,13 @@ type Flow struct {
 }
 
 type Result struct {
-	ID          int32           `db:"id" json:"id"`
-	Uuid        uuid.UUID       `db:"uuid" json:"uuid"`
-	FlowID      int32           `db:"flow_id" json:"flow_id"`
-	ExecutionID int32           `db:"execution_id" json:"execution_id"`
-	Output      json.RawMessage `db:"output" json:"output"`
-	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
-	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
+	ID          int32                 `db:"id" json:"id"`
+	Uuid        uuid.UUID             `db:"uuid" json:"uuid"`
+	FlowID      int32                 `db:"flow_id" json:"flow_id"`
+	ExecutionID int32                 `db:"execution_id" json:"execution_id"`
+	Output      json.RawMessage       `db:"output" json:"output"`
+	Error       pqtype.NullRawMessage `db:"error" json:"error"`
+	CreatedAt   time.Time             `db:"created_at" json:"created_at"`
 }
 
 type User struct {

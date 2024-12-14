@@ -13,8 +13,8 @@ CREATE UNIQUE INDEX idx_flows_slug ON flows(slug);
 CREATE TYPE execution_status AS ENUM (
     'pending',
     'running',
-    'completed',
-    'error'
+    'successful',
+    'failed'
 );
 
 CREATE TABLE IF NOT EXISTS execution_queue (
@@ -24,10 +24,10 @@ CREATE TABLE IF NOT EXISTS execution_queue (
     input JSONB DEFAULT '{}'::jsonb NOT NULL,
     status execution_status NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     FOREIGN KEY (flow_id) REFERENCES flows(id) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX idx_execution_queue_uuid ON execution_queue(uuid);
+CREATE INDEX idx_execution_queue_created_at ON execution_queue(created_at);
 
 CREATE TABLE IF NOT EXISTS results (
     id SERIAL PRIMARY KEY,
@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS results (
     flow_id INTEGER NOT NULL,
     execution_id INTEGER NOT NULL,
     output JSONB DEFAULT '{}'::jsonb NOT NULL,
+    error JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     FOREIGN KEY (flow_id) REFERENCES flows(id) ON DELETE CASCADE,
     FOREIGN KEY (execution_id) REFERENCES execution_queue(id) ON DELETE CASCADE
 );
