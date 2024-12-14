@@ -157,6 +157,7 @@ type Flow struct {
 	ID          int32          `db:"id" json:"id"`
 	Slug        string         `db:"slug" json:"slug"`
 	Name        string         `db:"name" json:"name"`
+	Checksum    string         `db:"checksum" json:"checksum"`
 	Description sql.NullString `db:"description" json:"description"`
 	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`

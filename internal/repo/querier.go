@@ -23,6 +23,7 @@ type Querier interface {
 	GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetUserPassword(ctx context.Context, id int32) (sql.NullString, error)
+	UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, error)
 	UpdateStatusByID(ctx context.Context, arg UpdateStatusByIDParams) error
 }
 

@@ -5,7 +5,9 @@ package cmd
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"log"
@@ -82,12 +84,6 @@ func startServer() {
 func processYAMLFiles(dirPath string, store repo.Store) (map[string]flow.Flow, error) {
 	m := make(map[string]flow.Flow)
 
-	// Clear all flows
-	err := store.DeleteAllFlows(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("could not empty flows table: %w", err)
-	}
-
 	if err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -107,6 +103,12 @@ func processYAMLFiles(dirPath string, store repo.Store) (map[string]flow.Flow, e
 			return fmt.Errorf("error reading file %s: %v", path, err)
 		}
 
+		h := sha256.New()
+		if _, err := h.Write(data); err != nil {
+			return fmt.Errorf("error hashing file %s: %v", path, err)
+		}
+		checksum := hex.EncodeToString(h.Sum(nil))
+
 		var f flow.Flow
 		if err := yaml.Unmarshal(data, &f); err != nil {
 			return fmt.Errorf("error parsing YAML in %s: %v", path, err)
@@ -116,14 +118,28 @@ func processYAMLFiles(dirPath string, store repo.Store) (map[string]flow.Flow, e
 		} else {
 			// Insert into db
 			fd, err := store.GetFlowBySlug(context.Background(), f.Meta.ID)
+			// Create if flow doesn't exist
 			if err != nil {
 				fd, err = store.CreateFlow(context.Background(), repo.CreateFlowParams{
 					Slug:        f.Meta.ID,
 					Name:        f.Meta.Name,
+					Checksum:    checksum,
 					Description: sql.NullString{String: f.Meta.Description, Valid: true},
 				})
 				if err != nil {
-					return err
+					return fmt.Errorf("error creating flow %s: %v", f.Meta.ID, err)
+				}
+			}
+
+			if fd.Checksum != checksum {
+				fd, err = store.UpdateFlow(context.Background(), repo.UpdateFlowParams{
+					Name:        f.Meta.Name,
+					Description: sql.NullString{String: f.Meta.Description, Valid: true},
+					Checksum:    checksum,
+					Slug:        f.Meta.ID,
+				})
+				if err != nil {
+					return fmt.Errorf("error updating flow %s: %v", f.Meta.ID, err)
 				}
 			}
 			f.Meta.DBID = fd.ID

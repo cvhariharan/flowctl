@@ -14,25 +14,33 @@ const createFlow = `-- name: CreateFlow :one
 INSERT INTO flows (
     slug,
     name,
-    description
+    description,
+    checksum
 ) VALUES (
-    $1, $2, $3
-) RETURNING id, slug, name, description, created_at, updated_at
+    $1, $2, $3, $4
+) RETURNING id, slug, name, checksum, description, created_at, updated_at
 `
 
 type CreateFlowParams struct {
 	Slug        string         `db:"slug" json:"slug"`
 	Name        string         `db:"name" json:"name"`
 	Description sql.NullString `db:"description" json:"description"`
+	Checksum    string         `db:"checksum" json:"checksum"`
 }
 
 func (q *Queries) CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, error) {
-	row := q.db.QueryRowContext(ctx, createFlow, arg.Slug, arg.Name, arg.Description)
+	row := q.db.QueryRowContext(ctx, createFlow,
+		arg.Slug,
+		arg.Name,
+		arg.Description,
+		arg.Checksum,
+	)
 	var i Flow
 	err := row.Scan(
 		&i.ID,
 		&i.Slug,
 		&i.Name,
+		&i.Checksum,
 		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -50,7 +58,7 @@ func (q *Queries) DeleteAllFlows(ctx context.Context) error {
 }
 
 const getFlowBySlug = `-- name: GetFlowBySlug :one
-SELECT id, slug, name, description, created_at, updated_at FROM flows where slug = $1
+SELECT id, slug, name, checksum, description, created_at, updated_at FROM flows where slug = $1
 `
 
 func (q *Queries) GetFlowBySlug(ctx context.Context, slug string) (Flow, error) {
@@ -60,6 +68,44 @@ func (q *Queries) GetFlowBySlug(ctx context.Context, slug string) (Flow, error) 
 		&i.ID,
 		&i.Slug,
 		&i.Name,
+		&i.Checksum,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateFlow = `-- name: UpdateFlow :one
+UPDATE flows SET 
+    name = $1,
+    description = $2,
+    checksum = $3,
+    updated_at = NOW()
+WHERE slug = $4
+RETURNING id, slug, name, checksum, description, created_at, updated_at
+`
+
+type UpdateFlowParams struct {
+	Name        string         `db:"name" json:"name"`
+	Description sql.NullString `db:"description" json:"description"`
+	Checksum    string         `db:"checksum" json:"checksum"`
+	Slug        string         `db:"slug" json:"slug"`
+}
+
+func (q *Queries) UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, error) {
+	row := q.db.QueryRowContext(ctx, updateFlow,
+		arg.Name,
+		arg.Description,
+		arg.Checksum,
+		arg.Slug,
+	)
+	var i Flow
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.Checksum,
 		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
