@@ -3,22 +3,24 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/cvhariharan/autopilot/internal/flow"
-	"github.com/cvhariharan/autopilot/internal/queue"
 	"github.com/cvhariharan/autopilot/internal/repo"
+	"github.com/cvhariharan/autopilot/internal/tasks"
 	"github.com/cvhariharan/autopilot/internal/ui"
+	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 )
 
 type Handler struct {
 	flows map[string]flow.Flow
 	store repo.Store
-	q     *queue.Queue
+	q     *asynq.Client
 }
 
-func NewHandler(f map[string]flow.Flow, r repo.Store, q *queue.Queue) *Handler {
+func NewHandler(f map[string]flow.Flow, r repo.Store, q *asynq.Client) *Handler {
 	return &Handler{flows: f, store: r, q: q}
 }
 
@@ -43,9 +45,15 @@ func (h *Handler) HandleTrigger(c echo.Context) error {
 	}
 
 	// Add to queue
-	if _, err := h.q.Enqueue(c.Request().Context(), f, req); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	task, err := tasks.NewFlowExecution(f, req)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("error creating task: %v", err))
 	}
+	info, err := h.q.Enqueue(task)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("error enqueuing task: %v", err))
+	}
+	log.Println(info.ID)
 
 	return ui.Result(f).Render(c.Request().Context(), c.Response().Writer)
 }

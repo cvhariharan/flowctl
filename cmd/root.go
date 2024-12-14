@@ -50,6 +50,10 @@ func init() {
 	viper.SetDefault("db.host", "127.0.0.1")
 	viper.SetDefault("db.port", 5432)
 
+	viper.SetDefault("redis.host", "localhost")
+	viper.SetDefault("redis.port", 6379)
+	viper.SetDefault("redis.password", "")
+
 	viper.SetDefault("app.admin_username", "autopilot_admin")
 	viper.SetDefault("app.admin_password", "autopilot_password")
 	viper.SetDefault("app.address", ":7000")

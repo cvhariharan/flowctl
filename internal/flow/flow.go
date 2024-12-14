@@ -36,6 +36,7 @@ type Action struct {
 	ID         string     `yaml:"id" validate:"required,alphanum_underscore"`
 	Name       string     `yaml:"name" validate:"required"`
 	Image      string     `yaml:"image" validate:"required"`
+	Src        string     `yaml:"src"`
 	Variables  []Variable `yaml:"variables"`
 	Script     []string   `yaml:"script"`
 	Entrypoint []string   `yaml:"entrypoint"`
@@ -51,6 +52,34 @@ type Metadata struct {
 }
 
 type Variable map[string]any
+
+func (v Variable) Valid() bool {
+	return !(len(v) > 1)
+}
+
+func (v Variable) Name() string {
+	if !v.Valid() {
+		return ""
+	}
+
+	for k := range v {
+		return k
+	}
+	return ""
+}
+
+func (v Variable) Value() string {
+	if !v.Valid() {
+		return ""
+	}
+
+	for _, v := range v {
+		if str, ok := v.(string); ok {
+			return str
+		}
+	}
+	return ""
+}
 
 type Output map[string]any
 

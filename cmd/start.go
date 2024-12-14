@@ -14,15 +14,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/cvhariharan/autopilot/internal/flow"
 	"github.com/cvhariharan/autopilot/internal/handlers"
-	"github.com/cvhariharan/autopilot/internal/queue"
 	"github.com/cvhariharan/autopilot/internal/repo"
+	"github.com/cvhariharan/autopilot/internal/tasks"
+	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
-	"github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
@@ -63,15 +63,23 @@ func startServer() {
 	}
 	defer db.Close()
 
+	redisClient := redis.NewUniversalClient(&redis.UniversalOptions{
+		Addrs:    []string{fmt.Sprintf("%s:%d", viper.GetString("redis.host"), viper.GetInt("redis.port"))},
+		Password: viper.GetString("redis.password"),
+	})
+	defer redisClient.Close()
+
+	asynqClient := asynq.NewClientFromRedisClient(redisClient)
+	defer asynqClient.Close()
+
 	s := repo.NewPostgresStore(db)
-	q := queue.NewQueue(s)
 
 	flows, err := processYAMLFiles("./testdata", s)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	h := handlers.NewHandler(flows, s, q)
+	h := handlers.NewHandler(flows, s, asynqClient)
 
 	e := echo.New()
 	views := e.Group("/view")
@@ -161,24 +169,41 @@ func startWorker() {
 	}
 	defer db.Close()
 
-	s := repo.NewPostgresStore(db)
-	q := queue.NewQueue(s)
+	redisClient := redis.NewUniversalClient(&redis.UniversalOptions{
+		Addrs:    []string{fmt.Sprintf("%s:%d", viper.GetString("redis.host"), viper.GetInt("redis.port"))},
+		Password: viper.GetString("redis.password"),
+	})
+	defer redisClient.Close()
 
-	listener := pq.NewListener(fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", viper.GetString("db.user"), viper.GetString("db.password"), viper.GetString("db.host"), viper.GetInt("db.port"), viper.GetString("db.dbname")), 10*time.Second, time.Minute,
-		func(event pq.ListenerEventType, err error) {
-			if err != nil {
-				log.Printf("Error on listener: %v\n", err)
-			}
-		})
-	defer listener.Close()
+	flowRunner := &tasks.FlowRunner{}
 
-	jchan, err := q.ListenForJobs(context.Background(), listener, queue.DEFAULT_BATCH_INTERVAL, 4)
-	if err != nil {
-		log.Fatalf("error listening for jobs: %v", err)
-	}
+	asynqSrv := asynq.NewServerFromRedisClient(redisClient, asynq.Config{
+		Concurrency: 8,
+	})
 
-	for job := range jchan {
+	mux := asynq.NewServeMux()
+	mux.HandleFunc(tasks.TypeFlowExecution, flowRunner.HandleFlowExecution)
 
-		log.Println(job)
-	}
+	log.Fatal(asynqSrv.Run(mux))
+
+	// s := repo.NewPostgresStore(db)
+	// q := queue.NewQueue(s)
+
+	// listener := pq.NewListener(fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", viper.GetString("db.user"), viper.GetString("db.password"), viper.GetString("db.host"), viper.GetInt("db.port"), viper.GetString("db.dbname")), 10*time.Second, time.Minute,
+	// 	func(event pq.ListenerEventType, err error) {
+	// 		if err != nil {
+	// 			log.Printf("Error on listener: %v\n", err)
+	// 		}
+	// 	})
+	// defer listener.Close()
+
+	// jchan, err := q.ListenForJobs(context.Background(), listener, queue.DEFAULT_BATCH_INTERVAL, 4)
+	// if err != nil {
+	// 	log.Fatalf("error listening for jobs: %v", err)
+	// }
+
+	// for job := range jchan {
+
+	// 	log.Println(job)
+	// }
 }

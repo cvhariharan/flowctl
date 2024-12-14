@@ -18,6 +18,16 @@ services:
         source: autopilot-db-data
         target: /var/lib/postgresql/data
 
+  valkey:
+    image: valkey/valkey:8.0.1-alpine3.20
+    ports:
+      - 6379:6379
+    volumes:
+      - type: volume
+        source: valkey-data
+        target: /data
+
 volumes:
   autopilot-db-data:
+  valkey-data:
   
