@@ -28,18 +28,6 @@ func (h *Handler) HandleLogStreaming(c echo.Context) error {
 
 	lastProcessedID := "0"
 
-	// // Get stream and consumer group names
-	// streamName := c.Param("flow")
-	// consumerGroupName := fmt.Sprintf("%s-%s-log-stream", uuid.New().String(), streamName)
-	// consumerName := uuid.New().String() // Unique consumer for each connection
-
-	// // Ensure consumer group exists
-	// err = h.redisClient.XGroupCreateMkStream(c.Request().Context(), streamName, consumerGroupName, "0").Err()
-	// if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
-	// 	log.Println("error creating consumer group:", err)
-	// 	return err
-	// }
-
 	for {
 		// Read from Redis stream starting from the last processed ID
 		result, err := h.redisClient.XRead(c.Request().Context(), &redis.XReadArgs{

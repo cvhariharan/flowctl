@@ -33,20 +33,20 @@ func Result(id string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div className=\"bg-black text-green-400 font-mono p-4 rounded-lg shadow-2xl max-w-2xl mx-auto\"><div hx-ext=\"ws\" ws-connect=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div hx-ext=\"ws\" ws-connect=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/api/logs/%s", id))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/trigger_result.templ`, Line: 9, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/trigger_result.templ`, Line: 8, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" className=\"h-96 overflow-y-auto p-2\"><div id=\"message\" className=\"whitespace-pre-wrap break-words\"></div></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"bg-black text-green-400 text-sm font-mono p-8 rounded-lg shadow-2xl max-w-screen-md w-full mx-auto overflow-y-scroll h-screen mt-16 mb-16\"><div id=\"message\" class=\"whitespace-pre-wrap break-words\"></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -75,14 +75,14 @@ func LogMessage(message string) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div hx-swap=\"afterend:#message\" hx-swap-oob=\"afterend:#message\" hx-scroll=\"bottom\" className=\"whitespace-pre-wrap break-words\"><p>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div hx-swap=\"beforeend:#message\" hx-swap-oob=\"beforeend:#message\" hx-scroll=\"bottom\" class=\"whitespace-pre-wrap break-words\"><p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/trigger_result.templ`, Line: 18, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/trigger_result.templ`, Line: 15, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
