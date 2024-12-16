@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/cvhariharan/autopilot/internal/ui/partials"
-	"github.com/cvhariharan/autopilot/internal/ui/layouts"
 )
 
-templ FlowInputForm(f models.Flow, errors map[string]string) {
-	@layouts.Base("autopilot") {
-		 <div id="trigger" class="flex h-screen flex-col justify-start items-center">
-		 	<div class="py-10">
+templ FlowInputFormPage(f models.Flow, errors map[string]string, inlineError string) {
+	@partials.BaseLayout("autopilot") {
+		 <div  class="flex h-screen flex-col justify-start items-center">
+		 <div id="trigger">
+		 <div class="py-10">
 				<h1 class="font-bold text-5xl">{ f.Meta.Name }</h1>
 				<h3 class="font-light text-xl">{ f.Meta.Description }</h3>
             </div>
@@ -25,5 +25,13 @@ templ FlowInputForm(f models.Flow, errors map[string]string) {
 				<button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center">Submit</button>
 			</form>
 		 </div>
+		 if inlineError != "" {
+			 <div id="error" class="bg-red-100 p-8 rounded-lg max-w-screen-sm w-screen mx-auto text-red-600">
+			 	Error: { inlineError }
+			</div>
+		 }
+		
+		 </div>
+		 
 	}
 }

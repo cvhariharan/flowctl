@@ -84,8 +84,8 @@ func startServer() {
 
 	e := echo.New()
 	views := e.Group("/view")
-	views.POST("/trigger/:flow", h.HandleTrigger)
-	views.GET("/:flow", h.HandleForm)
+	views.POST("/trigger/:flow", h.HandleFlowTrigger)
+	views.GET("/:flow", h.HandleFlowForm)
 
 	api := e.Group("/api")
 	api.GET("/logs/:flow", h.HandleLogStreaming)

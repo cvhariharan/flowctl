@@ -115,7 +115,7 @@ func (f Flow) Validate() error {
 	return validate.Struct(f)
 }
 
-func (f Flow) ValidateInput(inputs map[string]interface{}) error {
+func (f Flow) ValidateInput(inputs map[string]interface{}) *FlowValidationError {
 	for _, input := range f.Inputs {
 		value, exists := inputs[input.Name]
 		if !exists || reflect.ValueOf(value).IsZero() {

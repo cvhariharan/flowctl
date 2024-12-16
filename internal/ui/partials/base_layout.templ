@@ -1,0 +1,11 @@
+package partials
+
+
+templ BaseLayout(title string) {
+    <html>
+        @Header(title)
+        <body>
+            { children... }
+        </body>
+    </html>
+}
