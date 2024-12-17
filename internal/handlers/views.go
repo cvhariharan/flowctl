@@ -2,17 +2,21 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/a-h/templ"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/cvhariharan/autopilot/internal/core"
 	"github.com/cvhariharan/autopilot/internal/ui"
 	"github.com/cvhariharan/autopilot/internal/ui/partials"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"github.com/zerodha/simplesessions/v3"
+	"golang.org/x/oauth2"
 )
 
 var (
@@ -20,11 +24,40 @@ var (
 )
 
 type Handler struct {
-	co *core.Core
+	co         *core.Core
+	sessMgr    *simplesessions.Manager
+	authconfig OIDCAuthConfig
 }
 
-func NewHandler(co *core.Core) *Handler {
-	return &Handler{co: co}
+func NewHandler(co *core.Core, sessMgr *simplesessions.Manager, authconfig OIDCAuthConfig) (*Handler, error) {
+	sessMgr.SetCookieHooks(getCookie, setCookie)
+
+	provider, err := oidc.NewProvider(context.Background(), authconfig.Issuer)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(authconfig.Scopes) == 0 {
+		authconfig.Scopes = []string{oidc.ScopeOpenID, "profile", "email", "groups"}
+	}
+
+	oauth2Config := &oauth2.Config{
+		ClientID:     authconfig.ClientID,
+		ClientSecret: authconfig.ClientSecret,
+		RedirectURL:  authconfig.RedirectURL,
+		Endpoint:     provider.Endpoint(),
+		Scopes:       authconfig.Scopes,
+	}
+
+	verifier := provider.Verifier(&oidc.Config{
+		ClientID: authconfig.ClientID,
+	})
+
+	authconfig.provider = provider
+	authconfig.verifier = verifier
+	authconfig.oauth2Config = oauth2Config
+
+	return &Handler{co: co, sessMgr: sessMgr, authconfig: authconfig}, nil
 }
 
 func render(c echo.Context, component templ.Component) error {

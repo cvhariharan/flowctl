@@ -79,3 +79,11 @@ CREATE TRIGGER new_execution_trigger
     ON execution_queue
     FOR EACH ROW
     EXECUTE FUNCTION notify_new_execution_entry();
+
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT NOT NULL PRIMARY KEY,
+    data JSONB DEFAULT '{}'::jsonb NOT NULL,
+    created_at TIMESTAMP DEFAULT now() NOT NULL
+);
+CREATE INDEX idx_sessions ON sessions (id, created_at);

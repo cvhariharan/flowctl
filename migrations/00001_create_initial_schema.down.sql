@@ -8,3 +8,5 @@ DROP TABLE IF EXISTS results;
 DROP INDEX IF EXISTS idx_results_uuid;
 
 DROP TRIGGER IF EXISTS new_flow_trigger ON execution_queue;
+
+DROP TABLE IF EXISTS sessions;
