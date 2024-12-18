@@ -33,31 +33,18 @@ import (
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start autopilot server or worker",
-}
-
-var serverCmd = &cobra.Command{
-	Use:   "server",
-	Short: "Start autopilot server",
+	Long:  "Use --worker to start a worker. The default command runs the server",
 	Run: func(cmd *cobra.Command, args []string) {
-		startServer()
-	},
-}
 
-var workerCmd = &cobra.Command{
-	Use:   "worker",
-	Short: "Start autopilot worker",
-	Run: func(cmd *cobra.Command, args []string) {
-		startWorker()
 	},
 }
 
 func init() {
-	startCmd.AddCommand(serverCmd)
-	startCmd.AddCommand(workerCmd)
+	startCmd.Flags().Bool("worker", false, "Start autopilot worker")
 	rootCmd.AddCommand(startCmd)
 }
 
-func startServer() {
+func start(isWorker bool) {
 	db, err := sqlx.Connect("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", viper.GetString("db.user"), viper.GetString("db.password"), viper.GetString("db.host"), viper.GetInt("db.port"), viper.GetString("db.dbname")))
 	if err != nil {
 		log.Fatalf("could not connect to database: %v", err)
@@ -70,6 +57,14 @@ func startServer() {
 	})
 	defer redisClient.Close()
 
+	if isWorker {
+		startWorker(db, redisClient)
+	} else {
+		startServer(db, redisClient)
+	}
+}
+
+func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 	asynqClient := asynq.NewClientFromRedisClient(redisClient)
 	defer asynqClient.Close()
 
@@ -194,19 +189,7 @@ func processYAMLFiles(dirPath string, store repo.Store) (map[string]models.Flow,
 	return m, nil
 }
 
-func startWorker() {
-	db, err := sqlx.Connect("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", viper.GetString("db.user"), viper.GetString("db.password"), viper.GetString("db.host"), viper.GetInt("db.port"), viper.GetString("db.dbname")))
-	if err != nil {
-		log.Fatalf("could not connect to database: %v", err)
-	}
-	defer db.Close()
-
-	redisClient := redis.NewUniversalClient(&redis.UniversalOptions{
-		Addrs:    []string{fmt.Sprintf("%s:%d", viper.GetString("redis.host"), viper.GetInt("redis.port"))},
-		Password: viper.GetString("redis.password"),
-	})
-	defer redisClient.Close()
-
+func startWorker(db *sqlx.DB, redisClient redis.UniversalClient) {
 	flowLogger := runner.NewStreamLogger(redisClient)
 	flowRunner := tasks.NewFlowRunner(flowLogger, runner.NewDockerArtifactsManager("./artifacts"))
 
