@@ -3,6 +3,7 @@ package cmd
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"os"
 
@@ -14,16 +15,13 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "autopilot",
 	Short: "Self-service workflow execution engine",
-	Run: func(cmd *cobra.Command, args []string) {
-		if ok, _ := cmd.Flags().GetBool("new-config"); ok {
-			if err := viper.WriteConfigAs("config.toml"); err != nil {
-				log.Fatal(err)
-			}
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		configPath, _ := cmd.Flags().GetString("config")
+		if err := readConfig(configPath); err != nil {
+			return fmt.Errorf("failed to read config: %w", err)
 		}
+		return nil
 	},
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

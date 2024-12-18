@@ -39,11 +39,6 @@ var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "Start autopilot server",
 	Run: func(cmd *cobra.Command, args []string) {
-		configPath, _ := cmd.Flags().GetString("config")
-		if err := readConfig(configPath); err != nil {
-			log.Fatal(err)
-		}
-
 		startServer()
 	},
 }
@@ -52,11 +47,6 @@ var workerCmd = &cobra.Command{
 	Use:   "worker",
 	Short: "Start autopilot worker",
 	Run: func(cmd *cobra.Command, args []string) {
-		configPath, _ := cmd.Flags().GetString("config")
-		if err := readConfig(configPath); err != nil {
-			log.Fatal(err)
-		}
-
 		startWorker()
 	},
 }
