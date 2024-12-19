@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/hibiken/asynq"
@@ -21,17 +22,19 @@ func NewStatusTracker(s repo.Store) *StatusTrackerDB {
 func (s *StatusTrackerDB) SetStatus(ctx context.Context, execID string, err error) error {
 	if err != nil {
 		_, err = s.store.UpdateExecutionStatus(ctx, repo.UpdateExecutionStatusParams{
-			Status: repo.ExecutionStatusErrored,
-			Error:  sql.NullString{String: err.Error(), Valid: true},
-			ExecID: execID,
+			Status:    repo.ExecutionStatusErrored,
+			Error:     sql.NullString{String: err.Error(), Valid: true},
+			ExecID:    execID,
+			UpdatedAt: time.Now(),
 		})
 		if err != nil {
 			return fmt.Errorf("could not update error execution status: %w", err)
 		}
 	} else {
 		_, err = s.store.UpdateExecutionStatus(ctx, repo.UpdateExecutionStatusParams{
-			Status: repo.ExecutionStatusCompleted,
-			ExecID: execID,
+			Status:    repo.ExecutionStatusCompleted,
+			ExecID:    execID,
+			UpdatedAt: time.Now(),
 		})
 		if err != nil {
 			return fmt.Errorf("could not update completed execution status: %w", err)

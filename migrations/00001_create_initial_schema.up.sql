@@ -34,6 +34,27 @@ CREATE TABLE IF NOT EXISTS users (
 );
 CREATE UNIQUE INDEX idx_users_uuid ON users(uuid);
 
+CREATE TABLE IF NOT EXISTS groups (
+    id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX idx_groups_uuid ON groups(uuid);
+
+CREATE TABLE IF NOT EXISTS group_memberships (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    group_id INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_group_memberships_user_id ON group_memberships(user_id);
+CREATE INDEX idx_group_memberships_group_id ON group_memberships(group_id);
+
 
 CREATE TYPE execution_status AS ENUM (
     'completed',

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"time"
 )
 
 type LogMessage struct {
@@ -77,4 +78,18 @@ type UserInfo struct {
 	Email   string   `json:"email"`
 	Name    string   `json:"name"`
 	Groups  []string `json:"groups"`
+}
+
+type ExecutionStatus string
+
+const (
+	ExecutionStatusPending   ExecutionStatus = "pending"
+	ExecutionStatusCompleted ExecutionStatus = "completed"
+	ExecutionStatusErrored   ExecutionStatus = "errored"
+)
+
+type ExecutionSummary struct {
+	ExecID    string
+	Status    ExecutionStatus
+	CreatedAt time.Time
 }

@@ -9,4 +9,4 @@ INSERT INTO execution_log (
 ) RETURNING *;
 
 -- name: UpdateExecutionStatus :one
-UPDATE execution_log SET status=$1, error=$2 WHERE exec_id = $3 RETURNING *;
+UPDATE execution_log SET status=$1, error=$2, updated_at=$3 WHERE exec_id = $4 RETURNING *;

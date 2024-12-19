@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"time"
 )
 
 const addExecutionLog = `-- name: AddExecutionLog :one
@@ -52,17 +53,23 @@ func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams
 }
 
 const updateExecutionStatus = `-- name: UpdateExecutionStatus :one
-UPDATE execution_log SET status=$1, error=$2 WHERE exec_id = $3 RETURNING id, exec_id, flow_id, input, error, status, triggered_by, created_at, updated_at
+UPDATE execution_log SET status=$1, error=$2, updated_at=$3 WHERE exec_id = $4 RETURNING id, exec_id, flow_id, input, error, status, triggered_by, created_at, updated_at
 `
 
 type UpdateExecutionStatusParams struct {
-	Status ExecutionStatus `db:"status" json:"status"`
-	Error  sql.NullString  `db:"error" json:"error"`
-	ExecID string          `db:"exec_id" json:"exec_id"`
+	Status    ExecutionStatus `db:"status" json:"status"`
+	Error     sql.NullString  `db:"error" json:"error"`
+	UpdatedAt time.Time       `db:"updated_at" json:"updated_at"`
+	ExecID    string          `db:"exec_id" json:"exec_id"`
 }
 
 func (q *Queries) UpdateExecutionStatus(ctx context.Context, arg UpdateExecutionStatusParams) (ExecutionLog, error) {
-	row := q.db.QueryRowContext(ctx, updateExecutionStatus, arg.Status, arg.Error, arg.ExecID)
+	row := q.db.QueryRowContext(ctx, updateExecutionStatus,
+		arg.Status,
+		arg.Error,
+		arg.UpdatedAt,
+		arg.ExecID,
+	)
 	var i ExecutionLog
 	err := row.Scan(
 		&i.ID,

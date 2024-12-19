@@ -164,6 +164,22 @@ type Flow struct {
 	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
 }
 
+type Group struct {
+	ID          int32          `db:"id" json:"id"`
+	Uuid        uuid.UUID      `db:"uuid" json:"uuid"`
+	Name        string         `db:"name" json:"name"`
+	Description sql.NullString `db:"description" json:"description"`
+	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
+}
+
+type GroupMembership struct {
+	ID        int32     `db:"id" json:"id"`
+	UserID    int32     `db:"user_id" json:"user_id"`
+	GroupID   int32     `db:"group_id" json:"group_id"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+}
+
 type Session struct {
 	ID        string          `db:"id" json:"id"`
 	Data      json.RawMessage `db:"data" json:"data"`
