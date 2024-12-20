@@ -75,3 +75,20 @@ func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[
 
 	return info.ID, nil
 }
+
+func (c *Core) GetExecutionSummary(ctx context.Context, f models.Flow, triggeredBy int32) ([]models.ExecutionSummary, error) {
+	execs, err := c.store.GetExecutionsByFlow(ctx, repo.GetExecutionsByFlowParams{
+		FlowID:      f.Meta.DBID,
+		TriggeredBy: triggeredBy,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not get executions for %s: %w", f.Meta.ID, err)
+	}
+
+	var m []models.ExecutionSummary
+	for _, v := range execs {
+		m = append(m, models.ExecutionSummary{ExecID: v.ExecID, CreatedAt: v.CreatedAt, CompletedAt: v.UpdatedAt, Status: models.ExecutionStatus(v.Status)})
+	}
+
+	return m, nil
+}

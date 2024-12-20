@@ -105,6 +105,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 	views.GET("/", h.HandleFlowsList)
 	views.GET("/results/:flowID/:logID", h.HandleFlowExecutionResults)
 	views.GET("/logs/:logID", h.HandleLogStreaming)
+	views.GET("/summary/:flowID", h.HandleExecutionSummary)
 
 	rootURL := viper.GetString("app.root_url")
 	if !strings.Contains(rootURL, "://") {

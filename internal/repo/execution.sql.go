@@ -52,6 +52,48 @@ func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams
 	return i, err
 }
 
+const getExecutionsByFlow = `-- name: GetExecutionsByFlow :many
+SELECT id, exec_id, flow_id, input, error, status, triggered_by, created_at, updated_at FROM execution_log WHERE flow_id = $1 and triggered_by = $2
+`
+
+type GetExecutionsByFlowParams struct {
+	FlowID      int32 `db:"flow_id" json:"flow_id"`
+	TriggeredBy int32 `db:"triggered_by" json:"triggered_by"`
+}
+
+func (q *Queries) GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]ExecutionLog, error) {
+	rows, err := q.db.QueryContext(ctx, getExecutionsByFlow, arg.FlowID, arg.TriggeredBy)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExecutionLog
+	for rows.Next() {
+		var i ExecutionLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.ExecID,
+			&i.FlowID,
+			&i.Input,
+			&i.Error,
+			&i.Status,
+			&i.TriggeredBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateExecutionStatus = `-- name: UpdateExecutionStatus :one
 UPDATE execution_log SET status=$1, error=$2, updated_at=$3 WHERE exec_id = $4 RETURNING id, exec_id, flow_id, input, error, status, triggered_by, created_at, updated_at
 `

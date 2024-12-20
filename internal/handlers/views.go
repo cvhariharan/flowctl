@@ -87,6 +87,30 @@ func (h *Handler) HandleFlowExecutionResults(c echo.Context) error {
 	return render(c, ui.ResultsPage(f, fmt.Sprintf("/view/logs/%s", logID)))
 }
 
+func (h *Handler) HandleExecutionSummary(c echo.Context) error {
+	flowID := c.Param("flowID")
+	if flowID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "flow id cannot be empty")
+	}
+
+	f, err := h.co.GetFlowByID(flowID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, err.Error())
+	}
+
+	user, ok := c.Get("user").(models.UserInfo)
+	if !ok {
+		return echo.NewHTTPError(http.StatusForbidden, "could not get user details")
+	}
+
+	summary, err := h.co.GetExecutionSummary(c.Request().Context(), f, user.ID)
+	if err != nil {
+		return render(c, partials.InlineError(err.Error()))
+	}
+
+	return render(c, ui.ExecutionSummaryPage(f.Meta.Name, summary))
+}
+
 func (h *Handler) HandleLogStreaming(c echo.Context) error {
 	// Upgrade to WebSocket connection
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)

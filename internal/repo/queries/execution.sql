@@ -10,3 +10,6 @@ INSERT INTO execution_log (
 
 -- name: UpdateExecutionStatus :one
 UPDATE execution_log SET status=$1, error=$2, updated_at=$3 WHERE exec_id = $4 RETURNING *;
+
+-- name: GetExecutionsByFlow :many
+SELECT * FROM execution_log WHERE flow_id = $1 and triggered_by = $2;
