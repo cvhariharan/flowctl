@@ -13,3 +13,6 @@ UPDATE execution_log SET status=$1, error=$2, updated_at=$3 WHERE exec_id = $4 R
 
 -- name: GetExecutionsByFlow :many
 SELECT * FROM execution_log WHERE flow_id = $1 and triggered_by = $2;
+
+-- name: GetExecutionByExecID :one
+SELECT * FROM execution_log WHERE exec_id = $1;

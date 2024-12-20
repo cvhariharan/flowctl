@@ -90,7 +90,9 @@ const (
 
 type ExecutionSummary struct {
 	ExecID      string
+	Flow        Flow
 	Status      ExecutionStatus
+	TriggeredBy string
 	CreatedAt   time.Time
 	CompletedAt time.Time
 }

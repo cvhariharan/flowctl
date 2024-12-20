@@ -52,6 +52,27 @@ func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams
 	return i, err
 }
 
+const getExecutionByExecID = `-- name: GetExecutionByExecID :one
+SELECT id, exec_id, flow_id, input, error, status, triggered_by, created_at, updated_at FROM execution_log WHERE exec_id = $1
+`
+
+func (q *Queries) GetExecutionByExecID(ctx context.Context, execID string) (ExecutionLog, error) {
+	row := q.db.QueryRowContext(ctx, getExecutionByExecID, execID)
+	var i ExecutionLog
+	err := row.Scan(
+		&i.ID,
+		&i.ExecID,
+		&i.FlowID,
+		&i.Input,
+		&i.Error,
+		&i.Status,
+		&i.TriggeredBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getExecutionsByFlow = `-- name: GetExecutionsByFlow :many
 SELECT id, exec_id, flow_id, input, error, status, triggered_by, created_at, updated_at FROM execution_log WHERE flow_id = $1 and triggered_by = $2
 `

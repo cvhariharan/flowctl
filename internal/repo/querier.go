@@ -16,8 +16,10 @@ type Querier interface {
 	CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteAllFlows(ctx context.Context) error
+	GetExecutionByExecID(ctx context.Context, execID string) (ExecutionLog, error)
 	GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]ExecutionLog, error)
 	GetFlowBySlug(ctx context.Context, slug string) (Flow, error)
+	GetUserByID(ctx context.Context, id int32) (User, error)
 	GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetUserPassword(ctx context.Context, id int32) (sql.NullString, error)

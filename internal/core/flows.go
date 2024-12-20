@@ -76,7 +76,7 @@ func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[
 	return info.ID, nil
 }
 
-func (c *Core) GetExecutionSummary(ctx context.Context, f models.Flow, triggeredBy int32) ([]models.ExecutionSummary, error) {
+func (c *Core) GetAllExecutionSummary(ctx context.Context, f models.Flow, triggeredBy int32) ([]models.ExecutionSummary, error) {
 	execs, err := c.store.GetExecutionsByFlow(ctx, repo.GetExecutionsByFlowParams{
 		FlowID:      f.Meta.DBID,
 		TriggeredBy: triggeredBy,
@@ -91,4 +91,29 @@ func (c *Core) GetExecutionSummary(ctx context.Context, f models.Flow, triggered
 	}
 
 	return m, nil
+}
+
+func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string) (models.ExecutionSummary, error) {
+	e, err := c.store.GetExecutionByExecID(ctx, execID)
+	if err != nil {
+		return models.ExecutionSummary{}, fmt.Errorf("could not get exec %s by exec id: %w", execID, err)
+	}
+
+	f, err := c.GetFlowFromLogID(execID)
+	if err != nil {
+		return models.ExecutionSummary{}, fmt.Errorf("could not get flow for exec %s: %w", execID, err)
+	}
+
+	u, err := c.store.GetUserByID(ctx, e.TriggeredBy)
+	if err != nil {
+		return models.ExecutionSummary{}, fmt.Errorf("could not get the user who triggered %s: %w", execID, err)
+	}
+
+	return models.ExecutionSummary{
+		ExecID:      execID,
+		Flow:        f,
+		CreatedAt:   e.CreatedAt,
+		CompletedAt: e.UpdatedAt,
+		TriggeredBy: u.Uuid.String(),
+	}, nil
 }

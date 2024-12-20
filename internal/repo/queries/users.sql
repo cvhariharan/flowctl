@@ -1,6 +1,9 @@
 -- name: GetUserByUUID :one
 SELECT * from users WHERE uuid = $1;
 
+-- name: GetUserByID :one
+SELECT * from users WHERE id = $1;
+
 -- name: GetUserPassword :one
 SELECT password FROM users WHERE id = $1;
 

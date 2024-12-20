@@ -84,6 +84,20 @@ func (h *Handler) HandleFlowExecutionResults(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, err.Error())
 	}
 
+	user, ok := c.Get("user").(models.UserInfo)
+	if !ok {
+		return echo.NewHTTPError(http.StatusForbidden, "could not get user details")
+	}
+
+	exec, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), logID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "could not get execution details")
+	}
+
+	if exec.TriggeredBy != user.UUID {
+		return echo.NewHTTPError(http.StatusForbidden, "you are not allowed to view this execution summary")
+	}
+
 	return render(c, ui.ResultsPage(f, fmt.Sprintf("/view/logs/%s", logID)))
 }
 
@@ -103,7 +117,7 @@ func (h *Handler) HandleExecutionSummary(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "could not get user details")
 	}
 
-	summary, err := h.co.GetExecutionSummary(c.Request().Context(), f, user.ID)
+	summary, err := h.co.GetAllExecutionSummary(c.Request().Context(), f, user.ID)
 	if err != nil {
 		return render(c, partials.InlineError(err.Error()))
 	}
