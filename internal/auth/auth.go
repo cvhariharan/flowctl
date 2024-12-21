@@ -11,13 +11,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/cvhariharan/autopilot/internal/core"
 	"github.com/cvhariharan/autopilot/internal/models"
-	"github.com/cvhariharan/autopilot/internal/repo"
+	"github.com/cvhariharan/autopilot/internal/ui"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
 	"github.com/zerodha/simplesessions/stores/postgres/v3"
 	"github.com/zerodha/simplesessions/v3"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
 )
 
@@ -52,10 +55,10 @@ func setCookie(cookie *http.Cookie, w interface{}) error {
 type AuthHandler struct {
 	sessMgr    *simplesessions.Manager
 	authconfig OIDCAuthConfig
-	store      repo.Store
+	co         *core.Core
 }
 
-func NewAuthHandler(db *sql.DB, store repo.Store, authconfig OIDCAuthConfig) (*AuthHandler, error) {
+func NewAuthHandler(db *sql.DB, co *core.Core, authconfig OIDCAuthConfig) (*AuthHandler, error) {
 	sessMgr := simplesessions.New(simplesessions.Options{
 		EnableAutoCreate: false,
 		Cookie: simplesessions.CookieOptions{
@@ -82,7 +85,7 @@ func NewAuthHandler(db *sql.DB, store repo.Store, authconfig OIDCAuthConfig) (*A
 		time.Sleep(SessionTimeout / 2)
 	}()
 
-	ah := &AuthHandler{sessMgr: sessMgr, store: store}
+	ah := &AuthHandler{sessMgr: sessMgr, co: co}
 	if err := ah.initOIDC(authconfig); err != nil {
 		return nil, fmt.Errorf("could not initialize OIDC config: %w", err)
 	}
@@ -123,7 +126,57 @@ func (h *AuthHandler) initOIDC(authconfig OIDCAuthConfig) error {
 	return nil
 }
 
-func (h *AuthHandler) HandleLogin(c echo.Context) error {
+func (h *AuthHandler) HandleLoginPage(c echo.Context) error {
+	if c.Request().Method == echo.POST {
+		sess, err := h.sessMgr.Acquire(nil, c, c)
+
+		if err == simplesessions.ErrInvalidSession {
+			sess, err = h.sessMgr.NewSession(c, c)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusUnauthorized, err)
+			}
+		}
+
+		if err != nil {
+			return echo.NewHTTPError(http.StatusUnauthorized, err)
+		}
+
+		username := c.FormValue("username")
+		password := c.FormValue("password")
+
+		if username == "" || password == "" {
+			return render(c, ui.LoginPage("username or password cannot be empty"))
+		}
+
+		user, err := h.co.GetUserByUsername(c.Request().Context(), username)
+		if err != nil {
+			return render(c, ui.LoginPage("could not authenticate user"))
+		}
+
+		// not using password based login
+		if user.Password == "" {
+			return render(c, ui.LoginPage("invalid authentication method"))
+		}
+
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+			return render(c, ui.LoginPage("invalid credentials"))
+		}
+
+		sess.Set("method", "password")
+		sess.Set("user", models.UserInfo{
+			UUID:     user.UUID,
+			Username: user.Username,
+			Groups:   user.Groups,
+		})
+
+		c.Logger().Info("login successful")
+		c.Response().Header().Set("HX-Redirect", RedirectAfterLogin)
+		return c.NoContent(http.StatusCreated)
+	}
+	return render(c, ui.LoginPage(""))
+}
+
+func (h *AuthHandler) HandleOIDCLogin(c echo.Context) error {
 	sess, err := h.sessMgr.Acquire(nil, c, c)
 
 	if err == simplesessions.ErrInvalidSession {
@@ -198,12 +251,17 @@ func (h *AuthHandler) HandleAuthCallback(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to parse claims")
 	}
 
+	user, err := h.co.GetUserByUsername(c.Request().Context(), claims.Email)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusForbidden, "user does not exist in autopilot")
+	}
+
+	sess.Set("method", "oidc")
 	sess.Set("id_token", rawIDToken)
 	sess.Set("user", models.UserInfo{
-		Subject: idToken.Subject,
-		Email:   claims.Email,
-		Name:    claims.Name,
-		Groups:  claims.Groups,
+		Username: claims.Email,
+		UUID:     user.UUID,
+		Groups:   user.Groups,
 	})
 
 	redirectURL, err := sess.Get("redirect_after_login")
@@ -233,4 +291,8 @@ func (h *AuthHandler) handleUnauthenticated(c echo.Context) error {
 
 	// For web requests, redirect to login page
 	return c.Redirect(http.StatusTemporaryRedirect, LoginPath)
+}
+
+func render(c echo.Context, component templ.Component) error {
+	return component.Render(c.Request().Context(), c.Response().Writer)
 }

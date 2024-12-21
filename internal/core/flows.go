@@ -9,6 +9,7 @@ import (
 	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/cvhariharan/autopilot/internal/tasks"
+	"github.com/google/uuid"
 )
 
 var (
@@ -47,7 +48,7 @@ func (c *Core) GetFlowFromLogID(logID string) (models.Flow, error) {
 
 // QueueFlowExecution adds a flow in the execution queue. The ID returned is the execution queue ID.
 // Exec ID should be universally unique, this is used to create the log stream and identify each execution
-func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[string]interface{}, execID string, userID int32) (string, error) {
+func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[string]interface{}, execID string, userUUID string) (string, error) {
 
 	// store the mapping between logID and flowID
 	c.logMap[execID] = f.Meta.ID
@@ -67,11 +68,16 @@ func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[
 		return "", fmt.Errorf("could not marshal input for storing execution log: %w", err)
 	}
 
+	userID, err := uuid.FromBytes([]byte(userUUID))
+	if err != nil {
+		return "", fmt.Errorf("user id is not a UUID: %w", err)
+	}
+
 	_, err = c.store.AddExecutionLog(ctx, repo.AddExecutionLogParams{
-		ExecID:      execID,
-		FlowID:      f.Meta.DBID,
-		Input:       inputB,
-		TriggeredBy: userID,
+		ExecID: execID,
+		FlowID: f.Meta.DBID,
+		Input:  inputB,
+		Uuid:   userID,
 	})
 	if err != nil {
 		return "", fmt.Errorf("could not add entry to execution log: %w", err)
@@ -80,10 +86,15 @@ func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[
 	return info.ID, nil
 }
 
-func (c *Core) GetAllExecutionSummary(ctx context.Context, f models.Flow, triggeredBy int32) ([]models.ExecutionSummary, error) {
+func (c *Core) GetAllExecutionSummary(ctx context.Context, f models.Flow, triggeredBy string) ([]models.ExecutionSummary, error) {
+	userID, err := uuid.FromBytes([]byte(triggeredBy))
+	if err != nil {
+		return nil, fmt.Errorf("user id is not a UUID: %w", err)
+	}
+
 	execs, err := c.store.GetExecutionsByFlow(ctx, repo.GetExecutionsByFlowParams{
-		FlowID:      f.Meta.DBID,
-		TriggeredBy: triggeredBy,
+		FlowID: f.Meta.DBID,
+		Uuid:   userID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not get executions for %s: %w", f.Meta.ID, err)
@@ -114,16 +125,11 @@ func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string) (
 		return models.ExecutionSummary{}, fmt.Errorf("could not get flow for exec %s: %w", execID, err)
 	}
 
-	u, err := c.store.GetUserByID(ctx, e.TriggeredBy)
-	if err != nil {
-		return models.ExecutionSummary{}, fmt.Errorf("could not get the user who triggered %s: %w", execID, err)
-	}
-
 	return models.ExecutionSummary{
 		ExecID:      execID,
 		Flow:        f,
 		CreatedAt:   e.CreatedAt,
 		CompletedAt: e.UpdatedAt,
-		TriggeredBy: u.Uuid.String(),
+		TriggeredBy: e.TriggeredByUuid.String(),
 	}, nil
 }

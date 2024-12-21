@@ -43,7 +43,7 @@ func LoginPage(inlineError string) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"flex h-screen flex-col justify-start items-center\"><p class=\"font-bold text-5xl pt-24 pb-16\">Autopilot</p><div id=\"login\"><form id=\"login-form\" hx-post=\"/login\" hx-target=\"#inline-error\" hx-swap=\"outerHTML\" class=\"max-w-sm py-16 w-screen mx-auto\"><label for=\"username\" class=\"block mb-2 text-sm font-medium text-gray-900\">Username</label> <input type=\"text\" id=\"username\" name=\"username\" class=\"bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5\"> <label for=\"password\" class=\"block mb-2 text-sm font-medium text-gray-900 pt-5\">Password</label> <input type=\"password\" id=\"password\" name=\"password\" class=\"bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5\"> <button type=\"submit\" class=\"mt-4 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center\">Sign In</button></form><div class=\"w-full flex justify-center\"><a href=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"login\" class=\"flex h-screen flex-col justify-start items-center\"><p class=\"font-bold text-5xl pt-24 pb-16\">Autopilot</p><form id=\"login-form\" hx-post=\"/login\" hx-target=\"body\" hx-swap=\"outerHTML\" class=\"max-w-sm py-16 w-screen mx-auto\"><label for=\"username\" class=\"block mb-2 text-sm font-medium text-gray-900\">Username</label> <input type=\"text\" id=\"username\" name=\"username\" class=\"bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5\"> <label for=\"password\" class=\"block mb-2 text-sm font-medium text-gray-900 pt-5\">Password</label> <input type=\"password\" id=\"password\" name=\"password\" class=\"bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5\"> <button type=\"submit\" class=\"mt-4 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center\">Sign In</button></form><div class=\"w-full flex justify-center\"><a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -52,7 +52,7 @@ func LoginPage(inlineError string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"mt-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg px-12 text-sm w-full sm:w-auto py-2.5 text-center\">Sign in with OIDC</a></div></div><div class=\"mt-4\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"mt-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg px-12 text-sm w-full sm:w-auto py-2.5 text-center\">Sign in with OIDC</a></div><div class=\"mt-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

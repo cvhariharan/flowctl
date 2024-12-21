@@ -52,7 +52,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, uuid, username, password, login_type, role, created_at, updated_at from users WHERE id = $1
+SELECT id, uuid, username, password, login_type, role, created_at, updated_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id int32) (User, error) {
@@ -72,52 +72,87 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (User, error) {
 }
 
 const getUserByUUID = `-- name: GetUserByUUID :one
-SELECT id, uuid, username, password, login_type, role, created_at, updated_at from users WHERE uuid = $1
+SELECT
+    u.id AS user_id,
+    u.uuid,
+    u.username,
+    u.password,
+    array_agg(g.name) AS group_names,
+    array_agg(g.description) AS group_descriptions
+FROM
+    users u
+LEFT JOIN
+    group_memberships gm ON u.id = gm.user_id
+LEFT JOIN
+    groups g ON gm.group_id = g.id
+WHERE
+    u.uuid = $1
+GROUP BY
+    u.id, u.uuid, u.username, u.password
 `
 
-func (q *Queries) GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (User, error) {
+type GetUserByUUIDRow struct {
+	UserID            int32          `db:"user_id" json:"user_id"`
+	Uuid              uuid.UUID      `db:"uuid" json:"uuid"`
+	Username          string         `db:"username" json:"username"`
+	Password          sql.NullString `db:"password" json:"password"`
+	GroupNames        interface{}    `db:"group_names" json:"group_names"`
+	GroupDescriptions interface{}    `db:"group_descriptions" json:"group_descriptions"`
+}
+
+func (q *Queries) GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (GetUserByUUIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByUUID, argUuid)
-	var i User
+	var i GetUserByUUIDRow
 	err := row.Scan(
-		&i.ID,
+		&i.UserID,
 		&i.Uuid,
 		&i.Username,
 		&i.Password,
-		&i.LoginType,
-		&i.Role,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.GroupNames,
+		&i.GroupDescriptions,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, uuid, username, password, login_type, role, created_at, updated_at from users WHERE username = $1
+SELECT
+    u.id AS user_id,
+    u.uuid,
+    u.username,
+    u.password,
+    array_agg(g.name) AS group_names,
+    array_agg(g.description) AS group_descriptions
+FROM
+    users u
+LEFT JOIN
+    group_memberships gm ON u.id = gm.user_id
+LEFT JOIN
+    groups g ON gm.group_id = g.id
+WHERE
+    u.username = $1
+GROUP BY
+    u.id, u.uuid, u.username, u.password
 `
 
-func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+type GetUserByUsernameRow struct {
+	UserID            int32          `db:"user_id" json:"user_id"`
+	Uuid              uuid.UUID      `db:"uuid" json:"uuid"`
+	Username          string         `db:"username" json:"username"`
+	Password          sql.NullString `db:"password" json:"password"`
+	GroupNames        interface{}    `db:"group_names" json:"group_names"`
+	GroupDescriptions interface{}    `db:"group_descriptions" json:"group_descriptions"`
+}
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
-	var i User
+	var i GetUserByUsernameRow
 	err := row.Scan(
-		&i.ID,
+		&i.UserID,
 		&i.Uuid,
 		&i.Username,
 		&i.Password,
-		&i.LoginType,
-		&i.Role,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.GroupNames,
+		&i.GroupDescriptions,
 	)
 	return i, err
-}
-
-const getUserPassword = `-- name: GetUserPassword :one
-SELECT password FROM users WHERE id = $1
-`
-
-func (q *Queries) GetUserPassword(ctx context.Context, id int32) (sql.NullString, error) {
-	row := q.db.QueryRowContext(ctx, getUserPassword, id)
-	var password sql.NullString
-	err := row.Scan(&password)
-	return password, err
 }

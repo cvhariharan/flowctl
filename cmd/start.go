@@ -80,7 +80,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 
 	h := handlers.NewHandler(co)
 
-	ah, err := auth.NewAuthHandler(db.DB, s, auth.OIDCAuthConfig{
+	ah, err := auth.NewAuthHandler(db.DB, co, auth.OIDCAuthConfig{
 		Issuer:       viper.GetString("app.oidc.issuer"),
 		ClientID:     viper.GetString("app.oidc.client_id"),
 		ClientSecret: viper.GetString("app.oidc.client_secret"),
@@ -90,11 +90,11 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 	}
 
 	e := echo.New()
-	e.GET("/login", h.HandleLoginPage)
-	e.POST("/login", h.HandleLoginPage)
+	e.GET("/login", ah.HandleLoginPage)
+	e.POST("/login", ah.HandleLoginPage)
 
 	// oidc
-	e.GET("/login/oidc", ah.HandleLogin)
+	e.GET("/login/oidc", ah.HandleOIDCLogin)
 	e.GET("/auth/callback", ah.HandleAuthCallback)
 
 	e.Logger.SetLevel(0)

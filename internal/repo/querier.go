@@ -6,7 +6,6 @@ package repo
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -16,14 +15,13 @@ type Querier interface {
 	CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteAllFlows(ctx context.Context) error
-	GetExecutionByExecID(ctx context.Context, execID string) (ExecutionLog, error)
+	GetExecutionByExecID(ctx context.Context, execID string) (GetExecutionByExecIDRow, error)
 	GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]ExecutionLog, error)
 	GetFlowBySlug(ctx context.Context, slug string) (Flow, error)
 	GetFlowFromExecID(ctx context.Context, execID string) (GetFlowFromExecIDRow, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
-	GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (User, error)
-	GetUserByUsername(ctx context.Context, username string) (User, error)
-	GetUserPassword(ctx context.Context, id int32) (sql.NullString, error)
+	GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (GetUserByUUIDRow, error)
+	GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error)
 	UpdateExecutionStatus(ctx context.Context, arg UpdateExecutionStatusParams) (ExecutionLog, error)
 	UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, error)
 }

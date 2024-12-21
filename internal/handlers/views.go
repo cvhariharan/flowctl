@@ -12,45 +12,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
 	upgrader = websocket.Upgrader{}
 )
-
-type LoginReq struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-func (h *Handler) HandleLoginPage(c echo.Context) error {
-	if c.Request().Method == echo.POST {
-		var req LoginReq
-		if err := c.Bind(&req); err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "could not parse request")
-		}
-
-		if req.Username == "" || req.Password == "" {
-			return render(c, ui.LoginPage("username or password cannot be empty"))
-		}
-
-		user, err := h.co.GetUserByUsername(c.Request().Context(), req.Username)
-		if err != nil {
-			return render(c, ui.LoginPage("could not authenticate user"))
-		}
-
-		// not using password based login
-		if user.Password == "" {
-			return render(c, ui.LoginPage("invalid authentication method"))
-		}
-
-		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-			return render(c, ui.LoginPage("invalid credentials"))
-		}
-	}
-	return render(c, ui.LoginPage(""))
-}
 
 func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 	var req map[string]interface{}
@@ -75,7 +41,7 @@ func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 
 	// Add to queue
 	execID := uuid.NewString()
-	_, err = h.co.QueueFlowExecution(c.Request().Context(), f, req, execID, user.ID)
+	_, err = h.co.QueueFlowExecution(c.Request().Context(), f, req, execID, user.UUID)
 	if err != nil {
 		return render(c, ui.FlowInputFormPage(f, "", nil, err.Error()))
 	}
@@ -151,7 +117,7 @@ func (h *Handler) HandleExecutionSummary(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "could not get user details")
 	}
 
-	summary, err := h.co.GetAllExecutionSummary(c.Request().Context(), f, user.ID)
+	summary, err := h.co.GetAllExecutionSummary(c.Request().Context(), f, user.UUID)
 	if err != nil {
 		return render(c, partials.InlineError(err.Error()))
 	}

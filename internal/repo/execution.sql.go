@@ -10,24 +10,29 @@ import (
 	"database/sql"
 	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const addExecutionLog = `-- name: AddExecutionLog :one
+WITH user_lookup AS (
+    SELECT id FROM users WHERE uuid = $4
+)
 INSERT INTO execution_log (
     exec_id,
     flow_id,
     input,
     triggered_by
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, (SELECT id FROM user_lookup)
 ) RETURNING id, exec_id, flow_id, input, error, status, triggered_by, created_at, updated_at
 `
 
 type AddExecutionLogParams struct {
-	ExecID      string          `db:"exec_id" json:"exec_id"`
-	FlowID      int32           `db:"flow_id" json:"flow_id"`
-	Input       json.RawMessage `db:"input" json:"input"`
-	TriggeredBy int32           `db:"triggered_by" json:"triggered_by"`
+	ExecID string          `db:"exec_id" json:"exec_id"`
+	FlowID int32           `db:"flow_id" json:"flow_id"`
+	Input  json.RawMessage `db:"input" json:"input"`
+	Uuid   uuid.UUID       `db:"uuid" json:"uuid"`
 }
 
 func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams) (ExecutionLog, error) {
@@ -35,7 +40,7 @@ func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams
 		arg.ExecID,
 		arg.FlowID,
 		arg.Input,
-		arg.TriggeredBy,
+		arg.Uuid,
 	)
 	var i ExecutionLog
 	err := row.Scan(
@@ -53,12 +58,33 @@ func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams
 }
 
 const getExecutionByExecID = `-- name: GetExecutionByExecID :one
-SELECT id, exec_id, flow_id, input, error, status, triggered_by, created_at, updated_at FROM execution_log WHERE exec_id = $1
+SELECT
+    el.id, el.exec_id, el.flow_id, el.input, el.error, el.status, el.triggered_by, el.created_at, el.updated_at,
+    u.uuid AS triggered_by_uuid
+FROM
+    execution_log el
+INNER JOIN
+    users u ON el.triggered_by = u.id
+WHERE
+    el.exec_id = $1
 `
 
-func (q *Queries) GetExecutionByExecID(ctx context.Context, execID string) (ExecutionLog, error) {
+type GetExecutionByExecIDRow struct {
+	ID              int32           `db:"id" json:"id"`
+	ExecID          string          `db:"exec_id" json:"exec_id"`
+	FlowID          int32           `db:"flow_id" json:"flow_id"`
+	Input           json.RawMessage `db:"input" json:"input"`
+	Error           sql.NullString  `db:"error" json:"error"`
+	Status          ExecutionStatus `db:"status" json:"status"`
+	TriggeredBy     int32           `db:"triggered_by" json:"triggered_by"`
+	CreatedAt       time.Time       `db:"created_at" json:"created_at"`
+	UpdatedAt       time.Time       `db:"updated_at" json:"updated_at"`
+	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
+}
+
+func (q *Queries) GetExecutionByExecID(ctx context.Context, execID string) (GetExecutionByExecIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getExecutionByExecID, execID)
-	var i ExecutionLog
+	var i GetExecutionByExecIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.ExecID,
@@ -69,21 +95,25 @@ func (q *Queries) GetExecutionByExecID(ctx context.Context, execID string) (Exec
 		&i.TriggeredBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TriggeredByUuid,
 	)
 	return i, err
 }
 
 const getExecutionsByFlow = `-- name: GetExecutionsByFlow :many
-SELECT id, exec_id, flow_id, input, error, status, triggered_by, created_at, updated_at FROM execution_log WHERE flow_id = $1 and triggered_by = $2
+WITH user_lookup AS (
+    SELECT id FROM users WHERE uuid = $2
+)
+SELECT id, exec_id, flow_id, input, error, status, triggered_by, created_at, updated_at FROM execution_log WHERE flow_id = $1 and triggered_by = (SELECT id FROM user_lookup)
 `
 
 type GetExecutionsByFlowParams struct {
-	FlowID      int32 `db:"flow_id" json:"flow_id"`
-	TriggeredBy int32 `db:"triggered_by" json:"triggered_by"`
+	FlowID int32     `db:"flow_id" json:"flow_id"`
+	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
 }
 
 func (q *Queries) GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]ExecutionLog, error) {
-	rows, err := q.db.QueryContext(ctx, getExecutionsByFlow, arg.FlowID, arg.TriggeredBy)
+	rows, err := q.db.QueryContext(ctx, getExecutionsByFlow, arg.FlowID, arg.Uuid)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +147,7 @@ func (q *Queries) GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFl
 
 const getFlowFromExecID = `-- name: GetFlowFromExecID :one
 WITH exec_log AS (
-    SELECT flow_id FROM execution_log WHERE exec_id = $1 
+    SELECT flow_id FROM execution_log WHERE exec_id = $1
 )
 SELECT id, slug, name, checksum, description, created_at, updated_at, flow_id FROM flows inner join exec_log on exec_log.flow_id = flows.id
 `

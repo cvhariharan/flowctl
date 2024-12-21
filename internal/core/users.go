@@ -7,10 +7,10 @@ import (
 	"github.com/cvhariharan/autopilot/internal/models"
 )
 
-func (c *Core) GetUserByUsername(ctx context.Context, username string) (models.UserInfo, error) {
+func (c *Core) GetUserByUsername(ctx context.Context, username string) (models.User, error) {
 	user, err := c.store.GetUserByUsername(ctx, username)
 	if err != nil {
-		return models.UserInfo{}, fmt.Errorf("could not get user %s: %w", username, err)
+		return models.User{}, fmt.Errorf("could not get user %s: %w", username, err)
 	}
 
 	var p string
@@ -18,10 +18,9 @@ func (c *Core) GetUserByUsername(ctx context.Context, username string) (models.U
 		p = user.Password.String
 	}
 
-	return models.UserInfo{
-		ID:       user.ID,
+	return models.User{
 		UUID:     user.Uuid.String(),
-		Email:    user.Username,
+		Username: user.Username,
 		Password: p,
 	}, nil
 }
