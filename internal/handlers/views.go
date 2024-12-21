@@ -12,13 +12,43 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
 	upgrader = websocket.Upgrader{}
 )
 
+type LoginReq struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 func (h *Handler) HandleLoginPage(c echo.Context) error {
+	if c.Request().Method == echo.POST {
+		var req LoginReq
+		if err := c.Bind(&req); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "could not parse request")
+		}
+
+		if req.Username == "" || req.Password == "" {
+			return render(c, ui.LoginPage("username or password cannot be empty"))
+		}
+
+		user, err := h.co.GetUserByUsername(c.Request().Context(), req.Username)
+		if err != nil {
+			return render(c, ui.LoginPage("could not authenticate user"))
+		}
+
+		// not using password based login
+		if user.Password == "" {
+			return render(c, ui.LoginPage("invalid authentication method"))
+		}
+
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+			return render(c, ui.LoginPage("invalid credentials"))
+		}
+	}
 	return render(c, ui.LoginPage(""))
 }
 

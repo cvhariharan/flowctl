@@ -91,6 +91,9 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 
 	e := echo.New()
 	e.GET("/login", h.HandleLoginPage)
+	e.POST("/login", h.HandleLoginPage)
+
+	// oidc
 	e.GET("/login/oidc", ah.HandleLogin)
 	e.GET("/auth/callback", ah.HandleAuthCallback)
 

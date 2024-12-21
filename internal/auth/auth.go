@@ -22,9 +22,10 @@ import (
 )
 
 const (
-	SessionTimeout = 2 * time.Hour
-	RedirectPath   = "/auth/callback"
-	LoginPath      = "/login"
+	SessionTimeout     = 2 * time.Hour
+	RedirectPath       = "/auth/callback"
+	LoginPath          = "/login"
+	RedirectAfterLogin = "/view/"
 )
 
 type OIDCAuthConfig struct {
@@ -207,7 +208,7 @@ func (h *AuthHandler) HandleAuthCallback(c echo.Context) error {
 
 	redirectURL, err := sess.Get("redirect_after_login")
 	if err != nil || redirectURL == nil {
-		redirectURL = "/"
+		redirectURL = RedirectAfterLogin
 	}
 
 	return c.Redirect(http.StatusTemporaryRedirect, redirectURL.(string))
