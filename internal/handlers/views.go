@@ -18,6 +18,10 @@ var (
 	upgrader = websocket.Upgrader{}
 )
 
+func (h *Handler) HandleLoginPage(c echo.Context) error {
+	return render(c, ui.LoginPage(""))
+}
+
 func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 	var req map[string]interface{}
 	// This is done to only bind request body and ignore path / query params
