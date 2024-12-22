@@ -68,7 +68,7 @@ func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[
 		return "", fmt.Errorf("could not marshal input for storing execution log: %w", err)
 	}
 
-	userID, err := uuid.FromBytes([]byte(userUUID))
+	userID, err := uuid.Parse(userUUID)
 	if err != nil {
 		return "", fmt.Errorf("user id is not a UUID: %w", err)
 	}
@@ -87,7 +87,7 @@ func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[
 }
 
 func (c *Core) GetAllExecutionSummary(ctx context.Context, f models.Flow, triggeredBy string) ([]models.ExecutionSummary, error) {
-	userID, err := uuid.FromBytes([]byte(triggeredBy))
+	userID, err := uuid.Parse(triggeredBy)
 	if err != nil {
 		return nil, fmt.Errorf("user id is not a UUID: %w", err)
 	}

@@ -55,6 +55,21 @@ CREATE TABLE IF NOT EXISTS group_memberships (
 CREATE INDEX idx_group_memberships_user_id ON group_memberships(user_id);
 CREATE INDEX idx_group_memberships_group_id ON group_memberships(group_id);
 
+CREATE OR REPLACE VIEW group_view AS
+SELECT
+    g.*,
+    CASE
+        WHEN COUNT(u.id) > 0 THEN JSON_AGG(u.*)
+        ELSE NULL
+    END AS users
+FROM
+    groups g
+LEFT JOIN
+    group_memberships gm ON g.id = gm.group_id
+LEFT JOIN
+    users u ON gm.user_id = u.id
+GROUP BY
+    g.id, g.uuid, g.name, g.description, g.created_at, g.updated_at;
 
 CREATE TYPE execution_status AS ENUM (
     'completed',
@@ -72,7 +87,7 @@ CREATE TABLE IF NOT EXISTS execution_log (
     status execution_status NOT NULL DEFAULT 'pending',
     triggered_by INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), 
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     FOREIGN KEY (flow_id) REFERENCES flows(id) ON DELETE CASCADE,
     FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE CASCADE
 );

@@ -13,12 +13,17 @@ import (
 type Querier interface {
 	AddExecutionLog(ctx context.Context, arg AddExecutionLogParams) (ExecutionLog, error)
 	CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, error)
+	CreateGroup(ctx context.Context, arg CreateGroupParams) (Group, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteAllFlows(ctx context.Context) error
+	DeleteGroupByUUID(ctx context.Context, argUuid uuid.UUID) error
+	GetAllGroupsWithUsers(ctx context.Context) ([]GroupView, error)
 	GetExecutionByExecID(ctx context.Context, execID string) (GetExecutionByExecIDRow, error)
 	GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]ExecutionLog, error)
 	GetFlowBySlug(ctx context.Context, slug string) (Flow, error)
 	GetFlowFromExecID(ctx context.Context, execID string) (GetFlowFromExecIDRow, error)
+	GetGroupByUUID(ctx context.Context, argUuid uuid.UUID) (Group, error)
+	GetGroupByUUIDWithUsers(ctx context.Context, argUuid uuid.UUID) (GroupView, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
 	GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (GetUserByUUIDRow, error)
 	GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error)

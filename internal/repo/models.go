@@ -181,6 +181,16 @@ type GroupMembership struct {
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 }
 
+type GroupView struct {
+	ID          int32          `db:"id" json:"id"`
+	Uuid        uuid.UUID      `db:"uuid" json:"uuid"`
+	Name        string         `db:"name" json:"name"`
+	Description sql.NullString `db:"description" json:"description"`
+	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
+	Users       interface{}    `db:"users" json:"users"`
+}
+
 type Session struct {
 	ID        string          `db:"id" json:"id"`
 	Data      json.RawMessage `db:"data" json:"data"`

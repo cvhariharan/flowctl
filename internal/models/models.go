@@ -78,9 +78,9 @@ type UserInfo struct {
 }
 
 type User struct {
-	UUID     string
-	Username string
-	Password string
+	UUID     string `json:"uuid"`
+	Username string `json:"username"`
+	Password string `json:"-"`
 	Name     string
 	Groups   []string
 }
@@ -130,4 +130,11 @@ func (e ExecutionSummary) Duration() string {
 		return fmt.Sprintf("%d hours", hours)
 	}
 	return fmt.Sprintf("%d hours %d minutes", hours, minutes)
+}
+
+type Group struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Users       []User `json:"users"`
 }

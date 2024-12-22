@@ -10,18 +10,19 @@ require (
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/sessions v1.4.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/gosimple/slug v1.14.0
 	github.com/hashicorp/go-envparse v0.1.0
 	github.com/hibiken/asynq v0.25.1
+	github.com/jackc/pgtype v1.14.0
+	github.com/jackc/pgx/v5 v5.5.4
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/labstack/echo/v4 v4.13.2
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/rs/xid v1.6.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
-	github.com/sqlc-dev/pqtype v0.3.0
+	github.com/zerodha/simplesessions/stores/postgres/v3 v3.0.0
 	github.com/zerodha/simplesessions/v3 v3.0.0
 	golang.org/x/crypto v0.31.0
 	golang.org/x/oauth2 v0.21.0
@@ -45,12 +46,14 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jackc/pgio v1.0.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
@@ -73,7 +76,6 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/zerodha/simplesessions/stores/postgres/v3 v3.0.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.54.0 // indirect
 	go.opentelemetry.io/otel v1.33.0 // indirect
