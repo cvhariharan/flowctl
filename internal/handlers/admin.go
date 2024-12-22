@@ -71,3 +71,12 @@ func (h *Handler) HandleDeleteGroup(c echo.Context) error {
 
 	return render(c, ui.GroupsTable(groups), http.StatusOK)
 }
+
+func (h *Handler) HandleGroupSearch(c echo.Context) error {
+	g, err := h.co.SearchGroup(c.Request().Context(), c.QueryParam("search"))
+	if err != nil {
+		return render(c, partials.InlineError("could not search for groups"), http.StatusInternalServerError)
+	}
+
+	return render(c, ui.GroupsTable(g), http.StatusOK)
+}

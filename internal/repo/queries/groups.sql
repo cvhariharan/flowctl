@@ -18,3 +18,6 @@ SELECT * FROM groups WHERE uuid = $1;
 
 -- name: DeleteGroupByUUID :exec
 DELETE FROM groups WHERE uuid = $1;
+
+-- name: SearchGroup :many
+SELECT * FROM group_view WHERE lower(name) LIKE '%' || lower($1::text) || '%' OR lower(description) LIKE '%' || lower($1::text) || '%';

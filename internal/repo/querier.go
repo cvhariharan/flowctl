@@ -27,6 +27,7 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id int32) (User, error)
 	GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (GetUserByUUIDRow, error)
 	GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error)
+	SearchGroup(ctx context.Context, dollar_1 string) ([]GroupView, error)
 	UpdateExecutionStatus(ctx context.Context, arg UpdateExecutionStatusParams) (ExecutionLog, error)
 	UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, error)
 }

@@ -120,3 +120,38 @@ func (q *Queries) GetGroupByUUIDWithUsers(ctx context.Context, argUuid uuid.UUID
 	)
 	return i, err
 }
+
+const searchGroup = `-- name: SearchGroup :many
+SELECT id, uuid, name, description, created_at, updated_at, users FROM group_view WHERE lower(name) LIKE '%' || lower($1::text) || '%' OR lower(description) LIKE '%' || lower($1::text) || '%'
+`
+
+func (q *Queries) SearchGroup(ctx context.Context, dollar_1 string) ([]GroupView, error) {
+	rows, err := q.db.QueryContext(ctx, searchGroup, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GroupView
+	for rows.Next() {
+		var i GroupView
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Name,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Users,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

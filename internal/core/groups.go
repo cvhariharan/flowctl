@@ -78,3 +78,28 @@ func (c *Core) CreateGroup(ctx context.Context, name, description string) (model
 		Description: g.Description.String,
 	}, nil
 }
+
+func (c *Core) SearchGroup(ctx context.Context, query string) ([]models.Group, error) {
+	g, err := c.store.SearchGroup(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	var groups []models.Group
+	for _, v := range g {
+		var users []models.User
+		if v.Users != nil {
+			if err := json.Unmarshal(v.Users.([]byte), &users); err != nil {
+				return nil, fmt.Errorf("could not get users for the group %s: %w", v.Uuid.String(), err)
+			}
+		}
+		groups = append(groups, models.Group{
+			ID:          v.Uuid.String(),
+			Name:        v.Name,
+			Description: v.Description.String,
+			Users:       users,
+		})
+	}
+
+	return groups, nil
+}

@@ -21,7 +21,7 @@ templ GroupManagementPage(groups []models.Group, inlineErr string) {
 								type="text"
 								name="search"
 								id="search"
-								hx-trigger="keyup changed delay:500ms"
+								hx-trigger="input changed delay:500ms, keyup[key=='Enter'], load"
 								hx-get="/admin/groups/search"
 								hx-target="#groups-table"
 								class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm pl-10 pr-4 py-2"
