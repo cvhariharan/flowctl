@@ -55,6 +55,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteUserByUUID = `-- name: DeleteUserByUUID :exec
+DELETE FROM users WHERE uuid = $1
+`
+
+func (q *Queries) DeleteUserByUUID(ctx context.Context, argUuid uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteUserByUUID, argUuid)
+	return err
+}
+
 const getAllUsersWithGroups = `-- name: GetAllUsersWithGroups :many
 SELECT id, uuid, name, username, password, login_type, role, created_at, updated_at, groups FROM user_view
 `
@@ -115,44 +124,22 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (User, error) {
 }
 
 const getUserByUUID = `-- name: GetUserByUUID :one
-SELECT
-    u.id AS user_id,
-    u.uuid,
-    u.username,
-    u.password,
-    array_agg(g.name) AS group_names,
-    array_agg(g.description) AS group_descriptions
-FROM
-    users u
-LEFT JOIN
-    group_memberships gm ON u.id = gm.user_id
-LEFT JOIN
-    groups g ON gm.group_id = g.id
-WHERE
-    u.uuid = $1
-GROUP BY
-    u.id, u.uuid, u.username, u.password
+SELECT id, uuid, name, username, password, login_type, role, created_at, updated_at FROM users WHERE uuid = $1
 `
 
-type GetUserByUUIDRow struct {
-	UserID            int32          `db:"user_id" json:"user_id"`
-	Uuid              uuid.UUID      `db:"uuid" json:"uuid"`
-	Username          string         `db:"username" json:"username"`
-	Password          sql.NullString `db:"password" json:"password"`
-	GroupNames        interface{}    `db:"group_names" json:"group_names"`
-	GroupDescriptions interface{}    `db:"group_descriptions" json:"group_descriptions"`
-}
-
-func (q *Queries) GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (GetUserByUUIDRow, error) {
+func (q *Queries) GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByUUID, argUuid)
-	var i GetUserByUUIDRow
+	var i User
 	err := row.Scan(
-		&i.UserID,
+		&i.ID,
 		&i.Uuid,
+		&i.Name,
 		&i.Username,
 		&i.Password,
-		&i.GroupNames,
-		&i.GroupDescriptions,
+		&i.LoginType,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

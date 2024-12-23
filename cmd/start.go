@@ -117,7 +117,9 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 	admin.GET("/groups/search", h.HandleGroupSearch)
 
 	admin.GET("/users", h.HandleUser)
+	admin.POST("/users", h.HandleCreateUser)
 	admin.GET("/users/search", h.HandleUserSearch)
+	admin.DELETE("/users/:userID", h.HandleDeleteUser)
 
 	rootURL := viper.GetString("app.root_url")
 	if !strings.Contains(rootURL, "://") {

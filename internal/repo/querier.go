@@ -17,6 +17,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteAllFlows(ctx context.Context) error
 	DeleteGroupByUUID(ctx context.Context, argUuid uuid.UUID) error
+	DeleteUserByUUID(ctx context.Context, argUuid uuid.UUID) error
 	GetAllGroupsWithUsers(ctx context.Context) ([]GroupView, error)
 	GetAllUsersWithGroups(ctx context.Context) ([]UserView, error)
 	GetExecutionByExecID(ctx context.Context, execID string) (GetExecutionByExecIDRow, error)
@@ -26,7 +27,7 @@ type Querier interface {
 	GetGroupByUUID(ctx context.Context, argUuid uuid.UUID) (Group, error)
 	GetGroupByUUIDWithUsers(ctx context.Context, argUuid uuid.UUID) (GroupView, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
-	GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (GetUserByUUIDRow, error)
+	GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error)
 	SearchGroup(ctx context.Context, dollar_1 string) ([]GroupView, error)
 	SearchUser(ctx context.Context, dollar_1 string) ([]UserView, error)

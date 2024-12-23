@@ -13,7 +13,6 @@ templ UserManagementPage(users []models.User, inlineErr string) {
 				<div class="py-10">
 					<h1 class="text-2xl font-semibold text-gray-900">Users Management</h1>
 				</div>
-				<!-- Search and Add Group Section -->
 				<div class="flex justify-between items-center mb-6">
 					<div class="flex-1 max-w-lg">
 						<div class="relative">
@@ -48,11 +47,9 @@ templ UserManagementPage(users []models.User, inlineErr string) {
 						Add User
 					</button>
 				</div>
-				<!-- Groups Table -->
 				<div id="users-table" class="mt-8">
 					@UsersTable(users)
 				</div>
-				<!-- Modal Container -->
 				<div id="modal-container"></div>
 				@partials.InlineError(inlineErr)
 			</div>
@@ -70,7 +67,7 @@ templ UserModal() {
 				>
 					<form
 						hx-post="/admin/users"
-						hx-target="#groups-table"
+						hx-target="#users-table"
 						hx-target-error="#inline-error"
 					>
 						<div>
@@ -125,7 +122,6 @@ templ UserModal() {
 	</div>
 }
 
-// Groups Table Template
 templ UsersTable(users []models.User) {
 	<div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
 		<table class="min-w-full divide-y divide-gray-300">
