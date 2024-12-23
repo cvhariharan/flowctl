@@ -65,6 +65,7 @@ func init() {
 	viper.SetDefault("app.use_tls", false)
 	viper.SetDefault("app.http_tls_cert", "server_cert.pem")
 	viper.SetDefault("app.http_tls_key", "server_key.pem")
+	viper.SetDefault("app.flows_directory", "flows")
 
 	key := make([]byte, 16)
 	if _, err := rand.Read(key); err != nil {

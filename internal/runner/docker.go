@@ -20,6 +20,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/gosimple/slug"
 	"github.com/rs/xid"
@@ -212,22 +213,9 @@ func (d *DockerRunner) Run(ctx context.Context) error {
 }
 
 func (d *DockerRunner) createSrcDirectories(ctx context.Context, cli *client.Client) error {
-	f, err := os.CreateTemp("", "tarcopy-*.tar")
+	tar, err := archive.TarWithOptions(d.src, &archive.TarOptions{})
 	if err != nil {
 		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	defer os.Remove(f.Name())
-
-	if err := CompressTar(d.src, f.Name()); err != nil {
-		return err
-	}
-
-	tar, err := os.Open(f.Name())
-	if err != nil {
-		return nil
 	}
 
 	return cli.CopyToContainer(ctx, d.containerID, WORKING_DIR, tar, container.CopyToContainerOptions{})

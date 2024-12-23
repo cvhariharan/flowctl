@@ -49,6 +49,7 @@ type Metadata struct {
 	DBID        int32  `yaml:"-"`
 	Name        string `yaml:"name" validate:"required"`
 	Description string `yaml:"description"`
+	SrcDir      string `yaml:"-"`
 }
 
 type Variable map[string]any

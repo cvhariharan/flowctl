@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/hashicorp/go-envparse"
 	"github.com/hibiken/asynq"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -58,7 +60,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 	for _, action := range payload.Workflow.Actions {
 		res, err := streamLogger.Results(action.ID)
 		if err != nil {
-			res, err = r.runAction(ctx, action, payload.Input, streamLogger)
+			res, err = r.runAction(ctx, action, payload.Workflow.Meta.SrcDir, payload.Input, streamLogger)
 			if err != nil {
 				if err := streamLogger.Checkpoint(action.ID, models.ExecutionCheckpoint{Err: err.Error()}); err != nil {
 					return err
@@ -74,7 +76,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 	return nil
 }
 
-func (r *FlowRunner) runAction(ctx context.Context, action models.Action, input map[string]interface{}, streamlogger *runner.StreamLogger) (map[string]string, error) {
+func (r *FlowRunner) runAction(ctx context.Context, action models.Action, srcdir string, input map[string]interface{}, streamlogger *runner.StreamLogger) (map[string]string, error) {
 	// Create temp file for outputs
 	outfile, err := os.CreateTemp("", fmt.Sprintf("output-action-%s-*", action.ID))
 	if err != nil {
@@ -118,7 +120,7 @@ func (r *FlowRunner) runAction(ctx context.Context, action models.Action, input 
 
 	// Add output env variable
 	action.Variables = append(action.Variables, map[string]interface{}{"OUTPUT": "/tmp/flow/output"})
-
+	log.Println(filepath.Join(viper.GetString("app.flows_directory"), srcdir))
 	err = runner.NewDockerRunner(action.ID, r.artifactManager, runner.DockerRunnerOptions{
 		ShowImagePull: true,
 		Stdout:        streamlogger,
@@ -128,7 +130,8 @@ func (r *FlowRunner) runAction(ctx context.Context, action models.Action, input 
 		WithCmd(action.Script).
 		WithEnv(action.Variables).
 		WithEntrypoint(action.Entrypoint).
-		WithSrc(action.Src).
+		// copy the files from flow directory
+		WithSrc(filepath.Join(viper.GetString("app.flows_directory"), srcdir)).
 		// Output file
 		WithMount(mount.Mount{
 			Type:   mount.TypeBind,

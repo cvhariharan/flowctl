@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/url"
 	"os"
@@ -71,7 +70,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 
 	s := repo.NewPostgresStore(db)
 
-	flows, err := processYAMLFiles("./testdata", s)
+	flows, err := processYAMLFiles(viper.GetString("app.flows_directory"), s)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -130,45 +129,74 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 	log.Fatal(e.Start(u.Host))
 }
 
-func processYAMLFiles(dirPath string, store repo.Store) (map[string]models.Flow, error) {
+func processYAMLFiles(rootDir string, store repo.Store) (map[string]models.Flow, error) {
 	m := make(map[string]models.Flow)
 
-	if err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+	// Read immediate subdirectories
+	entries, err := os.ReadDir(rootDir)
+	if err != nil {
+		return nil, fmt.Errorf("error reading root directory: %v", err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		projectDir := filepath.Join(rootDir, entry.Name())
+		yamlFound := false
+
+		// Look for YAML files in the project directory
+		projectFiles, err := os.ReadDir(projectDir)
 		if err != nil {
-			return err
+			log.Printf("error reading project directory %s: %v", projectDir, err)
+			continue
 		}
 
-		if d.IsDir() {
-			return nil
-		}
+		for _, file := range projectFiles {
+			if file.IsDir() {
+				continue
+			}
 
-		if !strings.HasSuffix(strings.ToLower(path), ".yml") &&
-			!strings.HasSuffix(strings.ToLower(path), ".yaml") {
-			return nil
-		}
+			filename := strings.ToLower(file.Name())
+			if !strings.HasSuffix(filename, ".yml") && !strings.HasSuffix(filename, ".yaml") {
+				continue
+			}
 
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("error reading file %s: %v", path, err)
-		}
-
-		h := sha256.New()
-		if _, err := h.Write(data); err != nil {
-			return fmt.Errorf("error hashing file %s: %v", path, err)
-		}
-		checksum := hex.EncodeToString(h.Sum(nil))
-
-		var f models.Flow
-		if err := yaml.Unmarshal(data, &f); err != nil {
-			return fmt.Errorf("error parsing YAML in %s: %v", path, err)
-		}
-		if err := f.Validate(); err != nil {
-			log.Println(err)
-		} else {
-			// Insert into db
-			fd, err := store.GetFlowBySlug(context.Background(), f.Meta.ID)
-			// Create if flow doesn't exist
+			yamlPath := filepath.Join(projectDir, file.Name())
+			data, err := os.ReadFile(yamlPath)
 			if err != nil {
+				log.Printf("error reading file %s: %v", yamlPath, err)
+				continue
+			}
+
+			// Calculate checksum
+			h := sha256.New()
+			if _, err := h.Write(data); err != nil {
+				log.Printf("error hashing file %s: %v", yamlPath, err)
+				continue
+			}
+			checksum := hex.EncodeToString(h.Sum(nil))
+
+			var f models.Flow
+			if err := yaml.Unmarshal(data, &f); err != nil {
+				log.Printf("error parsing YAML in %s: %v", yamlPath, err)
+				continue
+			}
+
+			if err := f.Validate(); err != nil {
+				log.Printf("validation error in %s: %v", yamlPath, err)
+				continue
+			}
+
+			// Set the source directory
+			f.Meta.SrcDir = entry.Name()
+			yamlFound = true
+
+			// Database operations
+			fd, err := store.GetFlowBySlug(context.Background(), f.Meta.ID)
+			if err != nil {
+				// Create new flow
 				fd, err = store.CreateFlow(context.Background(), repo.CreateFlowParams{
 					Slug:        f.Meta.ID,
 					Name:        f.Meta.Name,
@@ -176,11 +204,11 @@ func processYAMLFiles(dirPath string, store repo.Store) (map[string]models.Flow,
 					Description: sql.NullString{String: f.Meta.Description, Valid: true},
 				})
 				if err != nil {
-					return fmt.Errorf("error creating flow %s: %v", f.Meta.ID, err)
+					log.Printf("error creating flow %s: %v", f.Meta.ID, err)
+					continue
 				}
-			}
-
-			if fd.Checksum != checksum {
+			} else if fd.Checksum != checksum {
+				// Update existing flow if checksum differs
 				fd, err = store.UpdateFlow(context.Background(), repo.UpdateFlowParams{
 					Name:        f.Meta.Name,
 					Description: sql.NullString{String: f.Meta.Description, Valid: true},
@@ -188,16 +216,18 @@ func processYAMLFiles(dirPath string, store repo.Store) (map[string]models.Flow,
 					Slug:        f.Meta.ID,
 				})
 				if err != nil {
-					return fmt.Errorf("error updating flow %s: %v", f.Meta.ID, err)
+					log.Printf("error updating flow %s: %v", f.Meta.ID, err)
+					continue
 				}
 			}
+
 			f.Meta.DBID = fd.ID
 			m[f.Meta.ID] = f
 		}
 
-		return nil
-	}); err != nil {
-		return nil, err
+		if !yamlFound {
+			log.Printf("no YAML file found in directory: %s", projectDir)
+		}
 	}
 
 	return m, nil
