@@ -17,10 +17,11 @@ INSERT INTO users (
     username,
     password,
     login_type,
-    role
+    role,
+    name
 ) VALUES (
-    $1, $2, $3, $4
-) RETURNING id, uuid, username, password, login_type, role, created_at, updated_at
+    $1, $2, $3, $4, $5
+) RETURNING id, uuid, name, username, password, login_type, role, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -28,6 +29,7 @@ type CreateUserParams struct {
 	Password  sql.NullString `db:"password" json:"password"`
 	LoginType UserLoginType  `db:"login_type" json:"login_type"`
 	Role      UserRoleType   `db:"role" json:"role"`
+	Name      string         `db:"name" json:"name"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -36,11 +38,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Password,
 		arg.LoginType,
 		arg.Role,
+		arg.Name,
 	)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Uuid,
+		&i.Name,
 		&i.Username,
 		&i.Password,
 		&i.LoginType,
@@ -51,8 +55,46 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const getAllUsersWithGroups = `-- name: GetAllUsersWithGroups :many
+SELECT id, uuid, name, username, password, login_type, role, created_at, updated_at, groups FROM user_view
+`
+
+func (q *Queries) GetAllUsersWithGroups(ctx context.Context) ([]UserView, error) {
+	rows, err := q.db.QueryContext(ctx, getAllUsersWithGroups)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserView
+	for rows.Next() {
+		var i UserView
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Name,
+			&i.Username,
+			&i.Password,
+			&i.LoginType,
+			&i.Role,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Groups,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, uuid, username, password, login_type, role, created_at, updated_at FROM users WHERE id = $1
+SELECT id, uuid, name, username, password, login_type, role, created_at, updated_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id int32) (User, error) {
@@ -61,6 +103,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (User, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Uuid,
+		&i.Name,
 		&i.Username,
 		&i.Password,
 		&i.LoginType,
@@ -155,4 +198,42 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUs
 		&i.GroupDescriptions,
 	)
 	return i, err
+}
+
+const searchUser = `-- name: SearchUser :many
+SELECT id, uuid, name, username, password, login_type, role, created_at, updated_at, groups FROM user_view WHERE lower(name) LIKE '%' || lower($1::text) || '%' OR lower(username) LIKE '%' || lower($1::text) || '%'
+`
+
+func (q *Queries) SearchUser(ctx context.Context, dollar_1 string) ([]UserView, error) {
+	rows, err := q.db.QueryContext(ctx, searchUser, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserView
+	for rows.Next() {
+		var i UserView
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Name,
+			&i.Username,
+			&i.Password,
+			&i.LoginType,
+			&i.Role,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Groups,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

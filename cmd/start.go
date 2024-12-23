@@ -116,6 +116,9 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 	admin.DELETE("/groups/:groupID", h.HandleDeleteGroup)
 	admin.GET("/groups/search", h.HandleGroupSearch)
 
+	admin.GET("/users", h.HandleUser)
+	admin.GET("/users/search", h.HandleUserSearch)
+
 	rootURL := viper.GetString("app.root_url")
 	if !strings.Contains(rootURL, "://") {
 		log.Fatal("root_url should contain a scheme")

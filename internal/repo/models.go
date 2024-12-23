@@ -200,10 +200,24 @@ type Session struct {
 type User struct {
 	ID        int32          `db:"id" json:"id"`
 	Uuid      uuid.UUID      `db:"uuid" json:"uuid"`
+	Name      string         `db:"name" json:"name"`
 	Username  string         `db:"username" json:"username"`
 	Password  sql.NullString `db:"password" json:"password"`
 	LoginType UserLoginType  `db:"login_type" json:"login_type"`
 	Role      UserRoleType   `db:"role" json:"role"`
 	CreatedAt time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time      `db:"updated_at" json:"updated_at"`
+}
+
+type UserView struct {
+	ID        int32          `db:"id" json:"id"`
+	Uuid      uuid.UUID      `db:"uuid" json:"uuid"`
+	Name      string         `db:"name" json:"name"`
+	Username  string         `db:"username" json:"username"`
+	Password  sql.NullString `db:"password" json:"password"`
+	LoginType UserLoginType  `db:"login_type" json:"login_type"`
+	Role      UserRoleType   `db:"role" json:"role"`
+	CreatedAt time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at" json:"updated_at"`
+	Groups    interface{}    `db:"groups" json:"groups"`
 }

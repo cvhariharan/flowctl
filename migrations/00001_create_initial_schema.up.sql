@@ -25,6 +25,7 @@ CREATE TYPE user_role_type AS ENUM (
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
+    name VARCHAR(150) NOT NULL,
     username VARCHAR(255) NOT NULL,
     password VARCHAR(255),
     login_type user_login_type NOT NULL DEFAULT 'standard',
@@ -70,6 +71,23 @@ LEFT JOIN
     users u ON gm.user_id = u.id
 GROUP BY
     g.id, g.uuid, g.name, g.description, g.created_at, g.updated_at;
+
+
+CREATE OR REPLACE VIEW user_view AS
+SELECT
+    u.*,
+    CASE
+        WHEN COUNT(g.id) > 0 THEN JSON_AGG(g.*)
+        ELSE NULL
+    END AS groups
+FROM
+    users u
+LEFT JOIN
+    group_memberships gm ON u.id = gm.user_id
+LEFT JOIN
+    groups g ON gm.group_id = g.id
+GROUP BY
+    u.id, u.uuid, u.name, u.username, u.password, u.login_type, u.role, u.created_at, u.updated_at;
 
 CREATE TYPE execution_status AS ENUM (
     'completed',

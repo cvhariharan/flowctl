@@ -82,7 +82,7 @@ type User struct {
 	Username string `json:"username"`
 	Password string `json:"-"`
 	Name     string
-	Groups   []string
+	Groups   []Group
 }
 
 type ExecutionStatus string

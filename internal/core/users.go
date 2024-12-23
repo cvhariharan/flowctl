@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/cvhariharan/autopilot/internal/models"
@@ -23,4 +24,55 @@ func (c *Core) GetUserByUsername(ctx context.Context, username string) (models.U
 		Username: user.Username,
 		Password: p,
 	}, nil
+}
+
+func (c *Core) GetAllUsersWithGroups(ctx context.Context) ([]models.User, error) {
+	u, err := c.store.GetAllUsersWithGroups(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not get users with groups: %w", err)
+	}
+
+	var users []models.User
+	for _, v := range u {
+		var groups []models.Group
+		if v.Groups != nil {
+			if err := json.Unmarshal(v.Groups.([]byte), &groups); err != nil {
+				return nil, fmt.Errorf("could not get groups for the user %s: %w", v.Uuid.String(), err)
+			}
+		}
+
+		users = append(users, models.User{
+			UUID:     v.Uuid.String(),
+			Name:     v.Name,
+			Username: v.Username,
+			Groups:   groups,
+		})
+	}
+
+	return users, nil
+}
+
+func (c *Core) SearchUser(ctx context.Context, query string) ([]models.User, error) {
+	g, err := c.store.SearchUser(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	var users []models.User
+	for _, v := range g {
+		var groups []models.Group
+		if v.Groups != nil {
+			if err := json.Unmarshal(v.Groups.([]byte), &groups); err != nil {
+				return nil, fmt.Errorf("could not get groups for the user %s: %w", v.Uuid.String(), err)
+			}
+		}
+		users = append(users, models.User{
+			UUID:     v.Uuid.String(),
+			Name:     v.Name,
+			Username: v.Username,
+			Groups:   groups,
+		})
+	}
+
+	return users, nil
 }

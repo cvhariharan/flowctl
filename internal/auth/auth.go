@@ -163,10 +163,16 @@ func (h *AuthHandler) HandleLoginPage(c echo.Context) error {
 		}
 
 		sess.Set("method", "password")
+
+		var groups []string
+		for _, v := range user.Groups {
+			groups = append(groups, v.ID)
+		}
+
 		sess.Set("user", models.UserInfo{
 			UUID:     user.UUID,
 			Username: user.Username,
-			Groups:   user.Groups,
+			Groups:   groups,
 		})
 
 		c.Logger().Info("login successful")
@@ -258,10 +264,16 @@ func (h *AuthHandler) HandleAuthCallback(c echo.Context) error {
 
 	sess.Set("method", "oidc")
 	sess.Set("id_token", rawIDToken)
+
+	var groups []string
+	for _, v := range user.Groups {
+		groups = append(groups, v.ID)
+	}
+
 	sess.Set("user", models.UserInfo{
 		Username: claims.Email,
 		UUID:     user.UUID,
-		Groups:   user.Groups,
+		Groups:   groups,
 	})
 
 	redirectURL, err := sess.Get("redirect_after_login")

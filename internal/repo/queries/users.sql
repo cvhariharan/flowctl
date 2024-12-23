@@ -36,6 +36,9 @@ WHERE
 GROUP BY
     u.id, u.uuid, u.username, u.password;
 
+-- name: GetAllUsersWithGroups :many
+SELECT * FROM user_view;
+
 -- name: GetUserByID :one
 SELECT * FROM users WHERE id = $1;
 
@@ -44,7 +47,11 @@ INSERT INTO users (
     username,
     password,
     login_type,
-    role
+    role,
+    name
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5
 ) RETURNING *;
+
+-- name: SearchUser :many
+SELECT * FROM user_view WHERE lower(name) LIKE '%' || lower($1::text) || '%' OR lower(username) LIKE '%' || lower($1::text) || '%';

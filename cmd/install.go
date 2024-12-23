@@ -113,6 +113,7 @@ func initAdmin(store repo.Store) error {
 			Password:  sql.NullString{String: string(hashedPassword), Valid: true},
 			LoginType: "standard",
 			Role:      "admin",
+			Name:      "admin",
 		})
 		if err != nil {
 			return err
