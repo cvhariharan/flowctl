@@ -10,6 +10,9 @@ INSERT INTO groups (
 -- name: GetAllGroupsWithUsers :many
 SELECT * FROM group_view;
 
+-- name: GetAllGroups :many
+SELECT * FROM groups;
+
 -- name: GetGroupByUUIDWithUsers :one
 SELECT * FROM group_view WHERE uuid = $1;
 

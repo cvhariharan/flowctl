@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS group_memberships (
     group_id INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+    UNIQUE(user_id, group_id)
 );
 CREATE INDEX idx_group_memberships_user_id ON group_memberships(user_id);
 CREATE INDEX idx_group_memberships_group_id ON group_memberships(group_id);

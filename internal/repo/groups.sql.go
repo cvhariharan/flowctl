@@ -49,6 +49,40 @@ func (q *Queries) DeleteGroupByUUID(ctx context.Context, argUuid uuid.UUID) erro
 	return err
 }
 
+const getAllGroups = `-- name: GetAllGroups :many
+SELECT id, uuid, name, description, created_at, updated_at FROM groups
+`
+
+func (q *Queries) GetAllGroups(ctx context.Context) ([]Group, error) {
+	rows, err := q.db.QueryContext(ctx, getAllGroups)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Group
+	for rows.Next() {
+		var i Group
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Name,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAllGroupsWithUsers = `-- name: GetAllGroupsWithUsers :many
 SELECT id, uuid, name, description, created_at, updated_at, users FROM group_view
 `

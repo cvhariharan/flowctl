@@ -12,6 +12,30 @@ import (
 	"github.com/google/uuid"
 )
 
+const addGroupToUserByUUID = `-- name: AddGroupToUserByUUID :exec
+WITH
+user_lookup AS (
+    SELECT id FROM users WHERE users.uuid = $1
+),
+group_lookup AS (
+    SELECT id FROM groups WHERE groups.uuid = $2
+)
+INSERT INTO group_memberships (user_id, group_id) VALUES (
+    ( SELECT id FROM user_lookup ),
+    ( SELECT id FROM group_lookup )
+)
+`
+
+type AddGroupToUserByUUIDParams struct {
+	UserUuid  uuid.UUID `db:"user_uuid" json:"user_uuid"`
+	GroupUuid uuid.UUID `db:"group_uuid" json:"group_uuid"`
+}
+
+func (q *Queries) AddGroupToUserByUUID(ctx context.Context, arg AddGroupToUserByUUIDParams) error {
+	_, err := q.db.ExecContext(ctx, addGroupToUserByUUID, arg.UserUuid, arg.GroupUuid)
+	return err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     username,
@@ -144,6 +168,28 @@ func (q *Queries) GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (User, e
 	return i, err
 }
 
+const getUserByUUIDWithGroups = `-- name: GetUserByUUIDWithGroups :one
+SELECT id, uuid, name, username, password, login_type, role, created_at, updated_at, groups FROM user_view WHERE uuid = $1
+`
+
+func (q *Queries) GetUserByUUIDWithGroups(ctx context.Context, argUuid uuid.UUID) (UserView, error) {
+	row := q.db.QueryRowContext(ctx, getUserByUUIDWithGroups, argUuid)
+	var i UserView
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.Name,
+		&i.Username,
+		&i.Password,
+		&i.LoginType,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Groups,
+	)
+	return i, err
+}
+
 const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, uuid, name, username, password, login_type, role, created_at, updated_at FROM users WHERE username = $1
 `
@@ -223,4 +269,31 @@ func (q *Queries) SearchUsersWithGroups(ctx context.Context, dollar_1 string) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUserByUUID = `-- name: UpdateUserByUUID :one
+UPDATE users SET name = $1, username = $2 WHERE uuid = $3 RETURNING id, uuid, name, username, password, login_type, role, created_at, updated_at
+`
+
+type UpdateUserByUUIDParams struct {
+	Name     string    `db:"name" json:"name"`
+	Username string    `db:"username" json:"username"`
+	Uuid     uuid.UUID `db:"uuid" json:"uuid"`
+}
+
+func (q *Queries) UpdateUserByUUID(ctx context.Context, arg UpdateUserByUUIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserByUUID, arg.Name, arg.Username, arg.Uuid)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.Name,
+		&i.Username,
+		&i.Password,
+		&i.LoginType,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

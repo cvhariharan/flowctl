@@ -46,6 +46,20 @@ func (c *Core) GetAllUsersWithGroups(ctx context.Context) ([]models.UserWithGrou
 	return users, nil
 }
 
+func (c *Core) GetUserWithUUIDWithGroups(ctx context.Context, userUUID string) (models.UserWithGroups, error) {
+	uid, err := uuid.Parse(userUUID)
+	if err != nil {
+		return models.UserWithGroups{}, fmt.Errorf("user ID should be a UUID: %w", err)
+	}
+
+	u, err := c.store.GetUserByUUIDWithGroups(ctx, uid)
+	if err != nil {
+		return models.UserWithGroups{}, fmt.Errorf("could not get users with groups: %w", err)
+	}
+
+	return c.repoUserViewToUserWithGroups(u)
+}
+
 func (c *Core) SearchUser(ctx context.Context, query string) ([]models.UserWithGroups, error) {
 	u, err := c.store.SearchUsersWithGroups(ctx, query)
 	if err != nil {
@@ -123,6 +137,42 @@ func (c *Core) CreateUser(ctx context.Context, name, username string, loginType 
 	}
 
 	return c.repoUserToUser(u), nil
+}
+
+func (c *Core) UpdateUser(ctx context.Context, userUUID string, name string, username string, groups []string) (models.UserWithGroups, error) {
+	uid, err := uuid.Parse(userUUID)
+	if err != nil {
+		return models.UserWithGroups{}, fmt.Errorf("user ID should be a UUID: %w", err)
+	}
+
+	u, err := c.store.UpdateUserByUUID(ctx, repo.UpdateUserByUUIDParams{
+		Uuid:     uid,
+		Name:     name,
+		Username: username,
+	})
+	if err != nil {
+		return models.UserWithGroups{}, fmt.Errorf("could not update name and username for user %s: %w", userUUID, err)
+	}
+
+	for _, group := range groups {
+		gid, err := uuid.Parse(group)
+		if err != nil {
+			return models.UserWithGroups{}, fmt.Errorf("group ID should be a UUID: %w", err)
+		}
+
+		if err := c.store.AddGroupToUserByUUID(ctx, repo.AddGroupToUserByUUIDParams{
+			UserUuid:  uid,
+			GroupUuid: gid,
+		}); err != nil {
+			return models.UserWithGroups{}, fmt.Errorf("could not add group %s to user %s: %w", group, userUUID, err)
+		}
+	}
+
+	user, err := c.store.GetUserByUsernameWithGroups(ctx, u.Username)
+	if err != nil {
+		return models.UserWithGroups{}, fmt.Errorf("could not get updated user %s: %w", userUUID, err)
+	}
+	return c.repoUserViewToUserWithGroups(user)
 }
 
 func (c *Core) repoUserViewToUserWithGroups(user repo.UserView) (models.UserWithGroups, error) {

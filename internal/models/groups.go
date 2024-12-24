@@ -1,7 +1,7 @@
 package models
 
 type Group struct {
-	ID          string `json:"id"`
+	ID          string `json:"uuid"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }

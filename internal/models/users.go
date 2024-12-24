@@ -49,7 +49,7 @@ func (u UserWithGroups) ToUserInfo() UserInfo {
 }
 
 type User struct {
-	ID        string        `json:"id"`
+	ID        string        `json:"uuid"`
 	Username  string        `json:"username"`
 	Name      string        `json:"name"`
 	LoginType UserLoginType `json:"login_type"`

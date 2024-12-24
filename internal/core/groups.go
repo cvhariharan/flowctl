@@ -30,6 +30,21 @@ func (c *Core) GetAllGroupsWithUsers(ctx context.Context) ([]models.GroupWithUse
 	return groups, nil
 }
 
+func (c *Core) GetAllGroups(ctx context.Context) ([]models.Group, error) {
+	g, err := c.store.GetAllGroups(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not get all groups: %w", err)
+	}
+
+	var groups []models.Group
+	for _, v := range g {
+		grp := c.repoGroupToGroup(v)
+		groups = append(groups, grp)
+	}
+
+	return groups, nil
+}
+
 func (c *Core) GetGroupByUUID(ctx context.Context, groupUUID string) (models.Group, error) {
 	gid, err := uuid.Parse(groupUUID)
 	if err != nil {

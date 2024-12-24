@@ -12,12 +12,14 @@ import (
 
 type Querier interface {
 	AddExecutionLog(ctx context.Context, arg AddExecutionLogParams) (ExecutionLog, error)
+	AddGroupToUserByUUID(ctx context.Context, arg AddGroupToUserByUUIDParams) error
 	CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, error)
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (Group, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteAllFlows(ctx context.Context) error
 	DeleteGroupByUUID(ctx context.Context, argUuid uuid.UUID) error
 	DeleteUserByUUID(ctx context.Context, argUuid uuid.UUID) error
+	GetAllGroups(ctx context.Context) ([]Group, error)
 	GetAllGroupsWithUsers(ctx context.Context) ([]GroupView, error)
 	GetAllUsersWithGroups(ctx context.Context) ([]UserView, error)
 	GetExecutionByExecID(ctx context.Context, execID string) (GetExecutionByExecIDRow, error)
@@ -28,12 +30,14 @@ type Querier interface {
 	GetGroupByUUIDWithUsers(ctx context.Context, argUuid uuid.UUID) (GroupView, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
 	GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (User, error)
+	GetUserByUUIDWithGroups(ctx context.Context, argUuid uuid.UUID) (UserView, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetUserByUsernameWithGroups(ctx context.Context, username string) (UserView, error)
 	SearchGroup(ctx context.Context, dollar_1 string) ([]GroupView, error)
 	SearchUsersWithGroups(ctx context.Context, dollar_1 string) ([]UserView, error)
 	UpdateExecutionStatus(ctx context.Context, arg UpdateExecutionStatusParams) (ExecutionLog, error)
 	UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, error)
+	UpdateUserByUUID(ctx context.Context, arg UpdateUserByUUIDParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)
