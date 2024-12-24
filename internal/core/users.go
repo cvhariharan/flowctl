@@ -145,7 +145,12 @@ func (c *Core) UpdateUser(ctx context.Context, userUUID string, name string, use
 		return models.UserWithGroups{}, fmt.Errorf("user ID should be a UUID: %w", err)
 	}
 
-	u, err := c.store.UpdateUserByUUID(ctx, repo.UpdateUserByUUIDParams{
+	u, err := c.store.GetUserByUUIDWithGroups(ctx, uid)
+	if err != nil {
+		return models.UserWithGroups{}, fmt.Errorf("could not get user %s: %w", userUUID, err)
+	}
+
+	_, err = c.store.UpdateUserByUUID(ctx, repo.UpdateUserByUUIDParams{
 		Uuid:     uid,
 		Name:     name,
 		Username: username,
@@ -154,25 +159,15 @@ func (c *Core) UpdateUser(ctx context.Context, userUUID string, name string, use
 		return models.UserWithGroups{}, fmt.Errorf("could not update name and username for user %s: %w", userUUID, err)
 	}
 
-	for _, group := range groups {
-		gid, err := uuid.Parse(group)
-		if err != nil {
-			return models.UserWithGroups{}, fmt.Errorf("group ID should be a UUID: %w", err)
-		}
-
-		if err := c.store.AddGroupToUserByUUID(ctx, repo.AddGroupToUserByUUIDParams{
-			UserUuid:  uid,
-			GroupUuid: gid,
-		}); err != nil {
-			return models.UserWithGroups{}, fmt.Errorf("could not add group %s to user %s: %w", group, userUUID, err)
-		}
+	if err := c.store.OverwriteGroupsForUserTx(ctx, uid, groups); err != nil {
+		return models.UserWithGroups{}, fmt.Errorf("could not overwrite groups for user %s: %w", userUUID, err)
 	}
 
-	user, err := c.store.GetUserByUsernameWithGroups(ctx, u.Username)
+	u, err = c.store.GetUserByUUIDWithGroups(ctx, uid)
 	if err != nil {
 		return models.UserWithGroups{}, fmt.Errorf("could not get updated user %s: %w", userUUID, err)
 	}
-	return c.repoUserViewToUserWithGroups(user)
+	return c.repoUserViewToUserWithGroups(u)
 }
 
 func (c *Core) repoUserViewToUserWithGroups(user repo.UserView) (models.UserWithGroups, error) {

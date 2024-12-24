@@ -51,7 +51,7 @@ func (h *Handler) HandleUpdateUser(c echo.Context) error {
 		return showErrorPage(c, http.StatusBadRequest, "user ID cannot be empty")
 	}
 
-	_, err := h.co.GetUserByUUID(c.Request().Context(), userID)
+	_, err := h.co.GetUserWithUUIDWithGroups(c.Request().Context(), userID)
 	if err != nil {
 		c.Logger().Error(err)
 		return showErrorPage(c, http.StatusNotFound, "user does not exist")

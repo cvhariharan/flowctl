@@ -48,6 +48,16 @@ func (u UserWithGroups) ToUserInfo() UserInfo {
 	}
 }
 
+func (u UserWithGroups) HasGroup(groupUUID string) bool {
+	for _, v := range u.Groups {
+		if v.ID == groupUUID {
+			return true
+		}
+	}
+
+	return false
+}
+
 type User struct {
 	ID        string        `json:"uuid"`
 	Username  string        `json:"username"`

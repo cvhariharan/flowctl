@@ -233,6 +233,19 @@ func (q *Queries) GetUserByUsernameWithGroups(ctx context.Context, username stri
 	return i, err
 }
 
+const removeAllGroupsForUserByUUID = `-- name: RemoveAllGroupsForUserByUUID :exec
+WITH
+user_lookup AS (
+    SELECT id FROM users WHERE users.uuid = $1
+)
+DELETE FROM group_memberships WHERE user_id = ( SELECT id FROM user_lookup )
+`
+
+func (q *Queries) RemoveAllGroupsForUserByUUID(ctx context.Context, userUuid uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, removeAllGroupsForUserByUUID, userUuid)
+	return err
+}
+
 const searchUsersWithGroups = `-- name: SearchUsersWithGroups :many
 SELECT id, uuid, name, username, password, login_type, role, created_at, updated_at, groups FROM user_view WHERE lower(name) LIKE '%' || lower($1::text) || '%' OR lower(username) LIKE '%' || lower($1::text) || '%'
 `

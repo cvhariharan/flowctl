@@ -33,6 +33,7 @@ type Querier interface {
 	GetUserByUUIDWithGroups(ctx context.Context, argUuid uuid.UUID) (UserView, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetUserByUsernameWithGroups(ctx context.Context, username string) (UserView, error)
+	RemoveAllGroupsForUserByUUID(ctx context.Context, userUuid uuid.UUID) error
 	SearchGroup(ctx context.Context, dollar_1 string) ([]GroupView, error)
 	SearchUsersWithGroups(ctx context.Context, dollar_1 string) ([]UserView, error)
 	UpdateExecutionStatus(ctx context.Context, arg UpdateExecutionStatusParams) (ExecutionLog, error)

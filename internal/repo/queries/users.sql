@@ -48,3 +48,10 @@ INSERT INTO group_memberships (user_id, group_id) VALUES (
     ( SELECT id FROM user_lookup ),
     ( SELECT id FROM group_lookup )
 );
+
+-- name: RemoveAllGroupsForUserByUUID :exec
+WITH
+user_lookup AS (
+    SELECT id FROM users WHERE users.uuid = sqlc.arg(user_uuid)
+)
+DELETE FROM group_memberships WHERE user_id = ( SELECT id FROM user_lookup );
