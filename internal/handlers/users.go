@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/cvhariharan/autopilot/internal/models"
@@ -58,12 +59,17 @@ func (h *Handler) HandleUpdateUser(c echo.Context) error {
 	}
 
 	var req struct {
-		Name     string   `form:"name"`
-		Username string   `form:"username"`
-		Groups   []string `form:"groups[]"` // Note the tag matches the form field name
+		Name     string   `form:"name" validate:"required,min=4,max=30,alphanum_whitespace"`
+		Username string   `form:"username" validate:"required,email"`
+		Groups   []string `form:"groups[]"`
 	}
 	if err := c.Bind(&req); err != nil {
 		return render(c, partials.InlineError("could not decode request"), http.StatusBadRequest)
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		c.Logger().Error(err)
+		return render(c, partials.InlineError(fmt.Sprintf("request validation failed: %s", formatValidationErrors(err))), http.StatusBadRequest)
 	}
 
 	if req.Name == "" || req.Username == "" {
@@ -127,14 +133,20 @@ func (h *Handler) HandleDeleteUser(c echo.Context) error {
 }
 
 func (h *Handler) HandleCreateUser(c echo.Context) error {
-	name := c.FormValue("name")
-	username := c.FormValue("username")
-
-	if username == "" || name == "" {
-		return render(c, partials.InlineError("name or username cannot be empty"), http.StatusBadRequest)
+	var req struct {
+		Name     string `form:"name" validate:"required,min=4,max=30,alphanum_whitespace"`
+		Username string `form:"username" validate:"required,email"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return render(c, partials.InlineError("could not decode request"), http.StatusBadRequest)
 	}
 
-	_, err := h.co.CreateUser(c.Request().Context(), name, username, models.OIDCLoginType, models.StandardUserRole)
+	if err := h.validate.Struct(req); err != nil {
+		c.Logger().Error(err)
+		return render(c, partials.InlineError(fmt.Sprintf("request validation failed: %s", formatValidationErrors(err))), http.StatusBadRequest)
+	}
+
+	_, err := h.co.CreateUser(c.Request().Context(), req.Name, req.Username, models.OIDCLoginType, models.StandardUserRole)
 	if err != nil {
 		c.Logger().Error(err)
 		return render(c, partials.InlineError("could not create user"), http.StatusInternalServerError)

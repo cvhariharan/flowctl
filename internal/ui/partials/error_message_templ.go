@@ -29,19 +29,19 @@ func InlineError(msg string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"inline-error\" class=\"p-5\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"inline-error\" class=\"p-5 opacity-100 transition-opacity duration-300\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if msg != "" {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"bg-red-100 p-8 rounded-lg max-w-screen-sm w-screen mx-auto text-red-600\">Error: ")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div hx-trigger=\"load delay:5s\" hx-swap=\"outerHTML\" hx-target=\"#inline-error\" hx-get=\"/ping\" class=\"transition-opacity duration-300 bg-red-100 p-8 rounded-lg max-w-screen-sm w-screen mx-auto text-red-600\">Error: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/partials/error_message.templ`, Line: 7, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/partials/error_message.templ`, Line: 16, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {

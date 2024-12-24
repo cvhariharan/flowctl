@@ -4,20 +4,32 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/cvhariharan/autopilot/internal/core"
+	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/cvhariharan/autopilot/internal/ui"
+	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 )
 
 type Handler struct {
-	co *core.Core
+	co       *core.Core
+	validate *validator.Validate
 }
 
 func NewHandler(co *core.Core) *Handler {
-	return &Handler{co: co}
+	validate := validator.New()
+	validate.RegisterValidation("alphanum_underscore", models.AlphanumericUnderscore)
+	validate.RegisterValidation("alphanum_whitespace", models.AlphanumericSpace)
+
+	return &Handler{co: co, validate: validate}
+}
+
+func (h *Handler) HandlePing(c echo.Context) error {
+	return c.NoContent(http.StatusOK)
 }
 
 func render(c echo.Context, component templ.Component, status int) error {
@@ -59,4 +71,22 @@ func renderToWebsocket(c echo.Context, component templ.Component, ws *websocket.
 	}
 
 	return nil
+}
+
+func formatValidationErrors(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	validationErrors, ok := err.(validator.ValidationErrors)
+	if !ok {
+		return err.Error()
+	}
+
+	var errMsgs []string
+	for _, e := range validationErrors {
+		errMsgs = append(errMsgs, fmt.Sprintf("%s: %s", e.Field(), e.Tag()))
+	}
+
+	return strings.Join(errMsgs, "; ")
 }

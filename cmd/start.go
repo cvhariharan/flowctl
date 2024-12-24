@@ -89,6 +89,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 	}
 
 	e := echo.New()
+	e.GET("/ping", h.HandlePing)
 	e.GET("/login", ah.HandleLoginPage)
 	e.POST("/login", ah.HandleLoginPage)
 

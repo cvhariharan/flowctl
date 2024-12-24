@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/cvhariharan/autopilot/internal/ui"
@@ -23,14 +24,20 @@ func (h *Handler) HandleGroup(c echo.Context) error {
 }
 
 func (h *Handler) HandleCreateGroup(c echo.Context) error {
-	groupName := c.FormValue("name")
-	groupDescription := c.FormValue("description")
-
-	if groupName == "" {
-		return render(c, partials.InlineError("name cannot be empty"), http.StatusBadRequest)
+	var req struct {
+		Name        string `form:"name" validate:"required,alphanum_underscore,min=4,max=30"`
+		Description string `form:"description" validate:"max=150"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return render(c, partials.InlineError("could not decode request"), http.StatusBadRequest)
 	}
 
-	_, err := h.co.CreateGroup(c.Request().Context(), groupName, groupDescription)
+	if err := h.validate.Struct(req); err != nil {
+		c.Logger().Error(err)
+		return render(c, partials.InlineError(fmt.Sprintf("request validation failed: %s", formatValidationErrors(err))), http.StatusBadRequest)
+	}
+
+	_, err := h.co.CreateGroup(c.Request().Context(), req.Name, req.Description)
 	if err != nil {
 		c.Logger().Error(err)
 		return render(c, partials.InlineError("could not create group"), http.StatusInternalServerError)
