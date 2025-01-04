@@ -11,8 +11,10 @@ import (
 )
 
 type Querier interface {
+	AddApprovalRequest(ctx context.Context, arg AddApprovalRequestParams) (Approval, error)
 	AddExecutionLog(ctx context.Context, arg AddExecutionLogParams) (ExecutionLog, error)
 	AddGroupToUserByUUID(ctx context.Context, arg AddGroupToUserByUUIDParams) error
+	ApproveRequestByUUID(ctx context.Context, argUuid uuid.UUID) (Approval, error)
 	CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, error)
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (Group, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
@@ -22,7 +24,10 @@ type Querier interface {
 	GetAllGroups(ctx context.Context) ([]Group, error)
 	GetAllGroupsWithUsers(ctx context.Context) ([]GroupView, error)
 	GetAllUsersWithGroups(ctx context.Context) ([]UserView, error)
+	GetApprovalByUUID(ctx context.Context, argUuid uuid.UUID) (Approval, error)
+	GetApprovalRequestsForActionAndExec(ctx context.Context, arg GetApprovalRequestsForActionAndExecParams) (Approval, error)
 	GetExecutionByExecID(ctx context.Context, execID string) (GetExecutionByExecIDRow, error)
+	GetExecutionByID(ctx context.Context, id int32) (ExecutionLog, error)
 	GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]ExecutionLog, error)
 	GetFlowBySlug(ctx context.Context, slug string) (Flow, error)
 	GetFlowFromExecID(ctx context.Context, execID string) (GetFlowFromExecIDRow, error)
@@ -33,9 +38,11 @@ type Querier interface {
 	GetUserByUUIDWithGroups(ctx context.Context, argUuid uuid.UUID) (UserView, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetUserByUsernameWithGroups(ctx context.Context, username string) (UserView, error)
+	RejectRequestByUUID(ctx context.Context, argUuid uuid.UUID) (Approval, error)
 	RemoveAllGroupsForUserByUUID(ctx context.Context, userUuid uuid.UUID) error
 	SearchGroup(ctx context.Context, dollar_1 string) ([]GroupView, error)
 	SearchUsersWithGroups(ctx context.Context, dollar_1 string) ([]UserView, error)
+	UpdateApprovalStatusByUUID(ctx context.Context, status ApprovalStatus) (Approval, error)
 	UpdateExecutionStatus(ctx context.Context, arg UpdateExecutionStatusParams) (ExecutionLog, error)
 	UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, error)
 	UpdateUserByUUID(ctx context.Context, arg UpdateUserByUUIDParams) (User, error)

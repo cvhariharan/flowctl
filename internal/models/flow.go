@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/expr-lang/expr"
 	"github.com/go-playground/validator/v10"
@@ -33,15 +34,16 @@ type Input struct {
 }
 
 type Action struct {
-	ID         string     `yaml:"id" validate:"required,alphanum_underscore"`
-	Name       string     `yaml:"name" validate:"required"`
-	Image      string     `yaml:"image" validate:"required"`
-	Src        string     `yaml:"src"`
-	Variables  []Variable `yaml:"variables"`
-	Script     []string   `yaml:"script"`
-	Entrypoint []string   `yaml:"entrypoint"`
-	Artifacts  []string   `yaml:"artifacts"`
-	Condition  string     `yaml:"condition"`
+	ID         string       `yaml:"id" validate:"required,alphanum_underscore"`
+	Name       string       `yaml:"name" validate:"required"`
+	Image      string       `yaml:"image" validate:"required"`
+	Src        string       `yaml:"src"`
+	Approval   ApprovalList `yaml:"approval"`
+	Variables  []Variable   `yaml:"variables"`
+	Script     []string     `yaml:"script"`
+	Entrypoint []string     `yaml:"entrypoint"`
+	Artifacts  []string     `yaml:"artifacts"`
+	Condition  string       `yaml:"condition"`
 }
 
 type Metadata struct {
@@ -53,6 +55,7 @@ type Metadata struct {
 }
 
 type Variable map[string]any
+type ApprovalList []string
 
 func (v Variable) Valid() bool {
 	return !(len(v) > 1)
@@ -119,6 +122,20 @@ func (f Flow) Validate() error {
 	validate := validator.New()
 
 	validate.RegisterValidation("alphanum_underscore", AlphanumericUnderscore)
+
+	actionsIDs := make(map[string]int)
+		for _, action := range f.Actions {
+			// Check if action IDs are unique
+			if _, ok := actionsIDs[action.ID]; ok {
+				return fmt.Errorf("action ID %s is reused, actions IDs should be unique", action.ID)
+			}
+			actionsIDs[action.ID] = 1
+			for _, approver := range action.Approval {
+				if !strings.HasPrefix(approver, "users/") && !strings.HasPrefix(approver, "groups/") {
+					return fmt.Errorf("error validating action approval %s: approver should have a users/ or groups/ prefix", action.ID)
+				}
+			}
+		}
 
 	return validate.Struct(f)
 }

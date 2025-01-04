@@ -244,7 +244,7 @@ func processYAMLFiles(rootDir string, store repo.Store) (map[string]models.Flow,
 
 func startWorker(db *sqlx.DB, redisClient redis.UniversalClient) {
 	flowLogger := runner.NewStreamLogger(redisClient)
-	flowRunner := tasks.NewFlowRunner(flowLogger, runner.NewDockerArtifactsManager("./artifacts"))
+	flowRunner := tasks.NewFlowRunner(flowLogger, runner.NewDockerArtifactsManager("./artifacts"), nil, nil)
 
 	asynqSrv := asynq.NewServerFromRedisClient(redisClient, asynq.Config{
 		Concurrency: 0,

@@ -113,6 +113,25 @@ CREATE TABLE IF NOT EXISTS execution_log (
 CREATE UNIQUE INDEX idx_execution_log_exec_id ON execution_log(exec_id);
 CREATE INDEX idx_execution_log_triggered_by ON execution_log(triggered_by);
 
+CREATE TYPE approval_status AS ENUM (
+    'pending',
+    'approved',
+    'rejected'
+);
+
+CREATE TABLE IF NOT EXISTS approvals (
+    id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
+    exec_log_id INTEGER NOT NULL,
+    action_id VARCHAR(50) NOT NULL,
+    status approval_status NOT NULL DEFAULT 'pending',
+    approvers JSONB DEFAULT '{}'::jsonb NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (exec_log_id) REFERENCES execution_log(id) ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX idx_approvals_uuid ON approvals(uuid);
+CREATE UNIQUE INDEX idx_approvals_exec_action_id ON approvals(exec_log_id, action_id);
 
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT NOT NULL PRIMARY KEY,

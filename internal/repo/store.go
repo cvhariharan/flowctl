@@ -2,8 +2,10 @@ package repo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
@@ -11,6 +13,7 @@ import (
 type Store interface {
 	Querier
 	OverwriteGroupsForUserTx(ctx context.Context, userUUID uuid.UUID, groups []string) error
+	RequestApprovalTx(ctx context.Context, execID string, action models.Action) (Approval, error)
 }
 
 type PostgresStore struct {
@@ -57,4 +60,41 @@ func (p *PostgresStore) OverwriteGroupsForUserTx(ctx context.Context, userUUID u
 	}
 
 	return nil
+}
+
+func (p *PostgresStore) RequestApprovalTx(ctx context.Context, execID string, action models.Action) (Approval, error) {
+	if len(action.Approval) == 0 {
+		return Approval{}, fmt.Errorf("no approvers specified")
+	}
+
+	tx, err := p.db.Begin()
+	if err != nil {
+		return Approval{}, fmt.Errorf("could not start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	e, err := p.GetExecutionByExecID(ctx, execID)
+	if err != nil {
+		return Approval{}, fmt.Errorf("could not get exec details for %s: %w", execID, err)
+	}
+
+	approvers, err := json.Marshal(action.Approval)
+	if err != nil {
+		return Approval{}, fmt.Errorf("could not marshal approvers list: %w", err)
+	}
+
+	a, err := p.AddApprovalRequest(ctx, AddApprovalRequestParams{
+		ExecLogID: e.ID,
+		Approvers: approvers,
+		ActionID:  action.ID,
+	})
+	if err != nil {
+		return Approval{}, fmt.Errorf("could not create approval request: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return Approval{}, fmt.Errorf("coudl not commit transaction: %w", err)
+	}
+
+	return a, nil
 }

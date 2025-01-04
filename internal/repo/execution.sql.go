@@ -100,6 +100,27 @@ func (q *Queries) GetExecutionByExecID(ctx context.Context, execID string) (GetE
 	return i, err
 }
 
+const getExecutionByID = `-- name: GetExecutionByID :one
+SELECT id, exec_id, flow_id, input, error, status, triggered_by, created_at, updated_at FROM execution_log WHERE id = $1
+`
+
+func (q *Queries) GetExecutionByID(ctx context.Context, id int32) (ExecutionLog, error) {
+	row := q.db.QueryRowContext(ctx, getExecutionByID, id)
+	var i ExecutionLog
+	err := row.Scan(
+		&i.ID,
+		&i.ExecID,
+		&i.FlowID,
+		&i.Input,
+		&i.Error,
+		&i.Status,
+		&i.TriggeredBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getExecutionsByFlow = `-- name: GetExecutionsByFlow :many
 WITH user_lookup AS (
     SELECT id FROM users WHERE uuid = $2

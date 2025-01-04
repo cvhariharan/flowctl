@@ -26,13 +26,16 @@ const (
 )
 
 type FlowExecutionPayload struct {
-	Workflow models.Flow
-	Input    map[string]interface{}
-	LogID    string
+	Workflow          models.Flow
+	Input             map[string]interface{}
+	StartingActionIdx int
+	ExecID            string
 }
 
-func NewFlowExecution(f models.Flow, input map[string]interface{}, logID string) (*asynq.Task, error) {
-	payload, err := json.Marshal(FlowExecutionPayload{Workflow: f, Input: input, LogID: logID})
+type HookFn func(ctx context.Context, execID string, action models.Action) error
+
+func NewFlowExecution(f models.Flow, input map[string]interface{}, startingActionIdx int, ExecID string) (*asynq.Task, error) {
+	payload, err := json.Marshal(FlowExecutionPayload{Workflow: f, Input: input, StartingActionIdx: startingActionIdx, ExecID: ExecID})
 	if err != nil {
 		return nil, err
 	}
@@ -40,12 +43,14 @@ func NewFlowExecution(f models.Flow, input map[string]interface{}, logID string)
 }
 
 type FlowRunner struct {
-	logger          *runner.StreamLogger
-	artifactManager runner.ArtifactManager
+	logger           *runner.StreamLogger
+	artifactManager  runner.ArtifactManager
+	onBeforeActionFn HookFn
+	onAfterActionFn  HookFn
 }
 
-func NewFlowRunner(logger *runner.StreamLogger, artifactManager runner.ArtifactManager) *FlowRunner {
-	return &FlowRunner{logger: logger, artifactManager: artifactManager}
+func NewFlowRunner(logger *runner.StreamLogger, artifactManager runner.ArtifactManager, onBeforeActionFn, onAfterActionFn HookFn) *FlowRunner {
+	return &FlowRunner{logger: logger, artifactManager: artifactManager, onBeforeActionFn: onBeforeActionFn, onAfterActionFn: onAfterActionFn}
 }
 
 func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) error {
@@ -54,10 +59,25 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 		return err
 	}
 
-	streamLogger := r.logger.WithID(payload.LogID)
+	if payload.StartingActionIdx < 0 {
+		payload.StartingActionIdx = 0
+	}
+	if payload.StartingActionIdx > len(payload.Workflow.Actions) {
+		payload.StartingActionIdx = len(payload.Workflow.Actions)
+	}
+
+	streamLogger := r.logger.WithID(payload.ExecID)
 	defer streamLogger.Close()
 
-	for _, action := range payload.Workflow.Actions {
+	for i := payload.StartingActionIdx; i < len(payload.Workflow.Actions); i++ {
+		action := payload.Workflow.Actions[i]
+
+		if r.onBeforeActionFn != nil {
+			if err := r.onBeforeActionFn(ctx, payload.ExecID, action); err != nil {
+				return err
+			}
+		}
+
 		res, err := streamLogger.Results(action.ID)
 		if err != nil {
 			res, err = r.runAction(ctx, action, payload.Workflow.Meta.SrcDir, payload.Input, streamLogger)
@@ -70,6 +90,12 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 		}
 		if err := streamLogger.Checkpoint(action.ID, res, models.ResultMessageType); err != nil {
 			return err
+		}
+
+		if r.onAfterActionFn != nil {
+			if err := r.onAfterActionFn(ctx, payload.ExecID, action); err != nil {
+				return err
+			}
 		}
 	}
 

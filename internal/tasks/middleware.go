@@ -45,14 +45,14 @@ func (s *StatusTrackerDB) TrackerMiddleware(next func(context.Context, *asynq.Ta
 			return fmt.Errorf("payload could not be deserialized: %w", err)
 		}
 
-		if err := s.SetStatus(ctx, payload.LogID, repo.ExecutionStatusRunning, nil); err != nil {
+		if err := s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusRunning, nil); err != nil {
 			return err
 		}
 
 		if err := next(ctx, t); err != nil {
-			return s.SetStatus(ctx, payload.LogID, repo.ExecutionStatusErrored, err)
+			return s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusErrored, err)
 		}
 
-		return s.SetStatus(ctx, payload.LogID, repo.ExecutionStatusCompleted, nil)
+		return s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusCompleted, nil)
 	}
 }

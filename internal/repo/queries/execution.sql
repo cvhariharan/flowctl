@@ -36,3 +36,6 @@ WITH exec_log AS (
     SELECT flow_id FROM execution_log WHERE exec_id = $1
 )
 SELECT * FROM flows inner join exec_log on exec_log.flow_id = flows.id;
+
+-- name: GetExecutionByID :one
+SELECT * FROM execution_log WHERE id = $1;

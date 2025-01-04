@@ -55,7 +55,7 @@ func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[
 	// store the mapping between logID and flowID
 	c.logMap[execID] = f.Meta.ID
 
-	task, err := tasks.NewFlowExecution(f, input, execID)
+	task, err := tasks.NewFlowExecution(f, input, 2, execID)
 	if err != nil {
 		return "", fmt.Errorf("error creating task: %v", err)
 	}

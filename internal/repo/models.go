@@ -14,6 +14,49 @@ import (
 	"github.com/google/uuid"
 )
 
+type ApprovalStatus string
+
+const (
+	ApprovalStatusPending  ApprovalStatus = "pending"
+	ApprovalStatusApproved ApprovalStatus = "approved"
+	ApprovalStatusRejected ApprovalStatus = "rejected"
+)
+
+func (e *ApprovalStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ApprovalStatus(s)
+	case string:
+		*e = ApprovalStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ApprovalStatus: %T", src)
+	}
+	return nil
+}
+
+type NullApprovalStatus struct {
+	ApprovalStatus ApprovalStatus `json:"approval_status"`
+	Valid          bool           `json:"valid"` // Valid is true if ApprovalStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullApprovalStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ApprovalStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ApprovalStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullApprovalStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ApprovalStatus), nil
+}
+
 type ExecutionStatus string
 
 const (
@@ -141,6 +184,17 @@ func (ns NullUserRoleType) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.UserRoleType), nil
+}
+
+type Approval struct {
+	ID        int32           `db:"id" json:"id"`
+	Uuid      uuid.UUID       `db:"uuid" json:"uuid"`
+	ExecLogID int32           `db:"exec_log_id" json:"exec_log_id"`
+	ActionID  string          `db:"action_id" json:"action_id"`
+	Status    ApprovalStatus  `db:"status" json:"status"`
+	Approvers json.RawMessage `db:"approvers" json:"approvers"`
+	CreatedAt time.Time       `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time       `db:"updated_at" json:"updated_at"`
 }
 
 type ExecutionLog struct {

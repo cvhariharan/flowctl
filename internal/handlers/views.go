@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/cvhariharan/autopilot/internal/models"
@@ -148,7 +147,6 @@ func (h *Handler) HandleLogStreaming(c echo.Context) error {
 	}
 
 	for msg := range msgCh {
-		log.Println(msg)
 		var buf bytes.Buffer
 		switch msg.MType {
 		case models.LogMessageType:
