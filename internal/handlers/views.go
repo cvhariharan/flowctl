@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/cvhariharan/autopilot/internal/ui"
@@ -140,37 +143,69 @@ func (h *Handler) HandleLogStreaming(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "execution id cannot be empty")
 	}
 
+	statusCh := make(chan models.ApprovalRequest)
+	go h.checkApprovalStatus(c.Request().Context(), statusCh, logID)
 	msgCh := h.co.StreamLogs(c.Request().Context(), logID)
-	_, err = h.co.GetFlowFromLogID(logID)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "flow id cannot be empty")
-	}
 
-	for msg := range msgCh {
-		var buf bytes.Buffer
-		switch msg.MType {
-		case models.LogMessageType:
-			if err := partials.LogMessage(string(msg.Val)).Render(c.Request().Context(), &buf); err != nil {
+	var approvalDisplayed bool
+	for {
+		select {
+		case msg, ok := <-msgCh:
+			if !ok {
+				return nil
+			}
+			if err := h.handleLogStreaming(c, msg, ws); err != nil {
 				return err
 			}
-		case models.ResultMessageType:
-			var res map[string]string
-			if err := json.Unmarshal(msg.Val, &res); err != nil {
-				return fmt.Errorf("could not decode results: %w", err)
-			}
-			if err := partials.ExecutionOutput(res).Render(c.Request().Context(), &buf); err != nil {
-				return err
-			}
-		case models.ErrMessageType:
-			if err := partials.InlineError(string(msg.Val)).Render(c.Request().Context(), &buf); err != nil {
-				return err
+		case req := <-statusCh:
+			if !approvalDisplayed {
+				approvalDisplayed = true
+				log.Println(req)
 			}
 		}
+	}
+}
 
-		if err := ws.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
+func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, ws *websocket.Conn) error {
+	var buf bytes.Buffer
+	switch msg.MType {
+	case models.LogMessageType:
+		if err := partials.LogMessage(string(msg.Val)).Render(c.Request().Context(), &buf); err != nil {
+			return err
+		}
+	case models.ResultMessageType:
+		var res map[string]string
+		if err := json.Unmarshal(msg.Val, &res); err != nil {
+			return fmt.Errorf("could not decode results: %w", err)
+		}
+		if err := partials.ExecutionOutput(res).Render(c.Request().Context(), &buf); err != nil {
+			return err
+		}
+	case models.ErrMessageType:
+		if err := partials.InlineError(string(msg.Val)).Render(c.Request().Context(), &buf); err != nil {
 			return err
 		}
 	}
 
+	if err := ws.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (h *Handler) checkApprovalStatus(ctx context.Context, statusCh chan models.ApprovalRequest, execID string) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			a, err := h.co.GetPendingApprovalsForExec(ctx, execID)
+			if err != nil {
+				return err
+			}
+			statusCh <- a
+		}
+		time.Sleep(5 * time.Second)
+	}
 }

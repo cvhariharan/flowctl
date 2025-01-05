@@ -19,8 +19,14 @@ UPDATE approvals SET status = $1, updated_at = NOW() WHERE uuid = $1 RETURNING *
 -- name: GetApprovalByUUID :one
 SELECT * FROM approvals WHERE uuid = $1;
 
--- name: GetApprovalRequestsForActionAndExec :one
+-- name: GetApprovalRequestForActionAndExec :one
 WITH exec_lookup AS (
     SELECT id FROM execution_log WHERE exec_id = $1
 )
 SELECT * FROM approvals WHERE exec_log_id = (SELECT id FROM exec_lookup) AND action_id = $2;
+
+-- name: GetPendingApprovalRequestForExec :one
+WITH exec_lookup AS (
+    SELECT id FROM execution_log WHERE exec_id = $1
+)
+SELECT * FROM approvals WHERE exec_log_id = (SELECT id FROM exec_lookup) AND status = 'pending';

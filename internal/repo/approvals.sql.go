@@ -84,20 +84,43 @@ func (q *Queries) GetApprovalByUUID(ctx context.Context, argUuid uuid.UUID) (App
 	return i, err
 }
 
-const getApprovalRequestsForActionAndExec = `-- name: GetApprovalRequestsForActionAndExec :one
+const getApprovalRequestForActionAndExec = `-- name: GetApprovalRequestForActionAndExec :one
 WITH exec_lookup AS (
     SELECT id FROM execution_log WHERE exec_id = $1
 )
 SELECT id, uuid, exec_log_id, action_id, status, approvers, created_at, updated_at FROM approvals WHERE exec_log_id = (SELECT id FROM exec_lookup) AND action_id = $2
 `
 
-type GetApprovalRequestsForActionAndExecParams struct {
+type GetApprovalRequestForActionAndExecParams struct {
 	ExecID   string `db:"exec_id" json:"exec_id"`
 	ActionID string `db:"action_id" json:"action_id"`
 }
 
-func (q *Queries) GetApprovalRequestsForActionAndExec(ctx context.Context, arg GetApprovalRequestsForActionAndExecParams) (Approval, error) {
-	row := q.db.QueryRowContext(ctx, getApprovalRequestsForActionAndExec, arg.ExecID, arg.ActionID)
+func (q *Queries) GetApprovalRequestForActionAndExec(ctx context.Context, arg GetApprovalRequestForActionAndExecParams) (Approval, error) {
+	row := q.db.QueryRowContext(ctx, getApprovalRequestForActionAndExec, arg.ExecID, arg.ActionID)
+	var i Approval
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.ExecLogID,
+		&i.ActionID,
+		&i.Status,
+		&i.Approvers,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPendingApprovalRequestForExec = `-- name: GetPendingApprovalRequestForExec :one
+WITH exec_lookup AS (
+    SELECT id FROM execution_log WHERE exec_id = $1
+)
+SELECT id, uuid, exec_log_id, action_id, status, approvers, created_at, updated_at FROM approvals WHERE exec_log_id = (SELECT id FROM exec_lookup) AND status = 'pending'
+`
+
+func (q *Queries) GetPendingApprovalRequestForExec(ctx context.Context, execID string) (Approval, error) {
+	row := q.db.QueryRowContext(ctx, getPendingApprovalRequestForExec, execID)
 	var i Approval
 	err := row.Scan(
 		&i.ID,

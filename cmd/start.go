@@ -125,6 +125,8 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 	admin.PUT("/users/:userID", h.HandleUpdateUser)
 	admin.GET("/users/:userID/edit", h.HandleEditUser)
 
+	admin.GET("/requests/:execID", h.HandleApprovalRequest)
+
 	rootURL := viper.GetString("app.root_url")
 	if !strings.Contains(rootURL, "://") {
 		log.Fatal("root_url should contain a scheme")
