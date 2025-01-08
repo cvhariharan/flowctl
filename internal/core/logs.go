@@ -12,7 +12,45 @@ import (
 
 // StreamLogs reads values from a redis stream from the beginning and returns a channel to which
 // all the messages are sent. logID is the ID sent to the NewFlowExecution task
-func (c *Core) StreamLogs(ctx context.Context, logID string) chan models.StreamMessage {
+func (c *Core) StreamLogs(ctx context.Context, logID string) (chan models.StreamMessage, error) {
+	ch := make(chan models.StreamMessage)
+
+	errCh, err := c.checkErrors(ctx, logID)
+	if err != nil {
+		return nil, err
+	}
+
+	logCh, err := c.streamLogs(ctx, logID)
+	if err != nil {
+		return nil, err
+	}
+
+	go func(ch chan models.StreamMessage) {
+		defer close(ch)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case errMsg, ok := <-errCh:
+				if !ok {
+					return
+				}
+				ch <- errMsg
+				return
+			default:
+				log, ok := <-logCh
+				if !ok {
+					return
+				}
+				ch <- log
+			}
+		}
+	}(ch)
+
+	return ch, nil
+}
+
+func (c *Core) streamLogs(ctx context.Context, execID string) (chan models.StreamMessage, error) {
 	ch := make(chan models.StreamMessage)
 
 	go func(ch chan models.StreamMessage) {
@@ -20,7 +58,7 @@ func (c *Core) StreamLogs(ctx context.Context, logID string) chan models.StreamM
 		lastProcessedID := "0"
 		for {
 			result, err := c.redisClient.XRead(ctx, &redis.XReadArgs{
-				Streams: []string{logID, lastProcessedID},
+				Streams: []string{execID, lastProcessedID},
 				Count:   10,
 				Block:   0,
 			}).Result()
@@ -60,8 +98,33 @@ func (c *Core) StreamLogs(ctx context.Context, logID string) chan models.StreamM
 
 			time.Sleep(1 * time.Second)
 		}
-
 	}(ch)
 
-	return ch
+	return ch, nil
+}
+
+func (c *Core) checkErrors(ctx context.Context, execID string) (chan models.StreamMessage, error) {
+	ch := make(chan models.StreamMessage)
+
+	go func(ch chan models.StreamMessage) {
+		defer close(ch)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				exec, err := c.store.GetExecutionByExecID(ctx, execID)
+				if err != nil {
+					ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte(fmt.Errorf("error reading task status: %w", err).Error())}
+					return
+				}
+
+				if exec.Error.Valid {
+					ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte(exec.Error.String)}
+				}
+			}
+		}
+	}(ch)
+
+	return ch, nil
 }

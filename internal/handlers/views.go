@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -185,23 +184,20 @@ func (h *Handler) HandleLogStreaming(c echo.Context) error {
 
 	statusCh := make(chan models.ApprovalRequest)
 	go h.checkApprovalStatus(c.Request().Context(), statusCh, logID)
-	msgCh := h.co.StreamLogs(c.Request().Context(), logID)
+	msgCh, err := h.co.StreamLogs(c.Request().Context(), logID)
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "error subscribing to logs")
+	}
 
-	var approvalDisplayed bool
 	for {
-		select {
-		case msg, ok := <-msgCh:
-			if !ok {
-				return nil
-			}
-			if err := h.handleLogStreaming(c, msg, ws); err != nil {
-				return err
-			}
-		case req := <-statusCh:
-			if !approvalDisplayed {
-				approvalDisplayed = true
-				log.Println(req)
-			}
+		msg, ok := <-msgCh
+		if !ok {
+			c.Logger().Info("msg ch closed")
+			return nil
+		}
+		if err := h.handleLogStreaming(c, msg, ws); err != nil {
+			return err
 		}
 	}
 }
