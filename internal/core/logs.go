@@ -26,23 +26,25 @@ func (c *Core) StreamLogs(ctx context.Context, logID string) (chan models.Stream
 	}
 
 	go func(ch chan models.StreamMessage) {
-		defer close(ch)
+		defer func() {
+			// copy pending log messages
+			for logMsg := range logCh {
+				ch <- logMsg
+			}
+			close(ch)
+		}()
+
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case errMsg, ok := <-errCh:
-				if !ok {
-					return
+				if ok {
+					ch <- errMsg
 				}
-				ch <- errMsg
 				return
 			default:
-				log, ok := <-logCh
-				if !ok {
-					return
-				}
-				ch <- log
+				ch <- <-logCh
 			}
 		}
 	}(ch)
@@ -121,6 +123,10 @@ func (c *Core) checkErrors(ctx context.Context, execID string) (chan models.Stre
 
 				if exec.Error.Valid {
 					ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte(exec.Error.String)}
+				}
+
+				if exec.Status == "completed" || exec.Status == "errored" {
+					return
 				}
 			}
 		}
