@@ -2,11 +2,9 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/cvhariharan/autopilot/internal/ui"
@@ -182,8 +180,6 @@ func (h *Handler) HandleLogStreaming(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "execution id cannot be empty")
 	}
 
-	statusCh := make(chan models.ApprovalRequest)
-	go h.checkApprovalStatus(c.Request().Context(), statusCh, logID)
 	msgCh, err := h.co.StreamLogs(c.Request().Context(), logID)
 	if err != nil {
 		c.Logger().Error(err)
@@ -221,6 +217,10 @@ func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, w
 		if err := partials.InlineError(string(msg.Val)).Render(c.Request().Context(), &buf); err != nil {
 			return err
 		}
+	case models.StateMessageType:
+		if err := partials.ApprovalMessage(string(msg.Val)).Render(c.Request().Context(), &buf); err != nil {
+			return err
+		}
 	}
 
 	if err := ws.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
@@ -228,20 +228,4 @@ func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, w
 	}
 
 	return nil
-}
-
-func (h *Handler) checkApprovalStatus(ctx context.Context, statusCh chan models.ApprovalRequest, execID string) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			a, err := h.co.GetPendingApprovalsForExec(ctx, execID)
-			if err != nil {
-				return err
-			}
-			statusCh <- a
-		}
-		time.Sleep(5 * time.Second)
-	}
 }

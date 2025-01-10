@@ -5,17 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/cvhariharan/autopilot/internal/repo"
+	"github.com/cvhariharan/autopilot/internal/tasks"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
 var (
-	ErrPendingApproval   = errors.New("pending approval for action")
 	ErrNoPendingApproval = errors.New("no pending approval")
 	ErrNil               = errors.New("not found")
 )
@@ -143,8 +142,6 @@ func (c *Core) BeforeActionHook(ctx context.Context, execID, parentExecID string
 		return err
 	}
 
-	log.Println(a)
-
 	// continue execution if approved
 	if a.Status == repo.ApprovalStatusApproved {
 		return nil
@@ -161,5 +158,5 @@ func (c *Core) BeforeActionHook(ctx context.Context, execID, parentExecID string
 		}
 	}
 
-	return ErrPendingApproval
+	return tasks.ErrPendingApproval
 }

@@ -26,6 +26,11 @@ func (c *Core) StreamLogs(ctx context.Context, logID string) (chan models.Stream
 		return nil, err
 	}
 
+	approvalCh, err := c.checkApprovalRequests(ctx, logID)
+	if err != nil {
+		return nil, err
+	}
+
 	go func(ch chan models.StreamMessage) {
 		defer func() {
 			// copy pending log messages
@@ -42,6 +47,11 @@ func (c *Core) StreamLogs(ctx context.Context, logID string) (chan models.Stream
 			case errMsg, ok := <-errCh:
 				if ok {
 					ch <- errMsg
+				}
+				return
+			case approvalReq, ok := <-approvalCh:
+				if ok {
+					ch <- approvalReq
 				}
 				return
 			default:

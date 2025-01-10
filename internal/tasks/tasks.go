@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -23,6 +24,10 @@ const (
 	TypeFlowExecution   = "flow_execution"
 	TypeActionExecution = "action_execution"
 	MaxRetries          = 0
+)
+
+var (
+	ErrPendingApproval = errors.New("pending approval")
 )
 
 type FlowExecutionPayload struct {
@@ -67,7 +72,12 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 		payload.StartingActionIdx = len(payload.Workflow.Actions)
 	}
 
-	streamLogger := r.logger.WithID(payload.ExecID)
+	streamID := payload.ExecID
+	if payload.ParentExecID != "" {
+		streamID = payload.ParentExecID
+	}
+
+	streamLogger := r.logger.WithID(streamID)
 	defer streamLogger.Close()
 
 	for i := payload.StartingActionIdx; i < len(payload.Workflow.Actions); i++ {

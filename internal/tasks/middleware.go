@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -50,6 +51,9 @@ func (s *StatusTrackerDB) TrackerMiddleware(next func(context.Context, *asynq.Ta
 		}
 
 		if err := next(ctx, t); err != nil {
+			if errors.Is(err, ErrPendingApproval) {
+				return s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusPendingApproval, nil)
+			}
 			return s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusErrored, err)
 		}
 

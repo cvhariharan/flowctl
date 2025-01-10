@@ -94,6 +94,7 @@ CREATE TYPE execution_status AS ENUM (
     'completed',
     'errored',
     'pending',
+    'pending_approval',
     'running'
 );
 

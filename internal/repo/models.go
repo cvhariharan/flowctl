@@ -60,10 +60,11 @@ func (ns NullApprovalStatus) Value() (driver.Value, error) {
 type ExecutionStatus string
 
 const (
-	ExecutionStatusCompleted ExecutionStatus = "completed"
-	ExecutionStatusErrored   ExecutionStatus = "errored"
-	ExecutionStatusPending   ExecutionStatus = "pending"
-	ExecutionStatusRunning   ExecutionStatus = "running"
+	ExecutionStatusCompleted       ExecutionStatus = "completed"
+	ExecutionStatusErrored         ExecutionStatus = "errored"
+	ExecutionStatusPending         ExecutionStatus = "pending"
+	ExecutionStatusPendingApproval ExecutionStatus = "pending_approval"
+	ExecutionStatusRunning         ExecutionStatus = "running"
 )
 
 func (e *ExecutionStatus) Scan(src interface{}) error {
