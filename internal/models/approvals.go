@@ -3,6 +3,7 @@ package models
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 )
 
@@ -20,6 +21,7 @@ type ApprovalRequest struct {
 	Status      ApprovalType
 	ExecID      string
 	RequestedBy string
+	Approvers   []string
 }
 
 func (a ApprovalRequest) MarshalBinary() ([]byte, error) {
@@ -39,6 +41,9 @@ func (a ApprovalRequest) MarshalBinary() ([]byte, error) {
 	}
 	if err := gob.NewEncoder(&buf).Encode(a.RequestedBy); err != nil {
 		return nil, fmt.Errorf("failed to encode RequestedBy: %w", err)
+	}
+	if err := gob.NewEncoder(&buf).Encode(a.Approvers); err != nil {
+		return nil, fmt.Errorf("failed to encode Approvers: %w", err)
 	}
 
 	return buf.Bytes(), nil
@@ -62,6 +67,16 @@ func (a *ApprovalRequest) UnmarshalBinary(data []byte) error {
 	if err := gob.NewDecoder(buf).Decode(&a.RequestedBy); err != nil {
 		return fmt.Errorf("failed to decode RequestedBy: %w", err)
 	}
+	if err := gob.NewDecoder(buf).Decode(&a.Approvers); err != nil {
+		return fmt.Errorf("failed to decode Approvers: %w", err)
+	}
 
 	return nil
+}
+func ConvertJSONApproversToList(jsonApprovers []byte) ([]string, error) {
+	var approvers []string
+	if err := json.Unmarshal(jsonApprovers, &approvers); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal approvers: %w", err)
+	}
+	return approvers, nil
 }

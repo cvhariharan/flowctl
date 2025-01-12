@@ -3,11 +3,63 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/cvhariharan/autopilot/internal/ui"
 	"github.com/labstack/echo/v4"
 )
+
+func (h *Handler) ApprovalMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		approvalID := c.Param("approvalID")
+		if approvalID == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, "approval ID cannot be empty")
+		}
+
+		user, ok := c.Get("user").(models.UserInfo)
+		if !ok {
+			return echo.NewHTTPError(http.StatusForbidden, "could not get user details")
+		}
+
+		areq, err := h.co.GetApprovalRequest(c.Request().Context(), approvalID)
+		if err != nil {
+			c.Logger().Error(err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "could not get approval request")
+		}
+
+		c.Logger().Infof("user info: %+v\n", user)
+
+		// Check if user is in approvers list
+		var authorized bool
+		for _, approver := range areq.Approvers {
+			switch {
+			case strings.HasPrefix(approver, "users/"):
+				username := strings.TrimPrefix(approver, "users/")
+				if username == user.Username {
+					authorized = true
+				}
+			case strings.HasPrefix(approver, "groups/"):
+				groupName := strings.TrimPrefix(approver, "groups/")
+				for _, group := range user.Groups {
+					if group == groupName {
+						authorized = true
+						break
+					}
+				}
+			}
+			if authorized {
+				break
+			}
+		}
+
+		if !authorized {
+			return echo.NewHTTPError(http.StatusForbidden, "user is not authorized to perform this action")
+		}
+
+		return next(c)
+	}
+}
 
 func (h *Handler) HandleApprovalRequest(c echo.Context) error {
 	approvalID := c.Param("approvalID")
@@ -30,6 +82,8 @@ func (h *Handler) HandleApprovalRequest(c echo.Context) error {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "could not get flow")
 	}
+
+	c.Logger().Infof("Approval Request: %+v\n", areq)
 
 	return render(c, ui.ApprovalPage(ui.ApprovalRequest{
 		ID:          approvalID,
