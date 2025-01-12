@@ -34,7 +34,7 @@ func ApprovalMessage(msg string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if msg != "" {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div hx-swap=\"outerHTML\" hx-target=\"#approval-message\" class=\"transition-opacity duration-300 bg-red-100 p-8 rounded-lg max-w-screen-sm w-screen mx-auto\">Approval Required: ")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div hx-swap=\"outerHTML\" hx-target=\"#approval-message\" class=\"bg-yellow-100 p-8 rounded-lg max-w-screen-sm w-screen mx-auto\">Approval Required: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

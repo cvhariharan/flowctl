@@ -201,10 +201,6 @@ func (c *Core) checkApprovalRequests(ctx context.Context, execID string) (chan m
 					ch <- models.StreamMessage{MType: models.StateMessageType, Val: []byte(a.UUID)}
 					return
 				}
-
-				if a.Status != "pending" {
-					return
-				}
 			}
 			time.Sleep(5 * time.Second)
 		}

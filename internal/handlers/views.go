@@ -223,8 +223,10 @@ func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, w
 		}
 	}
 
-	if err := ws.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
-		return err
+	if buf.Len() > 0 {
+		if err := ws.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
+			return err
+		}
 	}
 
 	return nil
