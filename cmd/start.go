@@ -256,6 +256,10 @@ func startWorker(db *sqlx.DB, redisClient redis.UniversalClient) {
 
 	asynqSrv := asynq.NewServerFromRedisClient(redisClient, asynq.Config{
 		Concurrency: 0,
+		Queues: map[string]int{
+			"default": 5,
+			"resume":  5,
+		},
 	})
 
 	s := repo.NewPostgresStore(db)

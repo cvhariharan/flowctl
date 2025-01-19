@@ -61,6 +61,7 @@ func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[
 	return info, nil
 }
 
+// ResumeFlowExecution moves the task to a resume queue for further processing.
 func (c *Core) ResumeFlowExecution(ctx context.Context, execID string, actionID string, userUUID string) error {
 	exec, err := c.GetExecutionByExecID(ctx, execID)
 	if err != nil {
@@ -84,6 +85,7 @@ func (c *Core) ResumeFlowExecution(ctx context.Context, execID string, actionID 
 	return nil
 }
 
+// queueFlow adds a flow to the execution queue. If the actionIndex is not zero, it is moved to a resume queue.
 func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]interface{}, parentExecID string, actionIndex int, userUUID string) (string, error) {
 	execID := uuid.NewString()
 	// store the mapping between logID and flowID
@@ -99,7 +101,11 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 		return "", fmt.Errorf("error creating task: %v", err)
 	}
 
-	_, err = c.q.Enqueue(task, asynq.Retention(24*time.Hour))
+	queue := "default"
+	if actionIndex > 0 {
+		queue = "resume"
+	}
+	_, err = c.q.Enqueue(task, asynq.Retention(24*time.Hour), asynq.Queue(queue))
 	if err != nil {
 		return "", err
 	}

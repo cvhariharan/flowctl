@@ -50,6 +50,7 @@ func (c *Core) cacheApproval(ctx context.Context, execID int32, approval models.
 // ApproveOrRejectAction handles approval or rejection of an action request by a user.
 // It takes the approval UUID, the ID of the user making the decision, and the approval status.
 // The function updates both the database and Redis cache with the decision.
+// Once approved, the task is moved to a resume queue for further processing.
 func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedBy string, status models.ApprovalType) error {
 	var err error
 	uid, err := uuid.Parse(approvalUUID)
@@ -122,6 +123,13 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 	// Update the cache using approval UUID
 	if err := c.cacheApproval(ctx, execLogID, approval); err != nil {
 		return err
+	}
+
+	// If approved, move to resume queue
+	if status == models.ApprovalStatusApproved {
+		if err := c.ResumeFlowExecution(ctx, exec.ExecID, approval.ActionID, decidedBy); err != nil {
+			return fmt.Errorf("could not resume task %s: %w", exec.ExecID, err)
+		}
 	}
 
 	return nil
