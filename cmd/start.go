@@ -14,10 +14,11 @@ import (
 	"strings"
 
 	"github.com/cvhariharan/autopilot/internal/core"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/cvhariharan/autopilot/internal/handlers"
-	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/cvhariharan/autopilot/internal/runner"
+	"github.com/cvhariharan/autopilot/internal/streamlogger"
 	"github.com/cvhariharan/autopilot/internal/tasks"
 	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
@@ -115,12 +116,12 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	views := e.Group("/view")
 	views.Use(h.Authenticate)
 
-	views.POST("/trigger/:flow", h.HandleFlowTrigger)
-	views.GET("/:flow", h.HandleFlowForm)
-	views.GET("/", h.HandleFlowsList)
-	views.GET("/results/:flowID/:logID", h.HandleFlowExecutionResults)
-	views.GET("/logs/:logID", h.HandleLogStreaming)
-	views.GET("/summary/:flowID", h.HandleExecutionSummary)
+	// views.POST("/trigger/:flow", h.HandleFlowTrigger)
+	// views.GET("/:flow", h.HandleFlowForm)
+	// views.GET("/", h.HandleFlowsList)
+	// views.GET("/results/:flowID/:logID", h.HandleFlowExecutionResults)
+	// views.GET("/logs/:logID", h.HandleLogStreaming)
+	// views.GET("/summary/:flowID", h.HandleExecutionSummary)
 
 	views.GET("/approvals/:approvalID", h.HandleApprovalRequest, h.ApprovalMiddleware)
 	views.POST("/approvals/:approvalID/:action", h.HandleApprovalAction, h.ApprovalMiddleware)
@@ -137,7 +138,6 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	admin.GET("/users/search", h.HandleUserSearch)
 	admin.DELETE("/users/:userID", h.HandleDeleteUser)
 	admin.PUT("/users/:userID", h.HandleUpdateUser)
-	admin.GET("/users/:userID/edit", h.HandleEditUser)
 
 	admin.GET("/requests/:execID", h.HandleApprovalRequest)
 
@@ -285,7 +285,7 @@ func startWorker(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 
 	core := core.NewCore(flows, s, asynqClient, redisClient)
 
-	flowLogger := runner.NewStreamLogger(redisClient)
+	flowLogger := streamlogger.NewStreamLogger(redisClient)
 	flowRunner := tasks.NewFlowRunner(flowLogger, runner.NewDockerArtifactsManager("./artifacts"), core.BeforeActionHook, nil)
 
 	st := tasks.NewStatusTracker(s)

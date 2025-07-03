@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cvhariharan/autopilot/internal/models"
-	"github.com/cvhariharan/autopilot/internal/ui"
-	"github.com/cvhariharan/autopilot/internal/ui/partials"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
 )
@@ -17,7 +15,15 @@ func (h *Handler) HandleUser(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, "could not get users", err, nil)
 	}
 
-	return c.JSON(http.StatusOK, users)
+	var u []UserWithGroups
+	for _, v := range users {
+		u = append(u, UserWithGroups{
+			User:   coreUsertoUser(v.User),
+			Groups: coreGroupArrayCast(v.Groups),
+		})
+	}
+
+	return c.JSON(http.StatusOK, u)
 }
 
 func (h *Handler) HandleUpdateUser(c echo.Context) error {
@@ -48,86 +54,89 @@ func (h *Handler) HandleUpdateUser(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, "name and username cannot be empty", nil, nil)
 	}
 
-	_, err = h.co.UpdateUser(c.Request().Context(), userID, req.Name, req.Username, req.Groups)
+	user, err := h.co.UpdateUser(c.Request().Context(), userID, req.Name, req.Username, req.Groups)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not update user", err, nil)
 	}
 
-	users, err := h.co.GetAllUsersWithGroups(c.Request().Context())
-	if err != nil {
-		return wrapError(http.StatusBadRequest, "could not retrieve users", err, nil)
-	}
-
-	return c.JSON(http.StatusOK, users)
+	return c.JSON(http.StatusOK, UserWithGroups{
+		User:   coreUsertoUser(user.User),
+		Groups: coreGroupArrayCast(user.Groups),
+	})
 }
 
 func (h *Handler) HandleUserSearch(c echo.Context) error {
 	u, err := h.co.SearchUser(c.Request().Context(), c.QueryParam("search"))
 	if err != nil {
-		return render(c, partials.InlineError("could not search for users"), http.StatusInternalServerError)
+		return wrapError(http.StatusInternalServerError, "could not search for users", err, nil)
 	}
 
-	return render(c, ui.UsersTable(u), http.StatusOK)
+	var users []UserWithGroups
+	for _, v := range u {
+		users = append(users, UserWithGroups{
+			User:   coreUsertoUser(v.User),
+			Groups: coreGroupArrayCast(v.Groups),
+		})
+	}
+
+	return c.JSON(http.StatusOK, users)
 }
 
 func (h *Handler) HandleDeleteUser(c echo.Context) error {
 	userID := c.Param("userID")
 
 	if userID == "" {
-		return render(c, partials.InlineError("user id cannot be empty"), http.StatusBadRequest)
+		return wrapError(http.StatusBadRequest, "user id cannot be empty", nil, nil)
 	}
 
 	u, err := h.co.GetUserByUUID(c.Request().Context(), userID)
 	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not get user"), http.StatusNotFound)
+		return wrapError(http.StatusNotFound, "could not retrieve user", err, nil)
 	}
 
 	// Do not delete admin user
 	if u.Username == viper.GetString("app.admin_username") {
-		return render(c, partials.InlineError("cannot delete admin user"), http.StatusForbidden)
+		return wrapError(http.StatusForbidden, "cannot delete admin user", nil, nil)
 	}
 
 	err = h.co.DeleteUserByUUID(c.Request().Context(), userID)
 	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not delete user"), http.StatusInternalServerError)
+		return wrapError(http.StatusInternalServerError, "could not delete user", err, nil)
 	}
 
-	users, err := h.co.GetAllUsersWithGroups(c.Request().Context())
-	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not get all users"), http.StatusInternalServerError)
-	}
-
-	return render(c, ui.UsersTable(users), http.StatusOK)
+	return c.NoContent(http.StatusOK)
 }
 
 func (h *Handler) HandleCreateUser(c echo.Context) error {
 	var req struct {
-		Name     string `form:"name" validate:"required,min=4,max=30,alphanum_whitespace"`
-		Username string `form:"username" validate:"required,email"`
+		Name     string `json:"name" validate:"required,min=4,max=30,alphanum_whitespace"`
+		Username string `json:"username" validate:"required,email"`
 	}
 	if err := c.Bind(&req); err != nil {
-		return render(c, partials.InlineError("could not decode request"), http.StatusBadRequest)
+		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
 	}
 
 	if err := h.validate.Struct(req); err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError(fmt.Sprintf("request validation failed: %s", formatValidationErrors(err))), http.StatusBadRequest)
+		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
 	_, err := h.co.CreateUser(c.Request().Context(), req.Name, req.Username, models.OIDCLoginType, models.StandardUserRole)
 	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not create user"), http.StatusInternalServerError)
+		return wrapError(http.StatusInternalServerError, "could not create user", err, nil)
 	}
 
-	users, err := h.co.GetAllUsersWithGroups(c.Request().Context())
+	u, err := h.co.GetAllUsersWithGroups(c.Request().Context())
 	if err != nil {
-		c.Logger().Error(err)
-		render(c, partials.InlineError("could not get all users"), http.StatusInternalServerError)
+		return wrapError(http.StatusInternalServerError, "could not retrieve users", err, nil)
 	}
 
-	return render(c, ui.UsersTable(users), http.StatusOK)
+	var users []UserWithGroups
+	for _, v := range u {
+		users = append(users, UserWithGroups{
+			User:   coreUsertoUser(v.User),
+			Groups: coreGroupArrayCast(v.Groups),
+		})
+	}
+
+	return c.JSON(http.StatusOK, users)
 }

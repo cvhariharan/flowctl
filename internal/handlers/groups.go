@@ -13,7 +13,15 @@ func (h *Handler) HandleGroup(c echo.Context) error {
 		return wrapError(http.StatusNotFound, "could not get groups", err, nil)
 	}
 
-	return c.JSON(http.StatusOK, groups)
+	var gu []GroupWithUsers
+	for _, v := range groups {
+		gu = append(gu, GroupWithUsers{
+			Group: coreGroupToGroup(v.Group),
+			Users: coreUserArrayCast(v.Users),
+		})
+	}
+
+	return c.JSON(http.StatusOK, gu)
 }
 
 func (h *Handler) HandleCreateGroup(c echo.Context) error {
@@ -34,7 +42,10 @@ func (h *Handler) HandleCreateGroup(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, "could not create group", err, nil)
 	}
 
-	return c.JSON(http.StatusCreated, coreGroupToGroup(group))
+	return c.JSON(http.StatusCreated, GroupWithUsers{
+		Group: coreGroupToGroup(group.Group),
+		Users: coreUserArrayCast(group.Users),
+	})
 }
 
 func (h *Handler) HandleDeleteGroup(c echo.Context) error {
@@ -62,9 +73,12 @@ func (h *Handler) HandleGroupSearch(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, "error retrieving groups", err, nil)
 	}
 
-	var groups []Group
+	var groups []GroupWithUsers
 	for _, v := range g {
-		groups = append(groups, coreGroupToGroup(v))
+		groups = append(groups, GroupWithUsers{
+			Group: coreGroupToGroup(v.Group),
+			Users: coreUserArrayCast(v.Users),
+		})
 	}
 
 	return c.JSON(http.StatusOK, groups)

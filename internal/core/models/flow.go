@@ -47,6 +47,31 @@ type Action struct {
 	Condition  string       `yaml:"condition"`
 }
 
+func TaskActionToAction(a tasks.Action) Action {
+	var approvalList ApprovalList
+	for _, approver := range a.Approval {
+		approvalList = append(approvalList, approver)
+	}
+
+	var variables []Variable
+	for _, v := range a.Variables {
+		variables = append(variables, Variable(v))
+	}
+
+	return Action{
+		ID:         a.ID,
+		Name:       a.Name,
+		Image:      a.Image,
+		Src:        a.Src,
+		Approval:   approvalList,
+		Variables:  variables,
+		Script:     a.Script,
+		Entrypoint: a.Entrypoint,
+		Artifacts:  a.Artifacts,
+		Condition:  a.Condition,
+	}
+}
+
 type Metadata struct {
 	ID          string `yaml:"id" validate:"required,alphanum_underscore"`
 	DBID        int32  `yaml:"-"`
@@ -109,13 +134,13 @@ func ToTaskFlowModel(f Flow) tasks.Flow {
 	var ti []tasks.Input
 	for _, v := range f.Inputs {
 		ti = append(ti, tasks.Input{
-			Name: v.Name,
-			Type: tasks.InputType(v.Type),
-			Label: v.Label,
+			Name:        v.Name,
+			Type:        tasks.InputType(v.Type),
+			Label:       v.Label,
 			Description: v.Description,
-			Default: v.Default,
-			Required: v.Required,
-			Validation: v.Validation,
+			Default:     v.Default,
+			Required:    v.Required,
+			Validation:  v.Validation,
 		})
 	}
 
@@ -147,8 +172,8 @@ func ToTaskFlowModel(f Flow) tasks.Flow {
 	}
 
 	tf := tasks.Flow{
-		Meta: tasks.Metadata(f.Meta),
-		Inputs: ti,
+		Meta:    tasks.Metadata(f.Meta),
+		Inputs:  ti,
 		Actions: ta,
 		Outputs: to,
 	}

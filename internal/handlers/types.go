@@ -8,57 +8,73 @@ type AuthReq struct {
 }
 
 type ApprovalRequestResp struct {
-	ID string `json:"id"`
-	Title string `json:"title"`
+	ID          string `json:"id"`
+	Title       string `json:"title"`
 	Description string `json:"description"`
 	RequestedBy string `json:"requested_by"`
 }
 
 type ApprovalActionResp struct {
-	ID string `json:"id"`
-	Status string `json:"status"`
+	ID      string `json:"id"`
+	Status  string `json:"status"`
 	Message string `json:"messages"`
 }
 
 type User struct {
-	ID        string        `json:"id"`
-	Username  string        `json:"username"`
-	Name      string        `json:"name"`
+	ID        string `json:"id"`
+	Username  string `json:"username"`
+	Name      string `json:"name"`
 	LoginType string `json:"login_type"`
-	Role      string  `json:"role"`
+	Role      string `json:"role"`
+}
+
+type UserWithGroups struct {
+	User
+	Groups []Group `json:"groups"`
 }
 
 type Group struct {
-	ID string `json:"id"`
-	Name string `json:"name"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
 	Description string `json:"description"`
-	Users []User `json:"users"`
+	Users       []User `json:"users"`
 }
 
-type CreateGroupResp struct {
+type GroupWithUsers struct {
 	Group
+	Users []User `json:"users"`
 }
 
 func coreUsertoUser(u models.User) User {
 	return User{
-		ID: u.ID,
-		Name: u.Name,
-		Username: u.Username,
+		ID:        u.ID,
+		Name:      u.Name,
+		Username:  u.Username,
 		LoginType: string(u.LoginType),
-		Role: string(u.Role),
+		Role:      string(u.Role),
 	}
 }
 
-func coreGroupToGroup(gu models.GroupWithUsers) Group {
-	var users []User
-	for _, v := range gu.Users {
-		users = append(users, coreUsertoUser(v))
+func coreGroupArrayCast(gu []models.Group) []Group {
+	var g []Group
+	for _, v := range gu {
+		g = append(g, coreGroupToGroup(v))
 	}
+	return g
+}
 
+func coreUserArrayCast(gu []models.User) []User {
+	var u []User
+	for _, v := range gu {
+		u = append(u, coreUsertoUser(v))
+	}
+	return u
+}
+
+func coreGroupToGroup(gu models.Group) Group {
 	return Group{
-		ID: gu.ID,
-		Name: gu.Name,
+		ID:          gu.ID,
+		Name:        gu.Name,
 		Description: gu.Description,
-		Users: users,
 	}
 }

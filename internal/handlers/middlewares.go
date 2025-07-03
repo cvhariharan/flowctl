@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/labstack/echo/v4"
 )
 

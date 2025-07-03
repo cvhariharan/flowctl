@@ -13,8 +13,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/cvhariharan/autopilot/internal/core"
-	"github.com/cvhariharan/autopilot/internal/models"
-	"github.com/cvhariharan/autopilot/internal/ui"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -100,9 +99,9 @@ func render(c echo.Context, component templ.Component, status int) error {
 	return component.Render(c.Request().Context(), c.Response().Writer)
 }
 
-func showErrorPage(c echo.Context, code int, message string) error {
-	return ui.ErrorPage(code, message).Render(c.Request().Context(), c.Response().Writer)
-}
+// func showErrorPage(c echo.Context, code int, message string) error {
+// 	return ui.ErrorPage(code, message).Render(c.Request().Context(), c.Response().Writer)
+// }
 
 // func ErrorHandler(err error, c echo.Context) {
 // 	if c.Response().Committed {

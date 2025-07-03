@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/cvhariharan/autopilot/internal/core/models"
-	"github.com/cvhariharan/autopilot/internal/ui"
 	"github.com/labstack/echo/v4"
 )
 
@@ -79,7 +78,7 @@ func (h *Handler) HandleApprovalRequest(c echo.Context) error {
 	}
 
 	if areq.Status != models.ApprovalStatusPending {
-		return render(c, ui.ApprovalStatus(string(areq.Status), "This request has already been processed."), http.StatusOK)
+		return wrapError(http.StatusBadRequest, "request has already been processed", nil, nil)
 	}
 
 	f, err := h.co.GetFlowFromLogID(areq.ExecID)
@@ -129,8 +128,8 @@ func (h *Handler) HandleApprovalAction(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, ApprovalActionResp{
-		ID: approvalID,
-		Status: string(status),
+		ID:      approvalID,
+		Status:  string(status),
 		Message: message,
 	})
 }

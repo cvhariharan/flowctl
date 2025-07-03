@@ -226,7 +226,7 @@ func (c *Core) GetPendingApprovalsForExec(ctx context.Context, execID string) (m
 	return models.ApprovalRequest{}, nil
 }
 
-func (c *Core) BeforeActionHook(ctx context.Context, execID, parentExecID string, action models.Action) error {
+func (c *Core) BeforeActionHook(ctx context.Context, execID, parentExecID string, action tasks.Action) error {
 	if len(action.Approval) == 0 {
 		return nil
 	}
@@ -256,7 +256,7 @@ func (c *Core) BeforeActionHook(ctx context.Context, execID, parentExecID string
 	}
 
 	if a.Status == "" {
-		_, err = c.RequestApproval(ctx, eID, action)
+		_, err = c.RequestApproval(ctx, eID, models.TaskActionToAction(action))
 		if err != nil {
 			return err
 		}
