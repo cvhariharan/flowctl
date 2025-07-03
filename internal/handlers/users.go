@@ -12,38 +12,12 @@ import (
 )
 
 func (h *Handler) HandleUser(c echo.Context) error {
-	if c.QueryParam("action") == "add" {
-		return render(c, ui.UserModal(), http.StatusOK)
-	}
-
 	users, err := h.co.GetAllUsersWithGroups(c.Request().Context())
 	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not get all users"), http.StatusInternalServerError)
+		return wrapError(http.StatusBadRequest, "could not get users", err, nil)
 	}
 
-	return render(c, ui.UserManagementPage(users, ""), http.StatusOK)
-}
-
-func (h *Handler) HandleEditUser(c echo.Context) error {
-	userID := c.Param("userID")
-	if userID == "" {
-		return showErrorPage(c, http.StatusBadRequest, "user ID cannot be empty")
-	}
-
-	user, err := h.co.GetUserWithUUIDWithGroups(c.Request().Context(), userID)
-	if err != nil {
-		c.Logger().Error(err)
-		return showErrorPage(c, http.StatusNotFound, "user does not exist")
-	}
-
-	groups, err := h.co.GetAllGroups(c.Request().Context())
-	if err != nil {
-		c.Logger().Error(err)
-		return showErrorPage(c, http.StatusInternalServerError, "could not get all groups")
-	}
-
-	return render(c, ui.EditUserModal(user, groups), http.StatusOK)
+	return c.JSON(http.StatusOK, users)
 }
 
 func (h *Handler) HandleUpdateUser(c echo.Context) error {

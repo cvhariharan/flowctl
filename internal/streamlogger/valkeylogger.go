@@ -1,11 +1,9 @@
-package runner
+package streamlogger
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-
-	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -30,7 +28,7 @@ func (s *StreamLogger) WithID(id string) *StreamLogger {
 }
 
 func (s *StreamLogger) Write(p []byte) (int, error) {
-	if err := s.Checkpoint("", p, models.LogMessageType); err != nil {
+	if err := s.Checkpoint("", p, LogMessageType); err != nil {
 		return 0, err
 	}
 	return len(p), nil
@@ -38,18 +36,18 @@ func (s *StreamLogger) Write(p []byte) (int, error) {
 
 // Checkpoint can be used to save the completion status of an action.
 // Call after the successful completion of an action
-func (s *StreamLogger) Checkpoint(id string, val interface{}, mtype models.MessageType) error {
-	var sm models.StreamMessage
+func (s *StreamLogger) Checkpoint(id string, val interface{}, mtype MessageType) error {
+	var sm StreamMessage
 	sm.ActionID = id
 	switch mtype {
-	case models.ErrMessageType:
+	case ErrMessageType:
 		e, ok := val.(string)
 		if !ok {
 			return fmt.Errorf("expected string type for error got %T in stream checkpoint", val)
 		}
-		sm.MType = models.ErrMessageType
+		sm.MType = ErrMessageType
 		sm.Val = []byte(e)
-	case models.ResultMessageType:
+	case ResultMessageType:
 		r, ok := val.(map[string]string)
 		if !ok {
 			return fmt.Errorf("expected map[string]string type got %T in stream checkpoint", val)
@@ -58,15 +56,15 @@ func (s *StreamLogger) Checkpoint(id string, val interface{}, mtype models.Messa
 		if err != nil {
 			return fmt.Errorf("could not marshal result for result message type in stream message %s: %w", id, err)
 		}
-		sm.MType = models.ResultMessageType
+		sm.MType = ResultMessageType
 		sm.Val = data
-	case models.LogMessageType:
-		sm.MType = models.LogMessageType
+	case LogMessageType:
+		sm.MType = LogMessageType
 		d, ok := val.([]byte)
 		if !ok {
 			return fmt.Errorf("expected []byte type for log got %T in stream checkpoint", val)
 		}
-		sm.MType = models.LogMessageType
+		sm.MType = LogMessageType
 		sm.Val = d
 	}
 

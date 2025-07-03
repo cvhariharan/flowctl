@@ -8,7 +8,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/cvhariharan/autopilot/internal/tasks"
 	"github.com/google/uuid"
@@ -151,7 +151,7 @@ func (c *Core) RequestApproval(ctx context.Context, execID string, action models
 		return "", fmt.Errorf("pending approval request: %s", approvalReq.UUID)
 	}
 
-	areq, err := c.store.RequestApprovalTx(ctx, execID, action)
+	areq, err := c.store.RequestApprovalTx(ctx, execID, repo.RequestApprovalParam{ID: action.ID, Approvers: action.Approval})
 	if err != nil {
 		return "", err
 	}

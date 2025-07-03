@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
 	"github.com/zerodha/simplesessions/v3"

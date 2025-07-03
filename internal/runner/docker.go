@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
@@ -92,7 +91,7 @@ func (d *DockerRunner) WithSrc(src string) *DockerRunner {
 
 // WithEnv is used to specify job variables.
 // Env is an array of map[string]any. The length of the map should be 1.
-func (d *DockerRunner) WithEnv(env []models.Variable) *DockerRunner {
+func (d *DockerRunner) WithEnv(env []map[string]any) *DockerRunner {
 	variables := make([]string, 0)
 	for _, v := range env {
 		if len(v) > 1 {

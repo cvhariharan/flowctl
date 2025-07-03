@@ -1,6 +1,64 @@
 package handlers
 
+import "github.com/cvhariharan/autopilot/internal/core/models"
+
 type AuthReq struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+type ApprovalRequestResp struct {
+	ID string `json:"id"`
+	Title string `json:"title"`
+	Description string `json:"description"`
+	RequestedBy string `json:"requested_by"`
+}
+
+type ApprovalActionResp struct {
+	ID string `json:"id"`
+	Status string `json:"status"`
+	Message string `json:"messages"`
+}
+
+type User struct {
+	ID        string        `json:"id"`
+	Username  string        `json:"username"`
+	Name      string        `json:"name"`
+	LoginType string `json:"login_type"`
+	Role      string  `json:"role"`
+}
+
+type Group struct {
+	ID string `json:"id"`
+	Name string `json:"name"`
+	Description string `json:"description"`
+	Users []User `json:"users"`
+}
+
+type CreateGroupResp struct {
+	Group
+}
+
+func coreUsertoUser(u models.User) User {
+	return User{
+		ID: u.ID,
+		Name: u.Name,
+		Username: u.Username,
+		LoginType: string(u.LoginType),
+		Role: string(u.Role),
+	}
+}
+
+func coreGroupToGroup(gu models.GroupWithUsers) Group {
+	var users []User
+	for _, v := range gu.Users {
+		users = append(users, coreUsertoUser(v))
+	}
+
+	return Group{
+		ID: gu.ID,
+		Name: gu.Name,
+		Description: gu.Description,
+		Users: users,
+	}
 }

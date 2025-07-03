@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/google/uuid"
 )
@@ -77,16 +77,21 @@ func (c *Core) DeleteGroupByUUID(ctx context.Context, groupUUID string) error {
 	return c.store.DeleteGroupByUUID(ctx, gid)
 }
 
-func (c *Core) CreateGroup(ctx context.Context, name, description string) (models.Group, error) {
+func (c *Core) CreateGroup(ctx context.Context, name, description string) (models.GroupWithUsers, error) {
 	g, err := c.store.CreateGroup(ctx, repo.CreateGroupParams{
 		Name:        name,
 		Description: sql.NullString{String: description, Valid: true},
 	})
 	if err != nil {
-		return models.Group{}, fmt.Errorf("could not create group %s: %w", name, err)
+		return models.GroupWithUsers{}, fmt.Errorf("could not create group %s: %w", name, err)
 	}
 
-	return c.repoGroupToGroup(g), nil
+	group, err := c.store.GetGroupByUUIDWithUsers(ctx, g.Uuid)
+	if err != nil {
+		return models.GroupWithUsers{}, fmt.Errorf("could not get group %s with users: %w", name, err)
+	}
+
+	return c.repoGroupViewToGroupWithUsers(group)
 }
 
 func (c *Core) SearchGroup(ctx context.Context, query string) ([]models.GroupWithUsers, error) {

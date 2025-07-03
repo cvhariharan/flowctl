@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/cvhariharan/autopilot/internal/ui"
 	"github.com/labstack/echo/v4"
 )
@@ -88,14 +88,12 @@ func (h *Handler) HandleApprovalRequest(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "could not get flow")
 	}
 
-	c.Logger().Infof("Approval Request: %+v\n", areq)
-
-	return render(c, ui.ApprovalPage(ui.ApprovalRequest{
+	return c.JSON(http.StatusOK, ApprovalRequestResp{
 		ID:          approvalID,
 		Title:       f.Meta.Name,
 		Description: fmt.Sprintf("Approval request to execute action %q from flow %q", areq.ActionID, f.Meta.Name),
 		RequestedBy: areq.RequestedBy,
-	}), http.StatusOK)
+	})
 }
 
 func (h *Handler) HandleApprovalAction(c echo.Context) error {
@@ -130,5 +128,9 @@ func (h *Handler) HandleApprovalAction(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "could not process approval action")
 	}
 
-	return render(c, ui.ApprovalStatus(string(status), message), http.StatusOK)
+	return c.JSON(http.StatusOK, ApprovalActionResp{
+		ID: approvalID,
+		Status: string(status),
+		Message: message,
+	})
 }

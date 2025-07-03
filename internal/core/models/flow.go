@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/cvhariharan/autopilot/internal/tasks"
 	"github.com/expr-lang/expr"
 	"github.com/go-playground/validator/v10"
 )
@@ -57,6 +58,34 @@ type Metadata struct {
 type Variable map[string]any
 type ApprovalList []string
 
+func (v Variable) Valid() bool {
+	return !(len(v) > 1)
+}
+
+func (v Variable) Name() string {
+	if !v.Valid() {
+		return ""
+	}
+
+	for k := range v {
+		return k
+	}
+	return ""
+}
+
+func (v Variable) Value() string {
+	if !v.Valid() {
+		return ""
+	}
+
+	for _, v := range v {
+		if str, ok := v.(string); ok {
+			return str
+		}
+	}
+	return ""
+}
+
 type Output map[string]any
 
 type FlowValidationError struct {
@@ -74,6 +103,57 @@ type Flow struct {
 	Inputs  []Input  `yaml:"inputs" validate:"required"`
 	Actions []Action `yaml:"actions" validate:"required"`
 	Outputs []Output `yaml:"outputs"`
+}
+
+func ToTaskFlowModel(f Flow) tasks.Flow {
+	var ti []tasks.Input
+	for _, v := range f.Inputs {
+		ti = append(ti, tasks.Input{
+			Name: v.Name,
+			Type: tasks.InputType(v.Type),
+			Label: v.Label,
+			Description: v.Description,
+			Default: v.Default,
+			Required: v.Required,
+			Validation: v.Validation,
+		})
+	}
+
+	var ta []tasks.Action
+	for _, v := range f.Actions {
+
+		var tvs []tasks.Variable
+		for _, val := range v.Variables {
+			tvs = append(tvs, tasks.Variable(val))
+		}
+
+		ta = append(ta, tasks.Action{
+			ID:         v.ID,
+			Name:       v.Name,
+			Image:      v.Image,
+			Src:        v.Src,
+			Approval:   tasks.ApprovalList(v.Approval),
+			Variables:  tvs,
+			Script:     v.Script,
+			Entrypoint: v.Entrypoint,
+			Artifacts:  v.Artifacts,
+			Condition:  v.Condition,
+		})
+	}
+
+	var to []tasks.Output
+	for _, v := range f.Outputs {
+		to = append(to, tasks.Output(v))
+	}
+
+	tf := tasks.Flow{
+		Meta: tasks.Metadata(f.Meta),
+		Inputs: ti,
+		Actions: ta,
+		Outputs: to,
+	}
+
+	return tf
 }
 
 func AlphanumericUnderscore(fl validator.FieldLevel) bool {

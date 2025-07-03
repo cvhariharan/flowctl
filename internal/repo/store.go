@@ -5,15 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
+type RequestApprovalParam struct {
+	ID string
+	Approvers []string
+}
+
 type Store interface {
 	Querier
 	OverwriteGroupsForUserTx(ctx context.Context, userUUID uuid.UUID, groups []string) error
-	RequestApprovalTx(ctx context.Context, execID string, action models.Action) (AddApprovalRequestRow, error)
+	RequestApprovalTx(ctx context.Context, execID string, action RequestApprovalParam) (AddApprovalRequestRow, error)
 }
 
 type PostgresStore struct {
@@ -56,14 +60,14 @@ func (p *PostgresStore) OverwriteGroupsForUserTx(ctx context.Context, userUUID u
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("coudl not commit transaction: %w", err)
+		return fmt.Errorf("could not commit transaction: %w", err)
 	}
 
 	return nil
 }
 
-func (p *PostgresStore) RequestApprovalTx(ctx context.Context, execID string, action models.Action) (AddApprovalRequestRow, error) {
-	if len(action.Approval) == 0 {
+func (p *PostgresStore) RequestApprovalTx(ctx context.Context, execID string, action RequestApprovalParam) (AddApprovalRequestRow, error) {
+	if len(action.Approvers) == 0 {
 		return AddApprovalRequestRow{}, fmt.Errorf("no approvers specified")
 	}
 
@@ -78,7 +82,7 @@ func (p *PostgresStore) RequestApprovalTx(ctx context.Context, execID string, ac
 		return AddApprovalRequestRow{}, fmt.Errorf("could not get exec details for %s: %w", execID, err)
 	}
 
-	approvers, err := json.Marshal(action.Approval)
+	approvers, err := json.Marshal(action.Approvers)
 	if err != nil {
 		return AddApprovalRequestRow{}, fmt.Errorf("could not marshal approvers list: %w", err)
 	}

@@ -8,7 +8,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/redis/go-redis/v9"
 )
 
