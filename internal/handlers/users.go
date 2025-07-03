@@ -23,45 +23,42 @@ func (h *Handler) HandleUser(c echo.Context) error {
 func (h *Handler) HandleUpdateUser(c echo.Context) error {
 	userID := c.Param("userID")
 	if userID == "" {
-		return showErrorPage(c, http.StatusBadRequest, "user ID cannot be empty")
+		return wrapError(http.StatusBadRequest, "user ID cannot be empty", nil, nil)
 	}
 
 	_, err := h.co.GetUserWithUUIDWithGroups(c.Request().Context(), userID)
 	if err != nil {
-		c.Logger().Error(err)
-		return showErrorPage(c, http.StatusNotFound, "user does not exist")
+		return wrapError(http.StatusNotFound, "user not found", err, nil)
 	}
 
 	var req struct {
-		Name     string   `form:"name" validate:"required,min=4,max=30,alphanum_whitespace"`
-		Username string   `form:"username" validate:"required,email"`
-		Groups   []string `form:"groups[]"`
+		Name     string   `json:"name" validate:"required,min=4,max=30,alphanum_whitespace"`
+		Username string   `json:"username" validate:"required,email"`
+		Groups   []string `json:"groups[]"`
 	}
 	if err := c.Bind(&req); err != nil {
-		return render(c, partials.InlineError("could not decode request"), http.StatusBadRequest)
+		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
 	}
 
 	if err := h.validate.Struct(req); err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError(fmt.Sprintf("request validation failed: %s", formatValidationErrors(err))), http.StatusBadRequest)
+		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
 	if req.Name == "" || req.Username == "" {
-		return render(c, partials.InlineError("name and username cannot be empty"), http.StatusBadRequest)
+		return wrapError(http.StatusBadRequest, "name and username cannot be empty", nil, nil)
 	}
 
 	_, err = h.co.UpdateUser(c.Request().Context(), userID, req.Name, req.Username, req.Groups)
 	if err != nil {
-		return render(c, partials.InlineError("could not update user"), http.StatusInternalServerError)
+		return wrapError(http.StatusInternalServerError, "could not update user", err, nil)
 	}
 
 	users, err := h.co.GetAllUsersWithGroups(c.Request().Context())
 	if err != nil {
-		c.Logger().Error(err)
-		render(c, partials.InlineError("could not get all users"), http.StatusInternalServerError)
+		return wrapError(http.StatusBadRequest, "could not retrieve users", err, nil)
 	}
 
-	return render(c, ui.UsersTable(users), http.StatusOK)
+	return c.JSON(http.StatusOK, users)
 }
 
 func (h *Handler) HandleUserSearch(c echo.Context) error {
