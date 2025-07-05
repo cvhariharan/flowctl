@@ -137,14 +137,13 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 
 	admin := e.Group("/admin")
 	admin.Use(h.AuthorizeForRole("admin"))
-	admin.GET("/groups", h.HandleGroup)
+
+	admin.GET("/groups", h.HandleGroupPagination)
 	admin.POST("/groups", h.HandleCreateGroup)
 	admin.DELETE("/groups/:groupID", h.HandleDeleteGroup)
-	admin.GET("/groups/search", h.HandleGroupSearch)
 
-	admin.GET("/users", h.HandleUser)
+	admin.GET("/users", h.HandleUserPagination)
 	admin.POST("/users", h.HandleCreateUser)
-	admin.GET("/users/search", h.HandleUserSearch)
 	admin.DELETE("/users/:userID", h.HandleDeleteUser)
 	admin.PUT("/users/:userID", h.HandleUpdateUser)
 

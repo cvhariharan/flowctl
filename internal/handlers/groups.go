@@ -7,23 +7,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func (h *Handler) HandleGroup(c echo.Context) error {
-	groups, err := h.co.GetAllGroupsWithUsers(c.Request().Context())
-	if err != nil {
-		return wrapError(http.StatusNotFound, "could not get groups", err, nil)
-	}
-
-	var gu []GroupWithUsers
-	for _, v := range groups {
-		gu = append(gu, GroupWithUsers{
-			Group: coreGroupToGroup(v.Group),
-			Users: coreUserArrayCast(v.Users),
-		})
-	}
-
-	return c.JSON(http.StatusOK, gu)
-}
-
 func (h *Handler) HandleCreateGroup(c echo.Context) error {
 	var req struct {
 		Name        string `form:"name" validate:"required,alphanum_underscore,min=4,max=30"`
@@ -67,8 +50,24 @@ func (h *Handler) HandleDeleteGroup(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func (h *Handler) HandleGroupSearch(c echo.Context) error {
-	g, err := h.co.SearchGroup(c.Request().Context(), c.QueryParam("search"))
+func (h *Handler) HandleGroupPagination(c echo.Context) error {
+	var req PaginateRequest
+	if err := c.Bind(&req); err != nil {
+		return wrapError(http.StatusInternalServerError, "invalid request", err, nil)
+	}
+
+	if req.Page < 0 || req.Count < 0 {
+		return wrapError(http.StatusInternalServerError, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
+	}
+
+	if req.Page > 0 {
+		req.Page -= 1
+	}
+
+	if req.Count == 0 {
+		req.Count = CountPerPage
+	}
+	g, pageCount, totalCount, err := h.co.SearchGroup(c.Request().Context(), req.Filter, req.Count, req.Count * req.Page)
 	if err != nil {
 		return wrapError(http.StatusBadRequest, "error retrieving groups", err, nil)
 	}
@@ -81,5 +80,9 @@ func (h *Handler) HandleGroupSearch(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, groups)
+	return c.JSON(http.StatusOK, GroupsPaginateResponse{
+		Groups:     groups,
+		PageCount:  pageCount,
+		TotalCount: totalCount,
+	})
 }

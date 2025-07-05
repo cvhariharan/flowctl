@@ -70,6 +70,12 @@ func (u UserWithGroups) HasGroup(groupUUID string) bool {
 	return false
 }
 
+type UserSearchResult struct {
+	Users      []UserWithGroups `json:"users"`
+	PageCount  int64            `json:"page_count"`
+	TotalCount int64            `json:"total_count"`
+}
+
 type User struct {
 	ID        string        `json:"uuid"`
 	Username  string        `json:"username"`

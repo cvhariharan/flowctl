@@ -90,6 +90,20 @@ type FlowLogResp struct {
 	Results map[string]string `json:"results,omitempty"`
 }
 
-type Redirect struct {
-	URL string `json:"redirect_url"`
+type PaginateRequest struct {
+	Filter string `query:"filter"`
+	Page  int `query:"page"`
+	Count int `query:"count_per_page"`
+}
+
+type UsersPaginateResponse struct {
+	Users      []UserWithGroups `json:"users"`
+	PageCount  int64            `json:"page_count"`
+	TotalCount int64            `json:"total_count"`
+}
+
+type GroupsPaginateResponse struct {
+	Groups      []GroupWithUsers `json:"groups"`
+	PageCount  int64            `json:"page_count"`
+	TotalCount int64            `json:"total_count"`
 }

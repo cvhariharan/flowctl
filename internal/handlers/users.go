@@ -9,23 +9,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (h *Handler) HandleUser(c echo.Context) error {
-	users, err := h.co.GetAllUsersWithGroups(c.Request().Context())
-	if err != nil {
-		return wrapError(http.StatusBadRequest, "could not get users", err, nil)
-	}
-
-	var u []UserWithGroups
-	for _, v := range users {
-		u = append(u, UserWithGroups{
-			User:   coreUsertoUser(v.User),
-			Groups: coreGroupArrayCast(v.Groups),
-		})
-	}
-
-	return c.JSON(http.StatusOK, u)
-}
-
 func (h *Handler) HandleUpdateUser(c echo.Context) error {
 	userID := c.Param("userID")
 	if userID == "" {
@@ -65,8 +48,25 @@ func (h *Handler) HandleUpdateUser(c echo.Context) error {
 	})
 }
 
-func (h *Handler) HandleUserSearch(c echo.Context) error {
-	u, err := h.co.SearchUser(c.Request().Context(), c.QueryParam("search"))
+func (h *Handler) HandleUserPagination(c echo.Context) error {
+	var req PaginateRequest
+	if err := c.Bind(&req); err != nil {
+		return wrapError(http.StatusInternalServerError, "invalid request", err, nil)
+	}
+
+	if req.Page < 0 || req.Count < 0 {
+		return wrapError(http.StatusInternalServerError, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
+	}
+
+	if req.Page > 0 {
+		req.Page -= 1
+	}
+
+	if req.Count == 0 {
+		req.Count = CountPerPage
+	}
+	h.logger.Debug("user pagination", "filter", req.Filter)
+	u, pageCount, totalCount, err := h.co.SearchUser(c.Request().Context(), req.Filter, req.Count, req.Count * req.Page)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not search for users", err, nil)
 	}
@@ -79,7 +79,11 @@ func (h *Handler) HandleUserSearch(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, users)
+	return c.JSON(http.StatusOK, UsersPaginateResponse{
+		Users:      users,
+		PageCount:  pageCount,
+		TotalCount: totalCount,
+	})
 }
 
 func (h *Handler) HandleDeleteUser(c echo.Context) error {

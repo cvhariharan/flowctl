@@ -22,6 +22,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const (
+	// Pagination count per page
+	CountPerPage = 10
+)
+
 type OIDCAuthConfig struct {
 	Issuer       string
 	ClientID     string

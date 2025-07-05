@@ -94,23 +94,44 @@ func (c *Core) CreateGroup(ctx context.Context, name, description string) (model
 	return c.repoGroupViewToGroupWithUsers(group)
 }
 
-func (c *Core) SearchGroup(ctx context.Context, query string) ([]models.GroupWithUsers, error) {
-	g, err := c.store.SearchGroup(ctx, query)
+func (c *Core) SearchGroup(ctx context.Context, query string, limit, offset int) ([]models.GroupWithUsers, int64, int64, error) {
+	g, err := c.store.SearchGroup(ctx, repo.SearchGroupParams{
+		Column1: query,
+		Limit: int32(limit),
+		Offset: int32(offset),
+	})
 	if err != nil {
-		return nil, err
+		return nil, -1, -1, err
 	}
 
 	var groups []models.GroupWithUsers
-	for _, v := range g {
-		grp, err := c.repoGroupViewToGroupWithUsers(v)
-		if err != nil {
-			return nil, err
+	var pageCount int64
+	var totalCount int64
+
+	for i, v := range g {
+		groupView := repo.GroupView{
+			ID: v.ID,
+			Uuid: v.Uuid,
+			Name: v.Name,
+			Description: v.Description,
+			CreatedAt: v.CreatedAt,
+			UpdatedAt: v.UpdatedAt,
+			Users: v.Users,
 		}
 
-		groups = append(groups, grp)
+		group, err := c.repoGroupViewToGroupWithUsers(groupView)
+		if err != nil {
+			return nil, -1, -1, err
+		}
+		groups = append(groups, group)
+
+		if i == 0 {
+			pageCount = v.PageCount
+			totalCount = v.TotalCount
+		}
 	}
 
-	return groups, nil
+	return groups, pageCount, totalCount, nil
 }
 
 func (c *Core) repoGroupToGroup(group repo.Group) models.Group {
