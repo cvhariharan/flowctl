@@ -50,3 +50,6 @@ FROM paged p, page_count pc, total t;
 
 -- name: GetGroupByName :one
 SELECT * FROM groups WHERE name = $1;
+
+-- name: UpdateGroupByUUID :one
+UPDATE groups SET name = $1, description = $2 WHERE uuid = $3 RETURNING *;

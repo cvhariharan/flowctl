@@ -136,6 +136,8 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	api.GET("/logs/:logID", h.HandleLogStreaming)
 
 	api.GET("/groups", h.HandleGroupPagination)
+	api.GET("/groups/:groupID", h.HandleGetGroup)
+	api.PUT("/groups/:groupID", h.HandleUpdateGroup)
 	api.POST("/groups", h.HandleCreateGroup)
 	api.DELETE("/groups/:groupID", h.HandleDeleteGroup)
 
@@ -150,6 +152,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 
 	admin.GET("/requests/:execID", h.HandleApprovalRequest)
 	admin.GET("/users", h.HandleUserManagementView)
+	admin.GET("/groups", h.HandleGroupManagementView)
 
 	rootURL := viper.GetString("app.root_url")
 	if !strings.Contains(rootURL, "://") {

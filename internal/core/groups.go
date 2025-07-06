@@ -30,6 +30,20 @@ func (c *Core) GetAllGroupsWithUsers(ctx context.Context) ([]models.GroupWithUse
 	return groups, nil
 }
 
+func (c *Core) GetGroupWithUsers(ctx context.Context, groupUUID string) (models.GroupWithUsers, error) {
+	gid, err := uuid.Parse(groupUUID)
+	if err != nil {
+		return models.GroupWithUsers{}, fmt.Errorf("group id should be a UUID: %w", err)
+	}
+
+	g, err := c.store.GetGroupByUUIDWithUsers(ctx, gid)
+	if err != nil {
+		return models.GroupWithUsers{}, fmt.Errorf("could not retrieve group %s: %w", groupUUID, err)
+	}
+
+	return c.repoGroupViewToGroupWithUsers(g)
+}
+
 func (c *Core) GetAllGroups(ctx context.Context) ([]models.Group, error) {
 	g, err := c.store.GetAllGroups(ctx)
 	if err != nil {
@@ -97,8 +111,8 @@ func (c *Core) CreateGroup(ctx context.Context, name, description string) (model
 func (c *Core) SearchGroup(ctx context.Context, query string, limit, offset int) ([]models.GroupWithUsers, int64, int64, error) {
 	g, err := c.store.SearchGroup(ctx, repo.SearchGroupParams{
 		Column1: query,
-		Limit: int32(limit),
-		Offset: int32(offset),
+		Limit:   int32(limit),
+		Offset:  int32(offset),
 	})
 	if err != nil {
 		return nil, -1, -1, err
@@ -110,13 +124,13 @@ func (c *Core) SearchGroup(ctx context.Context, query string, limit, offset int)
 
 	for i, v := range g {
 		groupView := repo.GroupView{
-			ID: v.ID,
-			Uuid: v.Uuid,
-			Name: v.Name,
+			ID:          v.ID,
+			Uuid:        v.Uuid,
+			Name:        v.Name,
 			Description: v.Description,
-			CreatedAt: v.CreatedAt,
-			UpdatedAt: v.UpdatedAt,
-			Users: v.Users,
+			CreatedAt:   v.CreatedAt,
+			UpdatedAt:   v.UpdatedAt,
+			Users:       v.Users,
 		}
 
 		group, err := c.repoGroupViewToGroupWithUsers(groupView)
@@ -132,6 +146,29 @@ func (c *Core) SearchGroup(ctx context.Context, query string, limit, offset int)
 	}
 
 	return groups, pageCount, totalCount, nil
+}
+
+func (c *Core) UpdateGroup(ctx context.Context, groupUUID, name, description string) (models.GroupWithUsers, error) {
+	gid, err := uuid.Parse(groupUUID)
+	if err != nil {
+		return models.GroupWithUsers{}, fmt.Errorf("group id should be a UUID: %w", err)
+	}
+
+	g, err := c.store.UpdateGroupByUUID(ctx, repo.UpdateGroupByUUIDParams{
+		Name:        name,
+		Description: sql.NullString{String: description, Valid: true},
+		Uuid:        gid,
+	})
+	if err != nil {
+		return models.GroupWithUsers{}, fmt.Errorf("could not update group %s: %w", groupUUID, err)
+	}
+
+	group, err := c.store.GetGroupByUUIDWithUsers(ctx, g.Uuid)
+	if err != nil {
+		return models.GroupWithUsers{}, fmt.Errorf("could not get updated group %s with users: %w", groupUUID, err)
+	}
+
+	return c.repoGroupViewToGroupWithUsers(group)
 }
 
 func (c *Core) repoGroupToGroup(group repo.Group) models.Group {

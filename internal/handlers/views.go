@@ -148,6 +148,18 @@ func (h *Handler) HandleUserManagementView(c echo.Context) error {
 	return c.Render(http.StatusOK, "user_management", data)
 }
 
+func (h *Handler) HandleGroupManagementView(c echo.Context) error {
+	data := struct {
+		Page
+	}{
+		Page: Page{
+			Title: "Group Management",
+		},
+	}
+
+	return c.Render(http.StatusOK, "group_management", data)
+}
+
 // func (h *Handler) HandleExecutionSummary(c echo.Context) error {
 // 	user, ok := c.Get("user").(models.UserInfo)
 // 	if !ok {

@@ -251,3 +251,27 @@ func (q *Queries) SearchGroup(ctx context.Context, arg SearchGroupParams) ([]Sea
 	}
 	return items, nil
 }
+
+const updateGroupByUUID = `-- name: UpdateGroupByUUID :one
+UPDATE groups SET name = $1, description = $2 WHERE uuid = $3 RETURNING id, uuid, name, description, created_at, updated_at
+`
+
+type UpdateGroupByUUIDParams struct {
+	Name        string         `db:"name" json:"name"`
+	Description sql.NullString `db:"description" json:"description"`
+	Uuid        uuid.UUID      `db:"uuid" json:"uuid"`
+}
+
+func (q *Queries) UpdateGroupByUUID(ctx context.Context, arg UpdateGroupByUUIDParams) (Group, error) {
+	row := q.db.QueryRowContext(ctx, updateGroupByUUID, arg.Name, arg.Description, arg.Uuid)
+	var i Group
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.Name,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

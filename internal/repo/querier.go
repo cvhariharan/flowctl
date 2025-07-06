@@ -51,6 +51,7 @@ type Querier interface {
 	UpdateApprovalStatusByUUID(ctx context.Context, arg UpdateApprovalStatusByUUIDParams) (UpdateApprovalStatusByUUIDRow, error)
 	UpdateExecutionStatus(ctx context.Context, arg UpdateExecutionStatusParams) (ExecutionLog, error)
 	UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, error)
+	UpdateGroupByUUID(ctx context.Context, arg UpdateGroupByUUIDParams) (Group, error)
 	UpdateUserByUUID(ctx context.Context, arg UpdateUserByUUIDParams) (User, error)
 }
 

@@ -7,6 +7,23 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+func (h *Handler) HandleGetGroup(c echo.Context) error {
+	groupID := c.Param("groupID")
+	if groupID == "" {
+		return wrapError(http.StatusBadRequest, "group id cannot be empty", nil, nil)
+	}
+
+	group, err := h.co.GetGroupWithUsers(c.Request().Context(), groupID)
+	if err != nil {
+		return wrapError(http.StatusNotFound, "could not retrieve group", err, nil)
+	}
+
+	return c.JSON(http.StatusOK, GroupWithUsers{
+		Group: coreGroupToGroup(group.Group),
+		Users: coreUserArrayCast(group.Users),
+	})
+}
+
 func (h *Handler) HandleCreateGroup(c echo.Context) error {
 	var req struct {
 		Name        string `form:"name" validate:"required,alphanum_underscore,min=4,max=30"`
@@ -26,6 +43,35 @@ func (h *Handler) HandleCreateGroup(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, GroupWithUsers{
+		Group: coreGroupToGroup(group.Group),
+		Users: coreUserArrayCast(group.Users),
+	})
+}
+
+func (h *Handler) HandleUpdateGroup(c echo.Context) error {
+	groupID := c.Param("groupID")
+	if groupID == "" {
+		return wrapError(http.StatusBadRequest, "group id cannot be empty", nil, nil)
+	}
+
+	var req struct {
+		Name        string `form:"name" validate:"required,alphanum_underscore,min=4,max=30"`
+		Description string `form:"description" validate:"max=150"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	group, err := h.co.UpdateGroup(c.Request().Context(), groupID, req.Name, req.Description)
+	if err != nil {
+		return wrapError(http.StatusBadRequest, "could not update group", err, nil)
+	}
+
+	return c.JSON(http.StatusOK, GroupWithUsers{
 		Group: coreGroupToGroup(group.Group),
 		Users: coreUserArrayCast(group.Users),
 	})
@@ -67,7 +113,7 @@ func (h *Handler) HandleGroupPagination(c echo.Context) error {
 	if req.Count == 0 {
 		req.Count = CountPerPage
 	}
-	g, pageCount, totalCount, err := h.co.SearchGroup(c.Request().Context(), req.Filter, req.Count, req.Count * req.Page)
+	g, pageCount, totalCount, err := h.co.SearchGroup(c.Request().Context(), req.Filter, req.Count, req.Count*req.Page)
 	if err != nil {
 		return wrapError(http.StatusBadRequest, "error retrieving groups", err, nil)
 	}
