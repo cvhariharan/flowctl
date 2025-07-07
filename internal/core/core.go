@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"

@@ -1,0 +1,59 @@
+{{ define "partials/notifications" }}
+<div
+    x-data="notifications()"
+    @notify.window="show($event.detail)"
+    class="fixed top-0 right-0 p-4 space-y-2 w-full max-w-sm"
+>
+    <template x-for="notification in notifications" :key="notification.id">
+        <div
+            x-show="notification.visible"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform translate-x-full"
+            x-transition:enter-end="opacity-100 transform translate-x-0"
+            x-transition:leave="transition ease-in duration-300"
+            x-transition:leave-start="opacity-100 transform translate-x-0"
+            x-transition:leave-end="opacity-0 transform translate-x-full"
+            class="p-4 rounded-md shadow-lg text-white"
+            :class="{
+                'bg-green-600': notification.type === 'success',
+                'bg-red-600': notification.type === 'error',
+                'bg-blue-600': notification.type === 'info'
+            }"
+        >
+            <p x-text="notification.message"></p>
+        </div>
+    </template>
+</div>
+
+<script>
+    // This can be in static/js/main.js
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("notifications", () => ({
+            notifications: [],
+            counter: 0,
+            show(detail) {
+                const id = this.counter++;
+                this.notifications.push({
+                    id: id,
+                    message: detail.message,
+                    type: detail.type || "info",
+                    visible: true,
+                });
+                setTimeout(() => {
+                    const notif = this.notifications.find((n) => n.id === id);
+                    if (notif) {
+                        notif.visible = false;
+                        setTimeout(
+                            () =>
+                                (this.notifications = this.notifications.filter(
+                                    (n) => n.id !== id,
+                                )),
+                            300,
+                        );
+                    }
+                }, 5000);
+            },
+        }));
+    });
+</script>
+{{ end }}

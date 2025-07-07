@@ -1,2 +1,4 @@
 config.toml
 oauth-proxy.cfg
+web/node_modules
+apitests

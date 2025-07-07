@@ -31,7 +31,30 @@ INSERT INTO users (
 ) RETURNING *;
 
 -- name: SearchUsersWithGroups :many
-SELECT * FROM user_view WHERE lower(name) LIKE '%' || lower($1::text) || '%' OR lower(username) LIKE '%' || lower($1::text) || '%';
+WITH filtered AS (
+    SELECT *
+    FROM user_view
+    WHERE lower(name) LIKE '%' || lower($1::text) || '%'
+       OR lower(username) LIKE '%' || lower($1::text) || '%'
+),
+total AS (
+    SELECT COUNT(*) AS total_count
+    FROM filtered
+),
+paged AS (
+    SELECT *
+    FROM filtered
+    LIMIT $2 OFFSET $3
+),
+page_count AS (
+    SELECT COUNT(*) AS page_count
+    FROM paged
+)
+SELECT
+    p.*,
+    pc.page_count,
+    t.total_count
+FROM paged p, page_count pc, total t;
 
 -- name: UpdateUserByUUID :one
 UPDATE users SET name = $1, username = $2 WHERE uuid = $3 RETURNING *;

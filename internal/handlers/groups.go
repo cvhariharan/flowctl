@@ -4,23 +4,24 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cvhariharan/autopilot/internal/ui"
-	"github.com/cvhariharan/autopilot/internal/ui/partials"
 	"github.com/labstack/echo/v4"
 )
 
-func (h *Handler) HandleGroup(c echo.Context) error {
-	if c.QueryParam("action") == "add" {
-		return render(c, ui.GroupModal(), http.StatusOK)
+func (h *Handler) HandleGetGroup(c echo.Context) error {
+	groupID := c.Param("groupID")
+	if groupID == "" {
+		return wrapError(http.StatusBadRequest, "group id cannot be empty", nil, nil)
 	}
 
-	groups, err := h.co.GetAllGroupsWithUsers(c.Request().Context())
+	group, err := h.co.GetGroupWithUsers(c.Request().Context(), groupID)
 	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError(err.Error()), http.StatusInternalServerError)
+		return wrapError(http.StatusNotFound, "could not retrieve group", err, nil)
 	}
 
-	return render(c, ui.GroupManagementPage(groups, ""), http.StatusOK)
+	return c.JSON(http.StatusOK, GroupWithUsers{
+		Group: coreGroupToGroup(group.Group),
+		Users: coreUserArrayCast(group.Users),
+	})
 }
 
 func (h *Handler) HandleCreateGroup(c echo.Context) error {
@@ -29,61 +30,105 @@ func (h *Handler) HandleCreateGroup(c echo.Context) error {
 		Description string `form:"description" validate:"max=150"`
 	}
 	if err := c.Bind(&req); err != nil {
-		return render(c, partials.InlineError("could not decode request"), http.StatusBadRequest)
+		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
 	}
 
 	if err := h.validate.Struct(req); err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError(fmt.Sprintf("request validation failed: %s", formatValidationErrors(err))), http.StatusBadRequest)
+		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
-	_, err := h.co.CreateGroup(c.Request().Context(), req.Name, req.Description)
+	group, err := h.co.CreateGroup(c.Request().Context(), req.Name, req.Description)
 	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not create group"), http.StatusInternalServerError)
+		return wrapError(http.StatusBadRequest, "could not create group", err, nil)
 	}
 
-	groups, err := h.co.GetAllGroupsWithUsers(c.Request().Context())
+	return c.JSON(http.StatusCreated, GroupWithUsers{
+		Group: coreGroupToGroup(group.Group),
+		Users: coreUserArrayCast(group.Users),
+	})
+}
+
+func (h *Handler) HandleUpdateGroup(c echo.Context) error {
+	groupID := c.Param("groupID")
+	if groupID == "" {
+		return wrapError(http.StatusBadRequest, "group id cannot be empty", nil, nil)
+	}
+
+	var req struct {
+		Name        string `form:"name" validate:"required,alphanum_underscore,min=4,max=30"`
+		Description string `form:"description" validate:"max=150"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	group, err := h.co.UpdateGroup(c.Request().Context(), groupID, req.Name, req.Description)
 	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not get groups"), http.StatusInternalServerError)
+		return wrapError(http.StatusBadRequest, "could not update group", err, nil)
 	}
 
-	return render(c, ui.GroupsTable(groups), http.StatusOK)
+	return c.JSON(http.StatusOK, GroupWithUsers{
+		Group: coreGroupToGroup(group.Group),
+		Users: coreUserArrayCast(group.Users),
+	})
 }
 
 func (h *Handler) HandleDeleteGroup(c echo.Context) error {
 	groupID := c.Param("groupID")
 
 	if groupID == "" {
-		return render(c, partials.InlineError("group id cannot be empty"), http.StatusBadRequest)
+		return wrapError(http.StatusBadRequest, "group id cannot be empty", nil, nil)
 	}
 
 	_, err := h.co.GetGroupByUUID(c.Request().Context(), groupID)
 	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not get group"), http.StatusNotFound)
+		return wrapError(http.StatusBadRequest, "could not get group", err, nil)
 	}
 
 	if err := h.co.DeleteGroupByUUID(c.Request().Context(), groupID); err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not delete group"), http.StatusInternalServerError)
+		return wrapError(http.StatusBadRequest, "could not delete group", err, nil)
 	}
 
-	groups, err := h.co.GetAllGroupsWithUsers(c.Request().Context())
-	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not get groups"), http.StatusInternalServerError)
-	}
-
-	return render(c, ui.GroupsTable(groups), http.StatusOK)
+	return c.NoContent(http.StatusOK)
 }
 
-func (h *Handler) HandleGroupSearch(c echo.Context) error {
-	g, err := h.co.SearchGroup(c.Request().Context(), c.QueryParam("search"))
-	if err != nil {
-		return render(c, partials.InlineError("could not search for groups"), http.StatusInternalServerError)
+func (h *Handler) HandleGroupPagination(c echo.Context) error {
+	var req PaginateRequest
+	if err := c.Bind(&req); err != nil {
+		return wrapError(http.StatusInternalServerError, "invalid request", err, nil)
 	}
 
-	return render(c, ui.GroupsTable(g), http.StatusOK)
+	if req.Page < 0 || req.Count < 0 {
+		return wrapError(http.StatusInternalServerError, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
+	}
+
+	if req.Page > 0 {
+		req.Page -= 1
+	}
+
+	if req.Count == 0 {
+		req.Count = CountPerPage
+	}
+	g, pageCount, totalCount, err := h.co.SearchGroup(c.Request().Context(), req.Filter, req.Count, req.Count*req.Page)
+	if err != nil {
+		return wrapError(http.StatusBadRequest, "error retrieving groups", err, nil)
+	}
+
+	var groups []GroupWithUsers
+	for _, v := range g {
+		groups = append(groups, GroupWithUsers{
+			Group: coreGroupToGroup(v.Group),
+			Users: coreUserArrayCast(v.Users),
+		})
+	}
+
+	return c.JSON(http.StatusOK, GroupsPaginateResponse{
+		Groups:     groups,
+		PageCount:  pageCount,
+		TotalCount: totalCount,
+	})
 }

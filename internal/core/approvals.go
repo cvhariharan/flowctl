@@ -8,7 +8,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/cvhariharan/autopilot/internal/tasks"
 	"github.com/google/uuid"
@@ -151,7 +151,7 @@ func (c *Core) RequestApproval(ctx context.Context, execID string, action models
 		return "", fmt.Errorf("pending approval request: %s", approvalReq.UUID)
 	}
 
-	areq, err := c.store.RequestApprovalTx(ctx, execID, action)
+	areq, err := c.store.RequestApprovalTx(ctx, execID, repo.RequestApprovalParam{ID: action.ID, Approvers: action.Approval})
 	if err != nil {
 		return "", err
 	}
@@ -226,7 +226,7 @@ func (c *Core) GetPendingApprovalsForExec(ctx context.Context, execID string) (m
 	return models.ApprovalRequest{}, nil
 }
 
-func (c *Core) BeforeActionHook(ctx context.Context, execID, parentExecID string, action models.Action) error {
+func (c *Core) BeforeActionHook(ctx context.Context, execID, parentExecID string, action tasks.Action) error {
 	if len(action.Approval) == 0 {
 		return nil
 	}
@@ -256,7 +256,7 @@ func (c *Core) BeforeActionHook(ctx context.Context, execID, parentExecID string
 	}
 
 	if a.Status == "" {
-		_, err = c.RequestApproval(ctx, eID, action)
+		_, err = c.RequestApproval(ctx, eID, models.TaskActionToAction(action))
 		if err != nil {
 			return err
 		}

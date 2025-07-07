@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/google/uuid"
 )
@@ -60,22 +60,48 @@ func (c *Core) GetUserWithUUIDWithGroups(ctx context.Context, userUUID string) (
 	return c.repoUserViewToUserWithGroups(u)
 }
 
-func (c *Core) SearchUser(ctx context.Context, query string) ([]models.UserWithGroups, error) {
-	u, err := c.store.SearchUsersWithGroups(ctx, query)
+func (c *Core) SearchUser(ctx context.Context, query string, limit, offset int) ([]models.UserWithGroups, int64, int64, error) {
+	u, err := c.store.SearchUsersWithGroups(ctx, repo.SearchUsersWithGroupsParams{
+		Column1: query,
+		Limit: int32(limit),
+		Offset: int32(offset),
+	})
 	if err != nil {
-		return nil, err
+		return nil, -1, -1, err
 	}
 
 	var users []models.UserWithGroups
-	for _, v := range u {
-		user, err := c.repoUserViewToUserWithGroups(v)
+	var pageCount int64
+	var totalCount int64
+
+	for i, v := range u {
+		userView := repo.UserView{
+			ID:        v.ID,
+			Uuid:      v.Uuid,
+			Name:      v.Name,
+			Username:  v.Username,
+			Password:  v.Password,
+			LoginType: v.LoginType,
+			Role:      v.Role,
+			CreatedAt: v.CreatedAt,
+			UpdatedAt: v.UpdatedAt,
+			Groups:    v.Groups,
+		}
+
+		user, err := c.repoUserViewToUserWithGroups(userView)
 		if err != nil {
-			return nil, err
+			return nil, -1, -1, err
 		}
 		users = append(users, user)
+
+		// Set pagination counts from the first result
+		if i == 0 {
+			pageCount = v.PageCount
+			totalCount = v.TotalCount
+		}
 	}
 
-	return users, nil
+	return users, pageCount, totalCount, nil
 }
 
 func (c *Core) GetUserByUUID(ctx context.Context, userUUID string) (models.User, error) {

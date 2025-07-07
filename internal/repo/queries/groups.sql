@@ -23,7 +23,33 @@ SELECT * FROM groups WHERE uuid = $1;
 DELETE FROM groups WHERE uuid = $1;
 
 -- name: SearchGroup :many
-SELECT * FROM group_view WHERE lower(name) LIKE '%' || lower($1::text) || '%' OR lower(description) LIKE '%' || lower($1::text) || '%';
+WITH filtered AS (
+    SELECT *
+    FROM group_view
+    WHERE lower(name) LIKE '%' || lower($1::text) || '%'
+       OR lower(description) LIKE '%' || lower($1::text) || '%'
+),
+total AS (
+    SELECT COUNT(*) AS total_count
+    FROM filtered
+),
+paged AS (
+    SELECT *
+    FROM filtered
+    LIMIT $2 OFFSET $3
+),
+page_count AS (
+    SELECT COUNT(*) AS page_count
+    FROM paged
+)
+SELECT
+    p.*,
+    pc.page_count,
+    t.total_count
+FROM paged p, page_count pc, total t;
 
 -- name: GetGroupByName :one
 SELECT * FROM groups WHERE name = $1;
+
+-- name: UpdateGroupByUUID :one
+UPDATE groups SET name = $1, description = $2 WHERE uuid = $3 RETURNING *;

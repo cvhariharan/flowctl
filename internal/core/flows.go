@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cvhariharan/autopilot/internal/models"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/cvhariharan/autopilot/internal/tasks"
 	"github.com/google/uuid"
@@ -96,7 +96,7 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 		return "", fmt.Errorf("user id is not a UUID: %w", err)
 	}
 
-	task, err := tasks.NewFlowExecution(f, input, actionIndex, execID, parentExecID)
+	task, err := tasks.NewFlowExecution(models.ToTaskFlowModel(f), input, actionIndex, execID, parentExecID)
 	if err != nil {
 		return "", fmt.Errorf("error creating task: %v", err)
 	}

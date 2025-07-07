@@ -7,22 +7,22 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/cvhariharan/autopilot/internal/auth"
 	"github.com/cvhariharan/autopilot/internal/core"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/cvhariharan/autopilot/internal/handlers"
-	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/cvhariharan/autopilot/internal/runner"
+	"github.com/cvhariharan/autopilot/internal/streamlogger"
 	"github.com/cvhariharan/autopilot/internal/tasks"
 	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -46,6 +46,16 @@ func init() {
 }
 
 func start(isWorker bool) {
+	loglevel := slog.LevelError
+	if os.Getenv("DEBUG_LOG") == "true" {
+		loglevel = slog.LevelDebug
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: loglevel,
+	}))
+	slog.SetDefault(logger)
+
 	db, err := sqlx.Connect("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", viper.GetString("db.user"), viper.GetString("db.password"), viper.GetString("db.host"), viper.GetInt("db.port"), viper.GetString("db.dbname")))
 	if err != nil {
 		log.Fatalf("could not connect to database: %v", err)
@@ -59,13 +69,13 @@ func start(isWorker bool) {
 	defer redisClient.Close()
 
 	if isWorker {
-		startWorker(db, redisClient)
+		startWorker(db, redisClient, logger)
 	} else {
-		startServer(db, redisClient)
+		startServer(db, redisClient, logger)
 	}
 }
 
-func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
+func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Logger) {
 	asynqClient := asynq.NewClientFromRedisClient(redisClient)
 	defer asynqClient.Close()
 
@@ -78,60 +88,71 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient) {
 
 	co := core.NewCore(flows, s, asynqClient, redisClient)
 
-	h := handlers.NewHandler(co)
-
-	ah, err := auth.NewAuthHandler(db.DB, co, auth.OIDCAuthConfig{
+	h, err := handlers.NewHandler(logger, db.DB, co, handlers.OIDCAuthConfig{
 		Issuer:       viper.GetString("app.oidc.issuer"),
 		ClientID:     viper.GetString("app.oidc.client_id"),
 		ClientSecret: viper.GetString("app.oidc.client_secret"),
-	})
+	}, viper.GetString("app.root_url"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	e := echo.New()
-	e.Use(middleware.Logger())
+	// e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+	//   Format: "method=${method}, uri=${uri}, status=${status}\n",
+	// }))
+
+	e.Renderer = handlers.NewTemplateRenderer("web/**/**/*.html")
+
+	e.Static("/static", "web/static")
 
 	e.GET("/ping", h.HandlePing)
-	e.GET("/login", ah.HandleLoginPage)
-	e.POST("/login", ah.HandleLoginPage)
+	e.GET("/login", h.HandleLoginView)
+	e.POST("/login", h.HandleLoginPage)
 
 	// oidc
-	e.GET("/login/oidc", ah.HandleOIDCLogin)
-	e.GET("/auth/callback", ah.HandleAuthCallback)
+	e.GET("/login/oidc", h.HandleOIDCLogin)
+	e.GET("/auth/callback", h.HandleAuthCallback)
 
 	e.Logger.SetLevel(0)
 
-	e.HTTPErrorHandler = handlers.ErrorHandler
+	e.HTTPErrorHandler = h.ErrorHandler
 
 	views := e.Group("/view")
-	views.Use(ah.Authenticate)
+	views.Use(h.Authenticate)
 
-	views.POST("/trigger/:flow", h.HandleFlowTrigger)
-	views.GET("/:flow", h.HandleFlowForm)
-	views.GET("/", h.HandleFlowsList)
+	// views.POST("/trigger/:flow", h.HandleFlowTrigger)
+	views.GET("/:flow", h.HandleFlowFormView)
+	views.GET("/", h.HandleFlowsListView)
 	views.GET("/results/:flowID/:logID", h.HandleFlowExecutionResults)
-	views.GET("/logs/:logID", h.HandleLogStreaming)
-	views.GET("/summary/:flowID", h.HandleExecutionSummary)
+	// views.GET("/logs/:logID", h.HandleLogStreaming)
+	// views.GET("/summary/:flowID", h.HandleExecutionSummary)
 
 	views.GET("/approvals/:approvalID", h.HandleApprovalRequest, h.ApprovalMiddleware)
 	views.POST("/approvals/:approvalID/:action", h.HandleApprovalAction, h.ApprovalMiddleware)
 
-	admin := e.Group("/admin")
-	admin.Use(ah.AuthorizeForRole("admin"))
-	admin.GET("/groups", h.HandleGroup)
-	admin.POST("/groups", h.HandleCreateGroup)
-	admin.DELETE("/groups/:groupID", h.HandleDeleteGroup)
-	admin.GET("/groups/search", h.HandleGroupSearch)
+	api := e.Group("/api/v1", h.Authenticate)
+	api.POST("/trigger/:flow", h.HandleFlowTrigger)
+	api.GET("/logs/:logID", h.HandleLogStreaming)
 
-	admin.GET("/users", h.HandleUser)
-	admin.POST("/users", h.HandleCreateUser)
-	admin.GET("/users/search", h.HandleUserSearch)
-	admin.DELETE("/users/:userID", h.HandleDeleteUser)
-	admin.PUT("/users/:userID", h.HandleUpdateUser)
-	admin.GET("/users/:userID/edit", h.HandleEditUser)
+	api.GET("/groups", h.HandleGroupPagination)
+	api.GET("/groups/:groupID", h.HandleGetGroup)
+	api.PUT("/groups/:groupID", h.HandleUpdateGroup)
+	api.POST("/groups", h.HandleCreateGroup)
+	api.DELETE("/groups/:groupID", h.HandleDeleteGroup)
+
+	api.GET("/users", h.HandleUserPagination)
+	api.GET("/users/:userID", h.HandleGetUser)
+	api.POST("/users", h.HandleCreateUser)
+	api.DELETE("/users/:userID", h.HandleDeleteUser)
+	api.PUT("/users/:userID", h.HandleUpdateUser)
+
+	admin := e.Group("/admin")
+	admin.Use(h.AuthorizeForRole("admin"))
 
 	admin.GET("/requests/:execID", h.HandleApprovalRequest)
+	admin.GET("/users", h.HandleUserManagementView)
+	admin.GET("/groups", h.HandleGroupManagementView)
 
 	rootURL := viper.GetString("app.root_url")
 	if !strings.Contains(rootURL, "://") {
@@ -250,7 +271,7 @@ func processYAMLFiles(rootDir string, store repo.Store) (map[string]models.Flow,
 	return m, nil
 }
 
-func startWorker(db *sqlx.DB, redisClient redis.UniversalClient) {
+func startWorker(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Logger) {
 	asynqClient := asynq.NewClientFromRedisClient(redisClient)
 	defer asynqClient.Close()
 
@@ -270,7 +291,7 @@ func startWorker(db *sqlx.DB, redisClient redis.UniversalClient) {
 
 	core := core.NewCore(flows, s, asynqClient, redisClient)
 
-	flowLogger := runner.NewStreamLogger(redisClient)
+	flowLogger := streamlogger.NewStreamLogger(redisClient)
 	flowRunner := tasks.NewFlowRunner(flowLogger, runner.NewDockerArtifactsManager("./artifacts"), core.BeforeActionHook, nil)
 
 	st := tasks.NewStatusTracker(s)

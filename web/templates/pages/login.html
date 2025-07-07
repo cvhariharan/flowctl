@@ -1,0 +1,105 @@
+{{ define "login" }} {{ template "partials/header" . }}
+<div class="flex h-screen flex-col justify-start items-center bg-gray-50 dark:bg-gray-900" x-data="loginform">
+    <p class="font-bold text-5xl pt-24 pb-16 text-gray-900 dark:text-white">Autopilot</p>
+    <form @submit.prevent="submit" class="max-w-sm py-16 w-full mx-auto">
+        <div class="mb-4">
+            <label for="username" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Username</label>
+            <input
+                type="text"
+                x-model="username"
+                id="username"
+                name="username"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                required
+            />
+        </div>
+        <div class="mb-4">
+            <label for="password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Password</label>
+            <input
+                type="password"
+                x-model="password"
+                id="password"
+                name="password"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                required
+            />
+        </div>
+        <button
+            type="submit"
+            :disabled="loading"
+            class="mt-4 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        >
+            <span x-show="!loading">Sign In</span>
+            <span x-show="loading">Signing In...</span>
+        </button>
+        <a
+            href="/login/oidc"
+            class="mt-2 block w-full text-center text-blue-700 bg-gray-100 hover:bg-gray-200 border border-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:text-blue-500 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600"
+        >
+            Sign in with OIDC
+        </a>
+    </form>
+</div>
+
+<script>
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("loginform", () => ({
+            username: "",
+            password: "",
+            loading: false,
+
+            async submit() {
+                this.loading = true;
+                try {
+                    const response = await fetch("/login", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            username: this.username,
+                            password: this.password,
+                        }),
+                    });
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch (e) {
+                        // Empty response is expected on success
+                        data = {};
+                    }
+
+                    if (!response.ok || data.error) {
+                        throw new Error(data.error || "Login failed");
+                    }
+
+                    // Only show success message if there's a message
+                    if (data.message) {
+                        window.dispatchEvent(
+                            new CustomEvent("notify", {
+                                detail: {
+                                    message: data.message,
+                                    type: "success",
+                                },
+                            }),
+                        );
+                    }
+
+                    if (response.headers.get("x-redirect")) {
+                        window.location.href =
+                            response.headers.get("x-redirect");
+                    }
+                } catch (error) {
+                    window.dispatchEvent(
+                        new CustomEvent("notify", {
+                            detail: { message: error.message, type: "error" },
+                        }),
+                    );
+                } finally {
+                    this.loading = false;
+                }
+            },
+        }));
+    });
+</script>
+{{ template "partials/footer" . }} {{ end }}

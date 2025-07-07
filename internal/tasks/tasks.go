@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/cvhariharan/autopilot/internal/models"
 	"github.com/cvhariharan/autopilot/internal/runner"
+	"github.com/cvhariharan/autopilot/internal/streamlogger"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/expr-lang/expr"
 	"github.com/hashicorp/go-envparse"
@@ -30,16 +30,16 @@ var (
 )
 
 type FlowExecutionPayload struct {
-	Workflow          models.Flow
+	Workflow          Flow
 	Input             map[string]interface{}
 	StartingActionIdx int
 	ExecID            string
 	ParentExecID      string
 }
 
-type HookFn func(ctx context.Context, execID, parentExecID string, action models.Action) error
+type HookFn func(ctx context.Context, execID, parentExecID string, action Action) error
 
-func NewFlowExecution(f models.Flow, input map[string]interface{}, startingActionIdx int, ExecID, parentExecID string) (*asynq.Task, error) {
+func NewFlowExecution(f Flow, input map[string]interface{}, startingActionIdx int, ExecID, parentExecID string) (*asynq.Task, error) {
 	payload, err := json.Marshal(FlowExecutionPayload{Workflow: f, Input: input, StartingActionIdx: startingActionIdx, ExecID: ExecID, ParentExecID: parentExecID})
 	if err != nil {
 		return nil, err
@@ -48,13 +48,13 @@ func NewFlowExecution(f models.Flow, input map[string]interface{}, startingActio
 }
 
 type FlowRunner struct {
-	logger           *runner.StreamLogger
+	logger           *streamlogger.StreamLogger
 	artifactManager  runner.ArtifactManager
 	onBeforeActionFn HookFn
 	onAfterActionFn  HookFn
 }
 
-func NewFlowRunner(logger *runner.StreamLogger, artifactManager runner.ArtifactManager, onBeforeActionFn, onAfterActionFn HookFn) *FlowRunner {
+func NewFlowRunner(logger *streamlogger.StreamLogger, artifactManager runner.ArtifactManager, onBeforeActionFn, onAfterActionFn HookFn) *FlowRunner {
 	return &FlowRunner{logger: logger, artifactManager: artifactManager, onBeforeActionFn: onBeforeActionFn, onAfterActionFn: onAfterActionFn}
 }
 
@@ -95,7 +95,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 				return err
 			}
 		}
-		if err := streamLogger.Checkpoint(action.ID, res, models.ResultMessageType); err != nil {
+		if err := streamLogger.Checkpoint(action.ID, res, streamlogger.ResultMessageType); err != nil {
 			return err
 		}
 
@@ -109,7 +109,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 	return nil
 }
 
-func (r *FlowRunner) runAction(ctx context.Context, action models.Action, srcdir string, input map[string]interface{}, streamlogger *runner.StreamLogger) (map[string]string, error) {
+func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string, input map[string]interface{}, streamlogger *streamlogger.StreamLogger) (map[string]string, error) {
 	// Create temp file for outputs
 	outfile, err := os.CreateTemp("", fmt.Sprintf("output-action-%s-*", action.ID))
 	if err != nil {
@@ -153,6 +153,12 @@ func (r *FlowRunner) runAction(ctx context.Context, action models.Action, srcdir
 
 	// Add output env variable
 	action.Variables = append(action.Variables, map[string]interface{}{"OUTPUT": "/tmp/flow/output"})
+
+	var vars []map[string]any
+	for _, v := range action.Variables {
+		vars = append(vars, v)
+	}
+
 	err = runner.NewDockerRunner(action.ID, r.artifactManager, runner.DockerRunnerOptions{
 		ShowImagePull: true,
 		Stdout:        streamlogger,
@@ -160,7 +166,7 @@ func (r *FlowRunner) runAction(ctx context.Context, action models.Action, srcdir
 	}).CreatesArtifacts(action.Artifacts).
 		WithImage(action.Image).
 		WithCmd(action.Script).
-		WithEnv(action.Variables).
+		WithEnv(vars).
 		WithEntrypoint(action.Entrypoint).
 		// copy the files from flow directory
 		WithSrc(filepath.Join(viper.GetString("app.flows_directory"), srcdir)).

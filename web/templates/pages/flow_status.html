@@ -1,0 +1,89 @@
+{{ define "flow_status" }}
+{{ template "partials/header" . }}
+
+<div class="flex flex-col items-center min-h-screen bg-gray-900 py-8"
+     x-data="flowStatusComponent('{{ .LogID }}', {{ toJson .Flow.Actions }})">
+    <p class="font-bold text-5xl mb-2 text-white">Results</p>
+    <p class="text-xl text-gray-300 mb-6">{{ .Flow.Meta.Name }}</p>
+
+    <!-- Log Output -->
+    <div class="bg-gray-800 text-green-400 text-sm font-mono p-8 rounded-lg shadow-lg max-w-screen-md w-full mx-auto overflow-y-scroll h-96 mb-8 border border-gray-700">
+        <div id="message" class="whitespace-pre-wrap break-words" x-text="logOutput"></div>
+    </div>
+
+    <!-- Execution Output (if any) -->
+    <template x-if="Object.keys(results).length > 0">
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow max-w-screen-md w-full mb-4">
+            <h3 class="font-semibold mb-2 text-white">Execution Output</h3>
+            <template x-for="(val, key) in results" :key="key">
+                <div class="flex justify-between">
+                    <span class="font-mono text-gray-300" x-text="key"></span>
+                    <span class="font-mono text-green-400" x-text="val"></span>
+                </div>
+            </template>
+        </div>
+    </template>
+
+    {{ if .Page.ErrMessage }}
+    {{ template "partials/error_message" . }}
+    {{ end }}
+</div>
+
+<script>
+function flowStatusComponent(logID, actions) {
+    return {
+        actions: actions,
+        currentStep: -1,
+        logOutput: '',
+        results: {},
+        ws: null,
+        init() {
+            this.ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/logs/${logID}`);
+            this.ws.onmessage = (event) => {
+                let msg = {};
+                try { msg = JSON.parse(event.data); } catch {}
+                switch (msg.message_type) {
+                    case 'log':
+                        this.logOutput += (msg.value || '') + '\n';
+                        break;
+                    case 'result':
+                        this.results = msg.Results || {};
+                        this.currentStep = this.actions.length;
+                        break;
+                    case 'state':
+                        // Optionally handle approval/state messages
+                        break;
+                    case 'error':
+                        window.dispatchEvent(
+                            new CustomEvent("notify", {
+                                detail: { message: msg.value || "An error occurred.", type: "error" },
+                            }),
+                        );
+                        break;
+                    default:
+                        // Unknown message type, treat as log
+                        this.logOutput += (msg.value || '') + '\n';
+                }
+                // Progress: update currentStep if ActionID matches
+                if (msg.action_id) {
+                    const idx = this.actions.findIndex(a => a.ID === msg.action_id);
+                    if (idx !== -1) this.currentStep = idx;
+                }
+            };
+            this.ws.onclose = (event) => {
+                console.log(event)
+                if(event.code !== 1000 && event.reason) {
+                  window.dispatchEvent(
+                      new CustomEvent("notify", {
+                          detail: { message: event.reason, type: "error" },
+                      }),
+                  );
+                }
+            };
+        }
+    }
+}
+</script>
+
+{{ template "partials/footer" . }}
+{{ end }}

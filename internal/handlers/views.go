@@ -1,233 +1,186 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
+	"html/template"
+	"io"
 	"net/http"
 
-	"github.com/cvhariharan/autopilot/internal/models"
-	"github.com/cvhariharan/autopilot/internal/ui"
-	"github.com/cvhariharan/autopilot/internal/ui/partials"
-	"github.com/gorilla/websocket"
+	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/labstack/echo/v4"
 )
 
-var (
-	upgrader = websocket.Upgrader{}
-)
-
-func (h *Handler) HandleFlowTrigger(c echo.Context) error {
-	user, ok := c.Get("user").(models.UserInfo)
-	if !ok {
-		return echo.NewHTTPError(http.StatusForbidden, "could not get user details")
-	}
-
-	var req map[string]interface{}
-	// This is done to only bind request body and ignore path / query params
-	if err := (&echo.DefaultBinder{}).BindBody(c, &req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "could not parse request")
-	}
-
-	f, err := h.co.GetFlowByID(c.Param("flow"))
-	if err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusNotFound, err.Error())
-	}
-
-	if len(f.Actions) == 0 {
-		return echo.NewHTTPError(http.StatusInternalServerError, "no actions in flow")
-	}
-
-	if err := f.ValidateInput(req); err != nil {
-		return render(c, ui.FlowInputFormPage(f, "", map[string]string{err.FieldName: err.Msg}, ""), http.StatusOK)
-	}
-
-	// Add to queue
-	execID, err := h.co.QueueFlowExecution(c.Request().Context(), f, req, user.ID)
-	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not queue flow for execution"), http.StatusInternalServerError)
-	}
-
-	c.Response().Header().Set("HX-Redirect", fmt.Sprintf("/view/results/%s/%s", f.Meta.ID, execID))
-	return c.NoContent(http.StatusCreated)
+type Template struct {
+	Templates *template.Template
 }
 
-func (h *Handler) HandleExecTrigger(c echo.Context) error {
-	execID := c.Param("execID")
-	if execID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "exec ID cannot be empty")
+func NewTemplateRenderer(templateGlob string) Template {
+	funcMap := template.FuncMap{
+		"toJson": func(v interface{}) string {
+			jsonBytes, err := json.Marshal(v)
+			if err != nil {
+				return "{}"
+			}
+			return string(jsonBytes)
+		},
 	}
 
-	actionID := c.Param("actionID")
-	if actionID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "exec ID cannot be empty")
+	tmpl := template.New("").Funcs(funcMap)
+	return Template{
+		Templates: template.Must(tmpl.ParseGlob("web/**/**/*.html")),
 	}
-
-	user, ok := c.Get("user").(models.UserInfo)
-	if !ok {
-		return echo.NewHTTPError(http.StatusForbidden, "could not get user details")
-	}
-
-	exec, err := h.co.GetExecutionByExecID(c.Request().Context(), execID)
-	if err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "could not get exec details")
-	}
-
-	if exec.TriggeredBy != user.ID {
-		return echo.NewHTTPError(http.StatusForbidden, "only the person who triggered the exec can resume it")
-	}
-
-	if err := h.co.ResumeFlowExecution(c.Request().Context(), execID, actionID, user.ID); err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "could not queue flow for execution")
-	}
-
-	return c.NoContent(http.StatusCreated)
 }
 
-func (h *Handler) HandleFlowForm(c echo.Context) error {
-	flow, err := h.co.GetFlowByID(c.Param("flow"))
-	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, err.Error())
-	}
-
-	return render(c, ui.FlowInputFormPage(flow, "", nil, ""), http.StatusOK)
+func (t Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.Templates.ExecuteTemplate(w, name, data)
 }
 
-func (h *Handler) HandleFlowsList(c echo.Context) error {
+type Page struct {
+	Title      string
+	ErrMessage string
+	Message    string
+}
+
+func (h *Handler) HandleLoginView(c echo.Context) error {
+	return c.Render(http.StatusOK, "login", nil)
+}
+
+func (h *Handler) HandleFlowsListView(c echo.Context) error {
+	data := struct {
+		Page
+		Flows []models.Flow
+	}{
+		Page: Page{
+			Title: "Flows",
+		},
+	}
+
 	flows, err := h.co.GetAllFlows()
 	if err != nil {
-		return showErrorPage(c, http.StatusInternalServerError, err.Error())
+		data.ErrMessage = err.Error()
+		return c.Render(http.StatusBadRequest, "flows", data)
 	}
 
-	return render(c, ui.FlowsListPage(flows), http.StatusOK)
+	data.Flows = flows
+	return c.Render(http.StatusOK, "flows", data)
+}
+
+func (h *Handler) HandleFlowFormView(c echo.Context) error {
+	data := struct {
+		Page
+		Flow        models.Flow
+		InputErrors map[string]string
+	}{
+		Page: Page{
+			Title: "Flow Input",
+		},
+	}
+	flow, err := h.co.GetFlowByID(c.Param("flow"))
+	if err != nil {
+		data.ErrMessage = err.Error()
+		return c.Render(http.StatusBadRequest, "flow_input", data)
+	}
+	data.Flow = flow
+
+	return c.Render(http.StatusOK, "flow_input", data)
 }
 
 func (h *Handler) HandleFlowExecutionResults(c echo.Context) error {
+	data := struct {
+		Page
+		Flow  models.Flow
+		LogID string
+	}{
+		Page: Page{
+			Title: "Flow Execution Results",
+		},
+	}
+
 	user, ok := c.Get("user").(models.UserInfo)
 	if !ok {
-		return echo.NewHTTPError(http.StatusForbidden, "could not get user details")
+		data.ErrMessage = "could not get user details"
+		return c.Render(http.StatusBadRequest, "flow_status", data)
 	}
 
 	flowID := c.Param("flowID")
 	if flowID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "flow id cannot be empty")
+		data.ErrMessage = "flow id cannot be empty"
+		return c.Render(http.StatusBadRequest, "flow_status", data)
 	}
 
 	logID := c.Param("logID")
 	if logID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "execution id cannot be empty")
+		data.ErrMessage = "execution id cannot be empty"
+		return c.Render(http.StatusBadRequest, "flow_status", data)
 	}
 
 	f, err := h.co.GetFlowByID(flowID)
 	if err != nil {
-		return render(c, partials.InlineError("flow could not be found"), http.StatusNotFound)
+		data.ErrMessage = err.Error()
+		return c.Render(http.StatusBadRequest, "flow_status", data)
 	}
+	data.Flow = f
 
 	exec, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), logID)
 	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError("could not get execution summary for the given flow"), http.StatusNotFound)
+		data.ErrMessage = err.Error()
+		return c.Render(http.StatusBadRequest, "flow_status", data)
 	}
 
 	if exec.TriggeredBy != user.ID {
-		return echo.NewHTTPError(http.StatusForbidden, "you are not allowed to view this execution summary")
+		data.ErrMessage = "you are not allowed to view this execution summary"
+		return c.Render(http.StatusForbidden, "flow_status", data)
 	}
+	data.LogID = logID
 
-	return render(c, ui.ResultsPage(f, fmt.Sprintf("/view/logs/%s", logID)), http.StatusOK)
+	return c.Render(http.StatusOK, "flow_status", data)
 }
 
-func (h *Handler) HandleExecutionSummary(c echo.Context) error {
-	user, ok := c.Get("user").(models.UserInfo)
-	if !ok {
-		return echo.NewHTTPError(http.StatusForbidden, "could not get user details")
+func (h *Handler) HandleUserManagementView(c echo.Context) error {
+	data := struct {
+		Page
+	}{
+		Page: Page{
+			Title: "User Management",
+		},
 	}
 
-	flowID := c.Param("flowID")
-	if flowID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "flow id cannot be empty")
-	}
-
-	f, err := h.co.GetFlowByID(flowID)
-	if err != nil {
-		return render(c, partials.InlineError("flow could not be found"), http.StatusNotFound)
-	}
-
-	summary, err := h.co.GetAllExecutionSummary(c.Request().Context(), f, user.ID)
-	if err != nil {
-		c.Logger().Error(err)
-		return render(c, partials.InlineError(err.Error()), http.StatusInternalServerError)
-	}
-
-	return render(c, ui.ExecutionSummaryPage(f, summary), http.StatusOK)
+	return c.Render(http.StatusOK, "user_management", data)
 }
 
-func (h *Handler) HandleLogStreaming(c echo.Context) error {
-	// Upgrade to WebSocket connection
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(int(http.StateClosed), "Connection closed"))
-	}()
-
-	logID := c.Param("logID")
-	if logID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "execution id cannot be empty")
+func (h *Handler) HandleGroupManagementView(c echo.Context) error {
+	data := struct {
+		Page
+	}{
+		Page: Page{
+			Title: "Group Management",
+		},
 	}
 
-	msgCh, err := h.co.StreamLogs(c.Request().Context(), logID)
-	if err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "error subscribing to logs")
-	}
-
-	for {
-		msg, ok := <-msgCh
-		if !ok {
-			c.Logger().Info("msg ch closed")
-			return nil
-		}
-		if err := h.handleLogStreaming(c, msg, ws); err != nil {
-			return err
-		}
-	}
+	return c.Render(http.StatusOK, "group_management", data)
 }
 
-func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, ws *websocket.Conn) error {
-	var buf bytes.Buffer
-	switch msg.MType {
-	case models.LogMessageType:
-		if err := partials.LogMessage(string(msg.Val)).Render(c.Request().Context(), &buf); err != nil {
-			return err
-		}
-	case models.ResultMessageType:
-		var res map[string]string
-		if err := json.Unmarshal(msg.Val, &res); err != nil {
-			return fmt.Errorf("could not decode results: %w", err)
-		}
-		if err := partials.ExecutionOutput(res).Render(c.Request().Context(), &buf); err != nil {
-			return err
-		}
-	case models.ErrMessageType:
-		if err := partials.InlineError(string(msg.Val)).Render(c.Request().Context(), &buf); err != nil {
-			return err
-		}
-	case models.StateMessageType:
-		if err := partials.ApprovalMessage(string(msg.Val)).Render(c.Request().Context(), &buf); err != nil {
-			return err
-		}
-	}
+// func (h *Handler) HandleExecutionSummary(c echo.Context) error {
+// 	user, ok := c.Get("user").(models.UserInfo)
+// 	if !ok {
+// 		return echo.NewHTTPError(http.StatusForbidden, "could not get user details")
+// 	}
 
-	if buf.Len() > 0 {
-		if err := ws.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
-			return err
-		}
-	}
+// 	flowID := c.Param("flowID")
+// 	if flowID == "" {
+// 		return echo.NewHTTPError(http.StatusBadRequest, "flow id cannot be empty")
+// 	}
 
-	return nil
-}
+// 	f, err := h.co.GetFlowByID(flowID)
+// 	if err != nil {
+// 		return render(c, partials.InlineError("flow could not be found"), http.StatusNotFound)
+// 	}
+
+// 	summary, err := h.co.GetAllExecutionSummary(c.Request().Context(), f, user.ID)
+// 	if err != nil {
+// 		c.Logger().Error(err)
+// 		return render(c, partials.InlineError(err.Error()), http.StatusInternalServerError)
+// 	}
+
+// 	return render(c, ui.ExecutionSummaryPage(f, summary), http.StatusOK)
+// }
