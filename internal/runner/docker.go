@@ -146,7 +146,7 @@ func (d *DockerRunner) CreatesArtifacts(artifacts []string) *DockerRunner {
 
 // Run creates the container based on the provided configuration.
 func (d *DockerRunner) Run(ctx context.Context) error {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation(), client.WithHostFromEnv())
 	if err != nil {
 		return fmt.Errorf("unable to create docker client to create container %s: %v", d.name, err)
 	}

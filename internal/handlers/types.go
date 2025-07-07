@@ -85,7 +85,7 @@ type FlowInputValidationError struct {
 }
 
 type FlowLogResp struct {
-	MType   string            `json:"messsage_type"`
+	MType   string            `json:"message_type"`
 	Value   string            `json:"value"`
 	Results map[string]string `json:"results,omitempty"`
 }

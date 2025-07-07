@@ -92,6 +92,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 		if err != nil {
 			res, err = r.runAction(ctx, action, payload.Workflow.Meta.SrcDir, payload.Input, streamLogger)
 			if err != nil {
+				streamLogger.Checkpoint(action.ID, err.Error(), streamlogger.ErrMessageType)
 				return err
 			}
 		}
