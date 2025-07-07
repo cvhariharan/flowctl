@@ -1,24 +1,24 @@
 {{ define "flow_status" }}
 {{ template "partials/header" . }}
 
-<div class="flex flex-col items-center min-h-screen bg-gray-50 py-8"
+<div class="flex flex-col items-center min-h-screen bg-gray-900 py-8"
      x-data="flowStatusComponent('{{ .LogID }}', {{ toJson .Flow.Actions }})">
-    <p class="font-bold text-5xl mb-2">Results</p>
-    <p class="text-xl text-gray-700 mb-6">{{ .Flow.Meta.Name }}</p>
+    <p class="font-bold text-5xl mb-2 text-white">Results</p>
+    <p class="text-xl text-gray-300 mb-6">{{ .Flow.Meta.Name }}</p>
 
     <!-- Log Output -->
-    <div class="bg-black text-green-400 text-sm font-mono p-8 rounded-lg shadow-2xl max-w-screen-md w-full mx-auto overflow-y-scroll h-96 mb-8">
+    <div class="bg-gray-800 text-green-400 text-sm font-mono p-8 rounded-lg shadow-lg max-w-screen-md w-full mx-auto overflow-y-scroll h-96 mb-8 border border-gray-700">
         <div id="message" class="whitespace-pre-wrap break-words" x-text="logOutput"></div>
     </div>
 
     <!-- Execution Output (if any) -->
     <template x-if="Object.keys(results).length > 0">
-        <div class="bg-white border rounded-lg p-4 shadow max-w-screen-md w-full mb-4">
-            <h3 class="font-semibold mb-2">Execution Output</h3>
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow max-w-screen-md w-full mb-4">
+            <h3 class="font-semibold mb-2 text-white">Execution Output</h3>
             <template x-for="(val, key) in results" :key="key">
                 <div class="flex justify-between">
-                    <span class="font-mono text-gray-700" x-text="key"></span>
-                    <span class="font-mono text-green-700" x-text="val"></span>
+                    <span class="font-mono text-gray-300" x-text="key"></span>
+                    <span class="font-mono text-green-400" x-text="val"></span>
                 </div>
             </template>
         </div>

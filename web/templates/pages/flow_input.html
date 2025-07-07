@@ -1,12 +1,12 @@
 {{ define "flow_input" }}
 {{ template "partials/header" . }}
 <div
-    class="flex h-screen flex-col justify-start items-center"
+    class="flex h-screen flex-col justify-start items-center bg-gray-900"
     x-data="flowForm('{{.Flow.Meta.ID}}')"
 >
     <div class="py-10 text-center">
-        <h1 class="font-bold text-5xl">{{ .Flow.Meta.Name }}</h1>
-        <h3 class="font-light text-xl text-muted-foreground">
+        <h1 class="font-bold text-5xl text-white">{{ .Flow.Meta.Name }}</h1>
+        <h3 class="font-light text-xl text-gray-300">
             {{ .Flow.Meta.Description }}
         </h3>
     </div>
@@ -14,13 +14,13 @@
     <form
         @submit.prevent="submit"
         id="flow-form"
-        class="max-w-screen-sm py-16 w-screen mx-auto"
+        class="max-w-screen-sm py-16 w-full mx-auto bg-gray-800 rounded-lg shadow px-8"
     >
         {{ range .Flow.Inputs }}
         <div class="mb-5">
             <label
                 for="{{ .Name }}"
-                class="block mb-2 text-sm font-medium text-muted-foreground"
+                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                 >{{ .Label }}</label
             >
             <input
@@ -28,10 +28,10 @@
                 id="{{ .Name }}"
                 name="{{ .Name }}"
                 placeholder="{{ .Description }}"
-                class="bg-secondary border border-input text-foreground text-sm rounded-lg focus:ring-ring focus:border-ring block w-full p-2.5"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
             />
             <p
-                class="text-destructive text-sm mt-1"
+                class="text-red-600 dark:text-red-400 text-sm mt-1"
                 x-text="errors['{{ .Name }}']"
             ></p>
         </div>
@@ -39,7 +39,7 @@
         <button
             type="submit"
             :disabled="loading"
-            class="text-primary-foreground bg-primary hover:bg-primary/90 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-50"
+            class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
         >
             <span x-show="!loading">Submit</span>
             <span x-show="loading">Submitting...</span>

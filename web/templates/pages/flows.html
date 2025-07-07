@@ -2,16 +2,18 @@
 {{ template "partials/header" . }}
 
 {{ if not .Page.ErrMessage }}
-<div class="flex h-screen flex-col justify-start items-center">
-    <p class="font-bold text-5xl p-10">Autopilot</p>
+<div class="flex h-screen flex-col justify-start items-center bg-gray-900">
+    <p class="font-bold text-5xl p-10 text-white">Autopilot</p>
     {{ range $_, $v := .Flows }}
     <div
         x-data
         x-on:click="window.location.href = '/view/{{ $v.Meta.ID }}'"
-        class="max-w-screen-sm w-screen max-h-24 min-h-24 mx-auto border-2 rounded-md border-solid m-3 px-8 flex flex-col justify-center content-start transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 active:scale-[0.995] cursor-pointer"
+        class="w-full max-w-md mx-auto my-3 bg-gray-800 border border-gray-700 rounded-lg shadow hover:shadow-md transition-all duration-200 cursor-pointer"
     >
-        <p class="font-semibold text-xl">{{ $v.Meta.Name }}</p>
-        <p class="font-light text-base">{{ $v.Meta.Description }}</p>
+        <div class="p-6">
+            <p class="font-semibold text-xl text-white">{{ $v.Meta.Name }}</p>
+            <p class="font-light text-base text-gray-300">{{ $v.Meta.Description }}</p>
+        </div>
     </div>
     {{ end }}
 </div>

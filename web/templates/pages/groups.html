@@ -1,13 +1,14 @@
 {{ define "group_management" }}
 {{ template "partials/header" . }}
-<div
-    class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
-    x-data="groupManagement()"
-    x-init="fetchGroups()"
->
-    <div class="py-10">
-        <h1 class="text-2xl font-semibold text-foreground">Groups Management</h1>
-    </div>
+<div class="bg-gray-900 min-h-screen w-full">
+    <div
+        class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+        x-data="groupManagement()"
+        x-init="fetchGroups()"
+    >
+        <div class="py-10">
+            <h1 class="text-2xl font-semibold text-white">Groups Management</h1>
+        </div>
 
     <!-- Search and Add Group Section -->
     <div class="flex justify-between items-center mb-6">
@@ -16,11 +17,11 @@
             x-model="state.searchQuery"
             @input.debounce.500ms="fetchGroups()"
             placeholder="Search groups..."
-            class="input input-bordered w-full max-w-lg"
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full max-w-lg p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
         />
         <button
             @click="openAddGroupModal()"
-            class="ml-4 btn btn-primary"
+            class="ml-4 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
         >
             Add Group
         </button>
@@ -28,31 +29,31 @@
 
     <!-- Groups Table -->
     <div class="mt-8 overflow-x-auto">
-        <table class="table table-zebra w-full">
-            <thead>
+        <table class="min-w-full divide-y divide-gray-700 bg-gray-800 rounded-lg shadow">
+            <thead class="bg-gray-800">
                 <tr>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>Users</th>
-                    <th>Actions</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Description</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Users</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="bg-gray-800 divide-y divide-gray-700">
                 <template x-for="group in state.groups" :key="group.id">
                     <tr>
-                        <td x-text="group.name"></td>
-                        <td x-text="group.description || 'No description'"></td>
-                        <td>
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300" x-text="group.name"></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300" x-text="group.description || 'No description'"></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300">
                             <span x-text="group.users.length + (group.users.length === 1 ? ' user' : ' users')"></span>
                         </td>
-                        <td>
-                            <button class="btn btn-xs btn-outline btn-info mr-2" @click="editGroup(group.id)">Edit</button>
-                            <button class="btn btn-xs btn-outline btn-error" @click="deleteGroup(group.id)">Delete</button>
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300">
+                            <button class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 rounded hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 mr-2" @click="editGroup(group.id)">Edit</button>
+                            <button class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-100 rounded hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800" @click="deleteGroup(group.id)">Delete</button>
                         </td>
                     </tr>
                 </template>
                 <tr x-show="state.groups.length === 0">
-                    <td colspan="4" class="text-center">No groups found.</td>
+                    <td colspan="4" class="text-center px-6 py-4 text-gray-500 dark:text-gray-400">No groups found.</td>
                 </tr>
             </tbody>
         </table>
@@ -82,21 +83,21 @@
     </div>
 
     <!-- Group Modal (reused for both add and edit) -->
-    <div class="modal" :class="{'modal-open': modals.group}">
-        <div class="modal-box w-full max-w-lg">
-            <h3 class="font-bold text-lg mb-4" x-text="modals.mode === 'add' ? 'Add Group' : 'Edit Group'"></h3>
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60" x-show="modals.group">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+            <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white" x-text="modals.mode === 'add' ? 'Add Group' : 'Edit Group'"></h3>
             <form @submit.prevent="submitGroup">
                 <div class="mb-4">
-                    <label class="block mb-1 font-medium">Name</label>
-                    <input type="text" class="input input-bordered w-full" x-model="forms.group.name" required />
+                    <label class="block mb-1 font-medium text-gray-900 dark:text-white">Name</label>
+                    <input type="text" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" x-model="forms.group.name" required />
                 </div>
                 <div class="mb-4">
-                    <label class="block mb-1 font-medium">Description</label>
-                    <input type="text" class="input input-bordered w-full" x-model="forms.group.description" />
+                    <label class="block mb-1 font-medium text-gray-900 dark:text-white">Description</label>
+                    <input type="text" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" x-model="forms.group.description" />
                 </div>
-                <div class="modal-action">
-                    <button type="button" class="btn" @click="closeGroupModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" x-text="modals.mode === 'add' ? 'Add' : 'Update'"></button>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600" @click="closeGroupModal()">Cancel</button>
+                    <button type="submit" class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800" x-text="modals.mode === 'add' ? 'Add' : 'Update'"></button>
                 </div>
             </form>
         </div>
