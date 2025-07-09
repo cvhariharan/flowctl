@@ -149,6 +149,18 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 
 	api.POST("/approvals/:approvalID", h.HandleApprovalAction, h.ApprovalMiddleware)
 
+	api.GET("/nodes", h.HandleListNodes)
+	api.GET("/nodes/:nodeID", h.HandleGetNode)
+	api.POST("/nodes", h.HandleCreateNode)
+	api.PUT("/nodes/:nodeID", h.HandleUpdateNode)
+	api.DELETE("/nodes/:nodeID", h.HandleDeleteNode)
+
+	api.GET("/credentials", h.HandleListCredentials)
+	api.GET("/credentials/:credID", h.HandleGetCredential)
+	api.POST("/credentials", h.HandleCreateCredential)
+	api.PUT("/credentials/:credID", h.HandleUpdateCredential)
+	api.DELETE("/credentials/:credID", h.HandleDeleteCredential)
+
 	admin := e.Group("/admin")
 	admin.Use(h.AuthorizeForRole("admin"))
 

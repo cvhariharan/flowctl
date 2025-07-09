@@ -79,8 +79,8 @@ type FlowLogResp struct {
 
 type PaginateRequest struct {
 	Filter string `query:"filter"`
-	Page  int `query:"page"`
-	Count int `query:"count_per_page"`
+	Page   int    `query:"page"`
+	Count  int    `query:"count_per_page"`
 }
 
 type UsersPaginateResponse struct {
@@ -103,4 +103,98 @@ type ApprovalActionResp struct {
 	ID      string `json:"id"`
 	Status  string `json:"status"`
 	Message string `json:"messages"`
+}
+
+// Node related types
+type NodeAuth struct {
+	Method       string `json:"method" validate:"required,oneof=ssh_key password"`
+	CredentialID string `json:"credential_id" validate:"required,uuid"`
+}
+
+type NodeReq struct {
+	Name     string   `json:"name" validate:"required,min=3,max=255"`
+	Hostname string   `json:"hostname" validate:"required,hostname_port"`
+	Port     int      `json:"port" validate:"required,min=1,max=65535"`
+	Username string   `json:"username" validate:"required,min=1,max=255"`
+	OSFamily string   `json:"os_family" validate:"required,oneof=linux windows"`
+	Tags     []string `json:"tags"`
+	Auth     NodeAuth `json:"auth" validate:"required"`
+}
+
+type NodeResp struct {
+	ID       string   `json:"id"`
+	Name     string   `json:"name"`
+	Hostname string   `json:"hostname"`
+	Port     int      `json:"port"`
+	Username string   `json:"username"`
+	OSFamily string   `json:"os_family"`
+	Tags     []string `json:"tags"`
+	Auth     NodeAuth `json:"auth"`
+}
+
+type NodesPaginateResponse struct {
+	Nodes      []NodeResp `json:"nodes"`
+	PageCount  int64      `json:"page_count"`
+	TotalCount int64      `json:"total_count"`
+}
+
+func coreNodeToNodeResp(n *models.Node) NodeResp {
+	return NodeResp{
+		ID:       n.ID,
+		Name:     n.Name,
+		Hostname: n.Hostname,
+		Port:     n.Port,
+		Username: n.Username,
+		OSFamily: n.OSFamily,
+		Tags:     n.Tags,
+		Auth: NodeAuth{
+			Method:       string(n.Auth.Method),
+			CredentialID: n.Auth.CredentialID,
+		},
+	}
+}
+
+func coreNodeArrayToNodeRespArray(nodes []*models.Node) []NodeResp {
+	resp := make([]NodeResp, len(nodes))
+	for i, n := range nodes {
+		resp[i] = coreNodeToNodeResp(n)
+	}
+	return resp
+}
+
+// Credential related types
+type CredentialReq struct {
+	Name       string `json:"name" validate:"required,min=3,max=255"`
+	PrivateKey string `json:"private_key"`
+	Password   string `json:"password"`
+}
+
+type CredentialResp struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	PrivateKey string `json:"private_key"`
+	Password   string `json:"password"`
+}
+
+type CredentialsPaginateResponse struct {
+	Credentials []CredentialResp `json:"credentials"`
+	PageCount   int64            `json:"page_count"`
+	TotalCount  int64            `json:"total_count"`
+}
+
+func coreCredentialToCredentialResp(c *models.Credential) CredentialResp {
+	return CredentialResp{
+		ID:         c.ID,
+		Name:       c.Name,
+		PrivateKey: c.PrivateKey,
+		Password:   c.Password,
+	}
+}
+
+func coreCredentialArrayToCredentialRespArray(creds []*models.Credential) []CredentialResp {
+	resp := make([]CredentialResp, len(creds))
+	for i, c := range creds {
+		resp[i] = coreCredentialToCredentialResp(c)
+	}
+	return resp
 }

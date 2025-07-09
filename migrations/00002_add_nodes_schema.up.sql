@@ -4,6 +4,17 @@ CREATE TYPE authentication_method AS ENUM (
     'password'
 );
 
+CREATE TABLE IF NOT EXISTS credentials (
+    id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
+    name VARCHAR(150) NOT NULL,
+    private_key TEXT,
+    password TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX idx_credentials_uuid ON credentials(uuid);
+
 CREATE TABLE IF NOT EXISTS nodes (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
@@ -21,14 +32,3 @@ CREATE TABLE IF NOT EXISTS nodes (
 );
 CREATE UNIQUE INDEX idx_nodes_uuid ON nodes(uuid);
 CREATE UNIQUE INDEX idx_nodes_name ON nodes(name);
-
-CREATE TABLE IF NOT EXISTS credentials (
-    id SERIAL PRIMARY KEY,
-    uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
-    name VARCHAR(150) NOT NULL,
-    private_key TEXT,
-    password TEXT,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-CREATE UNIQUE INDEX idx_credentials_uuid ON credentials(uuid);

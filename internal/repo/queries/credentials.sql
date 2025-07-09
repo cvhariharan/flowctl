@@ -10,7 +10,25 @@ SELECT * FROM credentials WHERE uuid = $1;
 SELECT * FROM credentials WHERE id = $1;
 
 -- name: ListCredentials :many
-SELECT * FROM credentials;
+WITH filtered AS (
+    SELECT * FROM credentials
+),
+total AS (
+    SELECT COUNT(*) AS total_count FROM filtered
+),
+paged AS (
+    SELECT * FROM filtered
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2
+),
+page_count AS (
+    SELECT COUNT(*) AS page_count FROM paged
+)
+SELECT
+    p.*,
+    pc.page_count,
+    t.total_count
+FROM paged p, page_count pc, total t;
 
 -- name: UpdateCredential :one
 UPDATE credentials

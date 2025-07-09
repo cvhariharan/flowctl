@@ -8,6 +8,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -87,18 +88,53 @@ func (q *Queries) GetCredentialByUUID(ctx context.Context, argUuid uuid.UUID) (C
 }
 
 const listCredentials = `-- name: ListCredentials :many
-SELECT id, uuid, name, private_key, password, created_at, updated_at FROM credentials
+WITH filtered AS (
+    SELECT id, uuid, name, private_key, password, created_at, updated_at FROM credentials
+),
+total AS (
+    SELECT COUNT(*) AS total_count FROM filtered
+),
+paged AS (
+    SELECT id, uuid, name, private_key, password, created_at, updated_at FROM filtered
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2
+),
+page_count AS (
+    SELECT COUNT(*) AS page_count FROM paged
+)
+SELECT
+    p.id, p.uuid, p.name, p.private_key, p.password, p.created_at, p.updated_at,
+    pc.page_count,
+    t.total_count
+FROM paged p, page_count pc, total t
 `
 
-func (q *Queries) ListCredentials(ctx context.Context) ([]Credential, error) {
-	rows, err := q.db.QueryContext(ctx, listCredentials)
+type ListCredentialsParams struct {
+	Limit  int32 `db:"limit" json:"limit"`
+	Offset int32 `db:"offset" json:"offset"`
+}
+
+type ListCredentialsRow struct {
+	ID         int32          `db:"id" json:"id"`
+	Uuid       uuid.UUID      `db:"uuid" json:"uuid"`
+	Name       string         `db:"name" json:"name"`
+	PrivateKey sql.NullString `db:"private_key" json:"private_key"`
+	Password   sql.NullString `db:"password" json:"password"`
+	CreatedAt  time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt  time.Time      `db:"updated_at" json:"updated_at"`
+	PageCount  int64          `db:"page_count" json:"page_count"`
+	TotalCount int64          `db:"total_count" json:"total_count"`
+}
+
+func (q *Queries) ListCredentials(ctx context.Context, arg ListCredentialsParams) ([]ListCredentialsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCredentials, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Credential
+	var items []ListCredentialsRow
 	for rows.Next() {
-		var i Credential
+		var i ListCredentialsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Uuid,
@@ -107,6 +143,8 @@ func (q *Queries) ListCredentials(ctx context.Context) ([]Credential, error) {
 			&i.Password,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PageCount,
+			&i.TotalCount,
 		); err != nil {
 			return nil, err
 		}
