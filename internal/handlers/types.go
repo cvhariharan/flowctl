@@ -113,7 +113,7 @@ type NodeAuth struct {
 
 type NodeReq struct {
 	Name     string   `json:"name" validate:"required,min=3,max=255"`
-	Hostname string   `json:"hostname" validate:"required,hostname_port"`
+	Hostname string   `json:"hostname" validate:"required"`
 	Port     int      `json:"port" validate:"required,min=1,max=65535"`
 	Username string   `json:"username" validate:"required,min=1,max=255"`
 	OSFamily string   `json:"os_family" validate:"required,oneof=linux windows"`

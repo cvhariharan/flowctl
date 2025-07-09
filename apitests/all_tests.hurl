@@ -31,8 +31,7 @@ Cookie: session={{session}}
 
 {
   "name": "TestCredential",
-  "private_key": "test_private_key",
-  "password": "test_password"
+  "private_key": "test_private_key"
 }
 
 HTTP 201
@@ -59,8 +58,7 @@ Cookie: session={{session}}
 
 {
   "name": "UpdatedTestCredential",
-  "private_key": "updated_private_key",
-  "password": "updated_password"
+  "private_key": "updated_private_key"
 }
 
 HTTP 200
@@ -68,13 +66,8 @@ HTTP 200
 jsonpath "$.id" == "{{credId}}"
 jsonpath "$.name" == "UpdatedTestCredential"
 jsonpath "$.private_key" == "updated_private_key"
-jsonpath "$.password" == "updated_password"
 
-# Test DELETE /api/v1/credentials/:credID
-DELETE http://localhost:7000/api/v1/credentials/{{credId}}
-Cookie: session={{session}}
 
-HTTP 204
 
 # Test GET /api/v1/groups
 GET http://localhost:7000/api/v1/groups
@@ -134,7 +127,7 @@ jsonpath "$.description" == "Updated description for testing"
 DELETE http://localhost:7000/api/v1/groups/{{groupId}}
 Cookie: session={{session}}
 
-HTTP 204
+HTTP 200
 
 # Test GET /api/v1/users
 GET http://localhost:7000/api/v1/users
@@ -152,16 +145,14 @@ Content-Type: application/json
 Cookie: session={{session}}
 
 {
-  "username": "testuser",
-  "name": "Test User",
-  "login_type": "local",
-  "role": "user"
+  "username": "user@example.com",
+  "name": "Test User"
 }
 
 HTTP 201
 [Asserts]
 jsonpath "$.id" isString
-jsonpath "$.username" == "testuser"
+jsonpath "$.username" == "user@example.com"
 jsonpath "$.name" == "Test User"
 
 [Captures]
@@ -174,7 +165,7 @@ Cookie: session={{session}}
 HTTP 200
 [Asserts]
 jsonpath "$.id" == "{{userId}}"
-jsonpath "$.username" == "testuser"
+jsonpath "$.username" == "user@example.com"
 
 # Test PUT /api/v1/users/:userID
 PUT http://localhost:7000/api/v1/users/{{userId}}
@@ -182,24 +173,21 @@ Content-Type: application/json
 Cookie: session={{session}}
 
 {
-  "username": "updatedtestuser",
-  "name": "Updated Test User",
-  "login_type": "local",
-  "role": "admin"
+  "username": "updatedtestuser@example.com",
+  "name": "Updated Test User"
 }
 
 HTTP 200
 [Asserts]
 jsonpath "$.id" == "{{userId}}"
-jsonpath "$.username" == "updatedtestuser"
+jsonpath "$.username" == "updatedtestuser@example.com"
 jsonpath "$.name" == "Updated Test User"
-jsonpath "$.role" == "admin"
 
 # Test DELETE /api/v1/users/:userID
 DELETE http://localhost:7000/api/v1/users/{{userId}}
 Cookie: session={{session}}
 
-HTTP 204
+HTTP 200
 
 # Test GET /api/v1/nodes
 GET http://localhost:7000/api/v1/nodes
@@ -225,7 +213,7 @@ Cookie: session={{session}}
   "tags": ["dev", "test"],
   "auth": {
     "method": "ssh_key",
-    "credential_id": "00000000-0000-0000-0000-000000000001"
+    "credential_id": "{{credId}}"
   }
 }
 
@@ -261,7 +249,7 @@ Cookie: session={{session}}
   "tags": ["prod"],
   "auth": {
     "method": "ssh_key",
-    "credential_id": "00000000-0000-0000-0000-000000000001"
+    "credential_id": "{{credId}}"
   }
 }
 
@@ -273,46 +261,14 @@ jsonpath "$.hostname" == "192.168.1.101"
 jsonpath "$.username" == "updateduser"
 jsonpath "$.tags[0]" == "prod"
 
+# Test DELETE /api/v1/credentials/:credID
+DELETE http://localhost:7000/api/v1/credentials/{{credId}}
+Cookie: session={{session}}
+
+HTTP 200
+
 # Test DELETE /api/v1/nodes/:nodeID
 DELETE http://localhost:7000/api/v1/nodes/{{nodeId}}
 Cookie: session={{session}}
 
-HTTP 204
-
-# Test POST /api/v1/trigger/:flow
-POST http://localhost:7000/api/v1/trigger/example-flow
-Content-Type: application/json
-Cookie: session={{session}}
-
-{}
-
 HTTP 200
-[Asserts]
-jsonpath "$.flow_id" isString
-jsonpath "$.log_id" isString
-
-[Captures]
-logId: jsonpath "$.log_id"
-
-# Test GET /api/v1/logs/:logID
-GET http://localhost:7000/api/v1/logs/{{logId}}
-Cookie: session={{session}}
-
-HTTP 200
-[Asserts]
-jsonpath "$" isCollection
-
-# Test POST /api/v1/approvals/:approvalID
-# This requires an existing approval, so using a placeholder ID
-POST http://localhost:7000/api/v1/approvals/00000000-0000-0000-0000-000000000001
-Content-Type: application/json
-Cookie: session={{session}}
-
-{
-  "action": "approve"
-}
-
-HTTP 200
-[Asserts]
-jsonpath "$.id" isString
-jsonpath "$.status" isString

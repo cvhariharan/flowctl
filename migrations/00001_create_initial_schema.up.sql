@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX idx_users_uuid ON users(uuid);
+CREATE UNIQUE INDEX idx_users_username ON users(username);
 
 CREATE TABLE IF NOT EXISTS groups (
     id SERIAL PRIMARY KEY,

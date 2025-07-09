@@ -143,23 +143,18 @@ func (h *Handler) HandleCreateUser(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
-	_, err := h.co.CreateUser(c.Request().Context(), req.Name, req.Username, models.OIDCLoginType, models.StandardUserRole)
+	u, err := h.co.CreateUser(c.Request().Context(), req.Name, req.Username, models.OIDCLoginType, models.StandardUserRole)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not create user", err, nil)
 	}
 
-	u, err := h.co.GetAllUsersWithGroups(c.Request().Context())
+	user, err := h.co.GetUserWithUUIDWithGroups(c.Request().Context(), u.ID)
 	if err != nil {
-		return wrapError(http.StatusInternalServerError, "could not retrieve users", err, nil)
+		return wrapError(http.StatusInternalServerError, "could not retrieve created user", err, nil)
 	}
 
-	var users []UserWithGroups
-	for _, v := range u {
-		users = append(users, UserWithGroups{
-			User:   coreUsertoUser(v.User),
-			Groups: coreGroupArrayCast(v.Groups),
-		})
-	}
-
-	return c.JSON(http.StatusOK, users)
+	return c.JSON(http.StatusCreated, UserWithGroups{
+		User:   coreUsertoUser(user.User),
+		Groups: coreGroupArrayCast(user.Groups),
+	})
 }

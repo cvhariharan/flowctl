@@ -18,6 +18,10 @@ func (h *Handler) HandleCreateCredential(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
+	if req.Password != "" && req.PrivateKey != "" {
+		return wrapError(http.StatusBadRequest, "cannot set both password and private key", nil, nil)
+	}
+
 	cred := &models.Credential{
 		Name:       req.Name,
 		PrivateKey: req.PrivateKey,
