@@ -355,7 +355,7 @@ func createCustomSSHDialer(node Node) (func(ctx context.Context, network, addr s
 			return nil, fmt.Errorf("SSH connection failed: %w", err)
 		}
 
-		conn, err := sshConn.Dial(network, addr)
+		conn, err := sshConn.Dial("unix", "/var/run/docker.sock")
 		if err != nil {
 			sshConn.Close()
 			return nil, fmt.Errorf("Docker daemon connection failed: %w", err)

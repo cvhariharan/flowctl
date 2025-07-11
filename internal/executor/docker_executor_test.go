@@ -77,7 +77,7 @@ func TestDockerExecutor_Execute(t *testing.T) {
 		// Create a mock execution context
 		config := DockerWithConfig{
 			Image:  "alpine:latest",
-			Script: `echo "MESSAGE=hello remote" > $OUTPUT`,
+			Script: `echo "MESSAGE=hello-remote" > $OUTPUT`,
 		}
 		withConfig, err := yaml.Marshal(config)
 		assert.NoError(t, err)
@@ -108,7 +108,7 @@ func TestDockerExecutor_Execute(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Assert the output
-		assert.Equal(t, "hello remote", outputs["MESSAGE"])
+		assert.Equal(t, "hello-remote", outputs["MESSAGE"])
 		assert.Equal(t, "", execCtx.Stdout.(*bytes.Buffer).String())
 	})
 }
