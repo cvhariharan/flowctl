@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"path/filepath"
 	"strings"
 
-	"net"
-	"net/http"
 	"os"
-	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -25,7 +23,6 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/hashicorp/go-envparse"
 	"github.com/rs/xid"
-	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
 )
 
@@ -52,6 +49,7 @@ type DockerExecutor struct {
 	authConfig       string
 	stdout           io.Writer
 	stderr           io.Writer
+	client           *client.Client
 }
 
 func (d *DockerExecutor) withImage(image string) *DockerExecutor {
@@ -127,15 +125,51 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx ExecutionContext) 
 		return nil, fmt.Errorf("could not read config for docker executor %s: %w", d.name, err)
 	}
 
-	// Create temp file for outputs
-	outfile, err := os.CreateTemp("", fmt.Sprintf("output-executor-%s-*", d.name))
-	if err != nil {
-		return nil, fmt.Errorf("could not create tmp file for storing executor %s outputs: %w", d.name, err)
+	var sshClient *SSHClient
+	if execCtx.Node.Hostname != "" {
+		var err error
+		sshClient, err = GetSSHClient(execCtx.Node)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get SSH client: %w", err)
+		}
 	}
 	defer func() {
-		outfile.Close()
-		os.Remove(outfile.Name())
+		if sshClient != nil {
+			sshClient.Close()
+		}
 	}()
+
+	cli, err := d.getDockerClient(ctx, sshClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get docker client: %w", err)
+	}
+	defer cli.Close()
+
+	d.client = cli
+
+	var tempFile string
+	if sshClient != nil {
+		// create temporary file on the remote machine
+		fileName, err := sshClient.RunCommand("mktemp")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create temporary file on remote: %w", err)
+		}
+		tempFile = strings.TrimSpace(fileName)
+	} else {
+		// create a temporary file on the local machine
+		f, err := os.CreateTemp("/tmp", "docker-executor-*")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create temporary file: %w", err)
+		}
+		defer os.Remove(f.Name())
+		tempFile = f.Name()
+	}
+
+	d.mounts = append(d.mounts, mount.Mount{
+		Type:   mount.TypeBind,
+		Source: tempFile,
+		Target: "/tmp/flow/output",
+	})
 
 	vars := make([]map[string]any, 0)
 	for k, v := range execCtx.Inputs {
@@ -146,12 +180,7 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx ExecutionContext) 
 
 	d.withImage(config.Image).
 		withCmd([]string{config.Script}).
-		withEnv(vars).
-		withMount(mount.Mount{
-			Type:   mount.TypeBind,
-			Source: outfile.Name(),
-			Target: "/tmp/flow/output",
-		})
+		withEnv(vars)
 	d.stdout = execCtx.Stdout
 	d.stderr = execCtx.Stderr
 
@@ -159,14 +188,12 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx ExecutionContext) 
 		return nil, err
 	}
 
-	// Parse output file env
-	outputTempFile, err := os.Open(outfile.Name())
+	outputContents, err := d.readTempFileContents(tempFile, sshClient)
 	if err != nil {
-		return nil, fmt.Errorf("error opening output file for reading: %w", err)
+		return nil, fmt.Errorf("failed to read temp file contents: %w", err)
 	}
-	defer outputTempFile.Close()
 
-	outputEnv, err := envparse.Parse(outputTempFile)
+	outputEnv, err := envparse.Parse(outputContents)
 	if err != nil {
 		return nil, fmt.Errorf("could not load output env: %w", err)
 	}
@@ -174,40 +201,63 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx ExecutionContext) 
 	return outputEnv, nil
 }
 
-func (d *DockerExecutor) run(ctx context.Context, execCtx ExecutionContext) error {
-	cli, err := d.getDockerClient(execCtx)
-	if err != nil {
-		return fmt.Errorf("failed to get docker client: %w", err)
+func (d *DockerExecutor) readTempFileContents(tempFile string, sshClient *SSHClient) (io.Reader, error) {
+	readFile := func(filePath string) (io.Reader, error) {
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read temp file %s: %w", filePath, err)
+		}
+		return strings.NewReader(string(content)), nil
 	}
-	defer cli.Close()
 
-	if err := d.pullImage(ctx, cli); err != nil {
+	if sshClient != nil {
+		// For remote execution, download the file using SSH
+		localTempFile, err := os.CreateTemp("/tmp", "docker-executor-output-*")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create local temp file: %w", err)
+		}
+		defer os.Remove(localTempFile.Name())
+		defer localTempFile.Close()
+
+		if err := sshClient.Download(tempFile, localTempFile.Name()); err != nil {
+			return nil, fmt.Errorf("failed to download temp file from remote: %w", err)
+		}
+
+		return readFile(localTempFile.Name())
+	} else {
+		// For local execution, read the file directly
+		return readFile(tempFile)
+	}
+}
+
+func (d *DockerExecutor) run(ctx context.Context, execCtx ExecutionContext) error {
+	if err := d.pullImage(ctx, d.client); err != nil {
 		return fmt.Errorf("could not pull image: %v", err)
 	}
 
-	resp, err := d.createContainer(ctx, cli)
+	resp, err := d.createContainer(ctx, d.client)
 	if err != nil {
 		return fmt.Errorf("unable to create container: %v", err)
 	}
 	d.containerID = resp.ID
 
 	defer func() {
-		if rErr := cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{}); rErr != nil {
+		if rErr := d.client.ContainerRemove(ctx, resp.ID, container.RemoveOptions{}); rErr != nil {
 			log.Printf("Error removing container: %v", rErr)
 		}
 	}()
 
 	if d.src != "" {
-		if err := d.createSrcDirectories(ctx, cli); err != nil {
+		if err := d.createSrcDirectories(ctx, d.client); err != nil {
 			return fmt.Errorf("unable to create source directories: %v", err)
 		}
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if err := d.client.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		return fmt.Errorf("unable to start container: %v", err)
 	}
 
-	logs, err := cli.ContainerLogs(ctx, resp.ID, container.LogsOptions{
+	logs, err := d.client.ContainerLogs(ctx, resp.ID, container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
@@ -221,7 +271,7 @@ func (d *DockerExecutor) run(ctx context.Context, execCtx ExecutionContext) erro
 		return fmt.Errorf("error copying logs: %v", err)
 	}
 
-	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	statusCh, errCh := d.client.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		return fmt.Errorf("error waiting for container: %v", err)
@@ -300,68 +350,66 @@ func (d *DockerExecutor) PushFile(ctx context.Context, localFilePath string, rem
 	return nil
 }
 
-func (d *DockerExecutor) getDockerClient(execCtx ExecutionContext) (*client.Client, error) {
-	if execCtx.Node.Hostname == "" {
+func (d *DockerExecutor) getDockerClient(ctx context.Context, node *SSHClient) (*client.Client, error) {
+	if node == nil {
 		return client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	}
 
-	dialer, err := createCustomSSHDialer(execCtx.Node)
+	localListener, err := createSSHTunnel(ctx, node)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create SSH tunnel: %w", err)
 	}
 
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			DialContext: dialer,
-		},
-	}
+	dockerHost := "tcp://" + localListener.Addr().String()
 
 	return client.NewClientWithOpts(
-		client.WithHTTPClient(httpClient),
-		client.WithHost("unix:///var/run/docker.sock"),
+		client.WithHost(dockerHost),
 		client.WithAPIVersionNegotiation(),
 	)
 }
 
-func createCustomSSHDialer(node Node) (func(ctx context.Context, network, addr string) (net.Conn, error), error) {
-	var authMethod ssh.AuthMethod
-	switch node.Auth.Method {
-	case "ssh_key":
-		signer, err := ssh.ParsePrivateKey([]byte(node.Auth.Key))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse private key: %w", err)
-		}
-		authMethod = ssh.PublicKeys(signer)
-	case "password":
-		authMethod = ssh.Password(node.Auth.Key)
-	default:
-		return nil, fmt.Errorf("unsupported auth method: %s", node.Auth.Method)
+func createSSHTunnel(ctx context.Context, client *SSHClient) (net.Listener, error) {
+	localListener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen on localhost:0: %w", err)
 	}
 
-	sshConfig := &ssh.ClientConfig{
-		User: node.Username,
-		Auth: []ssh.AuthMethod{
-			authMethod,
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Use proper verification in production
-		Timeout:         30 * time.Second,
-	}
-
-	sshHost := fmt.Sprintf("%s:%d", node.Hostname, node.Port)
-
-	return func(ctx context.Context, network, addr string) (net.Conn, error) {
-		sshConn, err := ssh.Dial("tcp", sshHost, sshConfig)
-		if err != nil {
-			return nil, fmt.Errorf("SSH connection failed: %w", err)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				localListener.Close()
+				return
+			default:
+				localConn, err := localListener.Accept()
+				if err != nil {
+					if ctx.Err() != nil {
+						return
+					}
+					log.Printf("failed to accept local connection: %s", err)
+					continue
+				}
+				remoteConn, err := client.Client.Dial("unix", "/var/run/docker.sock")
+				if err != nil {
+					log.Printf("failed to dial remote Docker socket: %s", err)
+					localConn.Close()
+					continue
+				}
+				go func() {
+					defer localConn.Close()
+					defer remoteConn.Close()
+					io.Copy(localConn, remoteConn)
+				}()
+				go func() {
+					defer localConn.Close()
+					defer remoteConn.Close()
+					io.Copy(remoteConn, localConn)
+				}()
+			}
 		}
+	}()
 
-		conn, err := sshConn.Dial("unix", "/var/run/docker.sock")
-		if err != nil {
-			sshConn.Close()
-			return nil, fmt.Errorf("Docker daemon connection failed: %w", err)
-		}
-		return conn, nil
-	}, nil
+	return localListener, nil
 }
 
 func (d *DockerExecutor) PullFile(ctx context.Context, remoteFilePath string, localFilePath string) error {

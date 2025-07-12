@@ -3,6 +3,7 @@ package executor
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -53,46 +54,44 @@ func TestDockerExecutor_Execute(t *testing.T) {
 		remoteHost := os.Getenv("TEST_REMOTE_HOST")
 		remoteUser := os.Getenv("TEST_REMOTE_USER")
 		remoteKey := os.Getenv("TEST_REMOTE_KEY")
-		remotePort := os.Getenv("TEST_REMOTE_PORT")
+		remotePortStr := os.Getenv("TEST_REMOTE_PORT")
 
 		if remoteHost == "" || remoteUser == "" || remoteKey == "" {
 			t.Skip("Skipping remote execution test: TEST_REMOTE_HOST, TEST_REMOTE_USER, and TEST_REMOTE_KEY must be set")
 		}
 
-		if remotePort == "" {
-			remotePort = "22"
-		}
-		port := 22
-		if _, err := os.Stat(remotePort); err == nil {
-			p, err := os.ReadFile(remotePort)
+		remotePort := 22
+		if remotePortStr != "" {
+			var err error
+			_, err = fmt.Sscanf(remotePortStr, "%d", &remotePort)
 			if err != nil {
-				t.Fatalf("failed to read port from file: %v", err)
-			}
-			_, err = os.Readlink(string(p))
-			if err != nil {
-				t.Fatalf("failed to readlink port: %v", err)
+				t.Fatalf("failed to parse remote port: %v", err)
 			}
 		}
 
 		// Create a mock execution context
 		config := DockerWithConfig{
-			Image:  "alpine:latest",
-			Script: `echo "MESSAGE=hello-remote" > $OUTPUT`,
+			Image:  "ubuntu:latest",
+			Script: `grep '^NAME=' /etc/os-release > $OUTPUT`,
 		}
 		withConfig, err := yaml.Marshal(config)
 		assert.NoError(t, err)
 
+		// Create buffers for stdout and stderr
+		stdoutBuf := new(bytes.Buffer)
+		stderrBuf := new(bytes.Buffer)
+
 		execCtx := ExecutionContext{
 			WithConfig: withConfig,
 			Inputs:     make(map[string]interface{}),
-			Stdout:     new(bytes.Buffer),
-			Stderr:     new(bytes.Buffer),
+			Stdout:     stdoutBuf,
+			Stderr:     stderrBuf,
 			Node: Node{
 				Hostname: remoteHost,
-				Port:     port,
+				Port:     remotePort,
 				Username: remoteUser,
 				Auth: NodeAuth{
-					Method: "password",
+					Method: "ssh_key",
 					Key:    remoteKey,
 				},
 			},
@@ -104,11 +103,14 @@ func TestDockerExecutor_Execute(t *testing.T) {
 		// Execute the executor
 		outputs, err := executor.Execute(context.Background(), execCtx)
 
+		t.Log("STDOUT:", stdoutBuf.String())
+		t.Log("STDERR:", stderrBuf.String())
+
 		// Assert that there is no error
 		assert.NoError(t, err)
 
 		// Assert the output
-		assert.Equal(t, "hello-remote", outputs["MESSAGE"])
+		assert.Equal(t, "Ubuntu", outputs["NAME"])
 		assert.Equal(t, "", execCtx.Stdout.(*bytes.Buffer).String())
 	})
 }
