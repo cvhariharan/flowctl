@@ -112,7 +112,11 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 	var exec executor.Executor
 	switch action.Executor {
 	case "docker":
-		exec = executor.NewDockerExecutor(action.ID, executor.DockerRunnerOptions{})
+		var err error
+		exec, err = executor.NewDockerExecutor(action.ID, executor.DockerRunnerOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create docker executor for action %s: %w", action.ID, err)
+		}
 	}
 
 	// pattern to extract interpolated variables

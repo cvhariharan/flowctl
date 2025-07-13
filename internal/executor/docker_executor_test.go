@@ -3,6 +3,7 @@ package executor
 import (
 	"bytes"
 	"context"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -30,7 +31,8 @@ func TestDockerExecutor_Execute(t *testing.T) {
 		}
 
 		// Create a new DockerExecutor
-		executor := NewDockerExecutor("test-local", DockerRunnerOptions{ShowImagePull: false, KeepContainer: true})
+		executor, err := NewDockerExecutor("test-local", DockerRunnerOptions{ShowImagePull: false, KeepContainer: true})
+		assert.NoError(t, err)
 
 		// Execute the executor
 		outputs, err := executor.Execute(context.Background(), execCtx)
@@ -88,7 +90,8 @@ func TestDockerExecutor_Execute(t *testing.T) {
 		}
 
 		// Create a new DockerExecutor
-		executor := NewDockerExecutor("test-remote", DockerRunnerOptions{ShowImagePull: false, KeepContainer: true})
+		executor, err := NewDockerExecutor("test-remote", DockerRunnerOptions{ShowImagePull: false, KeepContainer: true})
+		assert.NoError(t, err)
 
 		// Execute the executor
 		outputs, err := executor.Execute(context.Background(), execCtx)
@@ -100,4 +103,45 @@ func TestDockerExecutor_Execute(t *testing.T) {
 		assert.Equal(t, "Ubuntu", outputs["NAME"])
 		assert.Equal(t, "", execCtx.Stdout.(*bytes.Buffer).String())
 	})
+}
+
+// New test for artifact file handling
+func TestDockerExecutor_ArtifactFile(t *testing.T) {
+	artifactFile := "artifact_test.txt"
+	artifactContent := "artifact-content-123"
+
+	config := DockerWithConfig{
+		Image:  "alpine:latest",
+		Script: "echo '" + artifactContent + "' > " + artifactFile,
+	}
+	withConfig, err := yaml.Marshal(config)
+	assert.NoError(t, err)
+
+	execCtx := ExecutionContext{
+		WithConfig: withConfig,
+		Artifacts:  []string{artifactFile},
+		Inputs:     make(map[string]interface{}),
+		Stdout:     new(bytes.Buffer),
+		Stderr:     new(bytes.Buffer),
+		Node:       Node{},
+	}
+
+	executor, err := NewDockerExecutor("test-artifact", DockerRunnerOptions{ShowImagePull: false, KeepContainer: true})
+	assert.NoError(t, err)
+
+	_, err = executor.Execute(context.Background(), execCtx)
+	assert.NoError(t, err)
+
+	// Pull the artifact file from the container
+	localPath := "local_" + artifactFile
+	err = executor.PullFile(context.Background(), artifactFile, localPath)
+	assert.NoError(t, err)
+
+	// Read and check the contents
+	data, err := ioutil.ReadFile(localPath)
+	assert.NoError(t, err)
+	assert.Equal(t, artifactContent+"\n", string(data))
+
+	// Cleanup
+	_ = os.Remove(localPath)
 }
