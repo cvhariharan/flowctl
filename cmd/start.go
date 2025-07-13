@@ -236,8 +236,7 @@ func processYAMLFiles(rootDir string, store repo.Store) (map[string]models.Flow,
 			}
 
 			if err := f.Validate(); err != nil {
-				log.Printf("validation error in %s: %v", yamlPath, err)
-				continue
+				log.Fatalf("validation error in %s: %v", yamlPath, err)
 			}
 
 			// Set the source directory

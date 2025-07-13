@@ -1,4 +1,3 @@
-
 CREATE TYPE authentication_method AS ENUM (
     'ssh_key',
     'password'
@@ -14,6 +13,7 @@ CREATE TABLE IF NOT EXISTS credentials (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX idx_credentials_uuid ON credentials(uuid);
+CREATE UNIQUE INDEX idx_credentials_name ON credentials(name);
 
 CREATE TABLE IF NOT EXISTS nodes (
     id SERIAL PRIMARY KEY,

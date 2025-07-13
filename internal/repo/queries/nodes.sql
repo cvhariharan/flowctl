@@ -34,3 +34,18 @@ RETURNING *;
 
 -- name: DeleteNode :exec
 DELETE FROM nodes WHERE uuid = $1;
+
+-- name: GetNodeByName :one
+SELECT * FROM nodes WHERE name = $1;
+
+-- name: GetNodesByNames :many
+SELECT 
+    n.*,
+    c.uuid AS credential_uuid, 
+    c.name AS credential_name, 
+    c.private_key AS credential_private_key, 
+    c.password AS credential_password
+FROM nodes n
+LEFT JOIN credentials c ON n.credential_id = c.id
+WHERE n.name = ANY($1::text[])
+ORDER BY n.name;

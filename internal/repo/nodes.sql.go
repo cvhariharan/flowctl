@@ -7,6 +7,7 @@ package repo
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -68,6 +69,30 @@ func (q *Queries) DeleteNode(ctx context.Context, argUuid uuid.UUID) error {
 	return err
 }
 
+const getNodeByName = `-- name: GetNodeByName :one
+SELECT id, uuid, name, hostname, port, username, os_family, tags, auth_method, credential_id, created_at, updated_at FROM nodes WHERE name = $1
+`
+
+func (q *Queries) GetNodeByName(ctx context.Context, name string) (Node, error) {
+	row := q.db.QueryRowContext(ctx, getNodeByName, name)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.Name,
+		&i.Hostname,
+		&i.Port,
+		&i.Username,
+		&i.OsFamily,
+		pq.Array(&i.Tags),
+		&i.AuthMethod,
+		&i.CredentialID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getNodeByUUID = `-- name: GetNodeByUUID :one
 SELECT id, uuid, name, hostname, port, username, os_family, tags, auth_method, credential_id, created_at, updated_at FROM nodes WHERE uuid = $1
 `
@@ -90,6 +115,78 @@ func (q *Queries) GetNodeByUUID(ctx context.Context, argUuid uuid.UUID) (Node, e
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getNodesByNames = `-- name: GetNodesByNames :many
+SELECT 
+    n.id, n.uuid, n.name, n.hostname, n.port, n.username, n.os_family, n.tags, n.auth_method, n.credential_id, n.created_at, n.updated_at,
+    c.uuid AS credential_uuid, 
+    c.name AS credential_name, 
+    c.private_key AS credential_private_key, 
+    c.password AS credential_password
+FROM nodes n
+LEFT JOIN credentials c ON n.credential_id = c.id
+WHERE n.name = ANY($1::text[])
+ORDER BY n.name
+`
+
+type GetNodesByNamesRow struct {
+	ID                   int32                `db:"id" json:"id"`
+	Uuid                 uuid.UUID            `db:"uuid" json:"uuid"`
+	Name                 string               `db:"name" json:"name"`
+	Hostname             string               `db:"hostname" json:"hostname"`
+	Port                 int32                `db:"port" json:"port"`
+	Username             string               `db:"username" json:"username"`
+	OsFamily             string               `db:"os_family" json:"os_family"`
+	Tags                 []string             `db:"tags" json:"tags"`
+	AuthMethod           AuthenticationMethod `db:"auth_method" json:"auth_method"`
+	CredentialID         int32                `db:"credential_id" json:"credential_id"`
+	CreatedAt            time.Time            `db:"created_at" json:"created_at"`
+	UpdatedAt            time.Time            `db:"updated_at" json:"updated_at"`
+	CredentialUuid       uuid.NullUUID        `db:"credential_uuid" json:"credential_uuid"`
+	CredentialName       sql.NullString       `db:"credential_name" json:"credential_name"`
+	CredentialPrivateKey sql.NullString       `db:"credential_private_key" json:"credential_private_key"`
+	CredentialPassword   sql.NullString       `db:"credential_password" json:"credential_password"`
+}
+
+func (q *Queries) GetNodesByNames(ctx context.Context, dollar_1 []string) ([]GetNodesByNamesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getNodesByNames, pq.Array(dollar_1))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetNodesByNamesRow
+	for rows.Next() {
+		var i GetNodesByNamesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Name,
+			&i.Hostname,
+			&i.Port,
+			&i.Username,
+			&i.OsFamily,
+			pq.Array(&i.Tags),
+			&i.AuthMethod,
+			&i.CredentialID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CredentialUuid,
+			&i.CredentialName,
+			&i.CredentialPrivateKey,
+			&i.CredentialPassword,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listNodes = `-- name: ListNodes :many

@@ -85,6 +85,49 @@ func (c *Core) ResumeFlowExecution(ctx context.Context, execID string, actionID 
 	return nil
 }
 
+// getNodesByNames retrieves nodes by their names and returns a slice of models.Node
+// This is used as a lookup function for converting flows to task models
+func (c *Core) getNodesByNames(ctx context.Context, nodeNames []string) ([]models.Node, error) {
+	if len(nodeNames) == 0 {
+		return nil, nil
+	}
+
+	n, err := c.store.GetNodesByNames(ctx, nodeNames)
+	if err != nil {
+		return nil, fmt.Errorf("could not get nodes by names %v: %w", nodeNames, err)
+	}
+
+	var nodes []models.Node
+	for _, v := range n {
+		var key string
+		if v.AuthMethod == repo.AuthenticationMethod(models.AuthMethodSSHKey) {
+			key = v.CredentialPrivateKey.String
+		} else {
+			key = v.CredentialPassword.String
+		}
+		nodes = append(nodes, models.Node{
+			ID:       v.Uuid.String(),
+			Name:     v.Name,
+			Hostname: v.Hostname,
+			Port:     int(v.Port),
+			Username: v.Username,
+			OSFamily: v.OsFamily,
+			Tags:     v.Tags,
+			Auth: models.NodeAuth{
+				CredentialID: v.CredentialUuid.UUID.String(),
+				Method:       models.AuthMethod(v.AuthMethod),
+				Key:          key,
+			},
+		})
+	}
+
+	if len(nodes) == 0 {
+		return nil, fmt.Errorf("no nodes found for names %v", nodeNames)
+	}
+
+	return nodes, nil
+}
+
 // queueFlow adds a flow to the execution queue. If the actionIndex is not zero, it is moved to a resume queue.
 func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]interface{}, parentExecID string, actionIndex int, userUUID string) (string, error) {
 	execID := uuid.NewString()
@@ -96,7 +139,14 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 		return "", fmt.Errorf("user id is not a UUID: %w", err)
 	}
 
-	task, err := tasks.NewFlowExecution(models.ToTaskFlowModel(f), input, actionIndex, execID, parentExecID)
+	taskFlow, err := models.ToTaskFlowModel(f, func(nodeNames []string) ([]models.Node, error) {
+		return c.getNodesByNames(ctx, nodeNames)
+	})
+	if err != nil {
+		return "", fmt.Errorf("error converting flow to task model: %w", err)
+	}
+
+	task, err := tasks.NewFlowExecution(taskFlow, input, actionIndex, execID, parentExecID)
 	if err != nil {
 		return "", fmt.Errorf("error creating task: %v", err)
 	}

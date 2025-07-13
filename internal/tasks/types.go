@@ -13,6 +13,30 @@ const (
 	INPUT_TYPE_SLICE_FLOAT  InputType = "slice_float"
 )
 
+type AuthMethod string
+
+const (
+	AuthMethodSSHKey   AuthMethod = "ssh_key"
+	AuthMethodPassword AuthMethod = "password"
+)
+
+type Node struct {
+	ID       string
+	Name     string
+	Hostname string
+	Port     int
+	Username string
+	OSFamily string
+	Tags     []string
+	Auth     NodeAuth
+}
+
+type NodeAuth struct {
+	CredentialID string
+	Method       AuthMethod
+	Key          string
+}
+
 type Input struct {
 	Name        string    `yaml:"name" json:"name" validate:"required,alphanum_underscore"`
 	Type        InputType `yaml:"type" json:"type" validate:"required,oneof=string int float bool slice_string slice_int slice_uint slice_float"`
@@ -24,16 +48,15 @@ type Input struct {
 }
 
 type Action struct {
-	ID         string       `yaml:"id" validate:"required,alphanum_underscore"`
-	Name       string       `yaml:"name" validate:"required"`
-	Image      string       `yaml:"image" validate:"required"`
-	Src        string       `yaml:"src"`
-	Approval   ApprovalList `yaml:"approval"`
-	Variables  []Variable   `yaml:"variables"`
-	Script     []string     `yaml:"script"`
-	Entrypoint []string     `yaml:"entrypoint"`
-	Artifacts  []string     `yaml:"artifacts"`
-	Condition  string       `yaml:"condition"`
+	ID        string         `yaml:"id" validate:"required,alphanum_underscore"`
+	Name      string         `yaml:"name" validate:"required"`
+	Executor  string         `yaml:"executor" validate:"required,oneof=script docker"`
+	With      map[string]any `yaml:"with" validate:"required"`
+	Approval  ApprovalList   `yaml:"approval"`
+	Variables []Variable     `yaml:"variables"`
+	Artifacts []string       `yaml:"artifacts"`
+	Condition string         `yaml:"condition"`
+	On        []Node         `yaml:"on"`
 }
 
 type Metadata struct {

@@ -35,16 +35,15 @@ type Input struct {
 }
 
 type Action struct {
-	ID         string       `yaml:"id" validate:"required,alphanum_underscore"`
-	Name       string       `yaml:"name" validate:"required"`
-	Image      string       `yaml:"image" validate:"required"`
-	Src        string       `yaml:"src"`
-	Approval   ApprovalList `yaml:"approval"`
-	Variables  []Variable   `yaml:"variables"`
-	Script     []string     `yaml:"script"`
-	Entrypoint []string     `yaml:"entrypoint"`
-	Artifacts  []string     `yaml:"artifacts"`
-	Condition  string       `yaml:"condition"`
+	ID        string         `yaml:"id" validate:"required,alphanum_underscore"`
+	Name      string         `yaml:"name" validate:"required"`
+	Executor  string         `yaml:"executor" validate:"required,oneof=script docker"`
+	With      map[string]any `yaml:"with" validate:"required"`
+	Approval  ApprovalList   `yaml:"approval"`
+	Variables []Variable     `yaml:"variables"`
+	Artifacts []string       `yaml:"artifacts"`
+	Condition string         `yaml:"condition"`
+	On        []string       `yaml:"on"`
 }
 
 func TaskActionToAction(a tasks.Action) Action {
@@ -58,17 +57,21 @@ func TaskActionToAction(a tasks.Action) Action {
 		variables = append(variables, Variable(v))
 	}
 
+	var nodeNames []string
+	for _, node := range a.On {
+		nodeNames = append(nodeNames, node.Name)
+	}
+
 	return Action{
-		ID:         a.ID,
-		Name:       a.Name,
-		Image:      a.Image,
-		Src:        a.Src,
-		Approval:   approvalList,
-		Variables:  variables,
-		Script:     a.Script,
-		Entrypoint: a.Entrypoint,
-		Artifacts:  a.Artifacts,
-		Condition:  a.Condition,
+		ID:        a.ID,
+		Name:      a.Name,
+		With:      a.With,
+		On:        nodeNames,
+		Executor:  a.Executor,
+		Approval:  approvalList,
+		Variables: variables,
+		Artifacts: a.Artifacts,
+		Condition: a.Condition,
 	}
 }
 
@@ -125,12 +128,12 @@ func (f *FlowValidationError) Error() string {
 
 type Flow struct {
 	Meta    Metadata `yaml:"metadata" validate:"required"`
-	Inputs  []Input  `yaml:"inputs" validate:"required"`
-	Actions []Action `yaml:"actions" validate:"required"`
+	Inputs  []Input  `yaml:"inputs" validate:"required,dive"`
+	Actions []Action `yaml:"actions" validate:"required,dive"`
 	Outputs []Output `yaml:"outputs"`
 }
 
-func ToTaskFlowModel(f Flow) tasks.Flow {
+func ToTaskFlowModel(f Flow, nodeLookupFunc func(nodeNames []string) ([]Node, error)) (tasks.Flow, error) {
 	var ti []tasks.Input
 	for _, v := range f.Inputs {
 		ti = append(ti, tasks.Input{
@@ -152,17 +155,21 @@ func ToTaskFlowModel(f Flow) tasks.Flow {
 			tvs = append(tvs, tasks.Variable(val))
 		}
 
+		nodes, err := nodeLookupFunc(v.On)
+		if err != nil {
+			return tasks.Flow{}, fmt.Errorf("error looking up nodes for action %s: %w", v.ID, err)
+		}
+
 		ta = append(ta, tasks.Action{
-			ID:         v.ID,
-			Name:       v.Name,
-			Image:      v.Image,
-			Src:        v.Src,
-			Approval:   tasks.ApprovalList(v.Approval),
-			Variables:  tvs,
-			Script:     v.Script,
-			Entrypoint: v.Entrypoint,
-			Artifacts:  v.Artifacts,
-			Condition:  v.Condition,
+			ID:        v.ID,
+			Name:      v.Name,
+			With:      v.With,
+			On:        NodesToTaskNodesModel(nodes),
+			Executor:  v.Executor,
+			Approval:  tasks.ApprovalList(v.Approval),
+			Variables: tvs,
+			Artifacts: v.Artifacts,
+			Condition: v.Condition,
 		})
 	}
 
@@ -178,7 +185,28 @@ func ToTaskFlowModel(f Flow) tasks.Flow {
 		Outputs: to,
 	}
 
-	return tf
+	return tf, nil
+}
+
+func NodesToTaskNodesModel(nodes []Node) []tasks.Node {
+	var tn []tasks.Node
+	for _, n := range nodes {
+		tn = append(tn, tasks.Node{
+			ID:       n.ID,
+			Name:     n.Name,
+			Hostname: n.Hostname,
+			Port:     n.Port,
+			Username: n.Username,
+			OSFamily: n.OSFamily,
+			Tags:     n.Tags,
+			Auth: tasks.NodeAuth{
+				CredentialID: n.Auth.CredentialID,
+				Method:       tasks.AuthMethod(n.Auth.Method),
+				Key:          n.Auth.Key,
+			},
+		})
+	}
+	return tn
 }
 
 func AlphanumericUnderscore(fl validator.FieldLevel) bool {

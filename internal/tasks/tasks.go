@@ -5,18 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"time"
 
+	"github.com/cvhariharan/autopilot/internal/executor"
 	"github.com/cvhariharan/autopilot/internal/runner"
 	"github.com/cvhariharan/autopilot/internal/streamlogger"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/expr-lang/expr"
-	"github.com/hashicorp/go-envparse"
 	"github.com/hibiken/asynq"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -111,15 +109,11 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 }
 
 func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string, input map[string]interface{}, streamlogger *streamlogger.StreamLogger) (map[string]string, error) {
-	// Create temp file for outputs
-	outfile, err := os.CreateTemp("", fmt.Sprintf("output-action-%s-*", action.ID))
-	if err != nil {
-		return nil, fmt.Errorf("could not create tmp file for storing action %s outputs: %w", action.ID, err)
+	var exec executor.Executor
+	switch action.Executor {
+	case "docker":
+		exec = executor.NewDockerExecutor(action.ID, executor.DockerRunnerOptions{})
 	}
-	defer func() {
-		outfile.Close()
-		os.Remove(outfile.Name())
-	}()
 
 	// pattern to extract interpolated variables
 	pattern := `{{\s*([^}]+)\s*}}`
@@ -129,7 +123,8 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 	defer cancel()
 
 	// Iterate over all the flow variables execute variable interpolation if required
-	for i, variable := range action.Variables {
+	inputVars := make(map[string]interface{})
+	for _, variable := range action.Variables {
 		matches := re.FindAllStringSubmatch(variable.Value(), -1)
 		if len(matches) > 0 {
 			inputExpr := matches[0][1]
@@ -148,50 +143,20 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 				return nil, fmt.Errorf("failed to run expression: %w", err)
 			}
 
-			action.Variables[i][action.Variables[i].Name()] = output
+			inputVars[variable.Name()] = output
 		}
 	}
 
-	// Add output env variable
-	action.Variables = append(action.Variables, map[string]interface{}{"OUTPUT": "/tmp/flow/output"})
-
-	var vars []map[string]any
-	for _, v := range action.Variables {
-		vars = append(vars, v)
-	}
-
-	err = runner.NewDockerRunner(action.ID, r.artifactManager, runner.DockerRunnerOptions{
-		ShowImagePull: true,
-		Stdout:        streamlogger,
-		Stderr:        streamlogger,
-	}).CreatesArtifacts(action.Artifacts).
-		WithImage(action.Image).
-		WithCmd(action.Script).
-		WithEnv(vars).
-		WithEntrypoint(action.Entrypoint).
-		// copy the files from flow directory
-		WithSrc(filepath.Join(viper.GetString("app.flows_directory"), srcdir)).
-		// Output file
-		WithMount(mount.Mount{
-			Type:   mount.TypeBind,
-			Source: outfile.Name(),
-			Target: "/tmp/flow/output",
-		}).
-		Run(jobCtx)
+	withConfig, err := yaml.Marshal(action.With)
 	if err != nil {
-		return nil, fmt.Errorf("failed to run docker runner: %w", err)
+		return nil, fmt.Errorf("failed to marshal 'with' config: %w", err)
 	}
 
-	// Parse output file env
-	outputTempFile, err := os.Open(outfile.Name())
-	if err != nil {
-		return nil, fmt.Errorf("error opening output file for reading: %w", err)
-	}
-
-	outputEnv, err := envparse.Parse(outputTempFile)
-	if err != nil {
-		return nil, fmt.Errorf("could not load output env: %w", err)
-	}
-
-	return outputEnv, nil
+	return exec.Execute(jobCtx, executor.ExecutionContext{
+		Inputs:     inputVars,
+		WithConfig: withConfig,
+		Artifacts:  action.Artifacts,
+		Stdout:     streamlogger,
+		Stderr:     streamlogger,
+	})
 }
