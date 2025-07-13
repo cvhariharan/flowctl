@@ -157,7 +157,6 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx ExecutionContext) 
 		if err != nil {
 			return nil, fmt.Errorf("failed to get remote client: %w", err)
 		}
-		defer remoteClient.Close()
 	}
 	d.remoteClient = remoteClient
 
@@ -169,22 +168,9 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx ExecutionContext) 
 
 	d.client = cli
 
-	var tempFile string
-	if d.remoteClient != nil {
-		// create temporary file on the remote machine
-		fileName, err := d.remoteClient.RunCommand("mktemp")
-		if err != nil {
-			return nil, fmt.Errorf("failed to create temporary file on remote: %w", err)
-		}
-		tempFile = strings.TrimSpace(fileName)
-	} else {
-		// create a temporary file on the local machine
-		f, err := os.CreateTemp("/tmp", "docker-executor-*")
-		if err != nil {
-			return nil, fmt.Errorf("failed to create temporary file: %w", err)
-		}
-		defer os.Remove(f.Name())
-		tempFile = f.Name()
+	tempFile, err := d.createTemp("docker-executor-output", false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file for output: %w", err)
 	}
 
 	d.mounts = append(d.mounts, mount.Mount{
@@ -347,12 +333,38 @@ func (d *DockerExecutor) getArtifactsFromContainer(ctx context.Context, containe
 		}
 		defer artifactFile.Close()
 
-		if err := archive.Untar(tar, filepath.Join(d.artifactsDirectory, PULL_DIR, filepath.Clean(f)), &archive.TarOptions{}); err != nil {
+		if err := archive.Untar(tar, filepath.Join(d.artifactsDirectory, PULL_DIR), &archive.TarOptions{
+			NoLchown: true,
+		}); err != nil {
 			return fmt.Errorf("unable to untar artifact %s: %v", f, err)
 		}
 	}
 
 	return nil
+}
+
+// createTemp creates a temporary directory or file, handling local and remote execution.
+func (d *DockerExecutor) createTemp(name string, dir bool) (string, error) {
+	if d.remoteClient == nil {
+		if dir {
+			return os.MkdirTemp("", fmt.Sprintf("%s-%s-*", name, d.name))
+		}
+		f, err := os.CreateTemp("", fmt.Sprintf("%s-%s-*", name, d.name))
+		if err != nil {
+			return "", err
+		}
+		return f.Name(), nil
+	}
+
+	cmd := "mktemp"
+	if dir {
+		cmd = "mktemp -d"
+	}
+	path, err := d.remoteClient.RunCommand(cmd)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(path), nil
 }
 
 func (d *DockerExecutor) createSrcDirectories(ctx context.Context, cli *client.Client) error {
@@ -532,5 +544,13 @@ func (d *DockerExecutor) PullFile(ctx context.Context, remoteFilePath string, lo
 	if err := d.remoteClient.Download(srcFile, localFilePath); err != nil {
 		return fmt.Errorf("failed to download file from remote path %s to local path %s: %w", srcFile, localFilePath, err)
 	}
+	return nil
+}
+
+func (d *DockerExecutor) Close() error {
+	if d.remoteClient != nil {
+		return d.remoteClient.Close()
+	}
+
 	return nil
 }

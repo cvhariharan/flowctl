@@ -118,6 +118,7 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 			return nil, fmt.Errorf("failed to create docker executor for action %s: %w", action.ID, err)
 		}
 	}
+	defer exec.Close()
 
 	// pattern to extract interpolated variables
 	pattern := `{{\s*([^}]+)\s*}}`

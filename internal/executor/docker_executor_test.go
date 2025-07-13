@@ -145,3 +145,63 @@ func TestDockerExecutor_ArtifactFile(t *testing.T) {
 	// Cleanup
 	_ = os.Remove(localPath)
 }
+
+func TestDockerExecutor_Remote_ArtifactFile(t *testing.T) {
+	remoteHost := os.Getenv("TEST_REMOTE_HOST")
+	remoteUser := os.Getenv("TEST_REMOTE_USER")
+	remoteKey := os.Getenv("TEST_REMOTE_KEY")
+
+	if remoteHost == "" || remoteUser == "" || remoteKey == "" {
+		t.Skip("Skipping remote execution test: TEST_REMOTE_HOST, TEST_REMOTE_USER, and TEST_REMOTE_KEY must be set")
+	}
+
+	remotePort := 22
+
+	artifactFile := "artifact_test.txt"
+	artifactContent := "artifact-content-123"
+
+	config := DockerWithConfig{
+		Image:  "alpine:latest",
+		Script: "echo '" + artifactContent + "' > " + artifactFile,
+	}
+	withConfig, err := yaml.Marshal(config)
+	assert.NoError(t, err)
+
+	execCtx := ExecutionContext{
+		WithConfig: withConfig,
+		Artifacts:  []string{artifactFile},
+		Inputs:     make(map[string]interface{}),
+		Stdout:     new(bytes.Buffer),
+		Stderr:     new(bytes.Buffer),
+		Node: Node{
+			Hostname: remoteHost,
+			Port:     remotePort,
+			Username: remoteUser,
+			Auth: NodeAuth{
+				Method: "ssh_key",
+				Key:    remoteKey,
+			},
+		},
+	}
+
+	executor, err := NewDockerExecutor("test-artifact", DockerRunnerOptions{ShowImagePull: false, KeepContainer: true})
+	assert.NoError(t, err)
+
+	_, err = executor.Execute(context.Background(), execCtx)
+	assert.NoError(t, err)
+
+	// Pull the artifact file from the container
+	localPath := "local_" + artifactFile
+	err = executor.PullFile(context.Background(), artifactFile, localPath)
+	assert.NoError(t, err)
+
+	// Read and check the contents
+	data, err := ioutil.ReadFile(localPath)
+	assert.NoError(t, err)
+	assert.Equal(t, artifactContent+"\n", string(data))
+
+	// Cleanup
+	_ = os.Remove(localPath)
+
+	executor.Close()
+}
