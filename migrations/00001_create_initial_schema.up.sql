@@ -145,3 +145,47 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 CREATE INDEX idx_sessions ON sessions (id, created_at);
+
+CREATE TYPE authentication_method AS ENUM (
+    'ssh_key',
+    'password'
+);
+
+CREATE TABLE IF NOT EXISTS credentials (
+    id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
+    name VARCHAR(150) NOT NULL,
+    private_key TEXT,
+    password TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX idx_credentials_uuid ON credentials(uuid);
+CREATE UNIQUE INDEX idx_credentials_name ON credentials(name);
+
+CREATE TABLE IF NOT EXISTS auth_configs (
+    id SERIAL PRIMARY KEY,
+    node_id INTEGER NOT NULL,
+    credential_id INTEGER NOT NULL,
+    username VARCHAR(150) NOT NULL,
+    auth_method authentication_method NOT NULL DEFAULT 'ssh_key',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE,
+    FOREIGN KEY (credential_id) REFERENCES credentials(id) ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX idx_auth_configs_node_credential ON auth_configs(node_id, credential_id);
+
+CREATE TABLE IF NOT EXISTS nodes (
+    id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
+    name VARCHAR(150) NOT NULL,
+    hostname VARCHAR(255) NOT NULL,
+    port INTEGER NOT NULL DEFAULT 22,
+    os_family VARCHAR(50) NOT NULL,
+    tags TEXT[],
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX idx_nodes_uuid ON nodes(uuid);
+CREATE UNIQUE INDEX idx_nodes_name ON nodes(name);
