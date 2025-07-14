@@ -1,0 +1,27 @@
+type: http_request
+model: http_request
+id: rq_P9Qr2smaGJ
+createdAt: 2025-07-14T08:42:12.087460680
+updatedAt: 2025-07-14T09:49:02.987561124
+workspaceId: wk_f7os23Vq2X
+folderId: null
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "name": "testkey-1",
+      "password": "password"
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: 0yggZXbN5z
+method: POST
+name: Create Credential
+sortPriority: 1000.0
+url: http://localhost:7000/api/v1/credentials
+urlParameters: []

@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_TRqyU5dX9W
+createdAt: 2025-07-14T08:49:34.170350577
+updatedAt: 2025-07-14T09:49:02.993848219
+workspaceId: wk_f7os23Vq2X
+folderId: null
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: List Credentials
+sortPriority: 3000.0
+url: http://localhost:7000/api/v1/credentials
+urlParameters: []

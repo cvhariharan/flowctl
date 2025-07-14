@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 
 	"github.com/cvhariharan/autopilot/internal/core/models"
@@ -24,15 +25,30 @@ func (c *Core) CreateCredential(ctx context.Context, cred *models.Credential) (*
 		return nil, errors.New("only one of password or private key can be set at a time")
 	}
 
+	var encryptedPassword, encryptedPrivateKey string
+	if cred.Password != "" {
+		enc, err := c.keeper.Encrypt(ctx, []byte(cred.Password))
+		if err != nil {
+			return nil, err
+		}
+		encryptedPassword = hex.EncodeToString(enc)
+	} else if cred.PrivateKey != "" {
+		enc, err := c.keeper.Encrypt(ctx, []byte(cred.PrivateKey))
+		if err != nil {
+			return nil, err
+		}
+		encryptedPrivateKey = hex.EncodeToString(enc)
+	}
+
 	created, err := c.store.CreateCredential(ctx, repo.CreateCredentialParams{
 		Name: cred.Name,
 		PrivateKey: sql.NullString{
-			String: cred.PrivateKey,
-			Valid:  cred.PrivateKey != "",
+			String: encryptedPrivateKey,
+			Valid:  encryptedPrivateKey != "",
 		},
 		Password: sql.NullString{
-			String: cred.Password,
-			Valid:  cred.Password != "",
+			String: encryptedPassword,
+			Valid:  encryptedPassword != "",
 		},
 	})
 	if err != nil {
@@ -109,16 +125,31 @@ func (c *Core) UpdateCredential(ctx context.Context, id string, cred *models.Cre
 		return nil, err
 	}
 
+	var encryptedPassword, encryptedPrivateKey string
+	if cred.Password != "" {
+		enc, err := c.keeper.Encrypt(ctx, []byte(cred.Password))
+		if err != nil {
+			return nil, err
+		}
+		encryptedPassword = hex.EncodeToString(enc)
+	} else if cred.PrivateKey != "" {
+		enc, err := c.keeper.Encrypt(ctx, []byte(cred.PrivateKey))
+		if err != nil {
+			return nil, err
+		}
+		encryptedPrivateKey = hex.EncodeToString(enc)
+	}
+
 	updated, err := c.store.UpdateCredential(ctx, repo.UpdateCredentialParams{
 		Uuid: uuidID,
 		Name: cred.Name,
 		PrivateKey: sql.NullString{
-			String: cred.PrivateKey,
-			Valid:  cred.PrivateKey != "",
+			String: encryptedPrivateKey,
+			Valid:  encryptedPrivateKey != "",
 		},
 		Password: sql.NullString{
-			String: cred.Password,
-			Valid:  cred.Password != "",
+			String: encryptedPassword,
+			Valid:  encryptedPassword != "",
 		},
 	})
 	if err != nil {

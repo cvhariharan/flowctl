@@ -1,0 +1,35 @@
+type: http_request
+model: http_request
+id: rq_9vbT6wmstn
+createdAt: 2025-07-14T09:48:37.928067785
+updatedAt: 2025-07-14T10:09:03.216250403
+workspaceId: wk_f7os23Vq2X
+folderId: null
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "name": "TestNode",
+      "hostname": "10.20.30.100",
+      "port": 22,
+      "username": "apprunner",
+      "os_family": "linux",
+      "tags": [],
+      "auth": {
+        "method": "password",
+        "credential_id": "45aa82e7-0956-485a-8112-75bcfe7ea911"
+      }
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: PntwsSFnWb
+method: POST
+name: Create Node
+sortPriority: 6000.0
+url: http://localhost:7000/api/v1/nodes
+urlParameters: []

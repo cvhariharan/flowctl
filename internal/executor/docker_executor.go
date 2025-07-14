@@ -113,11 +113,6 @@ func (d *DockerExecutor) withCredentials(username, password string) *DockerExecu
 	return d
 }
 
-func (d *DockerExecutor) withMount(m mount.Mount) *DockerExecutor {
-	d.mounts = append(d.mounts, m)
-	return d
-}
-
 func (d *DockerExecutor) Execute(ctx context.Context, execCtx ExecutionContext) (map[string]string, error) {
 	var config DockerWithConfig
 	if err := yaml.Unmarshal(execCtx.WithConfig, &config); err != nil {

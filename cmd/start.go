@@ -26,6 +26,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gocloud.dev/secrets"
+	_ "gocloud.dev/secrets/localsecrets"
 	"gopkg.in/yaml.v3"
 )
 
@@ -68,14 +70,26 @@ func start(isWorker bool) {
 	})
 	defer redisClient.Close()
 
+	// Initialize secret keeper
+	keeperURL := viper.GetString("app.keystore.keeper_url")
+	if keeperURL == "" {
+		log.Fatal("app.keystore.keeper_url is not set")
+	}
+
+	keeper, err := secrets.OpenKeeper(context.Background(), keeperURL)
+	if err != nil {
+		log.Fatalf("could not open secrets keeper: %v", err)
+	}
+	defer keeper.Close()
+
 	if isWorker {
-		startWorker(db, redisClient, logger)
+		startWorker(db, redisClient, logger, keeper)
 	} else {
-		startServer(db, redisClient, logger)
+		startServer(db, redisClient, logger, keeper)
 	}
 }
 
-func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Logger) {
+func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Logger, keeper *secrets.Keeper) {
 	asynqClient := asynq.NewClientFromRedisClient(redisClient)
 	defer asynqClient.Close()
 
@@ -86,7 +100,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 		log.Fatal(err)
 	}
 
-	co := core.NewCore(flows, s, asynqClient, redisClient)
+	co := core.NewCore(flows, s, asynqClient, redisClient, keeper)
 
 	h, err := handlers.NewHandler(logger, db.DB, co, handlers.OIDCAuthConfig{
 		Issuer:       viper.GetString("app.oidc.issuer"),
@@ -283,7 +297,7 @@ func processYAMLFiles(rootDir string, store repo.Store) (map[string]models.Flow,
 	return m, nil
 }
 
-func startWorker(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Logger) {
+func startWorker(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Logger, keeper *secrets.Keeper) {
 	asynqClient := asynq.NewClientFromRedisClient(redisClient)
 	defer asynqClient.Close()
 
@@ -301,7 +315,7 @@ func startWorker(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 		log.Fatal(err)
 	}
 
-	core := core.NewCore(flows, s, asynqClient, redisClient)
+	core := core.NewCore(flows, s, asynqClient, redisClient, keeper)
 
 	flowLogger := streamlogger.NewStreamLogger(redisClient)
 	flowRunner := tasks.NewFlowRunner(flowLogger, runner.NewDockerArtifactsManager("./artifacts"), core.BeforeActionHook, nil)

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"crypto/rand"
-	"encoding/hex"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
@@ -72,9 +72,16 @@ func init() {
 	viper.SetDefault("app.http_tls_key", "server_key.pem")
 	viper.SetDefault("app.flows_directory", "flows")
 
-	key := make([]byte, 16)
+	// Generate a random key for credentials key store, use localkeeper as default
+	viper.SetDefault("app.keystore.keeper_url", fmt.Sprintf("base64key://%s", genKey(32)))
+
+	viper.SetDefault("app.secure_cookie_key", genKey(16))
+}
+
+func genKey(bytes int) string {
+	key := make([]byte, bytes)
 	if _, err := rand.Read(key); err != nil {
 		log.Fatalf("could not generate random key for securecookie encryption: %v", err)
 	}
-	viper.SetDefault("app.secure_cookie_key", hex.EncodeToString(key))
+	return base64.StdEncoding.EncodeToString(key)
 }

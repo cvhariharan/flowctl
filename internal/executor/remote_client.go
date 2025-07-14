@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/melbahja/goph"
+	"golang.org/x/crypto/ssh"
 )
 
 // RemoteClient defines an interface for interacting with a remote machine.
@@ -45,7 +46,15 @@ func NewRemoteClient(node Node) (RemoteClient, error) {
 		return nil, fmt.Errorf("unsupported auth method: %s", node.Auth.Method)
 	}
 
-	client, err := goph.New(node.Username, node.Hostname, auth)
+	client, err := goph.NewConn(
+		&goph.Config{
+			User:     node.Username,
+			Addr:     node.Hostname,
+			Port:     uint(node.Port),
+			Auth:     auth,
+			Callback: ssh.InsecureIgnoreHostKey(),
+		},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create goph client: %w", err)
 	}

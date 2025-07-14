@@ -1,0 +1,14 @@
+type: workspace
+model: workspace
+id: wk_f7os23Vq2X
+createdAt: 2025-07-14T08:34:57.998596240
+updatedAt: 2025-07-14T08:34:57.998597504
+authentication: {}
+authenticationType: null
+description: ''
+headers: []
+name: autopilot
+encryptionKeyChallenge: null
+settingValidateCertificates: true
+settingFollowRedirects: true
+settingRequestTimeout: 0

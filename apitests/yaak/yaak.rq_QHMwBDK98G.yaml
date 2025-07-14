@@ -1,0 +1,27 @@
+type: http_request
+model: http_request
+id: rq_QHMwBDK98G
+createdAt: 2025-07-14T09:49:00.344896245
+updatedAt: 2025-07-14T09:49:28.773987643
+workspaceId: wk_f7os23Vq2X
+folderId: null
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "name": "testkey-1",
+      "password": "password1"
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: 0yggZXbN5z
+method: PUT
+name: Update Credential
+sortPriority: 2000.0
+url: http://localhost:7000/api/v1/credentials/0788d765-8952-4878-99ed-42797ea273dc
+urlParameters: []

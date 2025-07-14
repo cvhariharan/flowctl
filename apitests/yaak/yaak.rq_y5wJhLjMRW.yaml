@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_y5wJhLjMRW
+createdAt: 2025-07-14T09:53:31.625492737
+updatedAt: 2025-07-14T09:53:41.650767471
+workspaceId: wk_f7os23Vq2X
+folderId: null
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: List Nodes
+sortPriority: 5999.9998
+url: http://localhost:7000/api/v1/nodes
+urlParameters: []

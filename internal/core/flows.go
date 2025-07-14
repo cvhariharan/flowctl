@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -106,6 +107,18 @@ func (c *Core) getNodesByNames(ctx context.Context, nodeNames []string) ([]model
 		} else {
 			key = v.CredentialPassword.String
 		}
+
+		// decrypt the key
+		dKey, err := hex.DecodeString(key)
+		if err != nil {
+			return nil, fmt.Errorf("could not decode key for node %s: %w", v.Name, err)
+		}
+
+		decryptedKey, err := c.keeper.Decrypt(ctx, []byte(dKey))
+		if err != nil {
+			return nil, fmt.Errorf("could not decrypt key for node %s: %w", v.Name, err)
+		}
+
 		nodes = append(nodes, models.Node{
 			ID:       v.Uuid.String(),
 			Name:     v.Name,
@@ -117,7 +130,7 @@ func (c *Core) getNodesByNames(ctx context.Context, nodeNames []string) ([]model
 			Auth: models.NodeAuth{
 				CredentialID: v.CredentialUuid.UUID.String(),
 				Method:       models.AuthMethod(v.AuthMethod),
-				Key:          key,
+				Key:          string(decryptedKey),
 			},
 		})
 	}

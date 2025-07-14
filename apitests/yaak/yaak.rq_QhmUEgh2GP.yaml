@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_QhmUEgh2GP
+createdAt: 2025-07-14T09:48:19.095647611
+updatedAt: 2025-07-14T09:49:03.000128299
+workspaceId: wk_f7os23Vq2X
+folderId: null
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: DELETE
+name: Delete Credential
+sortPriority: 5000.0
+url: http://localhost:7000/api/v1/credentials/0788d765-8952-4878-99ed-42797ea273dc
+urlParameters: []
