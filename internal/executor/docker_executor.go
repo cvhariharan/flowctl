@@ -289,33 +289,69 @@ func (d *DockerExecutor) run(ctx context.Context, execCtx ExecutionContext) erro
 }
 
 func (d *DockerExecutor) copyArtifactsToContainer(ctx context.Context, containerID string) error {
-	tar, err := archive.TarWithOptions(filepath.Join(d.artifactsDirectory, PUSH_DIR), &archive.TarOptions{})
-	if err != nil {
-		return err
+	if d.remoteClient == nil {
+		// Local execution - existing logic
+		tar, err := archive.TarWithOptions(filepath.Join(d.artifactsDirectory, PUSH_DIR), &archive.TarOptions{})
+		if err != nil {
+			return err
+		}
+
+		if err := d.client.CopyToContainer(ctx, containerID, WORKING_DIR, tar, container.CopyToContainerOptions{}); err != nil {
+			return fmt.Errorf("unable to copy artifacts directory to container: %v", err)
+		}
+		return nil
 	}
 
-	// Create the artifacts directory in the container
-	if err := d.client.CopyToContainer(ctx, containerID, WORKING_DIR, tar, container.CopyToContainerOptions{}); err != nil {
-		return fmt.Errorf("unable to copy artifacts directory to container: %v", err)
+	// Remote execution - execute docker cp directly on remote machine
+	pushDir := filepath.Join(d.artifactsDirectory, PUSH_DIR)
+
+	// Use docker cp to copy from remote filesystem to container
+	// First, create a tar and pipe it directly to docker cp
+	dockerCpCmd := fmt.Sprintf("cd %s && tar -c . | docker cp - %s:%s", pushDir, containerID, WORKING_DIR)
+
+	if _, err := d.remoteClient.RunCommand(dockerCpCmd); err != nil {
+		return fmt.Errorf("failed to copy artifacts to container via docker cp: %v", err)
 	}
+
 	return nil
 }
 
 func (d *DockerExecutor) getArtifactsFromContainer(ctx context.Context, containerID string, artifacts []string) error {
 	for _, f := range artifacts {
-		tar, _, err := d.client.CopyFromContainer(ctx, containerID, filepath.Join(WORKING_DIR, filepath.Clean(f)))
-		if err != nil {
-			return fmt.Errorf("unable to copy artifact %s from container: %v", f, err)
-		}
-		defer tar.Close()
+		if d.remoteClient == nil {
+			// Local execution - existing logic
+			tar, _, err := d.client.CopyFromContainer(ctx, containerID, filepath.Join(WORKING_DIR, filepath.Clean(f)))
+			if err != nil {
+				return fmt.Errorf("unable to copy artifact %s from container: %v", f, err)
+			}
+			defer tar.Close()
 
-		// create artifact file
-		if err := d.createFileOrDirectory(filepath.Join(d.artifactsDirectory, PULL_DIR, f), false); err != nil {
-			return fmt.Errorf("unable to create artifact file %s: %v", f, err)
-		}
+			if err := d.createFileOrDirectory(filepath.Join(d.artifactsDirectory, PULL_DIR, f), false); err != nil {
+				return fmt.Errorf("unable to create artifact file %s: %v", f, err)
+			}
 
-		if err := archive.Untar(tar, filepath.Join(d.artifactsDirectory, PULL_DIR), &archive.TarOptions{}); err != nil {
-			return fmt.Errorf("unable to untar artifact %s: %v", f, err)
+			if err := archive.Untar(tar, filepath.Join(d.artifactsDirectory, PULL_DIR), &archive.TarOptions{
+				NoLchown: true,
+			}); err != nil {
+				return fmt.Errorf("unable to untar artifact %s: %v", f, err)
+			}
+		} else {
+			// Remote execution - execute docker cp directly on remote machine
+			artifactDir := filepath.Join(d.artifactsDirectory, PULL_DIR, filepath.Dir(f))
+			if err := d.createFileOrDirectory(artifactDir, true); err != nil {
+				return fmt.Errorf("unable to create artifact directory %s: %v", artifactDir, err)
+			}
+
+			// Use docker cp to copy from container to remote filesystem
+			containerPath := filepath.Join(WORKING_DIR, filepath.Clean(f))
+			remotePath := filepath.Join(d.artifactsDirectory, PULL_DIR, f)
+
+			dockerCpCmd := fmt.Sprintf("docker cp %s:%s - | tar -xf - -C %s",
+				containerID, containerPath, filepath.Dir(remotePath))
+
+			if _, err := d.remoteClient.RunCommand(dockerCpCmd); err != nil {
+				return fmt.Errorf("failed to copy artifact %s from container via docker cp: %v", f, err)
+			}
 		}
 	}
 
