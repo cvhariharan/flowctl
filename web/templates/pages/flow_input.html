@@ -64,7 +64,7 @@
                 });
 
                 try {
-                    const response = await fetch(`/api/v1/trigger/${flowId}`, {
+                    const response = await fetch(`/api/v1/{{ .Page.Namespace }}/trigger/${flowId}`, {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json',

@@ -1,8 +1,8 @@
 type: http_request
 model: http_request
-id: rq_TRqyU5dX9W
-createdAt: 2025-07-14T08:49:34.170350577
-updatedAt: 2025-07-15T07:32:51.724591766
+id: rq_FNUNAEj8Jh
+createdAt: 2025-07-15T07:29:26.169538232
+updatedAt: 2025-07-15T07:29:43.346497156
 workspaceId: wk_f7os23Vq2X
 folderId: null
 authentication: {}
@@ -12,7 +12,7 @@ bodyType: null
 description: ''
 headers: []
 method: GET
-name: List Credentials
-sortPriority: 3000.0
-url: http://localhost:7000/api/v1/test/credentials
+name: List Namespaces
+sortPriority: 8999.9999
+url: http://localhost:7000/api/v1/namespaces
 urlParameters: []

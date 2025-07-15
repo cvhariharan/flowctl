@@ -4,10 +4,11 @@
 {{ if not .Page.ErrMessage }}
 <div class="flex h-screen flex-col justify-start items-center bg-gray-900">
     <p class="font-bold text-5xl p-10 text-white">Autopilot</p>
+    {{ $namespace := .Page.Namespace }}
     {{ range $_, $v := .Flows }}
     <div
         x-data
-        x-on:click="window.location.href = '/view/{{ $v.Meta.ID }}'"
+        x-on:click="window.location.href = '/view/{{ $namespace }}/{{ $v.Meta.ID }}'"
         class="w-full max-w-md mx-auto my-3 bg-gray-800 border border-gray-700 rounded-lg shadow hover:shadow-md transition-all duration-200 cursor-pointer"
     >
         <div class="p-6">

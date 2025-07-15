@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_DFn8abmX2n
+createdAt: 2025-07-15T07:29:46.234609989
+updatedAt: 2025-07-15T07:30:00.354644883
+workspaceId: wk_f7os23Vq2X
+folderId: null
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Get Namespace
+sortPriority: 8999.999800000001
+url: http://localhost:7000/api/v1/namespaces/3a534772-4b87-435a-afca-ab4588867e5d
+urlParameters: []

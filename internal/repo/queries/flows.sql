@@ -14,7 +14,7 @@ INSERT INTO flows (
     checksum,
     namespace_id
 ) VALUES (
-    $1, $2, $3, $4, (SELECT id FROM namespaces WHERE namespaces.uuid = $5)
+    $1, $2, $3, $4, (SELECT id FROM namespaces WHERE namespaces.name = $5)
 ) RETURNING *;
 
 -- name: UpdateFlow :one
@@ -23,7 +23,7 @@ UPDATE flows SET
     description = $2,
     checksum = $3,
     updated_at = NOW()
-WHERE slug = $4 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $5)
+WHERE slug = $4 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.name = $5)
 RETURNING *;
 
 -- name: GetFlowsByNamespace :many

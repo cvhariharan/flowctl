@@ -21,7 +21,7 @@ INSERT INTO flows (
     checksum,
     namespace_id
 ) VALUES (
-    $1, $2, $3, $4, (SELECT id FROM namespaces WHERE namespaces.uuid = $5)
+    $1, $2, $3, $4, (SELECT id FROM namespaces WHERE namespaces.name = $5)
 ) RETURNING id, slug, name, checksum, description, created_at, updated_at, namespace_id
 `
 
@@ -30,7 +30,7 @@ type CreateFlowParams struct {
 	Name        string         `db:"name" json:"name"`
 	Description sql.NullString `db:"description" json:"description"`
 	Checksum    string         `db:"checksum" json:"checksum"`
-	Uuid        uuid.UUID      `db:"uuid" json:"uuid"`
+	Name_2      string         `db:"name_2" json:"name_2"`
 }
 
 func (q *Queries) CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, error) {
@@ -39,7 +39,7 @@ func (q *Queries) CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, e
 		arg.Name,
 		arg.Description,
 		arg.Checksum,
-		arg.Uuid,
+		arg.Name_2,
 	)
 	var i Flow
 	err := row.Scan(
@@ -227,7 +227,7 @@ UPDATE flows SET
     description = $2,
     checksum = $3,
     updated_at = NOW()
-WHERE slug = $4 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $5)
+WHERE slug = $4 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.name = $5)
 RETURNING id, slug, name, checksum, description, created_at, updated_at, namespace_id
 `
 
@@ -236,7 +236,7 @@ type UpdateFlowParams struct {
 	Description sql.NullString `db:"description" json:"description"`
 	Checksum    string         `db:"checksum" json:"checksum"`
 	Slug        string         `db:"slug" json:"slug"`
-	Uuid        uuid.UUID      `db:"uuid" json:"uuid"`
+	Name_2      string         `db:"name_2" json:"name_2"`
 }
 
 func (q *Queries) UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, error) {
@@ -245,7 +245,7 @@ func (q *Queries) UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, e
 		arg.Description,
 		arg.Checksum,
 		arg.Slug,
-		arg.Uuid,
+		arg.Name_2,
 	)
 	var i Flow
 	err := row.Scan(

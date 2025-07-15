@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_9MhED7FkiV
+createdAt: 2025-07-15T07:30:43.241930083
+updatedAt: 2025-07-15T07:30:59.523677676
+workspaceId: wk_f7os23Vq2X
+folderId: null
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: DELETE
+name: Delete Namespace
+sortPriority: 9000.000900000001
+url: http://localhost:7000/api/v1/namespaces/3a534772-4b87-435a-afca-ab4588867e5d
+urlParameters: []

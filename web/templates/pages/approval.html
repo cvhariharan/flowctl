@@ -48,7 +48,7 @@ function approvalComponent(approvalID) {
         approvalID: approvalID,
         async postApproval(action) {
             try {
-                const response = await fetch(`/api/v1/approvals/${this.approvalID}`, {
+                const response = await fetch(`/api/v1/{{ .Page.Namespace }}/approvals/${this.approvalID}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -67,7 +67,7 @@ function approvalComponent(approvalID) {
                     }),
                 );
                 // Optionally redirect or update UI after successful approval/rejection
-                window.location.href = "/view/"; // Example: Redirect to flows list
+                window.location.href = "/view/{{ .Page.Namespace }}"; // Example: Redirect to flows list
             } catch (error) {
                 console.error('Error:', error);
                 window.dispatchEvent(

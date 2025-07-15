@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_mmACo9goGy
 createdAt: 2025-07-14T09:52:41.681089902
-updatedAt: 2025-07-14T09:53:21.140171377
+updatedAt: 2025-07-15T07:29:22.836004264
 workspaceId: wk_f7os23Vq2X
 folderId: null
 authentication: {}
@@ -30,6 +30,6 @@ headers:
   id: WSzR0TnSw2
 method: PUT
 name: Update Node
-sortPriority: 5999.9999
+sortPriority: 7000.0
 url: http://localhost:7000/api/v1/nodes/db0763b2-b65e-4fca-ae4a-4cc29c334894
 urlParameters: []

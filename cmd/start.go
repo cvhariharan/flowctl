@@ -133,16 +133,16 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	e.HTTPErrorHandler = h.ErrorHandler
 
 	views := e.Group("/view")
-	views.Use(h.Authenticate)
+	views.Use(h.Authenticate, h.NamespaceMiddleware)
 
 	// views.POST("/trigger/:flow", h.HandleFlowTrigger)
-	views.GET("/:flow", h.HandleFlowFormView)
-	views.GET("/", h.HandleFlowsListView)
-	views.GET("/results/:flowID/:logID", h.HandleFlowExecutionResults)
+	views.GET("/:namespace/:flow", h.HandleFlowFormView)
+	views.GET("/:namespace", h.HandleFlowsListView)
+	views.GET("/:namespace/results/:flowID/:logID", h.HandleFlowExecutionResults)
 	// views.GET("/logs/:logID", h.HandleLogStreaming)
 	// views.GET("/summary/:flowID", h.HandleExecutionSummary)
 
-	views.GET("/approvals/:approvalID", h.HandleApprovalView, h.ApprovalMiddleware)
+	views.GET("/:namespace/approvals/:approvalID", h.HandleApprovalView, h.ApprovalMiddleware)
 
 	api := e.Group("/api/v1", h.Authenticate)
 
@@ -299,6 +299,7 @@ func processYAMLFiles(rootDir string, store repo.Store) (map[string]models.Flow,
 					Name:        f.Meta.Name,
 					Checksum:    checksum,
 					Description: sql.NullString{String: f.Meta.Description, Valid: true},
+					Name_2:      f.Meta.Namespace,
 				})
 				if err != nil {
 					log.Printf("error creating flow %s: %v", f.Meta.ID, err)
@@ -311,6 +312,7 @@ func processYAMLFiles(rootDir string, store repo.Store) (map[string]models.Flow,
 					Description: sql.NullString{String: f.Meta.Description, Valid: true},
 					Checksum:    checksum,
 					Slug:        f.Meta.ID,
+					Name_2:      f.Meta.Namespace,
 				})
 				if err != nil {
 					log.Printf("error updating flow %s: %v", f.Meta.ID, err)

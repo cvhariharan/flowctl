@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_P9Qr2smaGJ
 createdAt: 2025-07-14T08:42:12.087460680
-updatedAt: 2025-07-14T09:49:02.987561124
+updatedAt: 2025-07-15T07:31:12.394313549
 workspaceId: wk_f7os23Vq2X
 folderId: null
 authentication: {}
@@ -10,7 +10,7 @@ authenticationType: null
 body:
   text: |-
     {
-      "name": "testkey-1",
+      "name": "testkey1",
       "password": "password"
     }
 bodyType: application/json
@@ -23,5 +23,5 @@ headers:
 method: POST
 name: Create Credential
 sortPriority: 1000.0
-url: http://localhost:7000/api/v1/credentials
+url: http://localhost:7000/api/v1/test/credentials
 urlParameters: []

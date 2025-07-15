@@ -1,8 +1,8 @@
 type: http_request
 model: http_request
-id: rq_mKJ2ewiRvg
-createdAt: 2025-07-14T08:35:02.758420159
-updatedAt: 2025-07-15T07:29:22.740095549
+id: rq_UoJ9Sgqhup
+createdAt: 2025-07-15T07:30:07.922736250
+updatedAt: 2025-07-15T07:30:28.081848763
 workspaceId: wk_f7os23Vq2X
 folderId: null
 authentication: {}
@@ -10,8 +10,7 @@ authenticationType: null
 body:
   text: |-
     {
-      "username": "autopilot_admin",
-      "password": "autopilot_password"
+      "name": "test2"
     }
 bodyType: application/json
 description: ''
@@ -19,9 +18,9 @@ headers:
 - enabled: true
   name: Content-Type
   value: application/json
-  id: q6vcaceV3h
-method: POST
-name: Login
-sortPriority: 0.0
-url: http://localhost:7000/login
+  id: naJBzI3xwG
+method: PUT
+name: Update Namespace
+sortPriority: 9000.001
+url: http://localhost:7000/api/v1/namespaces/3a534772-4b87-435a-afca-ab4588867e5d
 urlParameters: []

@@ -56,7 +56,7 @@ function flowStatusComponent(logID, actions) {
         approvalID: null,
         showApproval: false,
         init() {
-            this.ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/logs/${logID}`);
+            this.ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/{{ .Page.Namespace }}/logs/${logID}`);
             this.ws.onmessage = (event) => {
                 let msg = {};
                 try { msg = JSON.parse(event.data); } catch {}

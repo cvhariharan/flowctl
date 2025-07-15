@@ -230,7 +230,7 @@ paged AS (
 page_count AS (
     SELECT COUNT(*) AS page_count FROM paged
 )
-SELECT 
+SELECT
     p.id, p.uuid, p.name, p.created_at, p.updated_at,
     pc.page_count,
     t.total_count
@@ -284,8 +284,8 @@ func (q *Queries) ListNamespaces(ctx context.Context, arg ListNamespacesParams) 
 }
 
 const revokeGroupNamespaceAccess = `-- name: RevokeGroupNamespaceAccess :exec
-DELETE FROM group_namespace_access 
-WHERE group_id = (SELECT id FROM groups WHERE groups.uuid = $1) 
+DELETE FROM group_namespace_access
+WHERE group_id = (SELECT id FROM groups WHERE groups.uuid = $1)
 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $2)
 `
 
