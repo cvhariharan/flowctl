@@ -27,7 +27,12 @@ func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, "could not parse request", err, nil)
 	}
 
-	f, err := h.co.GetFlowByID(c.Param("flow"))
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	f, err := h.co.GetFlowByID(c.Param("flow"), namespace)
 	if err != nil {
 		return wrapError(http.StatusBadRequest, "could not get flow", err, nil)
 	}
@@ -44,7 +49,7 @@ func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 	}
 
 	// Add to queue
-	execID, err := h.co.QueueFlowExecution(c.Request().Context(), f, req, user.ID)
+	execID, err := h.co.QueueFlowExecution(c.Request().Context(), f, req, user.ID, namespace)
 	if err != nil {
 		return wrapError(http.StatusBadRequest, "could not trigger flow", err, nil)
 	}
@@ -54,6 +59,11 @@ func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 }
 
 func (h *Handler) HandleLogStreaming(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	// Upgrade to WebSocket connection
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
@@ -67,21 +77,21 @@ func (h *Handler) HandleLogStreaming(c echo.Context) error {
 		return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "execution id cannot be empty"))
 	}
 
-	msgCh, err := h.co.StreamLogs(c.Request().Context(), logID)
+	msgCh, err := h.co.StreamLogs(c.Request().Context(), logID, namespace)
 	if err != nil {
 		h.logger.Error("log msg ch", "error", err)
 		return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "error subscribing to logs"))
 	}
 
-    for msg := range msgCh {
-        if err := h.handleLogStreaming(c, msg, ws); err != nil {
-            h.logger.Error("websocket error", "error", err)
-        	ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, err.Error()))
-         return nil
-        }
-    }
-    c.Logger().Info("msg ch closed")
-    return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed"))
+	for msg := range msgCh {
+		if err := h.handleLogStreaming(c, msg, ws); err != nil {
+			h.logger.Error("websocket error", "error", err)
+			ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, err.Error()))
+			return nil
+		}
+	}
+	c.Logger().Info("msg ch closed")
+	return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed"))
 }
 
 func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, ws *websocket.Conn) error {
@@ -116,4 +126,37 @@ func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, w
 	}
 
 	return nil
+}
+
+func (h *Handler) HandleListFlows(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	flows, err := h.co.GetAllFlows(c.Request().Context(), namespace)
+	if err != nil {
+		return wrapError(http.StatusInternalServerError, "could not list flows", err, nil)
+	}
+
+	return c.JSON(http.StatusOK, flows)
+}
+
+func (h *Handler) HandleGetFlow(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	flowID := c.Param("flowID")
+	if flowID == "" {
+		return wrapError(http.StatusBadRequest, "flow ID cannot be empty", nil, nil)
+	}
+
+	flow, err := h.co.GetFlowByID(flowID, namespace)
+	if err != nil {
+		return wrapError(http.StatusNotFound, "flow not found", err, nil)
+	}
+
+	return c.JSON(http.StatusOK, flow)
 }

@@ -65,7 +65,7 @@ func (q *Queries) DeleteAllFlows(ctx context.Context) error {
 }
 
 const getFlowBySlug = `-- name: GetFlowBySlug :one
-SELECT f.namespace_uuid, f.namespace_uuid, f.namespace_uuid, f.namespace_uuid, f.namespace_uuid, f.namespace_uuid, f.namespace_uuid, f.namespace_uuid AS namespace_uuid FROM flows f
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.created_at, f.updated_at, f.namespace_id FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
 WHERE f.slug = $1 AND n.uuid = $2
 `
@@ -75,29 +75,18 @@ type GetFlowBySlugParams struct {
 	Uuid uuid.UUID `db:"uuid" json:"uuid"`
 }
 
-type GetFlowBySlugRow struct {
-	NamespaceUuid   int32          `db:"namespace_uuid" json:"namespace_uuid"`
-	NamespaceUuid_2 string         `db:"namespace_uuid_2" json:"namespace_uuid_2"`
-	NamespaceUuid_3 string         `db:"namespace_uuid_3" json:"namespace_uuid_3"`
-	NamespaceUuid_4 string         `db:"namespace_uuid_4" json:"namespace_uuid_4"`
-	NamespaceUuid_5 sql.NullString `db:"namespace_uuid_5" json:"namespace_uuid_5"`
-	NamespaceUuid_6 time.Time      `db:"namespace_uuid_6" json:"namespace_uuid_6"`
-	NamespaceUuid_7 time.Time      `db:"namespace_uuid_7" json:"namespace_uuid_7"`
-	NamespaceUuid_8 int32          `db:"namespace_uuid_8" json:"namespace_uuid_8"`
-}
-
-func (q *Queries) GetFlowBySlug(ctx context.Context, arg GetFlowBySlugParams) (GetFlowBySlugRow, error) {
+func (q *Queries) GetFlowBySlug(ctx context.Context, arg GetFlowBySlugParams) (Flow, error) {
 	row := q.db.QueryRowContext(ctx, getFlowBySlug, arg.Slug, arg.Uuid)
-	var i GetFlowBySlugRow
+	var i Flow
 	err := row.Scan(
-		&i.NamespaceUuid,
-		&i.NamespaceUuid_2,
-		&i.NamespaceUuid_3,
-		&i.NamespaceUuid_4,
-		&i.NamespaceUuid_5,
-		&i.NamespaceUuid_6,
-		&i.NamespaceUuid_7,
-		&i.NamespaceUuid_8,
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.Checksum,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.NamespaceID,
 	)
 	return i, err
 }

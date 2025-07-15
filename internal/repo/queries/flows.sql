@@ -1,5 +1,5 @@
 -- name: GetFlowBySlug :one
-SELECT f.* AS namespace_uuid FROM flows f
+SELECT f.* FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
 WHERE f.slug = $1 AND n.uuid = $2;
 

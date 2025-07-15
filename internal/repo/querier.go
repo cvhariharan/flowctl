@@ -42,7 +42,7 @@ type Querier interface {
 	GetExecutionByExecIDWithNamespace(ctx context.Context, arg GetExecutionByExecIDWithNamespaceParams) (GetExecutionByExecIDWithNamespaceRow, error)
 	GetExecutionByID(ctx context.Context, id int32) (ExecutionLog, error)
 	GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]ExecutionLog, error)
-	GetFlowBySlug(ctx context.Context, arg GetFlowBySlugParams) (GetFlowBySlugRow, error)
+	GetFlowBySlug(ctx context.Context, arg GetFlowBySlugParams) (Flow, error)
 	GetFlowFromExecID(ctx context.Context, execID string) (GetFlowFromExecIDRow, error)
 	GetFlowFromExecIDWithNamespace(ctx context.Context, arg GetFlowFromExecIDWithNamespaceParams) (Flow, error)
 	GetFlowsByNamespace(ctx context.Context, argUuid uuid.UUID) ([]GetFlowsByNamespaceRow, error)

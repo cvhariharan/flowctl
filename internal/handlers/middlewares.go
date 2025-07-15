@@ -78,6 +78,36 @@ func (h *Handler) AuthorizeForRole(expectedRole string) echo.MiddlewareFunc {
 	}
 }
 
+func (h *Handler) NamespaceMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		namespace := c.Param("namespace")
+		if namespace == "" {
+			return wrapError(http.StatusBadRequest, "namespace cannot be empty", nil, nil)
+		}
+
+		ns, err := h.co.GetN
+
+		user, ok := c.Get("user").(models.UserInfo)
+		if !ok {
+			return wrapError(http.StatusForbidden, "could not get user details", nil, nil)
+		}
+
+		// Check if user has access to this namespace
+		hasAccess, err := h.co.CanAccessNamespace(c.Request().Context(), user.ID, namespace)
+		if err != nil {
+			return wrapError(http.StatusInternalServerError, "could not check namespace access", err, nil)
+		}
+
+		if !hasAccess {
+			return wrapError(http.StatusForbidden, "user does not have access to this namespace", nil, nil)
+		}
+
+		// Store namespace in context for use by handlers
+		c.Set("namespace", namespace)
+		return next(c)
+	}
+}
+
 func (h *Handler) getUserInfo(c echo.Context) (models.UserInfo, error) {
 	sess, err := h.sessMgr.Acquire(nil, c, c)
 	if err != nil {

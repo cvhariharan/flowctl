@@ -9,6 +9,11 @@ import (
 )
 
 func (h *Handler) HandleCreateCredential(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	var req CredentialReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
@@ -28,7 +33,7 @@ func (h *Handler) HandleCreateCredential(c echo.Context) error {
 		Password:   req.Password,
 	}
 
-	created, err := h.co.CreateCredential(c.Request().Context(), cred)
+	created, err := h.co.CreateCredential(c.Request().Context(), cred, namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not create credential", err, nil)
 	}
@@ -37,12 +42,17 @@ func (h *Handler) HandleCreateCredential(c echo.Context) error {
 }
 
 func (h *Handler) HandleGetCredential(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	credID := c.Param("credID")
 	if credID == "" {
 		return wrapError(http.StatusBadRequest, "credential ID cannot be empty", nil, nil)
 	}
 
-	cred, err := h.co.GetCredentialByID(c.Request().Context(), credID)
+	cred, err := h.co.GetCredentialByID(c.Request().Context(), credID, namespace)
 	if err != nil {
 		return wrapError(http.StatusNotFound, "credential not found", err, nil)
 	}
@@ -51,6 +61,11 @@ func (h *Handler) HandleGetCredential(c echo.Context) error {
 }
 
 func (h *Handler) HandleListCredentials(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	var req PaginateRequest
 	if err := c.Bind(&req); err != nil {
 		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
@@ -68,7 +83,7 @@ func (h *Handler) HandleListCredentials(c echo.Context) error {
 		req.Count = CountPerPage
 	}
 
-	creds, pageCount, totalCount, err := h.co.ListCredentials(c.Request().Context(), req.Count, req.Count*req.Page)
+	creds, pageCount, totalCount, err := h.co.ListCredentials(c.Request().Context(), req.Count, req.Count*req.Page, namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not list credentials", err, nil)
 	}
@@ -81,6 +96,11 @@ func (h *Handler) HandleListCredentials(c echo.Context) error {
 }
 
 func (h *Handler) HandleUpdateCredential(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	credID := c.Param("credID")
 	if credID == "" {
 		return wrapError(http.StatusBadRequest, "credential ID cannot be empty", nil, nil)
@@ -101,7 +121,7 @@ func (h *Handler) HandleUpdateCredential(c echo.Context) error {
 		Password:   req.Password,
 	}
 
-	updated, err := h.co.UpdateCredential(c.Request().Context(), credID, cred)
+	updated, err := h.co.UpdateCredential(c.Request().Context(), credID, cred, namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not update credential", err, nil)
 	}
@@ -110,12 +130,17 @@ func (h *Handler) HandleUpdateCredential(c echo.Context) error {
 }
 
 func (h *Handler) HandleDeleteCredential(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	credID := c.Param("credID")
 	if credID == "" {
 		return wrapError(http.StatusBadRequest, "credential ID cannot be empty", nil, nil)
 	}
 
-	err := h.co.DeleteCredential(c.Request().Context(), credID)
+	err := h.co.DeleteCredential(c.Request().Context(), credID, namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not delete credential", err, nil)
 	}

@@ -9,6 +9,11 @@ import (
 )
 
 func (h *Handler) HandleCreateNode(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	var req NodeReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
@@ -31,7 +36,7 @@ func (h *Handler) HandleCreateNode(c echo.Context) error {
 		},
 	}
 
-	created, err := h.co.CreateNode(c.Request().Context(), node)
+	created, err := h.co.CreateNode(c.Request().Context(), node, namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not create node", err, nil)
 	}
@@ -40,12 +45,17 @@ func (h *Handler) HandleCreateNode(c echo.Context) error {
 }
 
 func (h *Handler) HandleGetNode(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	nodeID := c.Param("nodeID")
 	if nodeID == "" {
 		return wrapError(http.StatusBadRequest, "node ID cannot be empty", nil, nil)
 	}
 
-	node, err := h.co.GetNodeByID(c.Request().Context(), nodeID)
+	node, err := h.co.GetNodeByID(c.Request().Context(), nodeID, namespace)
 	if err != nil {
 		return wrapError(http.StatusNotFound, "node not found", err, nil)
 	}
@@ -54,6 +64,11 @@ func (h *Handler) HandleGetNode(c echo.Context) error {
 }
 
 func (h *Handler) HandleListNodes(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	var req PaginateRequest
 	if err := c.Bind(&req); err != nil {
 		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
@@ -71,7 +86,7 @@ func (h *Handler) HandleListNodes(c echo.Context) error {
 		req.Count = CountPerPage
 	}
 
-	nodes, pageCount, totalCount, err := h.co.ListNodes(c.Request().Context(), req.Count, req.Count*req.Page)
+	nodes, pageCount, totalCount, err := h.co.ListNodes(c.Request().Context(), req.Count, req.Count*req.Page, namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not list nodes", err, nil)
 	}
@@ -84,6 +99,11 @@ func (h *Handler) HandleListNodes(c echo.Context) error {
 }
 
 func (h *Handler) HandleUpdateNode(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	nodeID := c.Param("nodeID")
 	if nodeID == "" {
 		return wrapError(http.StatusBadRequest, "node ID cannot be empty", nil, nil)
@@ -111,7 +131,7 @@ func (h *Handler) HandleUpdateNode(c echo.Context) error {
 		},
 	}
 
-	updated, err := h.co.UpdateNode(c.Request().Context(), nodeID, node)
+	updated, err := h.co.UpdateNode(c.Request().Context(), nodeID, node, namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not update node", err, nil)
 	}
@@ -120,12 +140,17 @@ func (h *Handler) HandleUpdateNode(c echo.Context) error {
 }
 
 func (h *Handler) HandleDeleteNode(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	nodeID := c.Param("nodeID")
 	if nodeID == "" {
 		return wrapError(http.StatusBadRequest, "node ID cannot be empty", nil, nil)
 	}
 
-	err := h.co.DeleteNode(c.Request().Context(), nodeID)
+	err := h.co.DeleteNode(c.Request().Context(), nodeID, namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not delete node", err, nil)
 	}

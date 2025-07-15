@@ -132,3 +132,61 @@ func (h *Handler) HandleGroupPagination(c echo.Context) error {
 		TotalCount: totalCount,
 	})
 }
+
+func (h *Handler) HandleListNamespaceGroups(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	groups, err := h.co.GetGroupsWithNamespaceAccess(c.Request().Context(), namespace)
+	if err != nil {
+		return wrapError(http.StatusInternalServerError, "could not get groups with namespace access", err, nil)
+	}
+
+	return c.JSON(http.StatusOK, groups)
+}
+
+func (h *Handler) HandleGrantGroupAccess(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	var req struct {
+		GroupID string `json:"group_id" validate:"required"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	err := h.co.GrantGroupNamespaceAccess(c.Request().Context(), req.GroupID, namespace)
+	if err != nil {
+		return wrapError(http.StatusBadRequest, "could not grant group access", err, nil)
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
+func (h *Handler) HandleRevokeGroupAccess(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	groupID := c.Param("groupID")
+	if groupID == "" {
+		return wrapError(http.StatusBadRequest, "group ID cannot be empty", nil, nil)
+	}
+
+	err := h.co.RevokeGroupNamespaceAccess(c.Request().Context(), groupID, namespace)
+	if err != nil {
+		return wrapError(http.StatusBadRequest, "could not revoke group access", err, nil)
+	}
+
+	return c.NoContent(http.StatusOK)
+}

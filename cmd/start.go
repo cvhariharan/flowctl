@@ -146,8 +146,13 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	views.POST("/approvals/:approvalID/:action", h.HandleApprovalAction, h.ApprovalMiddleware)
 
 	api := e.Group("/api/v1", h.Authenticate)
-	api.POST("/trigger/:flow", h.HandleFlowTrigger)
-	api.GET("/logs/:logID", h.HandleLogStreaming)
+
+	// Global admin endpoints for users and groups
+	api.GET("/users", h.HandleUserPagination)
+	api.GET("/users/:userID", h.HandleGetUser)
+	api.POST("/users", h.HandleCreateUser)
+	api.DELETE("/users/:userID", h.HandleDeleteUser)
+	api.PUT("/users/:userID", h.HandleUpdateUser)
 
 	api.GET("/groups", h.HandleGroupPagination)
 	api.GET("/groups/:groupID", h.HandleGetGroup)
@@ -155,31 +160,41 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	api.POST("/groups", h.HandleCreateGroup)
 	api.DELETE("/groups/:groupID", h.HandleDeleteGroup)
 
-	api.GET("/users", h.HandleUserPagination)
-	api.GET("/users/:userID", h.HandleGetUser)
-	api.POST("/users", h.HandleCreateUser)
-	api.DELETE("/users/:userID", h.HandleDeleteUser)
-	api.PUT("/users/:userID", h.HandleUpdateUser)
-
-	api.POST("/approvals/:approvalID", h.HandleApprovalAction, h.ApprovalMiddleware)
-
-	api.GET("/nodes", h.HandleListNodes)
-	api.GET("/nodes/:nodeID", h.HandleGetNode)
-	api.POST("/nodes", h.HandleCreateNode)
-	api.PUT("/nodes/:nodeID", h.HandleUpdateNode)
-	api.DELETE("/nodes/:nodeID", h.HandleDeleteNode)
-
-	api.GET("/credentials", h.HandleListCredentials)
-	api.GET("/credentials/:credID", h.HandleGetCredential)
-	api.POST("/credentials", h.HandleCreateCredential)
-	api.PUT("/credentials/:credID", h.HandleUpdateCredential)
-	api.DELETE("/credentials/:credID", h.HandleDeleteCredential)
-
+	// Namespace management endpoints (admin only)
 	api.GET("/namespaces", h.HandleListNamespaces, h.AuthorizeForRole("admin"))
 	api.GET("/namespaces/:namespaceID", h.HandleGetNamespace, h.AuthorizeForRole("admin"))
 	api.POST("/namespaces", h.HandleCreateNamespace, h.AuthorizeForRole("admin"))
 	api.PUT("/namespaces/:namespaceID", h.HandleUpdateNamespace, h.AuthorizeForRole("admin"))
 	api.DELETE("/namespaces/:namespaceID", h.HandleDeleteNamespace, h.AuthorizeForRole("admin"))
+
+	// Namespace-specific resource endpoints
+	// Flow and execution endpoints
+	api.POST("/:namespace/trigger/:flow", h.HandleFlowTrigger, h.NamespaceMiddleware)
+	api.GET("/:namespace/flows", h.HandleListFlows, h.NamespaceMiddleware)
+	api.GET("/:namespace/flows/:flowID", h.HandleGetFlow, h.NamespaceMiddleware)
+	api.GET("/:namespace/logs/:logID", h.HandleLogStreaming, h.NamespaceMiddleware)
+
+	// Approval endpoints
+	api.POST("/:namespace/approvals/:approvalID", h.HandleApprovalAction, h.NamespaceMiddleware, h.ApprovalMiddleware)
+
+	// Node endpoints
+	api.GET("/:namespace/nodes", h.HandleListNodes, h.NamespaceMiddleware)
+	api.GET("/:namespace/nodes/:nodeID", h.HandleGetNode, h.NamespaceMiddleware)
+	api.POST("/:namespace/nodes", h.HandleCreateNode, h.NamespaceMiddleware)
+	api.PUT("/:namespace/nodes/:nodeID", h.HandleUpdateNode, h.NamespaceMiddleware)
+	api.DELETE("/:namespace/nodes/:nodeID", h.HandleDeleteNode, h.NamespaceMiddleware)
+
+	// Credential endpoints
+	api.GET("/:namespace/credentials", h.HandleListCredentials, h.NamespaceMiddleware)
+	api.GET("/:namespace/credentials/:credID", h.HandleGetCredential, h.NamespaceMiddleware)
+	api.POST("/:namespace/credentials", h.HandleCreateCredential, h.NamespaceMiddleware)
+	api.PUT("/:namespace/credentials/:credID", h.HandleUpdateCredential, h.NamespaceMiddleware)
+	api.DELETE("/:namespace/credentials/:credID", h.HandleDeleteCredential, h.NamespaceMiddleware)
+
+	// Group namespace access endpoints
+	api.GET("/:namespace/groups", h.HandleListNamespaceGroups, h.NamespaceMiddleware)
+	api.POST("/:namespace/groups", h.HandleGrantGroupAccess, h.NamespaceMiddleware, h.AuthorizeForRole("admin"))
+	api.DELETE("/:namespace/groups/:groupID", h.HandleRevokeGroupAccess, h.NamespaceMiddleware, h.AuthorizeForRole("admin"))
 
 	admin := e.Group("/admin")
 	admin.Use(h.AuthorizeForRole("admin"))
