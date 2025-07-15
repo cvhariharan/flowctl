@@ -180,7 +180,7 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 
 	log.Println(taskFlow)
 
-	task, err := tasks.NewFlowExecution(taskFlow, input, actionIndex, execID, parentExecID)
+	task, err := tasks.NewFlowExecution(taskFlow, input, actionIndex, execID, parentExecID, namespaceID)
 	if err != nil {
 		return "", fmt.Errorf("error creating task: %v", err)
 	}

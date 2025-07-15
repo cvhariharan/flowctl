@@ -143,7 +143,6 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	// views.GET("/summary/:flowID", h.HandleExecutionSummary)
 
 	views.GET("/approvals/:approvalID", h.HandleApprovalView, h.ApprovalMiddleware)
-	views.POST("/approvals/:approvalID/:action", h.HandleApprovalAction, h.ApprovalMiddleware)
 
 	api := e.Group("/api/v1", h.Authenticate)
 

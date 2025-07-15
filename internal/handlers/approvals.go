@@ -16,12 +16,17 @@ func (h *Handler) ApprovalMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return wrapError(http.StatusBadRequest, "approval ID cannot be empty", nil, nil)
 		}
 
+		namespace, ok := c.Get("namespace").(string)
+		if !ok {
+			return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		}
+
 		user, ok := c.Get("user").(models.UserInfo)
 		if !ok {
 			return wrapError(http.StatusForbidden, "could not get user details", nil, nil)
 		}
 
-		areq, err := h.co.GetApprovalRequest(c.Request().Context(), approvalID)
+		areq, err := h.co.GetApprovalRequest(c.Request().Context(), approvalID, namespace)
 		if err != nil {
 			return wrapError(http.StatusInternalServerError, "could not get approval request", err, nil)
 		}
@@ -59,6 +64,11 @@ func (h *Handler) ApprovalMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 func (h *Handler) HandleApprovalAction(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
 	approvalID := c.Param("approvalID")
 	if approvalID == "" {
 		return wrapError(http.StatusBadRequest, "approval ID cannot be empty", nil, nil)
@@ -88,7 +98,7 @@ func (h *Handler) HandleApprovalAction(c echo.Context) error {
 		message = "The request has been rejected."
 	}
 
-	err := h.co.ApproveOrRejectAction(c.Request().Context(), approvalID, user.ID, status)
+	err := h.co.ApproveOrRejectAction(c.Request().Context(), approvalID, user.ID, status, namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not process approval action", err, nil)
 	}

@@ -33,12 +33,13 @@ type FlowExecutionPayload struct {
 	StartingActionIdx int
 	ExecID            string
 	ParentExecID      string
+	NamespaceID       string
 }
 
-type HookFn func(ctx context.Context, execID, parentExecID string, action Action) error
+type HookFn func(ctx context.Context, execID, parentExecID string, action Action, namespaceID string) error
 
-func NewFlowExecution(f Flow, input map[string]interface{}, startingActionIdx int, ExecID, parentExecID string) (*asynq.Task, error) {
-	payload, err := json.Marshal(FlowExecutionPayload{Workflow: f, Input: input, StartingActionIdx: startingActionIdx, ExecID: ExecID, ParentExecID: parentExecID})
+func NewFlowExecution(f Flow, input map[string]interface{}, startingActionIdx int, ExecID, parentExecID, namespaceID string) (*asynq.Task, error) {
+	payload, err := json.Marshal(FlowExecutionPayload{Workflow: f, Input: input, StartingActionIdx: startingActionIdx, ExecID: ExecID, ParentExecID: parentExecID, NamespaceID: namespaceID})
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 		action := payload.Workflow.Actions[i]
 
 		if r.onBeforeActionFn != nil {
-			if err := r.onBeforeActionFn(ctx, payload.ExecID, payload.ParentExecID, action); err != nil {
+			if err := r.onBeforeActionFn(ctx, payload.ExecID, payload.ParentExecID, action, payload.NamespaceID); err != nil {
 				return err
 			}
 		}
@@ -99,7 +100,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 		}
 
 		if r.onAfterActionFn != nil {
-			if err := r.onAfterActionFn(ctx, payload.ExecID, payload.ParentExecID, action); err != nil {
+			if err := r.onAfterActionFn(ctx, payload.ExecID, payload.ParentExecID, action, payload.NamespaceID); err != nil {
 				return err
 			}
 		}

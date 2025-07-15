@@ -56,7 +56,8 @@ func (h *Handler) HandleFlowsListView(c echo.Context) error {
 		},
 	}
 
-	flows, err := h.co.GetAllFlows()
+	// TODO: Extract namespace from session/context, using default for now
+	flows, err := h.co.GetAllFlows(c.Request().Context(), "default")
 	if err != nil {
 		data.ErrMessage = err.Error()
 		return c.Render(http.StatusBadRequest, "flows", data)
@@ -76,7 +77,8 @@ func (h *Handler) HandleFlowFormView(c echo.Context) error {
 			Title: "Flow Input",
 		},
 	}
-	flow, err := h.co.GetFlowByID(c.Param("flow"))
+	// TODO: Extract namespace from session/context, using default for now
+	flow, err := h.co.GetFlowByID(c.Param("flow"), "default")
 	if err != nil {
 		data.ErrMessage = err.Error()
 		return c.Render(http.StatusBadRequest, "flow_input", data)
@@ -115,14 +117,16 @@ func (h *Handler) HandleFlowExecutionResults(c echo.Context) error {
 		return c.Render(http.StatusBadRequest, "flow_status", data)
 	}
 
-	f, err := h.co.GetFlowByID(flowID)
+	// TODO: Extract namespace from session/context, using default for now
+	f, err := h.co.GetFlowByID(flowID, "default")
 	if err != nil {
 		data.ErrMessage = err.Error()
 		return c.Render(http.StatusBadRequest, "flow_status", data)
 	}
 	data.Flow = f
 
-	exec, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), logID)
+	// TODO: Extract namespace from session/context, using default for now
+	exec, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), logID, "default")
 	if err != nil {
 		data.ErrMessage = err.Error()
 		return c.Render(http.StatusBadRequest, "flow_status", data)
@@ -182,7 +186,8 @@ func (h *Handler) HandleApprovalView(c echo.Context) error {
 		return c.Render(http.StatusBadRequest, "approval", data)
 	}
 
-	areq, err := h.co.GetApprovalRequest(c.Request().Context(), approvalID)
+	// TODO: Extract namespace from session/context, using default for now
+	areq, err := h.co.GetApprovalRequest(c.Request().Context(), approvalID, "default")
 	if err != nil {
 		data.ErrMessage = err.Error()
 		return c.Render(http.StatusBadRequest, "approval", data)
@@ -193,7 +198,8 @@ func (h *Handler) HandleApprovalView(c echo.Context) error {
 		return c.Render(http.StatusBadRequest, "approval", data)
 	}
 
-	f, err := h.co.GetFlowFromLogID(areq.ExecID)
+	// TODO: Extract namespace from session/context, using default for now
+	f, err := h.co.GetFlowFromLogID(areq.ExecID, "default")
 	if err != nil {
 		data.ErrMessage = err.Error()
 		return c.Render(http.StatusBadRequest, "approval", data)

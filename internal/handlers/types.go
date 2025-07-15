@@ -215,14 +215,14 @@ type NamespacesPaginateResponse struct {
 	TotalCount int64           `json:"total_count"`
 }
 
-func coreNamespaceToNamespaceResp(n *models.Namespace) NamespaceResp {
+func coreNamespaceToNamespaceResp(n models.Namespace) NamespaceResp {
 	return NamespaceResp{
 		ID:   n.ID,
 		Name: n.Name,
 	}
 }
 
-func coreNamespaceArrayToNamespaceRespArray(namespaces []*models.Namespace) []NamespaceResp {
+func coreNamespaceArrayToNamespaceRespArray(namespaces []models.Namespace) []NamespaceResp {
 	resp := make([]NamespaceResp, len(namespaces))
 	for i, n := range namespaces {
 		resp[i] = coreNamespaceToNamespaceResp(n)

@@ -93,7 +93,7 @@ func (h *Handler) HandleUpdateNamespace(c echo.Context) error {
 		Name: req.Name,
 	}
 
-	updated, err := h.co.UpdateNamespace(c.Request().Context(), namespaceID, namespace)
+	updated, err := h.co.UpdateNamespace(c.Request().Context(), namespaceID, *namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not update namespace", err, nil)
 	}

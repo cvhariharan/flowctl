@@ -85,7 +85,10 @@ func (h *Handler) NamespaceMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return wrapError(http.StatusBadRequest, "namespace cannot be empty", nil, nil)
 		}
 
-		ns, err := h.co.GetN
+		ns, err := h.co.GetNamespaceByName(c.Request().Context(), namespace)
+		if err != nil {
+			return wrapError(http.StatusBadRequest, "could not find namespace", err, nil)
+		}
 
 		user, ok := c.Get("user").(models.UserInfo)
 		if !ok {
@@ -93,7 +96,7 @@ func (h *Handler) NamespaceMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		// Check if user has access to this namespace
-		hasAccess, err := h.co.CanAccessNamespace(c.Request().Context(), user.ID, namespace)
+		hasAccess, err := h.co.CanAccessNamespace(c.Request().Context(), user.ID, ns.ID)
 		if err != nil {
 			return wrapError(http.StatusInternalServerError, "could not check namespace access", err, nil)
 		}
@@ -102,8 +105,8 @@ func (h *Handler) NamespaceMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return wrapError(http.StatusForbidden, "user does not have access to this namespace", nil, nil)
 		}
 
-		// Store namespace in context for use by handlers
-		c.Set("namespace", namespace)
+		// Store namespace UUID in context for use by handlers
+		c.Set("namespace", ns.ID)
 		return next(c)
 	}
 }
