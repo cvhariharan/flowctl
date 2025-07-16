@@ -2,9 +2,9 @@ type: http_request
 model: http_request
 id: rq_UDhV4sPNNZ
 createdAt: 2025-07-15T07:24:59.200003149
-updatedAt: 2025-07-15T07:29:22.841583934
+updatedAt: 2025-07-16T14:08:54.775879522
 workspaceId: wk_f7os23Vq2X
-folderId: null
+folderId: fl_Vn6oHBwHpL
 authentication: {}
 authenticationType: null
 body:
@@ -21,6 +21,6 @@ headers:
   id: naJBzI3xwG
 method: POST
 name: Create Namespace
-sortPriority: 9000.0
+sortPriority: 2000.0
 url: http://localhost:7000/api/v1/namespaces
 urlParameters: []

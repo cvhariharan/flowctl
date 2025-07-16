@@ -2,9 +2,9 @@ type: http_request
 model: http_request
 id: rq_P9Qr2smaGJ
 createdAt: 2025-07-14T08:42:12.087460680
-updatedAt: 2025-07-15T07:31:12.394313549
+updatedAt: 2025-07-16T14:09:14.603879263
 workspaceId: wk_f7os23Vq2X
-folderId: null
+folderId: fl_bXdDN8fPng
 authentication: {}
 authenticationType: null
 body:
@@ -22,6 +22,6 @@ headers:
   id: 0yggZXbN5z
 method: POST
 name: Create Credential
-sortPriority: 1000.0
+sortPriority: 0.0
 url: http://localhost:7000/api/v1/test/credentials
 urlParameters: []

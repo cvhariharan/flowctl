@@ -2,9 +2,9 @@ type: http_request
 model: http_request
 id: rq_y5wJhLjMRW
 createdAt: 2025-07-14T09:53:31.625492737
-updatedAt: 2025-07-15T07:37:53.265208257
+updatedAt: 2025-07-16T14:09:36.374361263
 workspaceId: wk_f7os23Vq2X
-folderId: null
+folderId: fl_MPBCYB62xJ
 authentication: {}
 authenticationType: null
 body: {}
@@ -13,6 +13,6 @@ description: ''
 headers: []
 method: GET
 name: List Nodes
-sortPriority: 6000.0
+sortPriority: 1000.0
 url: http://localhost:7000/api/v1/test/nodes
 urlParameters: []

@@ -92,16 +92,9 @@ func (q *Queries) GetFlowBySlug(ctx context.Context, arg GetFlowBySlugParams) (F
 }
 
 const getFlowsByNamespace = `-- name: GetFlowsByNamespace :many
-SELECT f.id, f.slug, f.name, f.checksum, f.description, f.created_at, f.updated_at, f.namespace_id, n.uuid AS namespace_uuid, el.updated_at AS last_run_time 
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.created_at, f.updated_at, f.namespace_id, n.uuid AS namespace_uuid
 FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
-LEFT JOIN LATERAL (
-    SELECT updated_at 
-    FROM execution_log 
-    WHERE flow_id = f.id 
-    ORDER BY updated_at DESC 
-    LIMIT 1
-) el ON true
 WHERE n.uuid = $1
 `
 
@@ -115,7 +108,6 @@ type GetFlowsByNamespaceRow struct {
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
 	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
 	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
-	LastRunTime   time.Time      `db:"last_run_time" json:"last_run_time"`
 }
 
 func (q *Queries) GetFlowsByNamespace(ctx context.Context, argUuid uuid.UUID) ([]GetFlowsByNamespaceRow, error) {
@@ -137,7 +129,6 @@ func (q *Queries) GetFlowsByNamespace(ctx context.Context, argUuid uuid.UUID) ([
 			&i.UpdatedAt,
 			&i.NamespaceID,
 			&i.NamespaceUuid,
-			&i.LastRunTime,
 		); err != nil {
 			return nil, err
 		}
@@ -205,6 +196,85 @@ func (q *Queries) ListFlows(ctx context.Context, arg ListFlowsParams) ([]ListFlo
 	var items []ListFlowsRow
 	for rows.Next() {
 		var i ListFlowsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Name,
+			&i.Checksum,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.NamespaceID,
+			&i.NamespaceUuid,
+			&i.PageCount,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFlowsPaginated = `-- name: ListFlowsPaginated :many
+WITH filtered AS (
+    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.created_at, f.updated_at, f.namespace_id, n.uuid AS namespace_uuid FROM flows f
+    JOIN namespaces n ON f.namespace_id = n.id
+    WHERE n.uuid = $1
+),
+total AS (
+    SELECT COUNT(*) AS total_count FROM filtered
+),
+paged AS (
+    SELECT id, slug, name, checksum, description, created_at, updated_at, namespace_id, namespace_uuid FROM filtered
+    ORDER BY created_at DESC
+    LIMIT $2 OFFSET $3
+),
+page_count AS (
+    SELECT COUNT(*) AS page_count FROM paged
+)
+SELECT 
+    p.id, p.slug, p.name, p.checksum, p.description, p.created_at, p.updated_at, p.namespace_id, p.namespace_uuid,
+    pc.page_count,
+    t.total_count
+FROM paged p, page_count pc, total t
+`
+
+type ListFlowsPaginatedParams struct {
+	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
+	Limit  int32     `db:"limit" json:"limit"`
+	Offset int32     `db:"offset" json:"offset"`
+}
+
+type ListFlowsPaginatedRow struct {
+	ID            int32          `db:"id" json:"id"`
+	Slug          string         `db:"slug" json:"slug"`
+	Name          string         `db:"name" json:"name"`
+	Checksum      string         `db:"checksum" json:"checksum"`
+	Description   sql.NullString `db:"description" json:"description"`
+	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
+	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
+	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
+	PageCount     int64          `db:"page_count" json:"page_count"`
+	TotalCount    int64          `db:"total_count" json:"total_count"`
+}
+
+func (q *Queries) ListFlowsPaginated(ctx context.Context, arg ListFlowsPaginatedParams) ([]ListFlowsPaginatedRow, error) {
+	rows, err := q.db.QueryContext(ctx, listFlowsPaginated, arg.Uuid, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFlowsPaginatedRow
+	for rows.Next() {
+		var i ListFlowsPaginatedRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Slug,

@@ -66,6 +66,7 @@ type Querier interface {
 	GrantGroupNamespaceAccess(ctx context.Context, arg GrantGroupNamespaceAccessParams) (GroupNamespaceAccess, error)
 	ListCredentials(ctx context.Context, arg ListCredentialsParams) ([]ListCredentialsRow, error)
 	ListFlows(ctx context.Context, arg ListFlowsParams) ([]ListFlowsRow, error)
+	ListFlowsPaginated(ctx context.Context, arg ListFlowsPaginatedParams) ([]ListFlowsPaginatedRow, error)
 	ListNamespaces(ctx context.Context, arg ListNamespacesParams) ([]ListNamespacesRow, error)
 	ListNodes(ctx context.Context, arg ListNodesParams) ([]ListNodesRow, error)
 	RejectRequestByUUID(ctx context.Context, arg RejectRequestByUUIDParams) (RejectRequestByUUIDRow, error)

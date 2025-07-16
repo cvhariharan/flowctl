@@ -1,0 +1,13 @@
+type: folder
+model: folder
+id: fl_Vn6oHBwHpL
+createdAt: 2025-07-16T14:08:21.231481457
+updatedAt: 2025-07-16T14:08:31.731380952
+workspaceId: wk_f7os23Vq2X
+folderId: null
+authentication: {}
+authenticationType: null
+description: ''
+headers: []
+name: Namespaces
+sortPriority: 1000.0

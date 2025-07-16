@@ -27,19 +27,35 @@ WHERE slug = $4 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.n
 RETURNING *;
 
 -- name: GetFlowsByNamespace :many
-SELECT f.*, n.uuid AS namespace_uuid, el.updated_at AS last_run_time 
+SELECT f.*, n.uuid AS namespace_uuid
 FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
-LEFT JOIN LATERAL (
-    SELECT updated_at 
-    FROM execution_log 
-    WHERE flow_id = f.id 
-    ORDER BY updated_at DESC 
-    LIMIT 1
-) el ON true
 WHERE n.uuid = $1;
 
 -- name: ListFlows :many
+WITH filtered AS (
+    SELECT f.*, n.uuid AS namespace_uuid FROM flows f
+    JOIN namespaces n ON f.namespace_id = n.id
+    WHERE n.uuid = $1
+),
+total AS (
+    SELECT COUNT(*) AS total_count FROM filtered
+),
+paged AS (
+    SELECT * FROM filtered
+    ORDER BY created_at DESC
+    LIMIT $2 OFFSET $3
+),
+page_count AS (
+    SELECT COUNT(*) AS page_count FROM paged
+)
+SELECT 
+    p.*,
+    pc.page_count,
+    t.total_count
+FROM paged p, page_count pc, total t;
+
+-- name: ListFlowsPaginated :many
 WITH filtered AS (
     SELECT f.*, n.uuid AS namespace_uuid FROM flows f
     JOIN namespaces n ON f.namespace_id = n.id

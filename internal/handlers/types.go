@@ -238,32 +238,53 @@ func coreNamespaceArrayToNamespaceRespArray(namespaces []models.Namespace) []Nam
 
 // Flow list response type
 type FlowListItem struct {
-	ID          string     `json:"id"`
-	Slug        string     `json:"slug"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	LastRunTime string `json:"last_run_time"`
+	ID          string `json:"id"`
+	Slug        string `json:"slug"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	StepCount   int    `json:"step_count"`
 }
 
 type FlowListResponse struct {
 	Flows []FlowListItem `json:"flows"`
 }
 
-func coreFlowToFlow(flow models.Flow, lastRunTimeStr string) FlowListItem {
+type FlowsPaginateResponse struct {
+	Flows      []FlowListItem `json:"flows"`
+	PageCount  int64          `json:"page_count"`
+	TotalCount int64          `json:"total_count"`
+}
+
+func coreFlowToFlow(flow models.Flow) FlowListItem {
 	return FlowListItem{
 		ID:          flow.Meta.ID,
 		Slug:        flow.Meta.ID,
 		Name:        flow.Meta.Name,
 		Description: flow.Meta.Description,
-		LastRunTime: lastRunTimeStr,
+		StepCount:   len(flow.Actions),
 	}
 }
 
-func coreFlowsToFlows(flows []models.Flow, lastRunTimes map[string]string) FlowListResponse {
+func coreFlowsToFlows(flows []models.Flow) FlowListResponse {
 	flowItems := make([]FlowListItem, len(flows))
 	for i, flow := range flows {
-		lastRunTimeStr := lastRunTimes[flow.Meta.ID]
-		flowItems[i] = coreFlowToFlow(flow, lastRunTimeStr)
+		flowItems[i] = coreFlowToFlow(flow)
 	}
 	return FlowListResponse{Flows: flowItems}
+}
+
+type UserProfileResponse struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Name     string `json:"name"`
+	Role     string `json:"role"`
+}
+
+func coreUserInfoToUserProfile(u models.UserInfo) UserProfileResponse {
+	return UserProfileResponse{
+		ID:       u.ID,
+		Username: u.Username,
+		Name:     u.Name,
+		Role:     string(u.Role),
+	}
 }

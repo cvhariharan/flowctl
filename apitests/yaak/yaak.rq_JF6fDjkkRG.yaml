@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_JF6fDjkkRG
+createdAt: 2025-07-16T14:09:56.861434282
+updatedAt: 2025-07-16T14:10:27.508184703
+workspaceId: wk_f7os23Vq2X
+folderId: fl_KMvDSq3QnW
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Get Profile
+sortPriority: 1999.9999
+url: http://localhost:7000/api/v1/users/profile
+urlParameters: []

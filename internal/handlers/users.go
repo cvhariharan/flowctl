@@ -9,6 +9,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+func (h *Handler) HandleGetUserProfile(c echo.Context) error {
+	user, err := h.getUserInfo(c)
+	if err != nil {
+		return wrapError(http.StatusInternalServerError, "could not retrieve user info", err, nil)
+	}
+
+	return c.JSON(http.StatusOK, coreUserInfoToUserProfile(user))
+}
+
 func (h *Handler) HandleGetUser(c echo.Context) error {
 	userID := c.Param("userID")
 	if userID == "" {

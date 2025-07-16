@@ -134,13 +134,53 @@ func (h *Handler) HandleListFlows(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
 	}
 
-	flows, lastRuns, err := h.co.GetAllFlows(c.Request().Context(), namespace)
+	flows, err := h.co.GetAllFlows(c.Request().Context(), namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not list flows", err, nil)
 	}
 
-	response := coreFlowsToFlows(flows, lastRuns)
+	response := coreFlowsToFlows(flows)
 	return c.JSON(http.StatusOK, response)
+}
+
+func (h *Handler) HandleFlowsPagination(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	var req PaginateRequest
+	if err := c.Bind(&req); err != nil {
+		return wrapError(http.StatusInternalServerError, "invalid request", err, nil)
+	}
+
+	if req.Page < 0 || req.Count < 0 {
+		return wrapError(http.StatusInternalServerError, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
+	}
+
+	if req.Page > 0 {
+		req.Page -= 1
+	}
+
+	if req.Count == 0 {
+		req.Count = CountPerPage
+	}
+
+	flows, pageCount, totalCount, err := h.co.GetFlowsPaginated(c.Request().Context(), namespace, req.Count, req.Count*req.Page)
+	if err != nil {
+		return wrapError(http.StatusInternalServerError, "could not get paginated flows", err, nil)
+	}
+
+	flowItems := make([]FlowListItem, len(flows))
+	for i, flow := range flows {
+		flowItems[i] = coreFlowToFlow(flow)
+	}
+
+	return c.JSON(http.StatusOK, FlowsPaginateResponse{
+		Flows:      flowItems,
+		PageCount:  pageCount,
+		TotalCount: totalCount,
+	})
 }
 
 func (h *Handler) HandleGetFlow(c echo.Context) error {

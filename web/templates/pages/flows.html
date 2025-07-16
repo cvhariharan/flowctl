@@ -1,26 +1,314 @@
 {{ define "flows" }}
 {{ template "partials/header" . }}
 
-{{ if not .Page.ErrMessage }}
-<div class="flex h-screen flex-col justify-start items-center bg-gray-900">
-    <p class="font-bold text-5xl p-10 text-white">Autopilot</p>
-    {{ $namespace := .Page.Namespace }}
-    {{ range $_, $v := .Flows }}
-    <div
-        x-data
-        x-on:click="window.location.href = '/view/{{ $namespace }}/{{ $v.Meta.ID }}'"
-        class="w-full max-w-md mx-auto my-3 bg-gray-800 border border-gray-700 rounded-lg shadow hover:shadow-md transition-all duration-200 cursor-pointer"
-    >
-        <div class="p-6">
-            <p class="font-semibold text-xl text-white">{{ $v.Meta.Name }}</p>
-            <p class="font-light text-base text-gray-300">{{ $v.Meta.Description }}</p>
-        </div>
+<div class="flex h-screen bg-gray-50">
+    <!-- Sidebar -->
+    {{ template "partials/sidebar" . }}
+
+    <!-- Main Content -->
+    <div x-data="flowsManager()" class="flex-1 flex flex-col overflow-hidden">
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <!-- Breadcrumb -->
+                <nav class="flex items-center space-x-2 text-sm">
+                    <span class="text-gray-500">Namespaces</span>
+                    <span class="text-gray-400">/</span>
+                    <span class="text-gray-500">{{ .Page.Namespace }}</span>
+                    <span class="text-gray-400">/</span>
+                    <span class="text-gray-900 font-medium">Flows</span>
+                </nav>
+
+                <!-- Right side -->
+                <div class="flex items-center space-x-4">
+                    <!-- Search -->
+                    <div class="relative">
+                        <svg class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <input type="text"
+                               placeholder="Search flows..."
+                               x-model="searchQuery"
+                               @input.debounce.300ms="searchFlows()"
+                               class="pl-10 pr-4 py-2 w-80 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- User Menu -->
+                    <div class="relative" x-init="fetchUserProfile()">
+                        <div class="flex items-center space-x-3 cursor-pointer" @click="userSettingsOpen = !userSettingsOpen">
+                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                                <span class="text-white text-sm font-medium" x-text="userProfile ? userProfile.name.split(' ').map(n => n[0]).join('').substring(0, 2) : 'U'"></span>
+                            </div>
+                            <span class="text-gray-700 text-sm font-medium" x-text="userProfile ? userProfile.name : 'Loading...'"></span>
+                            <svg class="w-4 h-4 text-gray-500 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                        
+                        <!-- Dropdown Menu -->
+                        <div x-show="userSettingsOpen" @click.away="userSettingsOpen = false" 
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="transform opacity-0 scale-95"
+                             x-transition:enter-end="transform opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="transform opacity-100 scale-100"
+                             x-transition:leave-end="transform opacity-0 scale-95"
+                             class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                            <div class="py-1">
+                                <div class="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
+                                    <div class="font-medium" x-text="userProfile ? userProfile.name : ''"></div>
+                                    <div class="text-gray-500" x-text="userProfile ? userProfile.username : ''"></div>
+                                    <div class="text-xs text-gray-400" x-text="userProfile ? userProfile.role : ''"></div>
+                                </div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
+                                <div class="border-t border-gray-100"></div>
+                                <a href="/logout" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign out</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-auto bg-gray-50 p-6">
+            <div class="max-w-7xl mx-auto">
+                <!-- Error Message -->
+                <div x-show="errorMessage" class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex">
+                        <svg class="w-5 h-5 text-red-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">Error</h3>
+                            <p class="mt-1 text-sm text-red-700" x-text="errorMessage"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div x-show="loading" class="flex items-center justify-center py-12">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span class="ml-3 text-gray-600">Loading flows...</span>
+                </div>
+
+                <!-- Flows Grid -->
+                <div x-show="!loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <template x-for="flow in flows" :key="flow.id">
+                        <div class="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+                             @click="window.location.href = `/view/${selectedNamespace}/${flow.slug}`">
+
+                            <div class="p-6">
+                                <!-- Flow Header -->
+                                <div class="flex items-start justify-between mb-4">
+                                    <h3 class="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors"
+                                        x-text="flow.name">
+                                    </h3>
+                                </div>
+
+                                <!-- Flow Description -->
+                                <p class="text-gray-600 text-sm mb-4 line-clamp-2" x-text="flow.description">
+                                </p>
+
+                                <!-- Flow Stats -->
+                                <div class="flex items-center justify-between text-sm text-gray-500">
+                                    <div class="flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                        </svg>
+                                        <span x-text="flow.step_count || 0"></span> <span class="ml-1">steps</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Flow Actions Footer -->
+                            <div class="px-6 py-3 bg-gray-50 border-t border-gray-100 rounded-b-lg">
+                                <div class="flex items-center justify-between">
+                                    <button class="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                                        @click.stop="window.location.href = `/view/${selectedNamespace}/${flow.slug}`">
+                                        Run Flow
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Empty State -->
+                    <div x-show="!loading && flows.length === 0" class="col-span-full text-center py-12">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">No flows found</h3>
+                    </div>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="flex justify-center mt-8" x-show="!loading && pageCount > 1">
+                    <div class="join">
+                        <button class="join-item btn btn-sm"
+                            :class="{'btn-disabled': currentPage === 1}"
+                            @click="goToPage(currentPage - 1)"
+                            :disabled="currentPage === 1"
+                        >Prev</button>
+                        <template x-for="p in pageCount" :key="p">
+                            <button class="join-item btn btn-sm"
+                                :class="{'btn-active': p === currentPage}"
+                                @click="goToPage(p)"
+                                x-text="p"
+                            ></button>
+                        </template>
+                        <button class="join-item btn btn-sm"
+                            :class="{'btn-disabled': currentPage === pageCount}"
+                            @click="goToPage(currentPage + 1)"
+                            :disabled="currentPage === pageCount"
+                        >Next</button>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
-    {{ end }}
 </div>
-{{ else }}
-{{ template "partials/error_message" . }}
-{{ end }}
+
+<script>
+    // Alpine.js initialization for flows management
+    function flowsManager() {
+        return {
+            userSettingsOpen: false,
+            userProfile: null,
+            searchQuery: '',
+            selectedNamespace: '{{ .Page.Namespace }}',
+            flows: [],
+            loading: false,
+            errorMessage: '',
+            currentPage: 1,
+            itemsPerPage: 20,
+            totalCount: 0,
+            pageCount: 0,
+
+            init() {
+                console.log('Flows manager initialized for namespace:', this.selectedNamespace);
+                this.loadFlows();
+            },
+
+            async loadFlows() {
+                this.loading = true;
+                this.errorMessage = '';
+                
+                try {
+                    const url = new URL(`/api/v1/${this.selectedNamespace}/flows`, window.location.origin);
+                    url.searchParams.append('page', this.currentPage);
+                    url.searchParams.append('count_per_page', this.itemsPerPage);
+                    if (this.searchQuery) {
+                        url.searchParams.append('filter', this.searchQuery);
+                    }
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch flows: ${response.status} ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    this.flows = data.flows || [];
+                    this.totalCount = data.total_count || 0;
+                    this.pageCount = Math.ceil(this.totalCount / this.itemsPerPage);
+                } catch (error) {
+                    console.error('Error loading flows:', error);
+                    this.errorMessage = 'Failed to load flows. Please try again.';
+                    this.flows = [];
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            goToPage(page) {
+                if (page < 1 || page > this.pageCount) return;
+                this.currentPage = page;
+                this.loadFlows();
+            },
+
+            fetchUserProfile() {
+                fetch('/api/v1/users/profile', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch user profile: ${response.status} ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    this.userProfile = data;
+                })
+                .catch(error => {
+                    this.notifyError('Failed to load user profile');
+                    this.user = { name: 'User', username: 'unknown', role: 'user' };
+                });
+            },
+
+            runFlow(flowId) {
+                console.log('Running flow:', flowId);
+                fetch(`/api/v1/${this.selectedNamespace}/trigger/${flowId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Flow execution started:', data);
+                    this.notifySuccess(`Flow ${flowId} started successfully`);
+                    // TODO: Redirect to execution view
+                })
+                .catch(error => {
+                    console.error('Error running flow:', error);
+                    this.notifyError(`Failed to start flow ${flowId}`);
+                });
+            },
+
+            starFlow(flowId) {
+                console.log('Starring flow:', flowId);
+                // TODO: Implement flow starring/favoriting
+            },
+
+            searchFlows() {
+                this.currentPage = 1;
+                this.loadFlows();
+            },
+
+            showFlowMenu(flowId) {
+                console.log('Show flow menu for:', flowId);
+                // TODO: Implement flow menu actions
+            },
+
+            notifySuccess(message) {
+                window.dispatchEvent(
+                    new CustomEvent("notify", {
+                        detail: { message, type: "success" },
+                    })
+                );
+            },
+
+            notifyError(message) {
+                window.dispatchEvent(
+                    new CustomEvent("notify", {
+                        detail: { message, type: "error" },
+                    })
+                );
+            }
+        };
+    }
+</script>
 
 {{ template "partials/footer" . }}
 {{ end }}

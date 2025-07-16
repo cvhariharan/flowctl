@@ -148,6 +148,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 
 	// Global admin endpoints for users and groups
 	api.GET("/users", h.HandleUserPagination)
+	api.GET("/users/profile", h.HandleGetUserProfile)
 	api.GET("/users/:userID", h.HandleGetUser)
 	api.POST("/users", h.HandleCreateUser)
 	api.DELETE("/users/:userID", h.HandleDeleteUser)
@@ -169,7 +170,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	// Namespace-specific resource endpoints
 	// Flow and execution endpoints
 	api.POST("/:namespace/trigger/:flow", h.HandleFlowTrigger, h.NamespaceMiddleware)
-	api.GET("/:namespace/flows", h.HandleListFlows, h.NamespaceMiddleware)
+	api.GET("/:namespace/flows", h.HandleFlowsPagination, h.NamespaceMiddleware)
 	api.GET("/:namespace/flows/:flowID", h.HandleGetFlow, h.NamespaceMiddleware)
 	api.GET("/:namespace/logs/:logID", h.HandleLogStreaming, h.NamespaceMiddleware)
 

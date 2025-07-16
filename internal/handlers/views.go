@@ -64,14 +64,14 @@ func (h *Handler) HandleFlowsListView(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
 	}
 
-	flows, _, err := h.co.GetAllFlows(c.Request().Context(), namespaceID)
+	flows, err := h.co.GetAllFlows(c.Request().Context(), namespaceID)
 	if err != nil {
 		data.ErrMessage = err.Error()
-		return c.Render(http.StatusBadRequest, "flows_test", data)
+		return c.Render(http.StatusBadRequest, "flows", data)
 	}
 
 	data.Flows = flows
-	return c.Render(http.StatusOK, "flows_test", data)
+	return c.Render(http.StatusOK, "flows", data)
 }
 
 func (h *Handler) HandleFlowFormView(c echo.Context) error {

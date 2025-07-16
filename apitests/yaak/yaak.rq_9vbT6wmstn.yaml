@@ -2,9 +2,9 @@ type: http_request
 model: http_request
 id: rq_9vbT6wmstn
 createdAt: 2025-07-14T09:48:37.928067785
-updatedAt: 2025-07-15T08:08:43.204147352
+updatedAt: 2025-07-16T14:09:39.220492225
 workspaceId: wk_f7os23Vq2X
-folderId: null
+folderId: fl_MPBCYB62xJ
 authentication: {}
 authenticationType: null
 body:
@@ -30,6 +30,6 @@ headers:
   id: PntwsSFnWb
 method: POST
 name: Create Node
-sortPriority: 8000.0
+sortPriority: 500.0
 url: http://localhost:7000/api/v1/test/nodes
 urlParameters: []

@@ -2,9 +2,9 @@ type: http_request
 model: http_request
 id: rq_QHMwBDK98G
 createdAt: 2025-07-14T09:49:00.344896245
-updatedAt: 2025-07-15T07:29:22.820444728
+updatedAt: 2025-07-16T14:09:14.734216540
 workspaceId: wk_f7os23Vq2X
-folderId: null
+folderId: fl_bXdDN8fPng
 authentication: {}
 authenticationType: null
 body:
@@ -22,6 +22,6 @@ headers:
   id: 0yggZXbN5z
 method: PUT
 name: Update Credential
-sortPriority: 2000.0
+sortPriority: 1000.0
 url: http://localhost:7000/api/v1/credentials/0788d765-8952-4878-99ed-42797ea273dc
 urlParameters: []
