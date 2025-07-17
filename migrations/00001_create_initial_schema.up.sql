@@ -6,10 +6,12 @@ CREATE TABLE IF NOT EXISTS flows (
     name VARCHAR(150) NOT NULL,
     checksum VARCHAR(128) NOT NULL,
     description TEXT,
+    namespace_id INTEGER
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
-CREATE UNIQUE INDEX idx_flows_slug ON flows(slug);
+CREATE INDEX idx_flows_slug ON flows(slug);
+CREATE UNIQUE INDEX idx_flows_slug ON flows(slug, namespace_id);
 
 CREATE TYPE user_login_type AS ENUM (
     'oidc',
