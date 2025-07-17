@@ -36,13 +36,13 @@ type NamespaceWithRole struct {
 }
 
 type NamespaceMember struct {
-	ID          int           `json:"id"`
-	SubjectID   int           `json:"subject_id"`
+	ID          string        `json:"id"`
+	SubjectID   string        `json:"subject_id"`
 	SubjectType string        `json:"subject_type"`
 	NamespaceID string        `json:"namespace_id"`
 	Role        NamespaceRole `json:"role"`
 	CreatedAt   string        `json:"created_at"`
 	UpdatedAt   string        `json:"updated_at"`
 	UserName    *string       `json:"user_name,omitempty"`
-	GroupName   *string       `json:"group_name,omitempty"`
+	GroupName   *string 	  `json:"group_name,omitempty"`
 }

@@ -81,26 +81,26 @@ SELECT EXISTS (
 
 
 -- name: AssignUserNamespaceRole :one
-INSERT INTO namespace_members (subject_id, subject_type, namespace_id, role)
+INSERT INTO namespace_members (subject_uuid, subject_type, namespace_id, role)
 VALUES (
     $1,
     'user',
-    (SELECT id FROM namespaces WHERE uuid = $2),
+    (SELECT id FROM namespaces WHERE namespaces.uuid = $2),
     $3
 )
-ON CONFLICT (subject_id, subject_type, namespace_id)
+ON CONFLICT ON CONSTRAINT unique_namespace_member
 DO UPDATE SET role = EXCLUDED.role, updated_at = NOW()
 RETURNING *;
 
 -- name: AssignGroupNamespaceRole :one
-INSERT INTO namespace_members (subject_id, subject_type, namespace_id, role)
+INSERT INTO namespace_members (subject_uuid, subject_type, namespace_id, role)
 VALUES (
     $1,
     'group',
-    (SELECT id FROM namespaces WHERE uuid = $2),
+    (SELECT id FROM namespaces WHERE namespaces.uuid = $2),
     $3
 )
-ON CONFLICT (subject_id, subject_type, namespace_id)
+ON CONFLICT ON CONSTRAINT unique_namespace_member
 DO UPDATE SET role = EXCLUDED.role, updated_at = NOW()
 RETURNING *;
 
@@ -110,7 +110,7 @@ WITH user_namespaces AS (
     SELECT n.uuid, n.name, nm.role
     FROM namespaces n
     JOIN namespace_members nm ON n.id = nm.namespace_id
-    WHERE nm.subject_id = (SELECT id FROM users WHERE users.uuid = $1)
+    WHERE nm.subject_uuid = (SELECT uuid FROM users WHERE users.uuid = $1)
     AND nm.subject_type = 'user'
 
     UNION
@@ -119,7 +119,8 @@ WITH user_namespaces AS (
     SELECT DISTINCT n.uuid, n.name, nm.role
     FROM namespaces n
     JOIN namespace_members nm ON n.id = nm.namespace_id
-    JOIN group_memberships gm ON nm.subject_id = gm.group_id
+    JOIN groups gr ON nm.subject_uuid = gr.uuid
+    JOIN group_memberships gm ON gr.id = gm.group_id
     WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $1)
     AND nm.subject_type = 'group'
 )
@@ -128,6 +129,7 @@ ORDER BY name;
 
 -- name: GetNamespaceMembers :many
 SELECT
+    nm.uuid,
     CASE WHEN nm.subject_type = 'user' THEN u.uuid ELSE g.uuid END as subject_uuid,
     CASE WHEN nm.subject_type = 'user' THEN u.name ELSE g.name END as subject_name,
     nm.subject_type,
@@ -135,16 +137,16 @@ SELECT
     nm.created_at,
     nm.updated_at
 FROM namespace_members nm
-LEFT JOIN users u ON nm.subject_id = u.id AND nm.subject_type = 'user'
-LEFT JOIN groups g ON nm.subject_id = g.id AND nm.subject_type = 'group'
+LEFT JOIN users u ON nm.subject_uuid = u.uuid AND nm.subject_type = 'user'
+LEFT JOIN groups g ON nm.subject_uuid = g.uuid AND nm.subject_type = 'group'
 WHERE nm.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $1)
 ORDER BY nm.role, subject_name;
 
--- name: RemoveNamespaceMember :exec
+-- name: RemoveNamespaceMember :one
 DELETE FROM namespace_members
 WHERE namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $1)
-AND subject_id = $2
-AND subject_type = $3;
+AND namespace_members.uuid = $2
+RETURNING *;
 
 -- name: GetUserGroups :many
 SELECT g.* FROM groups g

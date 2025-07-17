@@ -14,30 +14,31 @@ import (
 )
 
 const assignGroupNamespaceRole = `-- name: AssignGroupNamespaceRole :one
-INSERT INTO namespace_members (subject_id, subject_type, namespace_id, role)
+INSERT INTO namespace_members (subject_uuid, subject_type, namespace_id, role)
 VALUES (
     $1,
     'group',
-    (SELECT id FROM namespaces WHERE uuid = $2),
+    (SELECT id FROM namespaces WHERE namespaces.uuid = $2),
     $3
 )
-ON CONFLICT (subject_id, subject_type, namespace_id)
+ON CONFLICT ON CONSTRAINT unique_namespace_member
 DO UPDATE SET role = EXCLUDED.role, updated_at = NOW()
-RETURNING id, subject_id, subject_type, namespace_id, role, created_at, updated_at
+RETURNING id, uuid, subject_uuid, subject_type, namespace_id, role, created_at, updated_at
 `
 
 type AssignGroupNamespaceRoleParams struct {
-	SubjectID int32     `db:"subject_id" json:"subject_id"`
-	Uuid      uuid.UUID `db:"uuid" json:"uuid"`
-	Role      string    `db:"role" json:"role"`
+	SubjectUuid uuid.UUID `db:"subject_uuid" json:"subject_uuid"`
+	Uuid        uuid.UUID `db:"uuid" json:"uuid"`
+	Role        string    `db:"role" json:"role"`
 }
 
 func (q *Queries) AssignGroupNamespaceRole(ctx context.Context, arg AssignGroupNamespaceRoleParams) (NamespaceMember, error) {
-	row := q.db.QueryRowContext(ctx, assignGroupNamespaceRole, arg.SubjectID, arg.Uuid, arg.Role)
+	row := q.db.QueryRowContext(ctx, assignGroupNamespaceRole, arg.SubjectUuid, arg.Uuid, arg.Role)
 	var i NamespaceMember
 	err := row.Scan(
 		&i.ID,
-		&i.SubjectID,
+		&i.Uuid,
+		&i.SubjectUuid,
 		&i.SubjectType,
 		&i.NamespaceID,
 		&i.Role,
@@ -48,30 +49,31 @@ func (q *Queries) AssignGroupNamespaceRole(ctx context.Context, arg AssignGroupN
 }
 
 const assignUserNamespaceRole = `-- name: AssignUserNamespaceRole :one
-INSERT INTO namespace_members (subject_id, subject_type, namespace_id, role)
+INSERT INTO namespace_members (subject_uuid, subject_type, namespace_id, role)
 VALUES (
     $1,
     'user',
-    (SELECT id FROM namespaces WHERE uuid = $2),
+    (SELECT id FROM namespaces WHERE namespaces.uuid = $2),
     $3
 )
-ON CONFLICT (subject_id, subject_type, namespace_id)
+ON CONFLICT ON CONSTRAINT unique_namespace_member
 DO UPDATE SET role = EXCLUDED.role, updated_at = NOW()
-RETURNING id, subject_id, subject_type, namespace_id, role, created_at, updated_at
+RETURNING id, uuid, subject_uuid, subject_type, namespace_id, role, created_at, updated_at
 `
 
 type AssignUserNamespaceRoleParams struct {
-	SubjectID int32     `db:"subject_id" json:"subject_id"`
-	Uuid      uuid.UUID `db:"uuid" json:"uuid"`
-	Role      string    `db:"role" json:"role"`
+	SubjectUuid uuid.UUID `db:"subject_uuid" json:"subject_uuid"`
+	Uuid        uuid.UUID `db:"uuid" json:"uuid"`
+	Role        string    `db:"role" json:"role"`
 }
 
 func (q *Queries) AssignUserNamespaceRole(ctx context.Context, arg AssignUserNamespaceRoleParams) (NamespaceMember, error) {
-	row := q.db.QueryRowContext(ctx, assignUserNamespaceRole, arg.SubjectID, arg.Uuid, arg.Role)
+	row := q.db.QueryRowContext(ctx, assignUserNamespaceRole, arg.SubjectUuid, arg.Uuid, arg.Role)
 	var i NamespaceMember
 	err := row.Scan(
 		&i.ID,
-		&i.SubjectID,
+		&i.Uuid,
+		&i.SubjectUuid,
 		&i.SubjectType,
 		&i.NamespaceID,
 		&i.Role,
@@ -246,6 +248,7 @@ func (q *Queries) GetNamespaceByUUID(ctx context.Context, argUuid uuid.UUID) (Na
 
 const getNamespaceMembers = `-- name: GetNamespaceMembers :many
 SELECT
+    nm.uuid,
     CASE WHEN nm.subject_type = 'user' THEN u.uuid ELSE g.uuid END as subject_uuid,
     CASE WHEN nm.subject_type = 'user' THEN u.name ELSE g.name END as subject_name,
     nm.subject_type,
@@ -253,13 +256,14 @@ SELECT
     nm.created_at,
     nm.updated_at
 FROM namespace_members nm
-LEFT JOIN users u ON nm.subject_id = u.id AND nm.subject_type = 'user'
-LEFT JOIN groups g ON nm.subject_id = g.id AND nm.subject_type = 'group'
+LEFT JOIN users u ON nm.subject_uuid = u.uuid AND nm.subject_type = 'user'
+LEFT JOIN groups g ON nm.subject_uuid = g.uuid AND nm.subject_type = 'group'
 WHERE nm.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $1)
 ORDER BY nm.role, subject_name
 `
 
 type GetNamespaceMembersRow struct {
+	Uuid        uuid.UUID   `db:"uuid" json:"uuid"`
 	SubjectUuid interface{} `db:"subject_uuid" json:"subject_uuid"`
 	SubjectName interface{} `db:"subject_name" json:"subject_name"`
 	SubjectType string      `db:"subject_type" json:"subject_type"`
@@ -278,6 +282,7 @@ func (q *Queries) GetNamespaceMembers(ctx context.Context, argUuid uuid.UUID) ([
 	for rows.Next() {
 		var i GetNamespaceMembersRow
 		if err := rows.Scan(
+			&i.Uuid,
 			&i.SubjectUuid,
 			&i.SubjectName,
 			&i.SubjectType,
@@ -386,7 +391,7 @@ WITH user_namespaces AS (
     SELECT n.uuid, n.name, nm.role
     FROM namespaces n
     JOIN namespace_members nm ON n.id = nm.namespace_id
-    WHERE nm.subject_id = (SELECT id FROM users WHERE users.uuid = $1)
+    WHERE nm.subject_uuid = (SELECT uuid FROM users WHERE users.uuid = $1)
     AND nm.subject_type = 'user'
 
     UNION
@@ -395,7 +400,8 @@ WITH user_namespaces AS (
     SELECT DISTINCT n.uuid, n.name, nm.role
     FROM namespaces n
     JOIN namespace_members nm ON n.id = nm.namespace_id
-    JOIN group_memberships gm ON nm.subject_id = gm.group_id
+    JOIN groups gr ON nm.subject_uuid = gr.uuid
+    JOIN group_memberships gm ON gr.id = gm.group_id
     WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $1)
     AND nm.subject_type = 'group'
 )
@@ -534,22 +540,32 @@ func (q *Queries) ListNamespaces(ctx context.Context, arg ListNamespacesParams) 
 	return items, nil
 }
 
-const removeNamespaceMember = `-- name: RemoveNamespaceMember :exec
+const removeNamespaceMember = `-- name: RemoveNamespaceMember :one
 DELETE FROM namespace_members
 WHERE namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $1)
-AND subject_id = $2
-AND subject_type = $3
+AND namespace_members.uuid = $2
+RETURNING id, uuid, subject_uuid, subject_type, namespace_id, role, created_at, updated_at
 `
 
 type RemoveNamespaceMemberParams struct {
-	Uuid        uuid.UUID `db:"uuid" json:"uuid"`
-	SubjectID   int32     `db:"subject_id" json:"subject_id"`
-	SubjectType string    `db:"subject_type" json:"subject_type"`
+	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
+	Uuid_2 uuid.UUID `db:"uuid_2" json:"uuid_2"`
 }
 
-func (q *Queries) RemoveNamespaceMember(ctx context.Context, arg RemoveNamespaceMemberParams) error {
-	_, err := q.db.ExecContext(ctx, removeNamespaceMember, arg.Uuid, arg.SubjectID, arg.SubjectType)
-	return err
+func (q *Queries) RemoveNamespaceMember(ctx context.Context, arg RemoveNamespaceMemberParams) (NamespaceMember, error) {
+	row := q.db.QueryRowContext(ctx, removeNamespaceMember, arg.Uuid, arg.Uuid_2)
+	var i NamespaceMember
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.SubjectUuid,
+		&i.SubjectType,
+		&i.NamespaceID,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const revokeGroupNamespaceAccess = `-- name: RevokeGroupNamespaceAccess :exec

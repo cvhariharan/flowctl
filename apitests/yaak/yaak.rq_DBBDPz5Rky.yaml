@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_DBBDPz5Rky
+createdAt: 2025-07-17T07:23:31.783608164
+updatedAt: 2025-07-17T09:11:47.612032292
+workspaceId: wk_f7os23Vq2X
+folderId: fl_Vn6oHBwHpL
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: DELETE
+name: Remove Members
+sortPriority: 2000.0009
+url: http://localhost:7000/api/v1/test1/members/1f112f7b-30bc-4705-8a69-e2ecd9d10dab
+urlParameters: []

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/cvhariharan/autopilot/internal/core/models"
 )
 
@@ -298,6 +297,7 @@ type NamespaceMemberReq struct {
 }
 
 type NamespaceMemberResp struct {
+	ID 			string `json:"id"`
 	SubjectID   string `json:"subject_id"`
 	SubjectName string `json:"subject_name"`
 	SubjectType string `json:"subject_type"`
@@ -312,7 +312,8 @@ type NamespaceMembersResponse struct {
 
 func coreNamespaceMemberToResp(m models.NamespaceMember) NamespaceMemberResp {
 	return NamespaceMemberResp{
-		SubjectID:   fmt.Sprintf("%d", m.SubjectID),
+		ID: 		 m.ID,
+		SubjectID:   m.SubjectID,
 		SubjectName: getSubjectName(m),
 		SubjectType: m.SubjectType,
 		Role:        string(m.Role),

@@ -113,7 +113,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	}
 
 	co := core.NewCore(flows, s, asynqClient, redisClient, keeper, enforcer)
-	
+
 	// Initialize RBAC policies
 	if err := co.InitializeRBACPolicies(); err != nil {
 		log.Fatalf("could not initialize RBAC policies: %v", err)
@@ -213,7 +213,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	// Namespace management - admins only
 	namespaceGroup.GET("/members", h.HandleGetNamespaceMembers, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionView))
 	namespaceGroup.POST("/members", h.HandleAddNamespaceMember, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionUpdate))
-	namespaceGroup.DELETE("/members/:subjectID", h.HandleRemoveNamespaceMember, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionUpdate))
+	namespaceGroup.DELETE("/members/:membershipID", h.HandleRemoveNamespaceMember, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionUpdate))
 
 	admin := e.Group("/admin")
 	admin.Use(h.AuthorizeForRole("admin"))

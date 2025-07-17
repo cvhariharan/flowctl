@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_Rd5Wnu6Yhv
 createdAt: 2025-07-17T06:38:14.386434114
-updatedAt: 2025-07-17T07:13:24.075610565
+updatedAt: 2025-07-17T09:10:34.195234253
 workspaceId: wk_f7os23Vq2X
 folderId: fl_Vn6oHBwHpL
 authentication: {}
@@ -10,7 +10,7 @@ authenticationType: null
 body:
   text: |-
     {
-      "subject_id": "b843b55e-d971-4cf8-b518-405c44853c42",
+      "subject_id": "8ee3141b-f0ed-4e39-9b7f-f660fb41a41b",
       "subject_type": "group",
       "role": "user"
     }

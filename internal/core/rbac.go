@@ -60,7 +60,7 @@ func (c *Core) AssignNamespaceRole(ctx context.Context, subjectID string, subjec
 		}
 
 		_, err = c.store.AssignUserNamespaceRole(ctx, repo.AssignUserNamespaceRoleParams{
-			SubjectID:   user.ID,
+			SubjectUuid:   user.Uuid,
 			Uuid:        namespaceUUID,
 			Role:        string(role),
 		})
@@ -79,7 +79,7 @@ func (c *Core) AssignNamespaceRole(ctx context.Context, subjectID string, subjec
 		}
 
 		_, err = c.store.AssignGroupNamespaceRole(ctx, repo.AssignGroupNamespaceRoleParams{
-			SubjectID:   group.ID,
+			SubjectUuid:   group.Uuid,
 			Uuid:        namespaceUUID,
 			Role:        string(role),
 		})
@@ -194,47 +194,28 @@ func (c *Core) GetUserNamespaces(ctx context.Context, userID string) ([]models.N
 }
 
 // RemoveNamespaceMember removes a user or group from a namespace
-func (c *Core) RemoveNamespaceMember(ctx context.Context, subjectID string, subjectType string, namespaceID string) error {
+func (c *Core) RemoveNamespaceMember(ctx context.Context, membershipID, namespaceID string) error {
 	namespaceUUID, err := uuid.Parse(namespaceID)
 	if err != nil {
 		return fmt.Errorf("invalid namespace UUID: %w", err)
 	}
 
-	var subjectInternalID int32
-	if subjectType == "user" {
-		userUUID, err := uuid.Parse(subjectID)
-		if err != nil {
-			return fmt.Errorf("invalid user UUID: %w", err)
-		}
-		user, err := c.store.GetUserByUUID(ctx, userUUID)
-		if err != nil {
-			return err
-		}
-		subjectInternalID = user.ID
-	} else if subjectType == "group" {
-		groupUUID, err := uuid.Parse(subjectID)
-		if err != nil {
-			return fmt.Errorf("invalid group UUID: %w", err)
-		}
-		group, err := c.store.GetGroupByUUID(ctx, groupUUID)
-		if err != nil {
-			return err
-		}
-		subjectInternalID = group.ID
+	membershipUUID, err := uuid.Parse(membershipID)
+	if err != nil {
+		return fmt.Errorf("invalid membership UUID: %w", err)
 	}
 
 	// Remove from database
-	err = c.store.RemoveNamespaceMember(ctx, repo.RemoveNamespaceMemberParams{
-		Uuid:        namespaceUUID,
-		SubjectID:   subjectInternalID,
-		SubjectType: subjectType,
+	m, err := c.store.RemoveNamespaceMember(ctx, repo.RemoveNamespaceMemberParams{
+		Uuid:	namespaceUUID,
+		Uuid_2: membershipUUID,
 	})
 	if err != nil {
 		return err
 	}
 
 	// Remove from Casbin policies
-	subject := fmt.Sprintf("%s:%s", subjectType, subjectID)
+	subject := fmt.Sprintf("%s:%s", m.SubjectType, m.SubjectUuid.String())
 	c.enforcer.RemoveFilteredGroupingPolicy(0, subject, "", namespaceID)
 
 	return c.enforcer.SavePolicy()
@@ -255,18 +236,17 @@ func (c *Core) GetNamespaceMembers(ctx context.Context, namespaceID string) ([]m
 	var result []models.NamespaceMember
 	for _, row := range rows {
 		member := models.NamespaceMember{
+			ID: 		 row.Uuid.String(),
 			SubjectType: row.SubjectType,
 			Role:        models.NamespaceRole(row.Role),
 			CreatedAt:   row.CreatedAt.Format("2006-01-02T15:04:05Z"),
 			UpdatedAt:   row.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 		}
 
-		// Convert subject_uuid and subject_name from interface{} to string
+		// Convert subject_uuid from interface{} to string
 		if row.SubjectUuid != nil {
-			if uuidVal, ok := row.SubjectUuid.([]byte); ok {
-				if parsedUUID, err := uuid.Parse(string(uuidVal)); err == nil {
-					member.SubjectID = int(parsedUUID.ID()) // Convert to int for compatibility
-				}
+			if uuidVal, ok := row.SubjectUuid.(string); ok {
+				member.SubjectID = uuidVal
 			}
 		}
 

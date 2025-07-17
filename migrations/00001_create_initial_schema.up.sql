@@ -193,17 +193,19 @@ CREATE UNIQUE INDEX idx_nodes_name ON nodes(name);
 
 CREATE TABLE namespace_members (
     id SERIAL PRIMARY KEY,
-    subject_id INT NOT NULL,
+    uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
+    subject_uuid UUID NOT NULL,
     subject_type VARCHAR(10) NOT NULL CHECK (subject_type IN ('user', 'group')),
     namespace_id INT NOT NULL REFERENCES namespaces(id) ON DELETE CASCADE,
     role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'operator', 'admin')),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    UNIQUE(subject_id, subject_type, namespace_id)
+    CONSTRAINT unique_namespace_member UNIQUE(subject_uuid, subject_type, namespace_id)
 );
 
 CREATE INDEX idx_namespace_members_namespace ON namespace_members(namespace_id);
-CREATE INDEX idx_namespace_members_subject ON namespace_members(subject_id, subject_type);
+CREATE INDEX idx_namespace_members_uuid ON namespace_members(uuid);
+CREATE INDEX idx_namespace_members_subject ON namespace_members(subject_uuid, subject_type);
 
 CREATE TABLE casbin_rule (
     id SERIAL PRIMARY KEY,

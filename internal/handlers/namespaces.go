@@ -164,21 +164,12 @@ func (h *Handler) HandleRemoveNamespaceMember(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
 	}
 
-	subjectID := c.Param("subjectID")
-	if subjectID == "" {
+	membershipID := c.Param("membershipID")
+	if membershipID == "" {
 		return wrapError(http.StatusBadRequest, "subject ID cannot be empty", nil, nil)
 	}
 
-	subjectType := c.QueryParam("subject_type")
-	if subjectType == "" {
-		return wrapError(http.StatusBadRequest, "subject_type query parameter is required", nil, nil)
-	}
-
-	if subjectType != "user" && subjectType != "group" {
-		return wrapError(http.StatusBadRequest, "subject_type must be 'user' or 'group'", nil, nil)
-	}
-
-	err := h.co.RemoveNamespaceMember(c.Request().Context(), subjectID, subjectType, namespace)
+	err := h.co.RemoveNamespaceMember(c.Request().Context(), membershipID, namespace)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not remove namespace member", err, nil)
 	}
