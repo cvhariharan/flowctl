@@ -166,9 +166,9 @@ func (h *Handler) HandleFlowsPagination(c echo.Context) error {
 		req.Count = CountPerPage
 	}
 
-	flows, pageCount, totalCount, err := h.co.GetFlowsPaginated(c.Request().Context(), namespace, req.Count, req.Count*req.Page)
+	flows, pageCount, totalCount, err := h.co.SearchFlows(c.Request().Context(), namespace, req.Filter, req.Count, req.Count*req.Page)
 	if err != nil {
-		return wrapError(http.StatusInternalServerError, "could not get paginated flows", err, nil)
+		return wrapError(http.StatusInternalServerError, "could not search flows", err, nil)
 	}
 
 	flowItems := make([]FlowListItem, len(flows))

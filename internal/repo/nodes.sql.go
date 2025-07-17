@@ -274,7 +274,7 @@ paged AS (
     LIMIT $2 OFFSET $3
 ),
 page_count AS (
-    SELECT COUNT(*) AS page_count FROM paged
+    SELECT CEIL(total.total_count::numeric / $2::numeric)::bigint AS page_count FROM total
 )
 SELECT 
     p.id, p.uuid, p.name, p.hostname, p.port, p.username, p.os_family, p.tags, p.auth_method, p.credential_id, p.created_at, p.updated_at, p.namespace_id, p.namespace_uuid,

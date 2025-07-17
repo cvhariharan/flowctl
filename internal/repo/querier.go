@@ -72,6 +72,7 @@ type Querier interface {
 	RejectRequestByUUID(ctx context.Context, arg RejectRequestByUUIDParams) (RejectRequestByUUIDRow, error)
 	RemoveAllGroupsForUserByUUID(ctx context.Context, userUuid uuid.UUID) error
 	RevokeGroupNamespaceAccess(ctx context.Context, arg RevokeGroupNamespaceAccessParams) error
+	SearchFlowsPaginated(ctx context.Context, arg SearchFlowsPaginatedParams) ([]SearchFlowsPaginatedRow, error)
 	SearchGroup(ctx context.Context, arg SearchGroupParams) ([]SearchGroupRow, error)
 	SearchUsersWithGroups(ctx context.Context, arg SearchUsersWithGroupsParams) ([]SearchUsersWithGroupsRow, error)
 	UpdateApprovalStatusByUUID(ctx context.Context, arg UpdateApprovalStatusByUUIDParams) (UpdateApprovalStatusByUUIDRow, error)

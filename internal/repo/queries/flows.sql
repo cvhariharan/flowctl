@@ -47,7 +47,7 @@ paged AS (
     LIMIT $2 OFFSET $3
 ),
 page_count AS (
-    SELECT COUNT(*) AS page_count FROM paged
+    SELECT CEIL(total.total_count::numeric / $2::numeric)::bigint AS page_count FROM total
 )
 SELECT 
     p.*,
@@ -70,7 +70,32 @@ paged AS (
     LIMIT $2 OFFSET $3
 ),
 page_count AS (
-    SELECT COUNT(*) AS page_count FROM paged
+    SELECT CEIL(total.total_count::numeric / $2::numeric)::bigint AS page_count FROM total
+)
+SELECT 
+    p.*,
+    pc.page_count,
+    t.total_count
+FROM paged p, page_count pc, total t;
+
+-- name: SearchFlowsPaginated :many
+WITH filtered AS (
+    SELECT f.*, n.uuid AS namespace_uuid FROM flows f
+    JOIN namespaces n ON f.namespace_id = n.id
+    WHERE n.uuid = $1
+      AND (lower(f.name) LIKE '%' || lower($2::text) || '%'
+           OR lower(f.description) LIKE '%' || lower($2::text) || '%')
+),
+total AS (
+    SELECT COUNT(*) AS total_count FROM filtered
+),
+paged AS (
+    SELECT * FROM filtered
+    ORDER BY created_at DESC
+    LIMIT $3 OFFSET $4
+),
+page_count AS (
+    SELECT CEIL(total.total_count::numeric / $3::numeric)::bigint AS page_count FROM total
 )
 SELECT 
     p.*,
