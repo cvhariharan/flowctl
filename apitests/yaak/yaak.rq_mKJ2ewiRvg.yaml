@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_mKJ2ewiRvg
 createdAt: 2025-07-14T08:35:02.758420159
-updatedAt: 2025-07-16T14:08:31.864680627
+updatedAt: 2025-07-17T07:14:06.262010835
 workspaceId: wk_f7os23Vq2X
 folderId: null
 authentication: {}
@@ -10,7 +10,7 @@ authenticationType: null
 body:
   text: |-
     {
-      "username": "autopilot_admin",
+      "username": "hariharan@zerodha.com",
       "password": "autopilot_password"
     }
 bodyType: application/json

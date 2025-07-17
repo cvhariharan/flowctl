@@ -17,6 +17,8 @@ type Querier interface {
 	AddExecutionLog(ctx context.Context, arg AddExecutionLogParams) (ExecutionLog, error)
 	AddGroupToUserByUUID(ctx context.Context, arg AddGroupToUserByUUIDParams) error
 	ApproveRequestByUUID(ctx context.Context, arg ApproveRequestByUUIDParams) (ApproveRequestByUUIDRow, error)
+	AssignGroupNamespaceRole(ctx context.Context, arg AssignGroupNamespaceRoleParams) (NamespaceMember, error)
+	AssignUserNamespaceRole(ctx context.Context, arg AssignUserNamespaceRoleParams) (NamespaceMember, error)
 	CheckUserNamespaceAccess(ctx context.Context, arg CheckUserNamespaceAccessParams) (bool, error)
 	CreateCredential(ctx context.Context, arg CreateCredentialParams) (Credential, error)
 	CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, error)
@@ -32,6 +34,7 @@ type Querier interface {
 	DeleteUserByUUID(ctx context.Context, argUuid uuid.UUID) error
 	GetAllGroups(ctx context.Context) ([]Group, error)
 	GetAllGroupsWithUsers(ctx context.Context) ([]GroupView, error)
+	GetAllNamespaces(ctx context.Context) ([]Namespace, error)
 	GetAllUsersWithGroups(ctx context.Context) ([]UserView, error)
 	GetApprovalByUUID(ctx context.Context, arg GetApprovalByUUIDParams) (GetApprovalByUUIDRow, error)
 	GetApprovalRequestForActionAndExec(ctx context.Context, arg GetApprovalRequestForActionAndExecParams) (Approval, error)
@@ -53,6 +56,7 @@ type Querier interface {
 	GetInputForExecByUUID(ctx context.Context, execID string) (json.RawMessage, error)
 	GetNamespaceByName(ctx context.Context, name string) (Namespace, error)
 	GetNamespaceByUUID(ctx context.Context, argUuid uuid.UUID) (Namespace, error)
+	GetNamespaceMembers(ctx context.Context, argUuid uuid.UUID) ([]GetNamespaceMembersRow, error)
 	GetNamespacesForGroup(ctx context.Context, argUuid uuid.UUID) ([]GetNamespacesForGroupRow, error)
 	GetNodeByName(ctx context.Context, arg GetNodeByNameParams) (GetNodeByNameRow, error)
 	GetNodeByUUID(ctx context.Context, arg GetNodeByUUIDParams) (GetNodeByUUIDRow, error)
@@ -63,6 +67,8 @@ type Querier interface {
 	GetUserByUUIDWithGroups(ctx context.Context, argUuid uuid.UUID) (UserView, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetUserByUsernameWithGroups(ctx context.Context, username string) (UserView, error)
+	GetUserGroups(ctx context.Context, argUuid uuid.UUID) ([]Group, error)
+	GetUserNamespacesWithRoles(ctx context.Context, argUuid uuid.UUID) ([]GetUserNamespacesWithRolesRow, error)
 	GrantGroupNamespaceAccess(ctx context.Context, arg GrantGroupNamespaceAccessParams) (GroupNamespaceAccess, error)
 	ListCredentials(ctx context.Context, arg ListCredentialsParams) ([]ListCredentialsRow, error)
 	ListFlows(ctx context.Context, arg ListFlowsParams) ([]ListFlowsRow, error)
@@ -71,6 +77,7 @@ type Querier interface {
 	ListNodes(ctx context.Context, arg ListNodesParams) ([]ListNodesRow, error)
 	RejectRequestByUUID(ctx context.Context, arg RejectRequestByUUIDParams) (RejectRequestByUUIDRow, error)
 	RemoveAllGroupsForUserByUUID(ctx context.Context, userUuid uuid.UUID) error
+	RemoveNamespaceMember(ctx context.Context, arg RemoveNamespaceMemberParams) error
 	RevokeGroupNamespaceAccess(ctx context.Context, arg RevokeGroupNamespaceAccessParams) error
 	SearchFlowsPaginated(ctx context.Context, arg SearchFlowsPaginatedParams) ([]SearchFlowsPaginatedRow, error)
 	SearchGroup(ctx context.Context, arg SearchGroupParams) ([]SearchGroupRow, error)

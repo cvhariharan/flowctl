@@ -241,6 +241,17 @@ type Approval struct {
 	UpdatedAt time.Time       `db:"updated_at" json:"updated_at"`
 }
 
+type CasbinRule struct {
+	ID    int32          `db:"id" json:"id"`
+	Ptype sql.NullString `db:"ptype" json:"ptype"`
+	V0    sql.NullString `db:"v0" json:"v0"`
+	V1    sql.NullString `db:"v1" json:"v1"`
+	V2    sql.NullString `db:"v2" json:"v2"`
+	V3    sql.NullString `db:"v3" json:"v3"`
+	V4    sql.NullString `db:"v4" json:"v4"`
+	V5    sql.NullString `db:"v5" json:"v5"`
+}
+
 type Credential struct {
 	ID          int32          `db:"id" json:"id"`
 	Uuid        uuid.UUID      `db:"uuid" json:"uuid"`
@@ -315,6 +326,16 @@ type Namespace struct {
 	Name      string    `db:"name" json:"name"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+}
+
+type NamespaceMember struct {
+	ID          int32     `db:"id" json:"id"`
+	SubjectID   int32     `db:"subject_id" json:"subject_id"`
+	SubjectType string    `db:"subject_type" json:"subject_type"`
+	NamespaceID int32     `db:"namespace_id" json:"namespace_id"`
+	Role        string    `db:"role" json:"role"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
 }
 
 type Node struct {

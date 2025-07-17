@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_ZoqqfxqEVn
+createdAt: 2025-07-17T06:40:19.626949352
+updatedAt: 2025-07-17T06:40:48.578696441
+workspaceId: wk_f7os23Vq2X
+folderId: fl_mrVfTFvJpr
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: List Groups
+sortPriority: 1999.9997
+url: http://localhost:7000/api/v1/groups
+urlParameters: []

@@ -18,3 +18,9 @@ DROP INDEX IF EXISTS idx_nodes_name;
 
 DROP TABLE IF EXISTS credentials;
 DROP INDEX IF EXISTS idx_credentials_uuid;
+
+DROP TABLE IF EXISTS namespace_members;
+DROP INDEX IF EXISTS idx_namespace_members_namespace;
+DROP INDEX IF EXISTS idx_namespace_members_subject;
+
+DROP TABLE IF EXISTS casbin_rule;

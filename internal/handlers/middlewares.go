@@ -78,6 +78,34 @@ func (h *Handler) AuthorizeForRole(expectedRole string) echo.MiddlewareFunc {
 	}
 }
 
+func (h *Handler) AuthorizeNamespaceAction(resource models.Resource, action models.RBACAction) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			user, ok := c.Get("user").(models.UserInfo)
+			if !ok {
+				return wrapError(http.StatusForbidden, "could not get user details", nil, nil)
+			}
+
+			namespaceID, ok := c.Get("namespace").(string)
+			if !ok {
+				return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+			}
+
+			allowed, err := h.co.CheckPermission(c.Request().Context(), user.ID, namespaceID, resource, action)
+			if err != nil {
+				return wrapError(http.StatusInternalServerError, "could not check permissions", err, nil)
+			}
+
+			if !allowed {
+				return wrapError(http.StatusForbidden, "insufficient permissions", nil, nil)
+			}
+
+			return next(c)
+		}
+	}
+}
+
+// Updated NamespaceMiddleware for simpler access check
 func (h *Handler) NamespaceMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		namespace := c.Param("namespace")
@@ -95,8 +123,8 @@ func (h *Handler) NamespaceMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return wrapError(http.StatusForbidden, "could not get user details", nil, nil)
 		}
 
-		// Check if user has access to this namespace
-		hasAccess, err := h.co.CanAccessNamespace(c.Request().Context(), user.ID, ns.ID)
+		// Basic access check - user must have at least view permission
+		hasAccess, err := h.co.CheckPermission(c.Request().Context(), user.ID, ns.ID, models.ResourceFlow, models.RBACActionView)
 		if err != nil {
 			return wrapError(http.StatusInternalServerError, "could not check namespace access", err, nil)
 		}
@@ -105,7 +133,6 @@ func (h *Handler) NamespaceMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return wrapError(http.StatusForbidden, "user does not have access to this namespace", nil, nil)
 		}
 
-		// Store namespace UUID in context for use by handlers
 		c.Set("namespace", ns.ID)
 		return next(c)
 	}

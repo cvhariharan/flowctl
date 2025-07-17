@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"github.com/cvhariharan/autopilot/internal/core/models"
 )
 
@@ -287,4 +288,53 @@ func coreUserInfoToUserProfile(u models.UserInfo) UserProfileResponse {
 		Name:     u.Name,
 		Role:     string(u.Role),
 	}
+}
+
+// Namespace member related types
+type NamespaceMemberReq struct {
+	SubjectID   string `json:"subject_id" validate:"required,uuid"`
+	SubjectType string `json:"subject_type" validate:"required,oneof=user group"`
+	Role        string `json:"role" validate:"required,oneof=user operator admin"`
+}
+
+type NamespaceMemberResp struct {
+	SubjectID   string `json:"subject_id"`
+	SubjectName string `json:"subject_name"`
+	SubjectType string `json:"subject_type"`
+	Role        string `json:"role"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
+type NamespaceMembersResponse struct {
+	Members []NamespaceMemberResp `json:"members"`
+}
+
+func coreNamespaceMemberToResp(m models.NamespaceMember) NamespaceMemberResp {
+	return NamespaceMemberResp{
+		SubjectID:   fmt.Sprintf("%d", m.SubjectID),
+		SubjectName: getSubjectName(m),
+		SubjectType: m.SubjectType,
+		Role:        string(m.Role),
+		CreatedAt:   m.CreatedAt,
+		UpdatedAt:   m.UpdatedAt,
+	}
+}
+
+func getSubjectName(m models.NamespaceMember) string {
+	if m.UserName != nil {
+		return *m.UserName
+	}
+	if m.GroupName != nil {
+		return *m.GroupName
+	}
+	return ""
+}
+
+func coreNamespaceMembersToResp(members []models.NamespaceMember) NamespaceMembersResponse {
+	resp := make([]NamespaceMemberResp, len(members))
+	for i, m := range members {
+		resp[i] = coreNamespaceMemberToResp(m)
+	}
+	return NamespaceMembersResponse{Members: resp}
 }

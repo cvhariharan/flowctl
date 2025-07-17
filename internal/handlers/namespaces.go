@@ -119,3 +119,69 @@ func (h *Handler) HandleDeleteNamespace(c echo.Context) error {
 
 	return c.NoContent(http.StatusOK)
 }
+
+func (h *Handler) HandleAddNamespaceMember(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	var req NamespaceMemberReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	role := models.NamespaceRole(req.Role)
+	err := h.co.AssignNamespaceRole(c.Request().Context(), req.SubjectID, req.SubjectType, namespace, role)
+	if err != nil {
+		return wrapError(http.StatusInternalServerError, "could not assign role", err, nil)
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
+func (h *Handler) HandleGetNamespaceMembers(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	members, err := h.co.GetNamespaceMembers(c.Request().Context(), namespace)
+	if err != nil {
+		return wrapError(http.StatusInternalServerError, "could not get namespace members", err, nil)
+	}
+
+	return c.JSON(http.StatusOK, coreNamespaceMembersToResp(members))
+}
+
+func (h *Handler) HandleRemoveNamespaceMember(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	subjectID := c.Param("subjectID")
+	if subjectID == "" {
+		return wrapError(http.StatusBadRequest, "subject ID cannot be empty", nil, nil)
+	}
+
+	subjectType := c.QueryParam("subject_type")
+	if subjectType == "" {
+		return wrapError(http.StatusBadRequest, "subject_type query parameter is required", nil, nil)
+	}
+
+	if subjectType != "user" && subjectType != "group" {
+		return wrapError(http.StatusBadRequest, "subject_type must be 'user' or 'group'", nil, nil)
+	}
+
+	err := h.co.RemoveNamespaceMember(c.Request().Context(), subjectID, subjectType, namespace)
+	if err != nil {
+		return wrapError(http.StatusInternalServerError, "could not remove namespace member", err, nil)
+	}
+
+	return c.NoContent(http.StatusOK)
+}

@@ -13,6 +13,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/casbin/casbin/v2"
+	casbin_model "github.com/casbin/casbin/v2/model"
+	sqlxadapter "github.com/memwey/casbin-sqlx-adapter"
 	"github.com/cvhariharan/autopilot/internal/core"
 	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/cvhariharan/autopilot/internal/handlers"
@@ -58,11 +61,20 @@ func start(isWorker bool) {
 	}))
 	slog.SetDefault(logger)
 
-	db, err := sqlx.Connect("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", viper.GetString("db.user"), viper.GetString("db.password"), viper.GetString("db.host"), viper.GetInt("db.port"), viper.GetString("db.dbname")))
+	dbConnectionString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", viper.GetString("db.user"), viper.GetString("db.password"), viper.GetString("db.host"), viper.GetInt("db.port"), viper.GetString("db.dbname"))
+	db, err := sqlx.Connect("postgres", dbConnectionString)
 	if err != nil {
 		log.Fatalf("could not connect to database: %v", err)
 	}
 	defer db.Close()
+
+	// Initialize casbin
+	m, _ := casbin_model.NewModelFromFile("configs/rbac_model.conf")
+	a := sqlxadapter.NewAdapter("postgres", dbConnectionString)
+	enforcer, err := casbin.NewEnforcer(m, a)
+	if err != nil {
+		log.Fatalf("could not initialize casbin enforcer: %v", err)
+	}
 
 	redisClient := redis.NewUniversalClient(&redis.UniversalOptions{
 		Addrs:    []string{fmt.Sprintf("%s:%d", viper.GetString("redis.host"), viper.GetInt("redis.port"))},
@@ -83,13 +95,13 @@ func start(isWorker bool) {
 	defer keeper.Close()
 
 	if isWorker {
-		startWorker(db, redisClient, logger, keeper)
+		startWorker(db, redisClient, logger, keeper, enforcer)
 	} else {
-		startServer(db, redisClient, logger, keeper)
+		startServer(db, redisClient, logger, keeper, enforcer)
 	}
 }
 
-func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Logger, keeper *secrets.Keeper) {
+func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Logger, keeper *secrets.Keeper, enforcer *casbin.Enforcer) {
 	asynqClient := asynq.NewClientFromRedisClient(redisClient)
 	defer asynqClient.Close()
 
@@ -100,7 +112,12 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 		log.Fatal(err)
 	}
 
-	co := core.NewCore(flows, s, asynqClient, redisClient, keeper)
+	co := core.NewCore(flows, s, asynqClient, redisClient, keeper, enforcer)
+	
+	// Initialize RBAC policies
+	if err := co.InitializeRBACPolicies(); err != nil {
+		log.Fatalf("could not initialize RBAC policies: %v", err)
+	}
 
 	h, err := handlers.NewHandler(logger, db.DB, co, handlers.OIDCAuthConfig{
 		Issuer:       viper.GetString("app.oidc.issuer"),
@@ -167,34 +184,36 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	api.PUT("/namespaces/:namespaceID", h.HandleUpdateNamespace, h.AuthorizeForRole("admin"))
 	api.DELETE("/namespaces/:namespaceID", h.HandleDeleteNamespace, h.AuthorizeForRole("admin"))
 
-	// Namespace-specific resource endpoints
-	// Flow and execution endpoints
-	api.POST("/:namespace/trigger/:flow", h.HandleFlowTrigger, h.NamespaceMiddleware)
-	api.GET("/:namespace/flows", h.HandleFlowsPagination, h.NamespaceMiddleware)
-	api.GET("/:namespace/flows/:flowID", h.HandleGetFlow, h.NamespaceMiddleware)
-	api.GET("/:namespace/logs/:logID", h.HandleLogStreaming, h.NamespaceMiddleware)
+	// Namespace-specific resource endpoints using RBAC
+	namespaceGroup := api.Group("/:namespace", h.NamespaceMiddleware)
 
-	// Approval endpoints
-	api.POST("/:namespace/approvals/:approvalID", h.HandleApprovalAction, h.NamespaceMiddleware, h.ApprovalMiddleware)
+	// Flow routes - users can view and execute
+	namespaceGroup.GET("/flows", h.HandleFlowsPagination, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
+	namespaceGroup.GET("/flows/:flowID", h.HandleGetFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
+	namespaceGroup.POST("/trigger/:flow", h.HandleFlowTrigger, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionExecute))
+	namespaceGroup.GET("/logs/:logID", h.HandleLogStreaming, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionView))
 
-	// Node endpoints
-	api.GET("/:namespace/nodes", h.HandleListNodes, h.NamespaceMiddleware)
-	api.GET("/:namespace/nodes/:nodeID", h.HandleGetNode, h.NamespaceMiddleware)
-	api.POST("/:namespace/nodes", h.HandleCreateNode, h.NamespaceMiddleware)
-	api.PUT("/:namespace/nodes/:nodeID", h.HandleUpdateNode, h.NamespaceMiddleware)
-	api.DELETE("/:namespace/nodes/:nodeID", h.HandleDeleteNode, h.NamespaceMiddleware)
+	// Node routes - only admins can create/update/delete
+	namespaceGroup.GET("/nodes", h.HandleListNodes, h.AuthorizeNamespaceAction(models.ResourceNode, models.RBACActionView))
+	namespaceGroup.GET("/nodes/:nodeID", h.HandleGetNode, h.AuthorizeNamespaceAction(models.ResourceNode, models.RBACActionView))
+	namespaceGroup.POST("/nodes", h.HandleCreateNode, h.AuthorizeNamespaceAction(models.ResourceNode, models.RBACActionCreate))
+	namespaceGroup.PUT("/nodes/:nodeID", h.HandleUpdateNode, h.AuthorizeNamespaceAction(models.ResourceNode, models.RBACActionUpdate))
+	namespaceGroup.DELETE("/nodes/:nodeID", h.HandleDeleteNode, h.AuthorizeNamespaceAction(models.ResourceNode, models.RBACActionDelete))
 
-	// Credential endpoints
-	api.GET("/:namespace/credentials", h.HandleListCredentials, h.NamespaceMiddleware)
-	api.GET("/:namespace/credentials/:credID", h.HandleGetCredential, h.NamespaceMiddleware)
-	api.POST("/:namespace/credentials", h.HandleCreateCredential, h.NamespaceMiddleware)
-	api.PUT("/:namespace/credentials/:credID", h.HandleUpdateCredential, h.NamespaceMiddleware)
-	api.DELETE("/:namespace/credentials/:credID", h.HandleDeleteCredential, h.NamespaceMiddleware)
+	// Credential routes - only admins can create/update/delete
+	namespaceGroup.GET("/credentials", h.HandleListCredentials, h.AuthorizeNamespaceAction(models.ResourceCredential, models.RBACActionView))
+	namespaceGroup.GET("/credentials/:credID", h.HandleGetCredential, h.AuthorizeNamespaceAction(models.ResourceCredential, models.RBACActionView))
+	namespaceGroup.POST("/credentials", h.HandleCreateCredential, h.AuthorizeNamespaceAction(models.ResourceCredential, models.RBACActionCreate))
+	namespaceGroup.PUT("/credentials/:credID", h.HandleUpdateCredential, h.AuthorizeNamespaceAction(models.ResourceCredential, models.RBACActionUpdate))
+	namespaceGroup.DELETE("/credentials/:credID", h.HandleDeleteCredential, h.AuthorizeNamespaceAction(models.ResourceCredential, models.RBACActionDelete))
 
-	// Group namespace access endpoints
-	api.GET("/:namespace/groups", h.HandleListNamespaceGroups, h.NamespaceMiddleware)
-	api.POST("/:namespace/groups", h.HandleGrantGroupAccess, h.NamespaceMiddleware, h.AuthorizeForRole("admin"))
-	api.DELETE("/:namespace/groups/:groupID", h.HandleRevokeGroupAccess, h.NamespaceMiddleware, h.AuthorizeForRole("admin"))
+	// Approval routes - operators and admins
+	namespaceGroup.POST("/approvals/:approvalID", h.HandleApprovalAction, h.AuthorizeNamespaceAction(models.ResourceApproval, models.RBACActionApprove), h.ApprovalMiddleware)
+
+	// Namespace management - admins only
+	namespaceGroup.GET("/members", h.HandleGetNamespaceMembers, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionView))
+	namespaceGroup.POST("/members", h.HandleAddNamespaceMember, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionUpdate))
+	namespaceGroup.DELETE("/members/:subjectID", h.HandleRemoveNamespaceMember, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionUpdate))
 
 	admin := e.Group("/admin")
 	admin.Use(h.AuthorizeForRole("admin"))
@@ -336,7 +355,7 @@ func processYAMLFiles(rootDir string, store repo.Store) (map[string]models.Flow,
 	return m, nil
 }
 
-func startWorker(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Logger, keeper *secrets.Keeper) {
+func startWorker(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Logger, keeper *secrets.Keeper, enforcer *casbin.Enforcer) {
 	asynqClient := asynq.NewClientFromRedisClient(redisClient)
 	defer asynqClient.Close()
 
@@ -354,7 +373,7 @@ func startWorker(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 		log.Fatal(err)
 	}
 
-	core := core.NewCore(flows, s, asynqClient, redisClient, keeper)
+	core := core.NewCore(flows, s, asynqClient, redisClient, keeper, enforcer)
 
 	flowLogger := streamlogger.NewStreamLogger(redisClient)
 	flowRunner := tasks.NewFlowRunner(flowLogger, runner.NewDockerArtifactsManager("./artifacts"), core.BeforeActionHook, nil)

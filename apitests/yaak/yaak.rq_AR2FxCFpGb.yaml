@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_AR2FxCFpGb
+createdAt: 2025-07-17T06:28:30.191739555
+updatedAt: 2025-07-17T07:08:58.305939662
+workspaceId: wk_f7os23Vq2X
+folderId: fl_Vn6oHBwHpL
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Get Members
+sortPriority: 1999.9999
+url: http://localhost:7000/api/v1/test1/members
+urlParameters: []

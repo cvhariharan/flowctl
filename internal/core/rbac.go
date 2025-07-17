@@ -1,0 +1,287 @@
+package core
+
+import (
+	"context"
+	"fmt"
+	"github.com/cvhariharan/autopilot/internal/core/models"
+	"github.com/cvhariharan/autopilot/internal/repo"
+	"github.com/google/uuid"
+)
+
+// InitializeRBACPolicies sets up the base policies for each role
+// These policies apply to all namespaces using wildcard "*"
+func (c *Core) InitializeRBACPolicies() error {
+	// User role policies - for all namespaces
+	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceFlow), string(models.RBACActionView))
+	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceNode), string(models.RBACActionView))
+	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceCredential), string(models.RBACActionView))
+	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceExecution), string(models.RBACActionView))
+	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceFlow), string(models.RBACActionExecute))
+
+	// Operator role policies (inherits from user) - for all namespaces
+	c.enforcer.AddPolicy("role:operator", "*", string(models.ResourceApproval), string(models.RBACActionApprove))
+	c.enforcer.AddPolicy("role:operator", "*", string(models.ResourceExecution), string(models.RBACActionView))
+
+	// Admin role policies - for all namespaces
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNamespace), string(models.RBACActionUpdate))
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNode), string(models.RBACActionCreate))
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNode), string(models.RBACActionUpdate))
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNode), string(models.RBACActionDelete))
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceCredential), string(models.RBACActionCreate))
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceCredential), string(models.RBACActionUpdate))
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceCredential), string(models.RBACActionDelete))
+
+	// Role inheritance - for all namespaces
+	c.enforcer.AddGroupingPolicy("role:operator", "role:user", "*")
+	c.enforcer.AddGroupingPolicy("role:admin", "role:operator", "*")
+
+	return c.enforcer.SavePolicy()
+}
+
+// AssignNamespaceRole assigns a role to a user or group in a namespace
+func (c *Core) AssignNamespaceRole(ctx context.Context, subjectID string, subjectType string, namespaceID string, role models.NamespaceRole) error {
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+
+	subject := fmt.Sprintf("%s:%s", subjectType, subjectID)
+
+	// Add role assignment in database
+	if subjectType == "user" {
+		userUUID, err := uuid.Parse(subjectID)
+		if err != nil {
+			return fmt.Errorf("invalid user UUID: %w", err)
+		}
+
+		user, err := c.store.GetUserByUUID(ctx, userUUID)
+		if err != nil {
+			return err
+		}
+
+		_, err = c.store.AssignUserNamespaceRole(ctx, repo.AssignUserNamespaceRoleParams{
+			SubjectID:   user.ID,
+			Uuid:        namespaceUUID,
+			Role:        string(role),
+		})
+		if err != nil {
+			return err
+		}
+	} else if subjectType == "group" {
+		groupUUID, err := uuid.Parse(subjectID)
+		if err != nil {
+			return fmt.Errorf("invalid group UUID: %w", err)
+		}
+
+		group, err := c.store.GetGroupByUUID(ctx, groupUUID)
+		if err != nil {
+			return err
+		}
+
+		_, err = c.store.AssignGroupNamespaceRole(ctx, repo.AssignGroupNamespaceRoleParams{
+			SubjectID:   group.ID,
+			Uuid:        namespaceUUID,
+			Role:        string(role),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	// Add Casbin policy
+	c.enforcer.AddGroupingPolicy(subject, fmt.Sprintf("role:%s", role), namespaceID)
+
+	return c.enforcer.SavePolicy()
+}
+
+// CheckPermission checks if a user has permission to perform an action on a resource in a namespace
+func (c *Core) CheckPermission(ctx context.Context, userID string, namespaceID string, resource models.Resource, action models.RBACAction) (bool, error) {
+	// Check if user is global admin
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return false, fmt.Errorf("invalid user UUID: %w", err)
+	}
+
+	user, err := c.store.GetUserByUUID(ctx, userUUID)
+	if err != nil {
+		return false, err
+	}
+
+	if user.Role == "admin" {
+		return true, nil
+	}
+
+	// Check direct user permission
+	userSubject := fmt.Sprintf("user:%s", userID)
+	allowed, err := c.enforcer.Enforce(userSubject, namespaceID, string(resource), string(action))
+	if err != nil {
+		return false, err
+	}
+	if allowed {
+		return true, nil
+	}
+
+	// Check group permissions
+	groups, err := c.store.GetUserGroups(ctx, userUUID)
+	if err != nil {
+		return false, err
+	}
+
+	for _, group := range groups {
+		groupSubject := fmt.Sprintf("group:%s", group.Uuid.String())
+		allowed, err = c.enforcer.Enforce(groupSubject, namespaceID, string(resource), string(action))
+		if err != nil {
+			return false, err
+		}
+		if allowed {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// GetUserNamespaces returns all namespaces a user has access to with their roles
+func (c *Core) GetUserNamespaces(ctx context.Context, userID string) ([]models.NamespaceWithRole, error) {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user UUID: %w", err)
+	}
+
+	// Global admin check remains the same
+	user, err := c.store.GetUserByUUID(ctx, userUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	if user.Role == "admin" {
+		// Global admins have admin access to all namespaces
+		namespaces, err := c.store.GetAllNamespaces(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		var result []models.NamespaceWithRole
+		for _, ns := range namespaces {
+			result = append(result, models.NamespaceWithRole{
+				Namespace: models.Namespace{
+					ID:   ns.Uuid.String(),
+					Name: ns.Name,
+				},
+				Role: models.NamespaceRoleAdmin,
+			})
+		}
+		return result, nil
+	}
+
+	// Get namespaces from new namespace_members table
+	rows, err := c.store.GetUserNamespacesWithRoles(ctx, userUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []models.NamespaceWithRole
+	for _, row := range rows {
+		result = append(result, models.NamespaceWithRole{
+			Namespace: models.Namespace{
+				ID:   row.Uuid.String(),
+				Name: row.Name,
+			},
+			Role: models.NamespaceRole(row.Role),
+		})
+	}
+	return result, nil
+}
+
+// RemoveNamespaceMember removes a user or group from a namespace
+func (c *Core) RemoveNamespaceMember(ctx context.Context, subjectID string, subjectType string, namespaceID string) error {
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+
+	var subjectInternalID int32
+	if subjectType == "user" {
+		userUUID, err := uuid.Parse(subjectID)
+		if err != nil {
+			return fmt.Errorf("invalid user UUID: %w", err)
+		}
+		user, err := c.store.GetUserByUUID(ctx, userUUID)
+		if err != nil {
+			return err
+		}
+		subjectInternalID = user.ID
+	} else if subjectType == "group" {
+		groupUUID, err := uuid.Parse(subjectID)
+		if err != nil {
+			return fmt.Errorf("invalid group UUID: %w", err)
+		}
+		group, err := c.store.GetGroupByUUID(ctx, groupUUID)
+		if err != nil {
+			return err
+		}
+		subjectInternalID = group.ID
+	}
+
+	// Remove from database
+	err = c.store.RemoveNamespaceMember(ctx, repo.RemoveNamespaceMemberParams{
+		Uuid:        namespaceUUID,
+		SubjectID:   subjectInternalID,
+		SubjectType: subjectType,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Remove from Casbin policies
+	subject := fmt.Sprintf("%s:%s", subjectType, subjectID)
+	c.enforcer.RemoveFilteredGroupingPolicy(0, subject, "", namespaceID)
+
+	return c.enforcer.SavePolicy()
+}
+
+// GetNamespaceMembers returns all members of a namespace
+func (c *Core) GetNamespaceMembers(ctx context.Context, namespaceID string) ([]models.NamespaceMember, error) {
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+
+	rows, err := c.store.GetNamespaceMembers(ctx, namespaceUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []models.NamespaceMember
+	for _, row := range rows {
+		member := models.NamespaceMember{
+			SubjectType: row.SubjectType,
+			Role:        models.NamespaceRole(row.Role),
+			CreatedAt:   row.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:   row.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}
+
+		// Convert subject_uuid and subject_name from interface{} to string
+		if row.SubjectUuid != nil {
+			if uuidVal, ok := row.SubjectUuid.([]byte); ok {
+				if parsedUUID, err := uuid.Parse(string(uuidVal)); err == nil {
+					member.SubjectID = int(parsedUUID.ID()) // Convert to int for compatibility
+				}
+			}
+		}
+
+		if row.SubjectName != nil {
+			if nameVal, ok := row.SubjectName.(string); ok {
+				if row.SubjectType == "user" {
+					member.UserName = &nameVal
+				} else {
+					member.GroupName = &nameVal
+				}
+			}
+		}
+
+		result = append(result, member)
+	}
+
+	return result, nil
+}

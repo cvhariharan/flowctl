@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/casbin/casbin/v2"
 	"github.com/cvhariharan/autopilot/internal/core/models"
 	"github.com/cvhariharan/autopilot/internal/repo"
 	"github.com/hibiken/asynq"
@@ -17,9 +18,10 @@ type Core struct {
 
 	// store the mapping between logID and flowID
 	logMap map[string]string
+	enforcer *casbin.Enforcer
 }
 
-func NewCore(flows map[string]models.Flow, s repo.Store, q *asynq.Client, redisClient redis.UniversalClient, keeper *secrets.Keeper) *Core {
+func NewCore(flows map[string]models.Flow, s repo.Store, q *asynq.Client, redisClient redis.UniversalClient, keeper *secrets.Keeper, enforcer *casbin.Enforcer) *Core {
 	return &Core{
 		store:       s,
 		redisClient: redisClient,
@@ -27,5 +29,6 @@ func NewCore(flows map[string]models.Flow, s repo.Store, q *asynq.Client, redisC
 		flows:       flows,
 		logMap:      make(map[string]string),
 		keeper:      keeper,
+		enforcer: 	 enforcer,
 	}
 }

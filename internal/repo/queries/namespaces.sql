@@ -77,3 +77,79 @@ SELECT EXISTS (
     JOIN group_memberships gm ON gna.group_id = gm.group_id
     WHERE gm.user_id = $1 AND gna.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $2)
 ) AS has_access;
+
+
+
+-- name: AssignUserNamespaceRole :one
+INSERT INTO namespace_members (subject_id, subject_type, namespace_id, role)
+VALUES (
+    $1,
+    'user',
+    (SELECT id FROM namespaces WHERE uuid = $2),
+    $3
+)
+ON CONFLICT (subject_id, subject_type, namespace_id)
+DO UPDATE SET role = EXCLUDED.role, updated_at = NOW()
+RETURNING *;
+
+-- name: AssignGroupNamespaceRole :one
+INSERT INTO namespace_members (subject_id, subject_type, namespace_id, role)
+VALUES (
+    $1,
+    'group',
+    (SELECT id FROM namespaces WHERE uuid = $2),
+    $3
+)
+ON CONFLICT (subject_id, subject_type, namespace_id)
+DO UPDATE SET role = EXCLUDED.role, updated_at = NOW()
+RETURNING *;
+
+-- name: GetUserNamespacesWithRoles :many
+WITH user_namespaces AS (
+    -- Direct user membership
+    SELECT n.uuid, n.name, nm.role
+    FROM namespaces n
+    JOIN namespace_members nm ON n.id = nm.namespace_id
+    WHERE nm.subject_id = (SELECT id FROM users WHERE users.uuid = $1)
+    AND nm.subject_type = 'user'
+
+    UNION
+
+    -- Group membership
+    SELECT DISTINCT n.uuid, n.name, nm.role
+    FROM namespaces n
+    JOIN namespace_members nm ON n.id = nm.namespace_id
+    JOIN group_memberships gm ON nm.subject_id = gm.group_id
+    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $1)
+    AND nm.subject_type = 'group'
+)
+SELECT * FROM user_namespaces
+ORDER BY name;
+
+-- name: GetNamespaceMembers :many
+SELECT
+    CASE WHEN nm.subject_type = 'user' THEN u.uuid ELSE g.uuid END as subject_uuid,
+    CASE WHEN nm.subject_type = 'user' THEN u.name ELSE g.name END as subject_name,
+    nm.subject_type,
+    nm.role,
+    nm.created_at,
+    nm.updated_at
+FROM namespace_members nm
+LEFT JOIN users u ON nm.subject_id = u.id AND nm.subject_type = 'user'
+LEFT JOIN groups g ON nm.subject_id = g.id AND nm.subject_type = 'group'
+WHERE nm.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $1)
+ORDER BY nm.role, subject_name;
+
+-- name: RemoveNamespaceMember :exec
+DELETE FROM namespace_members
+WHERE namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $1)
+AND subject_id = $2
+AND subject_type = $3;
+
+-- name: GetUserGroups :many
+SELECT g.* FROM groups g
+JOIN group_memberships gm ON g.id = gm.group_id
+WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $1);
+
+-- name: GetAllNamespaces :many
+SELECT * FROM namespaces ORDER BY name;
