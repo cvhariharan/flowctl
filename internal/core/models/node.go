@@ -3,7 +3,7 @@ package models
 type AuthMethod string
 
 const (
-	AuthMethodSSHKey   AuthMethod = "ssh_key"
+	AuthMethodPrivateKey AuthMethod = "private_key"
 	AuthMethodPassword AuthMethod = "password"
 )
 

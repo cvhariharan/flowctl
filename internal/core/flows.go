@@ -169,12 +169,7 @@ func (c *Core) getNodesByNames(ctx context.Context, nodeNames []string, namespac
 
 	var nodes []models.Node
 	for _, v := range n {
-		var key string
-		if v.AuthMethod == repo.AuthenticationMethod(models.AuthMethodSSHKey) {
-			key = v.CredentialPrivateKey.String
-		} else {
-			key = v.CredentialPassword.String
-		}
+		key := v.CredentialKeyData.String
 
 		// decrypt the key
 		dKey, err := hex.DecodeString(key)

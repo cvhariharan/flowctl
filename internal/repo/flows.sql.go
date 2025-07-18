@@ -22,7 +22,7 @@ INSERT INTO flows (
     namespace_id
 ) VALUES (
     $1, $2, $3, $4, (SELECT id FROM namespaces WHERE namespaces.name = $5)
-) RETURNING id, slug, name, checksum, description, created_at, updated_at, namespace_id
+) RETURNING id, slug, name, checksum, description, namespace_id, created_at, updated_at
 `
 
 type CreateFlowParams struct {
@@ -48,9 +48,9 @@ func (q *Queries) CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, e
 		&i.Name,
 		&i.Checksum,
 		&i.Description,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.NamespaceID,
 	)
 	return i, err
 }
@@ -65,7 +65,7 @@ func (q *Queries) DeleteAllFlows(ctx context.Context) error {
 }
 
 const getFlowBySlug = `-- name: GetFlowBySlug :one
-SELECT f.id, f.slug, f.name, f.checksum, f.description, f.created_at, f.updated_at, f.namespace_id FROM flows f
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.namespace_id, f.created_at, f.updated_at FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
 WHERE f.slug = $1 AND n.uuid = $2
 `
@@ -84,15 +84,15 @@ func (q *Queries) GetFlowBySlug(ctx context.Context, arg GetFlowBySlugParams) (F
 		&i.Name,
 		&i.Checksum,
 		&i.Description,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.NamespaceID,
 	)
 	return i, err
 }
 
 const getFlowsByNamespace = `-- name: GetFlowsByNamespace :many
-SELECT f.id, f.slug, f.name, f.checksum, f.description, f.created_at, f.updated_at, f.namespace_id, n.uuid AS namespace_uuid
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.namespace_id, f.created_at, f.updated_at, n.uuid AS namespace_uuid
 FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
 WHERE n.uuid = $1
@@ -104,9 +104,9 @@ type GetFlowsByNamespaceRow struct {
 	Name          string         `db:"name" json:"name"`
 	Checksum      string         `db:"checksum" json:"checksum"`
 	Description   sql.NullString `db:"description" json:"description"`
+	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
 	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
-	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
 	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
 }
 
@@ -125,9 +125,9 @@ func (q *Queries) GetFlowsByNamespace(ctx context.Context, argUuid uuid.UUID) ([
 			&i.Name,
 			&i.Checksum,
 			&i.Description,
+			&i.NamespaceID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.NamespaceID,
 			&i.NamespaceUuid,
 		); err != nil {
 			return nil, err
@@ -145,7 +145,7 @@ func (q *Queries) GetFlowsByNamespace(ctx context.Context, argUuid uuid.UUID) ([
 
 const listFlows = `-- name: ListFlows :many
 WITH filtered AS (
-    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.created_at, f.updated_at, f.namespace_id, n.uuid AS namespace_uuid FROM flows f
+    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.namespace_id, f.created_at, f.updated_at, n.uuid AS namespace_uuid FROM flows f
     JOIN namespaces n ON f.namespace_id = n.id
     WHERE n.uuid = $1
 ),
@@ -153,7 +153,7 @@ total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ),
 paged AS (
-    SELECT id, slug, name, checksum, description, created_at, updated_at, namespace_id, namespace_uuid FROM filtered
+    SELECT id, slug, name, checksum, description, namespace_id, created_at, updated_at, namespace_uuid FROM filtered
     ORDER BY created_at DESC
     LIMIT $2 OFFSET $3
 ),
@@ -161,7 +161,7 @@ page_count AS (
     SELECT CEIL(total.total_count::numeric / $2::numeric)::bigint AS page_count FROM total
 )
 SELECT 
-    p.id, p.slug, p.name, p.checksum, p.description, p.created_at, p.updated_at, p.namespace_id, p.namespace_uuid,
+    p.id, p.slug, p.name, p.checksum, p.description, p.namespace_id, p.created_at, p.updated_at, p.namespace_uuid,
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
@@ -179,9 +179,9 @@ type ListFlowsRow struct {
 	Name          string         `db:"name" json:"name"`
 	Checksum      string         `db:"checksum" json:"checksum"`
 	Description   sql.NullString `db:"description" json:"description"`
+	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
 	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
-	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
 	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
 	PageCount     int64          `db:"page_count" json:"page_count"`
 	TotalCount    int64          `db:"total_count" json:"total_count"`
@@ -202,9 +202,9 @@ func (q *Queries) ListFlows(ctx context.Context, arg ListFlowsParams) ([]ListFlo
 			&i.Name,
 			&i.Checksum,
 			&i.Description,
+			&i.NamespaceID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.NamespaceID,
 			&i.NamespaceUuid,
 			&i.PageCount,
 			&i.TotalCount,
@@ -224,7 +224,7 @@ func (q *Queries) ListFlows(ctx context.Context, arg ListFlowsParams) ([]ListFlo
 
 const listFlowsPaginated = `-- name: ListFlowsPaginated :many
 WITH filtered AS (
-    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.created_at, f.updated_at, f.namespace_id, n.uuid AS namespace_uuid FROM flows f
+    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.namespace_id, f.created_at, f.updated_at, n.uuid AS namespace_uuid FROM flows f
     JOIN namespaces n ON f.namespace_id = n.id
     WHERE n.uuid = $1
 ),
@@ -232,7 +232,7 @@ total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ),
 paged AS (
-    SELECT id, slug, name, checksum, description, created_at, updated_at, namespace_id, namespace_uuid FROM filtered
+    SELECT id, slug, name, checksum, description, namespace_id, created_at, updated_at, namespace_uuid FROM filtered
     ORDER BY created_at DESC
     LIMIT $2 OFFSET $3
 ),
@@ -240,7 +240,7 @@ page_count AS (
     SELECT CEIL(total.total_count::numeric / $2::numeric)::bigint AS page_count FROM total
 )
 SELECT 
-    p.id, p.slug, p.name, p.checksum, p.description, p.created_at, p.updated_at, p.namespace_id, p.namespace_uuid,
+    p.id, p.slug, p.name, p.checksum, p.description, p.namespace_id, p.created_at, p.updated_at, p.namespace_uuid,
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
@@ -258,9 +258,9 @@ type ListFlowsPaginatedRow struct {
 	Name          string         `db:"name" json:"name"`
 	Checksum      string         `db:"checksum" json:"checksum"`
 	Description   sql.NullString `db:"description" json:"description"`
+	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
 	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
-	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
 	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
 	PageCount     int64          `db:"page_count" json:"page_count"`
 	TotalCount    int64          `db:"total_count" json:"total_count"`
@@ -281,9 +281,9 @@ func (q *Queries) ListFlowsPaginated(ctx context.Context, arg ListFlowsPaginated
 			&i.Name,
 			&i.Checksum,
 			&i.Description,
+			&i.NamespaceID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.NamespaceID,
 			&i.NamespaceUuid,
 			&i.PageCount,
 			&i.TotalCount,
@@ -303,7 +303,7 @@ func (q *Queries) ListFlowsPaginated(ctx context.Context, arg ListFlowsPaginated
 
 const searchFlowsPaginated = `-- name: SearchFlowsPaginated :many
 WITH filtered AS (
-    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.created_at, f.updated_at, f.namespace_id, n.uuid AS namespace_uuid FROM flows f
+    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.namespace_id, f.created_at, f.updated_at, n.uuid AS namespace_uuid FROM flows f
     JOIN namespaces n ON f.namespace_id = n.id
     WHERE n.uuid = $1
       AND (lower(f.name) LIKE '%' || lower($2::text) || '%'
@@ -313,7 +313,7 @@ total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ),
 paged AS (
-    SELECT id, slug, name, checksum, description, created_at, updated_at, namespace_id, namespace_uuid FROM filtered
+    SELECT id, slug, name, checksum, description, namespace_id, created_at, updated_at, namespace_uuid FROM filtered
     ORDER BY created_at DESC
     LIMIT $3 OFFSET $4
 ),
@@ -321,7 +321,7 @@ page_count AS (
     SELECT CEIL(total.total_count::numeric / $3::numeric)::bigint AS page_count FROM total
 )
 SELECT 
-    p.id, p.slug, p.name, p.checksum, p.description, p.created_at, p.updated_at, p.namespace_id, p.namespace_uuid,
+    p.id, p.slug, p.name, p.checksum, p.description, p.namespace_id, p.created_at, p.updated_at, p.namespace_uuid,
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
@@ -340,9 +340,9 @@ type SearchFlowsPaginatedRow struct {
 	Name          string         `db:"name" json:"name"`
 	Checksum      string         `db:"checksum" json:"checksum"`
 	Description   sql.NullString `db:"description" json:"description"`
+	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
 	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
-	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
 	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
 	PageCount     int64          `db:"page_count" json:"page_count"`
 	TotalCount    int64          `db:"total_count" json:"total_count"`
@@ -368,9 +368,9 @@ func (q *Queries) SearchFlowsPaginated(ctx context.Context, arg SearchFlowsPagin
 			&i.Name,
 			&i.Checksum,
 			&i.Description,
+			&i.NamespaceID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.NamespaceID,
 			&i.NamespaceUuid,
 			&i.PageCount,
 			&i.TotalCount,
@@ -395,7 +395,7 @@ UPDATE flows SET
     checksum = $3,
     updated_at = NOW()
 WHERE slug = $4 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.name = $5)
-RETURNING id, slug, name, checksum, description, created_at, updated_at, namespace_id
+RETURNING id, slug, name, checksum, description, namespace_id, created_at, updated_at
 `
 
 type UpdateFlowParams struct {
@@ -421,9 +421,9 @@ func (q *Queries) UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, e
 		&i.Name,
 		&i.Checksum,
 		&i.Description,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.NamespaceID,
 	)
 	return i, err
 }

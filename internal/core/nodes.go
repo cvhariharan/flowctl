@@ -52,14 +52,7 @@ func (c *Core) CreateNode(ctx context.Context, node *models.Node, namespaceID st
 		return nil, err
 	}
 
-	key, err := extractAuthKey(node.Auth.Method, repo.Credential{
-		Uuid:       credential.Uuid,
-		PrivateKey: credential.PrivateKey,
-		Password:   credential.Password,
-	})
-	if err != nil {
-		return nil, err
-	}
+	key := credential.KeyData
 
 	return &models.Node{
 		ID:       created.Uuid.String(),
@@ -104,14 +97,7 @@ func (c *Core) GetNodeByID(ctx context.Context, id string, namespaceID string) (
 		return nil, errors.New("credential not found")
 	}
 
-	key, err := extractAuthKey(models.AuthMethod(node.AuthMethod), repo.Credential{
-		Uuid:       credential.Uuid,
-		PrivateKey: credential.PrivateKey,
-		Password:   credential.Password,
-	})
-	if err != nil {
-		return nil, err
-	}
+	key := credential.KeyData
 
 	return &models.Node{
 		ID:       node.Uuid.String(),
@@ -203,14 +189,7 @@ func (c *Core) UpdateNode(ctx context.Context, id string, node *models.Node, nam
 		return nil, err
 	}
 
-	key, err := extractAuthKey(models.AuthMethod(updated.AuthMethod), repo.Credential{
-		Uuid:       credential.Uuid,
-		PrivateKey: credential.PrivateKey,
-		Password:   credential.Password,
-	})
-	if err != nil {
-		return nil, err
-	}
+	key := credential.KeyData
 
 	return &models.Node{
 		ID:       updated.Uuid.String(),
@@ -244,19 +223,3 @@ func (c *Core) DeleteNode(ctx context.Context, id string, namespaceID string) er
 	})
 }
 
-func extractAuthKey(method models.AuthMethod, credential repo.Credential) (string, error) {
-	switch method {
-	case models.AuthMethodSSHKey:
-		if !credential.PrivateKey.Valid {
-			return "", errors.New("private key is required for SSH key authentication")
-		}
-		return credential.PrivateKey.String, nil
-	case models.AuthMethodPassword:
-		if !credential.Password.Valid {
-			return "", errors.New("password is required for password authentication")
-		}
-		return credential.Password.String, nil
-	default:
-		return "", errors.New("unsupported authentication method")
-	}
-}

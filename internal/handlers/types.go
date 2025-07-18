@@ -113,7 +113,7 @@ type ApprovalActionResp struct {
 
 // Node related types
 type NodeAuth struct {
-	Method       string `json:"method" validate:"required,oneof=ssh_key password"`
+	Method       string `json:"method" validate:"required,oneof=private_key password"`
 	CredentialID string `json:"credential_id" validate:"required,uuid"`
 }
 
@@ -170,16 +170,15 @@ func coreNodeArrayToNodeRespArray(nodes []*models.Node) []NodeResp {
 
 // Credential related types
 type CredentialReq struct {
-	Name       string `json:"name" validate:"required,min=3,max=255"`
-	PrivateKey string `json:"private_key"`
-	Password   string `json:"password"`
+	Name    string `json:"name" validate:"required,min=3,max=255"`
+	KeyType string `json:"key_type" validate:"required,oneof=private_key password"`
+	KeyData string `json:"key_data" validate:"required"`
 }
 
 type CredentialResp struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	PrivateKey string `json:"private_key"`
-	Password   string `json:"password"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	KeyType string `json:"key_type"`
 }
 
 type CredentialsPaginateResponse struct {
@@ -190,10 +189,9 @@ type CredentialsPaginateResponse struct {
 
 func coreCredentialToCredentialResp(c *models.Credential) CredentialResp {
 	return CredentialResp{
-		ID:         c.ID,
-		Name:       c.Name,
-		PrivateKey: c.PrivateKey,
-		Password:   c.Password,
+		ID:      c.ID,
+		Name:    c.Name,
+		KeyType: c.KeyType,
 	}
 }
 

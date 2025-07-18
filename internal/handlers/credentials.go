@@ -23,14 +23,10 @@ func (h *Handler) HandleCreateCredential(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
-	if req.Password != "" && req.PrivateKey != "" {
-		return wrapError(http.StatusBadRequest, "cannot set both password and private key", nil, nil)
-	}
-
 	cred := &models.Credential{
-		Name:       req.Name,
-		PrivateKey: req.PrivateKey,
-		Password:   req.Password,
+		Name:    req.Name,
+		KeyType: req.KeyType,
+		KeyData: req.KeyData,
 	}
 
 	created, err := h.co.CreateCredential(c.Request().Context(), cred, namespace)
@@ -116,9 +112,9 @@ func (h *Handler) HandleUpdateCredential(c echo.Context) error {
 	}
 
 	cred := &models.Credential{
-		Name:       req.Name,
-		PrivateKey: req.PrivateKey,
-		Password:   req.Password,
+		Name:    req.Name,
+		KeyType: req.KeyType,
+		KeyData: req.KeyData,
 	}
 
 	updated, err := h.co.UpdateCredential(c.Request().Context(), credID, cred, namespace)

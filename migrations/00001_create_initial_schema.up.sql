@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX idx_sessions ON sessions (id, created_at);
 
 CREATE TYPE authentication_method AS ENUM (
-    'ssh_key',
+    'private_key',
     'password'
 );
 
@@ -178,8 +178,8 @@ CREATE TABLE IF NOT EXISTS credentials (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
     name VARCHAR(150) NOT NULL,
-    private_key TEXT,
-    password TEXT,
+    key_type VARCHAR(50) NOT NULL DEFAULT 'private_key',
+    key_data TEXT NOT NULL,
     namespace_id INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS nodes (
     username VARCHAR(150) NOT NULL,
     os_family VARCHAR(50) NOT NULL,
     tags TEXT[],
-    auth_method authentication_method NOT NULL DEFAULT 'ssh_key',
+    auth_method authentication_method NOT NULL DEFAULT 'private_key',
     credential_id INTEGER,
     namespace_id INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

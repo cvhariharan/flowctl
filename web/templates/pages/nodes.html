@@ -217,7 +217,7 @@
                                           Array.isArray(data) ? data : [];
                         this.state.credentials = credentials.map(cred => ({
                             ...cred,
-                            type: cred.private_key ? 'ssh_key' : 'password'
+                            type: cred.private_key ? 'private_key' : 'password'
                         }));
                     })
                     .catch(err => {
@@ -280,7 +280,7 @@
 
             submitNode() {
                 const selectedCredential = this.state.credentials.find(c => c.id === this.forms.node.credential_id);
-                const authMethod = selectedCredential ? (selectedCredential.private_key ? 'ssh_key' : 'password') : 'ssh_key';
+                const authMethod = selectedCredential ? (selectedCredential.private_key ? 'private_key' : 'password') : 'private_key';
                 
                 const payload = {
                     name: this.forms.node.name,

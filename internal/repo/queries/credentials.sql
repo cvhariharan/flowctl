@@ -1,5 +1,5 @@
 -- name: CreateCredential :one
-INSERT INTO credentials (name, private_key, password, namespace_id)
+INSERT INTO credentials (name, key_type, key_data, namespace_id)
 VALUES ($1, $2, $3, (SELECT id FROM namespaces WHERE namespaces.uuid = $4))
 RETURNING *;
 
@@ -38,7 +38,7 @@ FROM paged p, page_count pc, total t;
 
 -- name: UpdateCredential :one
 UPDATE credentials
-SET name = $2, private_key = $3, password = $4, updated_at = NOW()
+SET name = $2, key_type = $3, key_data = $4, updated_at = NOW()
 WHERE credentials.uuid = $1 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $5)
 RETURNING *;
 

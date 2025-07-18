@@ -83,7 +83,7 @@ func TestDockerExecutor_Execute(t *testing.T) {
 				Port:     remotePort,
 				Username: remoteUser,
 				Auth: NodeAuth{
-					Method: "ssh_key",
+					Method: "private_key",
 					Key:    remoteKey,
 				},
 			},

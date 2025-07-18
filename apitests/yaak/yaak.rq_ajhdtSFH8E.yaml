@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_ajhdtSFH8E
 createdAt: 2025-07-14T08:49:56.033574541
-updatedAt: 2025-07-16T14:09:18.530872956
+updatedAt: 2025-07-18T04:28:48.883997974
 workspaceId: wk_f7os23Vq2X
 folderId: fl_bXdDN8fPng
 authentication: {}
@@ -14,5 +14,5 @@ headers: []
 method: GET
 name: Get Credential
 sortPriority: 250.0
-url: http://localhost:7000/api/v1/test/credentials/80012862-132e-4737-9055-120486936b11
+url: http://localhost:7000/api/v1/test/credentials/31c2613a-3b6d-493c-862c-4bf230d2f14e
 urlParameters: []

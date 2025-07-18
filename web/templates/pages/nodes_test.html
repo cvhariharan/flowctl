@@ -260,25 +260,23 @@
                     </select>
                 </div>
                 <div class="mb-4">
-                    <label class="block mb-1 font-medium text-gray-900">Auth Method</label>
-                    <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
-                            x-model="nodeForm.auth.method" 
-                            required>
-                        <option value="">Select auth method</option>
-                        <option value="ssh_key">SSH Key</option>
-                        <option value="password">Password</option>
-                    </select>
-                </div>
-                <div class="mb-4">
                     <label class="block mb-1 font-medium text-gray-900">Credential</label>
                     <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
                             x-model="nodeForm.auth.credential_id" 
+                            @change="onCredentialChange()"
                             required>
                         <option value="">Select credential</option>
                         <template x-for="credential in credentials" :key="credential.id">
-                            <option :value="credential.id" x-text="credential.name"></option>
+                            <option :value="credential.id" x-text="`${credential.name} (${credential.key_type})`"></option>
                         </template>
                     </select>
+                </div>
+                <div class="mb-4" x-show="nodeForm.auth.method">
+                    <label class="block mb-1 font-medium text-gray-900">Auth Method</label>
+                    <input type="text" 
+                           class="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" 
+                           :value="getAuthMethodDisplay(nodeForm.auth.method)"
+                           readonly />
                 </div>
                 <div class="mb-4">
                     <label class="block mb-1 font-medium text-gray-900">Tags (comma-separated)</label>
@@ -338,6 +336,7 @@ function nodesManager() {
         get windowsCount() {
             return this.nodes.filter(node => node.os_family === 'windows').length;
         },
+
 
         init() {
             this.fetchNodes();
@@ -419,6 +418,9 @@ function nodesManager() {
                     tags: node.tags || [],
                     tagsString: (node.tags || []).join(', ')
                 };
+
+                // Update method based on selected credential
+                this.onCredentialChange();
 
                 this.showModal = true;
             } catch (error) {
@@ -516,6 +518,28 @@ function nodesManager() {
                 tags: [],
                 tagsString: ''
             };
+        },
+
+        onCredentialChange() {
+            if (this.nodeForm.auth.credential_id) {
+                const selectedCredential = this.credentials.find(c => c.id === this.nodeForm.auth.credential_id);
+                if (selectedCredential) {
+                    this.nodeForm.auth.method = selectedCredential.key_type;
+                }
+            } else {
+                this.nodeForm.auth.method = '';
+            }
+        },
+
+        getAuthMethodDisplay(method) {
+            switch (method) {
+                case 'private_key':
+                    return 'SSH Key';
+                case 'password':
+                    return 'Password';
+                default:
+                    return '';
+            }
         },
 
         // Notification methods

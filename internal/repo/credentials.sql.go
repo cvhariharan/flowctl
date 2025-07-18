@@ -7,30 +7,29 @@ package repo
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 const createCredential = `-- name: CreateCredential :one
-INSERT INTO credentials (name, private_key, password, namespace_id)
+INSERT INTO credentials (name, key_type, key_data, namespace_id)
 VALUES ($1, $2, $3, (SELECT id FROM namespaces WHERE namespaces.uuid = $4))
-RETURNING id, uuid, name, private_key, password, created_at, updated_at, namespace_id
+RETURNING id, uuid, name, key_type, key_data, namespace_id, created_at, updated_at
 `
 
 type CreateCredentialParams struct {
-	Name       string         `db:"name" json:"name"`
-	PrivateKey sql.NullString `db:"private_key" json:"private_key"`
-	Password   sql.NullString `db:"password" json:"password"`
-	Uuid       uuid.UUID      `db:"uuid" json:"uuid"`
+	Name    string    `db:"name" json:"name"`
+	KeyType string    `db:"key_type" json:"key_type"`
+	KeyData string    `db:"key_data" json:"key_data"`
+	Uuid    uuid.UUID `db:"uuid" json:"uuid"`
 }
 
 func (q *Queries) CreateCredential(ctx context.Context, arg CreateCredentialParams) (Credential, error) {
 	row := q.db.QueryRowContext(ctx, createCredential,
 		arg.Name,
-		arg.PrivateKey,
-		arg.Password,
+		arg.KeyType,
+		arg.KeyData,
 		arg.Uuid,
 	)
 	var i Credential
@@ -38,11 +37,11 @@ func (q *Queries) CreateCredential(ctx context.Context, arg CreateCredentialPara
 		&i.ID,
 		&i.Uuid,
 		&i.Name,
-		&i.PrivateKey,
-		&i.Password,
+		&i.KeyType,
+		&i.KeyData,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.NamespaceID,
 	)
 	return i, err
 }
@@ -62,7 +61,7 @@ func (q *Queries) DeleteCredential(ctx context.Context, arg DeleteCredentialPara
 }
 
 const getCredentialByID = `-- name: GetCredentialByID :one
-SELECT c.id, c.uuid, c.name, c.private_key, c.password, c.created_at, c.updated_at, c.namespace_id, ns.uuid AS namespace_uuid FROM credentials c
+SELECT c.id, c.uuid, c.name, c.key_type, c.key_data, c.namespace_id, c.created_at, c.updated_at, ns.uuid AS namespace_uuid FROM credentials c
 JOIN namespaces ns ON c.namespace_id = ns.id
 WHERE c.id = $1 AND ns.uuid = $2
 `
@@ -73,15 +72,15 @@ type GetCredentialByIDParams struct {
 }
 
 type GetCredentialByIDRow struct {
-	ID            int32          `db:"id" json:"id"`
-	Uuid          uuid.UUID      `db:"uuid" json:"uuid"`
-	Name          string         `db:"name" json:"name"`
-	PrivateKey    sql.NullString `db:"private_key" json:"private_key"`
-	Password      sql.NullString `db:"password" json:"password"`
-	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
-	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
-	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
-	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
+	ID            int32     `db:"id" json:"id"`
+	Uuid          uuid.UUID `db:"uuid" json:"uuid"`
+	Name          string    `db:"name" json:"name"`
+	KeyType       string    `db:"key_type" json:"key_type"`
+	KeyData       string    `db:"key_data" json:"key_data"`
+	NamespaceID   int32     `db:"namespace_id" json:"namespace_id"`
+	CreatedAt     time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at" json:"updated_at"`
+	NamespaceUuid uuid.UUID `db:"namespace_uuid" json:"namespace_uuid"`
 }
 
 func (q *Queries) GetCredentialByID(ctx context.Context, arg GetCredentialByIDParams) (GetCredentialByIDRow, error) {
@@ -91,18 +90,18 @@ func (q *Queries) GetCredentialByID(ctx context.Context, arg GetCredentialByIDPa
 		&i.ID,
 		&i.Uuid,
 		&i.Name,
-		&i.PrivateKey,
-		&i.Password,
+		&i.KeyType,
+		&i.KeyData,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.NamespaceID,
 		&i.NamespaceUuid,
 	)
 	return i, err
 }
 
 const getCredentialByUUID = `-- name: GetCredentialByUUID :one
-SELECT c.id, c.uuid, c.name, c.private_key, c.password, c.created_at, c.updated_at, c.namespace_id, ns.uuid AS namespace_uuid FROM credentials c
+SELECT c.id, c.uuid, c.name, c.key_type, c.key_data, c.namespace_id, c.created_at, c.updated_at, ns.uuid AS namespace_uuid FROM credentials c
 JOIN namespaces ns ON c.namespace_id = ns.id
 WHERE c.uuid = $1 AND ns.uuid = $2
 `
@@ -113,15 +112,15 @@ type GetCredentialByUUIDParams struct {
 }
 
 type GetCredentialByUUIDRow struct {
-	ID            int32          `db:"id" json:"id"`
-	Uuid          uuid.UUID      `db:"uuid" json:"uuid"`
-	Name          string         `db:"name" json:"name"`
-	PrivateKey    sql.NullString `db:"private_key" json:"private_key"`
-	Password      sql.NullString `db:"password" json:"password"`
-	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
-	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
-	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
-	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
+	ID            int32     `db:"id" json:"id"`
+	Uuid          uuid.UUID `db:"uuid" json:"uuid"`
+	Name          string    `db:"name" json:"name"`
+	KeyType       string    `db:"key_type" json:"key_type"`
+	KeyData       string    `db:"key_data" json:"key_data"`
+	NamespaceID   int32     `db:"namespace_id" json:"namespace_id"`
+	CreatedAt     time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at" json:"updated_at"`
+	NamespaceUuid uuid.UUID `db:"namespace_uuid" json:"namespace_uuid"`
 }
 
 func (q *Queries) GetCredentialByUUID(ctx context.Context, arg GetCredentialByUUIDParams) (GetCredentialByUUIDRow, error) {
@@ -131,11 +130,11 @@ func (q *Queries) GetCredentialByUUID(ctx context.Context, arg GetCredentialByUU
 		&i.ID,
 		&i.Uuid,
 		&i.Name,
-		&i.PrivateKey,
-		&i.Password,
+		&i.KeyType,
+		&i.KeyData,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.NamespaceID,
 		&i.NamespaceUuid,
 	)
 	return i, err
@@ -143,7 +142,7 @@ func (q *Queries) GetCredentialByUUID(ctx context.Context, arg GetCredentialByUU
 
 const listCredentials = `-- name: ListCredentials :many
 WITH filtered AS (
-    SELECT c.id, c.uuid, c.name, c.private_key, c.password, c.created_at, c.updated_at, c.namespace_id, ns.uuid AS namespace_uuid FROM credentials c
+    SELECT c.id, c.uuid, c.name, c.key_type, c.key_data, c.namespace_id, c.created_at, c.updated_at, ns.uuid AS namespace_uuid FROM credentials c
     JOIN namespaces ns ON c.namespace_id = ns.id
     WHERE ns.uuid = $1
 ),
@@ -151,7 +150,7 @@ total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ),
 paged AS (
-    SELECT id, uuid, name, private_key, password, created_at, updated_at, namespace_id, namespace_uuid FROM filtered
+    SELECT id, uuid, name, key_type, key_data, namespace_id, created_at, updated_at, namespace_uuid FROM filtered
     ORDER BY created_at DESC
     LIMIT $2 OFFSET $3
 ),
@@ -159,7 +158,7 @@ page_count AS (
     SELECT CEIL(total.total_count::numeric / $2::numeric)::bigint AS page_count FROM total
 )
 SELECT
-    p.id, p.uuid, p.name, p.private_key, p.password, p.created_at, p.updated_at, p.namespace_id, p.namespace_uuid,
+    p.id, p.uuid, p.name, p.key_type, p.key_data, p.namespace_id, p.created_at, p.updated_at, p.namespace_uuid,
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
@@ -172,17 +171,17 @@ type ListCredentialsParams struct {
 }
 
 type ListCredentialsRow struct {
-	ID            int32          `db:"id" json:"id"`
-	Uuid          uuid.UUID      `db:"uuid" json:"uuid"`
-	Name          string         `db:"name" json:"name"`
-	PrivateKey    sql.NullString `db:"private_key" json:"private_key"`
-	Password      sql.NullString `db:"password" json:"password"`
-	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
-	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
-	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
-	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
-	PageCount     int64          `db:"page_count" json:"page_count"`
-	TotalCount    int64          `db:"total_count" json:"total_count"`
+	ID            int32     `db:"id" json:"id"`
+	Uuid          uuid.UUID `db:"uuid" json:"uuid"`
+	Name          string    `db:"name" json:"name"`
+	KeyType       string    `db:"key_type" json:"key_type"`
+	KeyData       string    `db:"key_data" json:"key_data"`
+	NamespaceID   int32     `db:"namespace_id" json:"namespace_id"`
+	CreatedAt     time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at" json:"updated_at"`
+	NamespaceUuid uuid.UUID `db:"namespace_uuid" json:"namespace_uuid"`
+	PageCount     int64     `db:"page_count" json:"page_count"`
+	TotalCount    int64     `db:"total_count" json:"total_count"`
 }
 
 func (q *Queries) ListCredentials(ctx context.Context, arg ListCredentialsParams) ([]ListCredentialsRow, error) {
@@ -198,11 +197,11 @@ func (q *Queries) ListCredentials(ctx context.Context, arg ListCredentialsParams
 			&i.ID,
 			&i.Uuid,
 			&i.Name,
-			&i.PrivateKey,
-			&i.Password,
+			&i.KeyType,
+			&i.KeyData,
+			&i.NamespaceID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.NamespaceID,
 			&i.NamespaceUuid,
 			&i.PageCount,
 			&i.TotalCount,
@@ -222,25 +221,25 @@ func (q *Queries) ListCredentials(ctx context.Context, arg ListCredentialsParams
 
 const updateCredential = `-- name: UpdateCredential :one
 UPDATE credentials
-SET name = $2, private_key = $3, password = $4, updated_at = NOW()
+SET name = $2, key_type = $3, key_data = $4, updated_at = NOW()
 WHERE credentials.uuid = $1 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $5)
-RETURNING id, uuid, name, private_key, password, created_at, updated_at, namespace_id
+RETURNING id, uuid, name, key_type, key_data, namespace_id, created_at, updated_at
 `
 
 type UpdateCredentialParams struct {
-	Uuid       uuid.UUID      `db:"uuid" json:"uuid"`
-	Name       string         `db:"name" json:"name"`
-	PrivateKey sql.NullString `db:"private_key" json:"private_key"`
-	Password   sql.NullString `db:"password" json:"password"`
-	Uuid_2     uuid.UUID      `db:"uuid_2" json:"uuid_2"`
+	Uuid    uuid.UUID `db:"uuid" json:"uuid"`
+	Name    string    `db:"name" json:"name"`
+	KeyType string    `db:"key_type" json:"key_type"`
+	KeyData string    `db:"key_data" json:"key_data"`
+	Uuid_2  uuid.UUID `db:"uuid_2" json:"uuid_2"`
 }
 
 func (q *Queries) UpdateCredential(ctx context.Context, arg UpdateCredentialParams) (Credential, error) {
 	row := q.db.QueryRowContext(ctx, updateCredential,
 		arg.Uuid,
 		arg.Name,
-		arg.PrivateKey,
-		arg.Password,
+		arg.KeyType,
+		arg.KeyData,
 		arg.Uuid_2,
 	)
 	var i Credential
@@ -248,11 +247,11 @@ func (q *Queries) UpdateCredential(ctx context.Context, arg UpdateCredentialPara
 		&i.ID,
 		&i.Uuid,
 		&i.Name,
-		&i.PrivateKey,
-		&i.Password,
+		&i.KeyType,
+		&i.KeyData,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.NamespaceID,
 	)
 	return i, err
 }

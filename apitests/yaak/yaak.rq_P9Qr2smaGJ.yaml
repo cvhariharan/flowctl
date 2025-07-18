@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_P9Qr2smaGJ
 createdAt: 2025-07-14T08:42:12.087460680
-updatedAt: 2025-07-17T15:26:50.698980392
+updatedAt: 2025-07-18T04:05:11.023139314
 workspaceId: wk_f7os23Vq2X
 folderId: fl_bXdDN8fPng
 authentication: {}
@@ -11,7 +11,8 @@ body:
   text: |-
     {
       "name": "testkey",
-      "password": "password"
+      "key_type": "password",
+      "key_data": "password"
     }
 bodyType: application/json
 description: ''

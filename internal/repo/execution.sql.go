@@ -26,7 +26,7 @@ INSERT INTO execution_log (
     triggered_by
 ) VALUES (
     $1, $2, $3, $4, (SELECT id FROM user_lookup)
-) RETURNING id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, created_at, updated_at
+) RETURNING id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, namespace_id, created_at, updated_at
 `
 
 type AddExecutionLogParams struct {
@@ -55,6 +55,7 @@ func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams
 		&i.Error,
 		&i.Status,
 		&i.TriggeredBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -62,7 +63,7 @@ func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams
 }
 
 const getChildrenByParentUUID = `-- name: GetChildrenByParentUUID :many
-SELECT id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, created_at, updated_at FROM execution_log WHERE parent_exec_id = $1
+SELECT id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, namespace_id, created_at, updated_at FROM execution_log WHERE parent_exec_id = $1
 `
 
 func (q *Queries) GetChildrenByParentUUID(ctx context.Context, parentExecID sql.NullString) ([]ExecutionLog, error) {
@@ -83,6 +84,7 @@ func (q *Queries) GetChildrenByParentUUID(ctx context.Context, parentExecID sql.
 			&i.Error,
 			&i.Status,
 			&i.TriggeredBy,
+			&i.NamespaceID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -101,7 +103,7 @@ func (q *Queries) GetChildrenByParentUUID(ctx context.Context, parentExecID sql.
 
 const getExecutionByExecID = `-- name: GetExecutionByExecID :one
 SELECT
-    el.id, el.exec_id, el.flow_id, el.parent_exec_id, el.input, el.error, el.status, el.triggered_by, el.created_at, el.updated_at,
+    el.id, el.exec_id, el.flow_id, el.parent_exec_id, el.input, el.error, el.status, el.triggered_by, el.namespace_id, el.created_at, el.updated_at,
     u.uuid AS triggered_by_uuid
 FROM
     execution_log el
@@ -120,6 +122,7 @@ type GetExecutionByExecIDRow struct {
 	Error           sql.NullString  `db:"error" json:"error"`
 	Status          ExecutionStatus `db:"status" json:"status"`
 	TriggeredBy     int32           `db:"triggered_by" json:"triggered_by"`
+	NamespaceID     int32           `db:"namespace_id" json:"namespace_id"`
 	CreatedAt       time.Time       `db:"created_at" json:"created_at"`
 	UpdatedAt       time.Time       `db:"updated_at" json:"updated_at"`
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
@@ -137,6 +140,7 @@ func (q *Queries) GetExecutionByExecID(ctx context.Context, execID string) (GetE
 		&i.Error,
 		&i.Status,
 		&i.TriggeredBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.TriggeredByUuid,
@@ -149,7 +153,7 @@ WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
 )
 SELECT
-    el.id, el.exec_id, el.flow_id, el.parent_exec_id, el.input, el.error, el.status, el.triggered_by, el.created_at, el.updated_at,
+    el.id, el.exec_id, el.flow_id, el.parent_exec_id, el.input, el.error, el.status, el.triggered_by, el.namespace_id, el.created_at, el.updated_at,
     u.uuid AS triggered_by_uuid
 FROM
     execution_log el
@@ -176,6 +180,7 @@ type GetExecutionByExecIDWithNamespaceRow struct {
 	Error           sql.NullString  `db:"error" json:"error"`
 	Status          ExecutionStatus `db:"status" json:"status"`
 	TriggeredBy     int32           `db:"triggered_by" json:"triggered_by"`
+	NamespaceID     int32           `db:"namespace_id" json:"namespace_id"`
 	CreatedAt       time.Time       `db:"created_at" json:"created_at"`
 	UpdatedAt       time.Time       `db:"updated_at" json:"updated_at"`
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
@@ -193,6 +198,7 @@ func (q *Queries) GetExecutionByExecIDWithNamespace(ctx context.Context, arg Get
 		&i.Error,
 		&i.Status,
 		&i.TriggeredBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.TriggeredByUuid,
@@ -201,7 +207,7 @@ func (q *Queries) GetExecutionByExecIDWithNamespace(ctx context.Context, arg Get
 }
 
 const getExecutionByID = `-- name: GetExecutionByID :one
-SELECT id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, created_at, updated_at FROM execution_log WHERE id = $1
+SELECT id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, namespace_id, created_at, updated_at FROM execution_log WHERE id = $1
 `
 
 func (q *Queries) GetExecutionByID(ctx context.Context, id int32) (ExecutionLog, error) {
@@ -216,6 +222,7 @@ func (q *Queries) GetExecutionByID(ctx context.Context, id int32) (ExecutionLog,
 		&i.Error,
 		&i.Status,
 		&i.TriggeredBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -228,7 +235,7 @@ WITH user_lookup AS (
 ), namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $3
 )
-SELECT el.id, el.exec_id, el.flow_id, el.parent_exec_id, el.input, el.error, el.status, el.triggered_by, el.created_at, el.updated_at FROM execution_log el
+SELECT el.id, el.exec_id, el.flow_id, el.parent_exec_id, el.input, el.error, el.status, el.triggered_by, el.namespace_id, el.created_at, el.updated_at FROM execution_log el
 INNER JOIN flows f ON el.flow_id = f.id
 WHERE f.id = $1 
   AND el.triggered_by = (SELECT id FROM user_lookup)
@@ -259,6 +266,7 @@ func (q *Queries) GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFl
 			&i.Error,
 			&i.Status,
 			&i.TriggeredBy,
+			&i.NamespaceID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -279,7 +287,7 @@ const getFlowFromExecID = `-- name: GetFlowFromExecID :one
 WITH exec_log AS (
     SELECT flow_id FROM execution_log WHERE exec_id = $1
 )
-SELECT id, slug, name, checksum, description, created_at, updated_at, namespace_id, flow_id FROM flows inner join exec_log on exec_log.flow_id = flows.id
+SELECT id, slug, name, checksum, description, namespace_id, created_at, updated_at, flow_id FROM flows inner join exec_log on exec_log.flow_id = flows.id
 `
 
 type GetFlowFromExecIDRow struct {
@@ -288,9 +296,9 @@ type GetFlowFromExecIDRow struct {
 	Name        string         `db:"name" json:"name"`
 	Checksum    string         `db:"checksum" json:"checksum"`
 	Description sql.NullString `db:"description" json:"description"`
+	NamespaceID int32          `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
-	NamespaceID int32          `db:"namespace_id" json:"namespace_id"`
 	FlowID      int32          `db:"flow_id" json:"flow_id"`
 }
 
@@ -303,9 +311,9 @@ func (q *Queries) GetFlowFromExecID(ctx context.Context, execID string) (GetFlow
 		&i.Name,
 		&i.Checksum,
 		&i.Description,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.NamespaceID,
 		&i.FlowID,
 	)
 	return i, err
@@ -317,7 +325,7 @@ WITH exec_log AS (
 ), namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
 )
-SELECT f.id, f.slug, f.name, f.checksum, f.description, f.created_at, f.updated_at, f.namespace_id FROM flows f
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.namespace_id, f.created_at, f.updated_at FROM flows f
 INNER JOIN exec_log el ON el.flow_id = f.id
 WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
 `
@@ -336,9 +344,9 @@ func (q *Queries) GetFlowFromExecIDWithNamespace(ctx context.Context, arg GetFlo
 		&i.Name,
 		&i.Checksum,
 		&i.Description,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.NamespaceID,
 	)
 	return i, err
 }
@@ -355,7 +363,7 @@ func (q *Queries) GetInputForExecByUUID(ctx context.Context, execID string) (jso
 }
 
 const updateExecutionStatus = `-- name: UpdateExecutionStatus :one
-UPDATE execution_log SET status=$1, error=$2, updated_at=$3 WHERE exec_id = $4 RETURNING id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, created_at, updated_at
+UPDATE execution_log SET status=$1, error=$2, updated_at=$3 WHERE exec_id = $4 RETURNING id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, namespace_id, created_at, updated_at
 `
 
 type UpdateExecutionStatusParams struct {
@@ -382,6 +390,7 @@ func (q *Queries) UpdateExecutionStatus(ctx context.Context, arg UpdateExecution
 		&i.Error,
 		&i.Status,
 		&i.TriggeredBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

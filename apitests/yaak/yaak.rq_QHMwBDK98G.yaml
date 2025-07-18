@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_QHMwBDK98G
 createdAt: 2025-07-14T09:49:00.344896245
-updatedAt: 2025-07-16T14:09:14.734216540
+updatedAt: 2025-07-18T04:19:14.419369066
 workspaceId: wk_f7os23Vq2X
 folderId: fl_bXdDN8fPng
 authentication: {}
@@ -10,8 +10,9 @@ authenticationType: null
 body:
   text: |-
     {
-      "name": "testkey-1",
-      "password": "password1"
+      "name": "testkey",
+      "key_type": "password",
+      "key_data": "password"
     }
 bodyType: application/json
 description: ''
@@ -23,5 +24,5 @@ headers:
 method: PUT
 name: Update Credential
 sortPriority: 1000.0
-url: http://localhost:7000/api/v1/credentials/0788d765-8952-4878-99ed-42797ea273dc
+url: http://localhost:7000/api/v1/test/credentials/024ce119-8449-48a5-964d-b39b30213eb9
 urlParameters: []

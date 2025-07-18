@@ -50,8 +50,8 @@ SELECT
     ns.uuid AS namespace_uuid,
     c.uuid AS credential_uuid, 
     c.name AS credential_name, 
-    c.private_key AS credential_private_key, 
-    c.password AS credential_password
+    c.key_type AS credential_key_type, 
+    c.key_data AS credential_key_data
 FROM nodes n
 JOIN namespaces ns ON n.namespace_id = ns.id
 LEFT JOIN credentials c ON n.credential_id = c.id

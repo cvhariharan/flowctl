@@ -35,7 +35,7 @@ func NewRemoteClient(node Node) (RemoteClient, error) {
 	var err error
 
 	switch node.Auth.Method {
-	case "ssh_key":
+	case "private_key":
 		auth, err = goph.RawKey(node.Auth.Key, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to use ssh key: %w", err)

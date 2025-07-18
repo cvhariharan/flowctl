@@ -22,10 +22,10 @@ WITH inserted_approval AS (
         action_id
     ) VALUES (
         $1, $2, $3
-    ) RETURNING id, uuid, exec_log_id, action_id, status, approvers, decided_by, created_at, updated_at
+    ) RETURNING id, uuid, exec_log_id, action_id, status, approvers, decided_by, namespace_id, created_at, updated_at
 )
 SELECT
-    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.created_at, a.updated_at,
+    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
     u.name as requested_by
 FROM inserted_approval a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -46,6 +46,7 @@ type AddApprovalRequestRow struct {
 	Status      ApprovalStatus  `db:"status" json:"status"`
 	Approvers   json.RawMessage `db:"approvers" json:"approvers"`
 	DecidedBy   sql.NullInt32   `db:"decided_by" json:"decided_by"`
+	NamespaceID int32           `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
 	RequestedBy string          `db:"requested_by" json:"requested_by"`
@@ -62,6 +63,7 @@ func (q *Queries) AddApprovalRequest(ctx context.Context, arg AddApprovalRequest
 		&i.Status,
 		&i.Approvers,
 		&i.DecidedBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RequestedBy,
@@ -80,10 +82,10 @@ WITH namespace_lookup AS (
         JOIN flows f ON el.flow_id = f.id
         WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
     )
-    RETURNING id, uuid, exec_log_id, action_id, status, approvers, decided_by, created_at, updated_at
+    RETURNING id, uuid, exec_log_id, action_id, status, approvers, decided_by, namespace_id, created_at, updated_at
 )
 SELECT
-    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.created_at, a.updated_at,
+    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
     u.name as requested_by
 FROM updated a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -104,6 +106,7 @@ type ApproveRequestByUUIDRow struct {
 	Status      ApprovalStatus  `db:"status" json:"status"`
 	Approvers   json.RawMessage `db:"approvers" json:"approvers"`
 	DecidedBy   sql.NullInt32   `db:"decided_by" json:"decided_by"`
+	NamespaceID int32           `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
 	RequestedBy string          `db:"requested_by" json:"requested_by"`
@@ -120,6 +123,7 @@ func (q *Queries) ApproveRequestByUUID(ctx context.Context, arg ApproveRequestBy
 		&i.Status,
 		&i.Approvers,
 		&i.DecidedBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RequestedBy,
@@ -132,7 +136,7 @@ WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
 )
 SELECT
-    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.created_at, a.updated_at,
+    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
     u.name as requested_by
 FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -154,6 +158,7 @@ type GetApprovalByUUIDRow struct {
 	Status      ApprovalStatus  `db:"status" json:"status"`
 	Approvers   json.RawMessage `db:"approvers" json:"approvers"`
 	DecidedBy   sql.NullInt32   `db:"decided_by" json:"decided_by"`
+	NamespaceID int32           `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
 	RequestedBy string          `db:"requested_by" json:"requested_by"`
@@ -170,6 +175,7 @@ func (q *Queries) GetApprovalByUUID(ctx context.Context, arg GetApprovalByUUIDPa
 		&i.Status,
 		&i.Approvers,
 		&i.DecidedBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RequestedBy,
@@ -183,7 +189,7 @@ WITH exec_lookup AS (
 ), namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $3
 )
-SELECT a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.created_at, a.updated_at FROM approvals a
+SELECT a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.namespace_id, a.created_at, a.updated_at FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
 JOIN flows f ON el.flow_id = f.id
 WHERE a.exec_log_id = (SELECT id FROM exec_lookup) 
@@ -208,6 +214,7 @@ func (q *Queries) GetApprovalRequestForActionAndExec(ctx context.Context, arg Ge
 		&i.Status,
 		&i.Approvers,
 		&i.DecidedBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -221,7 +228,7 @@ WITH exec_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
 )
 SELECT
-    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.created_at, a.updated_at,
+    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
     u.name as requested_by
 FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -245,6 +252,7 @@ type GetPendingApprovalRequestForExecRow struct {
 	Status      ApprovalStatus  `db:"status" json:"status"`
 	Approvers   json.RawMessage `db:"approvers" json:"approvers"`
 	DecidedBy   sql.NullInt32   `db:"decided_by" json:"decided_by"`
+	NamespaceID int32           `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
 	RequestedBy string          `db:"requested_by" json:"requested_by"`
@@ -261,6 +269,7 @@ func (q *Queries) GetPendingApprovalRequestForExec(ctx context.Context, arg GetP
 		&i.Status,
 		&i.Approvers,
 		&i.DecidedBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RequestedBy,
@@ -279,10 +288,10 @@ WITH namespace_lookup AS (
         JOIN flows f ON el.flow_id = f.id
         WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
     )
-    RETURNING id, uuid, exec_log_id, action_id, status, approvers, decided_by, created_at, updated_at
+    RETURNING id, uuid, exec_log_id, action_id, status, approvers, decided_by, namespace_id, created_at, updated_at
 )
 SELECT
-    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.created_at, a.updated_at,
+    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
     u.name as requested_by
 FROM updated a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -303,6 +312,7 @@ type RejectRequestByUUIDRow struct {
 	Status      ApprovalStatus  `db:"status" json:"status"`
 	Approvers   json.RawMessage `db:"approvers" json:"approvers"`
 	DecidedBy   sql.NullInt32   `db:"decided_by" json:"decided_by"`
+	NamespaceID int32           `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
 	RequestedBy string          `db:"requested_by" json:"requested_by"`
@@ -319,6 +329,7 @@ func (q *Queries) RejectRequestByUUID(ctx context.Context, arg RejectRequestByUU
 		&i.Status,
 		&i.Approvers,
 		&i.DecidedBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RequestedBy,
@@ -330,10 +341,10 @@ const updateApprovalStatusByUUID = `-- name: UpdateApprovalStatusByUUID :one
 WITH updated AS (
     UPDATE approvals SET status = $1, decided_by = $2, updated_at = NOW()
     WHERE uuid = $1
-    RETURNING id, uuid, exec_log_id, action_id, status, approvers, decided_by, created_at, updated_at
+    RETURNING id, uuid, exec_log_id, action_id, status, approvers, decided_by, namespace_id, created_at, updated_at
 )
 SELECT
-    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.created_at, a.updated_at,
+    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
     u.name as requested_by
 FROM updated a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -353,6 +364,7 @@ type UpdateApprovalStatusByUUIDRow struct {
 	Status      ApprovalStatus  `db:"status" json:"status"`
 	Approvers   json.RawMessage `db:"approvers" json:"approvers"`
 	DecidedBy   sql.NullInt32   `db:"decided_by" json:"decided_by"`
+	NamespaceID int32           `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
 	RequestedBy string          `db:"requested_by" json:"requested_by"`
@@ -369,6 +381,7 @@ func (q *Queries) UpdateApprovalStatusByUUID(ctx context.Context, arg UpdateAppr
 		&i.Status,
 		&i.Approvers,
 		&i.DecidedBy,
+		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RequestedBy,

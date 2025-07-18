@@ -60,8 +60,8 @@ func (ns NullApprovalStatus) Value() (driver.Value, error) {
 type AuthenticationMethod string
 
 const (
-	AuthenticationMethodSshKey   AuthenticationMethod = "ssh_key"
-	AuthenticationMethodPassword AuthenticationMethod = "password"
+	AuthenticationMethodPrivateKey AuthenticationMethod = "private_key"
+	AuthenticationMethodPassword   AuthenticationMethod = "password"
 )
 
 func (e *AuthenticationMethod) Scan(src interface{}) error {
@@ -230,15 +230,16 @@ func (ns NullUserRoleType) Value() (driver.Value, error) {
 }
 
 type Approval struct {
-	ID        int32           `db:"id" json:"id"`
-	Uuid      uuid.UUID       `db:"uuid" json:"uuid"`
-	ExecLogID int32           `db:"exec_log_id" json:"exec_log_id"`
-	ActionID  string          `db:"action_id" json:"action_id"`
-	Status    ApprovalStatus  `db:"status" json:"status"`
-	Approvers json.RawMessage `db:"approvers" json:"approvers"`
-	DecidedBy sql.NullInt32   `db:"decided_by" json:"decided_by"`
-	CreatedAt time.Time       `db:"created_at" json:"created_at"`
-	UpdatedAt time.Time       `db:"updated_at" json:"updated_at"`
+	ID          int32           `db:"id" json:"id"`
+	Uuid        uuid.UUID       `db:"uuid" json:"uuid"`
+	ExecLogID   int32           `db:"exec_log_id" json:"exec_log_id"`
+	ActionID    string          `db:"action_id" json:"action_id"`
+	Status      ApprovalStatus  `db:"status" json:"status"`
+	Approvers   json.RawMessage `db:"approvers" json:"approvers"`
+	DecidedBy   sql.NullInt32   `db:"decided_by" json:"decided_by"`
+	NamespaceID int32           `db:"namespace_id" json:"namespace_id"`
+	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
 }
 
 type CasbinRule struct {
@@ -253,14 +254,14 @@ type CasbinRule struct {
 }
 
 type Credential struct {
-	ID          int32          `db:"id" json:"id"`
-	Uuid        uuid.UUID      `db:"uuid" json:"uuid"`
-	Name        string         `db:"name" json:"name"`
-	PrivateKey  sql.NullString `db:"private_key" json:"private_key"`
-	Password    sql.NullString `db:"password" json:"password"`
-	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
-	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
-	NamespaceID int32          `db:"namespace_id" json:"namespace_id"`
+	ID          int32     `db:"id" json:"id"`
+	Uuid        uuid.UUID `db:"uuid" json:"uuid"`
+	Name        string    `db:"name" json:"name"`
+	KeyType     string    `db:"key_type" json:"key_type"`
+	KeyData     string    `db:"key_data" json:"key_data"`
+	NamespaceID int32     `db:"namespace_id" json:"namespace_id"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
 }
 
 type ExecutionLog struct {
@@ -272,6 +273,7 @@ type ExecutionLog struct {
 	Error        sql.NullString  `db:"error" json:"error"`
 	Status       ExecutionStatus `db:"status" json:"status"`
 	TriggeredBy  int32           `db:"triggered_by" json:"triggered_by"`
+	NamespaceID  int32           `db:"namespace_id" json:"namespace_id"`
 	CreatedAt    time.Time       `db:"created_at" json:"created_at"`
 	UpdatedAt    time.Time       `db:"updated_at" json:"updated_at"`
 }
@@ -282,9 +284,9 @@ type Flow struct {
 	Name        string         `db:"name" json:"name"`
 	Checksum    string         `db:"checksum" json:"checksum"`
 	Description sql.NullString `db:"description" json:"description"`
+	NamespaceID int32          `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
-	NamespaceID int32          `db:"namespace_id" json:"namespace_id"`
 }
 
 type Group struct {
@@ -350,9 +352,9 @@ type Node struct {
 	Tags         []string             `db:"tags" json:"tags"`
 	AuthMethod   AuthenticationMethod `db:"auth_method" json:"auth_method"`
 	CredentialID sql.NullInt32        `db:"credential_id" json:"credential_id"`
+	NamespaceID  int32                `db:"namespace_id" json:"namespace_id"`
 	CreatedAt    time.Time            `db:"created_at" json:"created_at"`
 	UpdatedAt    time.Time            `db:"updated_at" json:"updated_at"`
-	NamespaceID  int32                `db:"namespace_id" json:"namespace_id"`
 }
 
 type Session struct {
