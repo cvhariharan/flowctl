@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cvhariharan/autopilot/internal/repo"
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 )
 
@@ -20,16 +21,23 @@ func NewStatusTracker(s repo.Store) *StatusTrackerDB {
 	return &StatusTrackerDB{store: s}
 }
 
-func (s *StatusTrackerDB) SetStatus(ctx context.Context, execID string, status repo.ExecutionStatus, err error) error {
+func (s *StatusTrackerDB) SetStatus(ctx context.Context, execID string, status repo.ExecutionStatus, namespaceID string, err error) error {
 	var errMsg sql.NullString
 	if err != nil {
 		errMsg = sql.NullString{String: err.Error(), Valid: true}
 	}
+	
+	namespaceUUID, parseErr := uuid.Parse(namespaceID)
+	if parseErr != nil {
+		return fmt.Errorf("invalid namespace ID: %w", parseErr)
+	}
+	
 	_, err = s.store.UpdateExecutionStatus(ctx, repo.UpdateExecutionStatusParams{
 		Status:    status,
 		Error:     errMsg,
 		ExecID:    execID,
 		UpdatedAt: time.Now(),
+		Uuid:      namespaceUUID,
 	})
 	if err != nil {
 		return fmt.Errorf("could not update error execution status: %w", err)
@@ -46,17 +54,17 @@ func (s *StatusTrackerDB) TrackerMiddleware(next func(context.Context, *asynq.Ta
 			return fmt.Errorf("payload could not be deserialized: %w", err)
 		}
 
-		if err := s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusRunning, nil); err != nil {
+		if err := s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusRunning, payload.NamespaceID, nil); err != nil {
 			return err
 		}
 
 		if err := next(ctx, t); err != nil {
 			if errors.Is(err, ErrPendingApproval) {
-				return s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusPendingApproval, nil)
+				return s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusPendingApproval, payload.NamespaceID, nil)
 			}
-			return s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusErrored, err)
+			return s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusErrored, payload.NamespaceID, err)
 		}
 
-		return s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusCompleted, nil)
+		return s.SetStatus(ctx, payload.ExecID, repo.ExecutionStatusCompleted, payload.NamespaceID, nil)
 	}
 }

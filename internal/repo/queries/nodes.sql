@@ -45,6 +45,17 @@ JOIN namespaces ns ON n.namespace_id = ns.id
 WHERE n.name = $1 AND ns.uuid = $2;
 
 -- name: GetNodesByNames :many
+WITH updated_credentials AS (
+    UPDATE credentials 
+    SET last_accessed = NOW() 
+    WHERE id IN (
+        SELECT DISTINCT n.credential_id 
+        FROM nodes n 
+        JOIN namespaces ns ON n.namespace_id = ns.id 
+        WHERE n.name = ANY($1::text[]) AND ns.uuid = $2 AND n.credential_id IS NOT NULL
+    )
+    RETURNING *
+)
 SELECT 
     n.*,
     ns.uuid AS namespace_uuid,

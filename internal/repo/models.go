@@ -254,14 +254,15 @@ type CasbinRule struct {
 }
 
 type Credential struct {
-	ID          int32     `db:"id" json:"id"`
-	Uuid        uuid.UUID `db:"uuid" json:"uuid"`
-	Name        string    `db:"name" json:"name"`
-	KeyType     string    `db:"key_type" json:"key_type"`
-	KeyData     string    `db:"key_data" json:"key_data"`
-	NamespaceID int32     `db:"namespace_id" json:"namespace_id"`
-	CreatedAt   time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
+	ID           int32        `db:"id" json:"id"`
+	Uuid         uuid.UUID    `db:"uuid" json:"uuid"`
+	Name         string       `db:"name" json:"name"`
+	KeyType      string       `db:"key_type" json:"key_type"`
+	KeyData      string       `db:"key_data" json:"key_data"`
+	NamespaceID  int32        `db:"namespace_id" json:"namespace_id"`
+	LastAccessed sql.NullTime `db:"last_accessed" json:"last_accessed"`
+	CreatedAt    time.Time    `db:"created_at" json:"created_at"`
+	UpdatedAt    time.Time    `db:"updated_at" json:"updated_at"`
 }
 
 type ExecutionLog struct {

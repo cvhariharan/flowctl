@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/cvhariharan/autopilot/internal/core/models"
+	"github.com/cvhariharan/autopilot/internal/repo"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -17,12 +19,12 @@ import (
 func (c *Core) StreamLogs(ctx context.Context, logID string, namespaceID string) (chan models.StreamMessage, error) {
 	ch := make(chan models.StreamMessage)
 
-	errCh, err := c.checkErrors(ctx, logID)
+	errCh, err := c.checkErrors(ctx, logID, namespaceID)
 	if err != nil {
 		return nil, err
 	}
 
-	logCh, err := c.streamLogs(ctx, logID)
+	logCh, err := c.streamLogs(ctx, logID, namespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -65,10 +67,10 @@ func (c *Core) StreamLogs(ctx context.Context, logID string, namespaceID string)
 }
 
 // streamLogs reads log messages and results from a redis stream and writes to a channel
-func (c *Core) streamLogs(ctx context.Context, execID string) (chan models.StreamMessage, error) {
+func (c *Core) streamLogs(ctx context.Context, execID string, namespaceID string) (chan models.StreamMessage, error) {
 	ch := make(chan models.StreamMessage)
 
-	exec, err := c.GetExecutionByExecID(ctx, execID)
+	exec, err := c.GetExecutionByExecID(ctx, execID, namespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +80,14 @@ func (c *Core) streamLogs(ctx context.Context, execID string) (chan models.Strea
 		eID = exec.ParentExecID
 	}
 
-	children, err := c.store.GetChildrenByParentUUID(ctx, sql.NullString{String: eID, Valid: len(eID) > 0})
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+	children, err := c.store.GetChildrenByParentUUID(ctx, repo.GetChildrenByParentUUIDParams{
+		ParentExecID: sql.NullString{String: eID, Valid: len(eID) > 0},
+		Uuid:         namespaceUUID,
+	})
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("could not get children for exec %s: %w", execID, err)
 	}
@@ -142,7 +151,7 @@ func (c *Core) streamLogs(ctx context.Context, execID string) (chan models.Strea
 	return ch, nil
 }
 
-func (c *Core) checkErrors(ctx context.Context, execID string) (chan models.StreamMessage, error) {
+func (c *Core) checkErrors(ctx context.Context, execID string, namespaceID string) (chan models.StreamMessage, error) {
 	ch := make(chan models.StreamMessage)
 
 	go func(ch chan models.StreamMessage) {
@@ -152,7 +161,15 @@ func (c *Core) checkErrors(ctx context.Context, execID string) (chan models.Stre
 			case <-ctx.Done():
 				return
 			default:
-				exec, err := c.store.GetExecutionByExecID(ctx, execID)
+				namespaceUUID, err := uuid.Parse(namespaceID)
+			if err != nil {
+				ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte(fmt.Errorf("invalid namespace UUID: %w", err).Error())}
+				return
+			}
+			exec, err := c.store.GetExecutionByExecID(ctx, repo.GetExecutionByExecIDParams{
+				ExecID: execID,
+				Uuid:   namespaceUUID,
+			})
 				if err != nil {
 					ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte(fmt.Errorf("error reading task status: %w", err).Error())}
 					return

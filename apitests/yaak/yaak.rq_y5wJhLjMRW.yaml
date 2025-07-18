@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_y5wJhLjMRW
 createdAt: 2025-07-14T09:53:31.625492737
-updatedAt: 2025-07-16T14:09:36.374361263
+updatedAt: 2025-07-18T06:24:54.223885460
 workspaceId: wk_f7os23Vq2X
 folderId: fl_MPBCYB62xJ
 authentication: {}
@@ -14,5 +14,5 @@ headers: []
 method: GET
 name: List Nodes
 sortPriority: 1000.0
-url: http://localhost:7000/api/v1/test/nodes
+url: http://localhost:7000/api/v1/default/nodes
 urlParameters: []

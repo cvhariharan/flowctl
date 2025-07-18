@@ -42,5 +42,11 @@ SET name = $2, key_type = $3, key_data = $4, updated_at = NOW()
 WHERE credentials.uuid = $1 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $5)
 RETURNING *;
 
+-- name: AccessCredential :one
+UPDATE credentials
+SET last_accessed = NOW()
+WHERE credentials.uuid = $1 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $2)
+RETURNING *;
+
 -- name: DeleteCredential :exec
 DELETE FROM credentials WHERE credentials.uuid = $1 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $2);

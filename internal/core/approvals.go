@@ -130,7 +130,10 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 		execLogID = a.ExecLogID
 	}
 
-	exec, err := c.store.GetExecutionByID(ctx, execLogID)
+	exec, err := c.store.GetExecutionByID(ctx, repo.GetExecutionByIDParams{
+		ID:   execLogID,
+		Uuid: namespaceUUID,
+	})
 	if err != nil {
 		return fmt.Errorf("could not get execution for approval %s: %w", approvalUUID, err)
 	}
@@ -151,8 +154,15 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 	return nil
 }
 
-func (c *Core) RequestApproval(ctx context.Context, execID string, action models.Action) (string, error) {
-	exec, err := c.store.GetExecutionByExecID(ctx, execID)
+func (c *Core) RequestApproval(ctx context.Context, execID string, action models.Action, namespaceID string) (string, error) {
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return "", fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+	exec, err := c.store.GetExecutionByExecID(ctx, repo.GetExecutionByExecIDParams{
+		ExecID: execID,
+		Uuid:   namespaceUUID,
+	})
 	if err != nil {
 		return "", fmt.Errorf("error getting execution for exec ID %s: %w", execID, err)
 	}
@@ -167,7 +177,7 @@ func (c *Core) RequestApproval(ctx context.Context, execID string, action models
 		return "", fmt.Errorf("pending approval request: %s", approvalReq.UUID)
 	}
 
-	areq, err := c.store.RequestApprovalTx(ctx, execID, repo.RequestApprovalParam{ID: action.ID, Approvers: action.Approval})
+	areq, err := c.store.RequestApprovalTx(ctx, execID, namespaceUUID, repo.RequestApprovalParam{ID: action.ID, Approvers: action.Approval})
 	if err != nil {
 		return "", err
 	}
@@ -194,7 +204,14 @@ func (c *Core) RequestApproval(ctx context.Context, execID string, action models
 }
 
 func (c *Core) GetPendingApprovalsForExec(ctx context.Context, execID string, namespaceID string) (models.ApprovalRequest, error) {
-	exec, err := c.store.GetExecutionByExecID(ctx, execID)
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return models.ApprovalRequest{}, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+	exec, err := c.store.GetExecutionByExecID(ctx, repo.GetExecutionByExecIDParams{
+		ExecID: execID,
+		Uuid:   namespaceUUID,
+	})
 	if err != nil {
 		return models.ApprovalRequest{}, fmt.Errorf("error getting execution for exec ID %s: %w", execID, err)
 	}
@@ -286,7 +303,7 @@ func (c *Core) BeforeActionHook(ctx context.Context, execID, parentExecID string
 	}
 
 	if a.Status == "" {
-		_, err = c.RequestApproval(ctx, eID, models.TaskActionToAction(action))
+		_, err = c.RequestApproval(ctx, eID, models.TaskActionToAction(action), namespaceID)
 		if err != nil {
 			return err
 		}
@@ -324,7 +341,10 @@ func (c *Core) GetApprovalRequest(ctx context.Context, approvalUUID string, name
 			return models.ApprovalRequest{}, fmt.Errorf("error getting approval from store: %w", err)
 		}
 
-		exec, err := c.store.GetExecutionByID(ctx, areq.ExecLogID)
+		exec, err := c.store.GetExecutionByID(ctx, repo.GetExecutionByIDParams{
+			ID:   areq.ExecLogID,
+			Uuid: namespaceUUID,
+		})
 		if err != nil {
 			return models.ApprovalRequest{}, fmt.Errorf("error getting execution: %w", err)
 		}

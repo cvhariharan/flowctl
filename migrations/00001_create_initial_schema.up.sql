@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS credentials (
     key_type VARCHAR(50) NOT NULL DEFAULT 'private_key',
     key_data TEXT NOT NULL,
     namespace_id INTEGER NOT NULL,
+    last_accessed TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     FOREIGN KEY (namespace_id) REFERENCES namespaces(id) ON DELETE CASCADE

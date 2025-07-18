@@ -17,7 +17,7 @@ type RequestApprovalParam struct {
 type Store interface {
 	Querier
 	OverwriteGroupsForUserTx(ctx context.Context, userUUID uuid.UUID, groups []string) error
-	RequestApprovalTx(ctx context.Context, execID string, action RequestApprovalParam) (AddApprovalRequestRow, error)
+	RequestApprovalTx(ctx context.Context, execID string, namespaceUUID uuid.UUID, action RequestApprovalParam) (AddApprovalRequestRow, error)
 }
 
 type PostgresStore struct {
@@ -66,7 +66,7 @@ func (p *PostgresStore) OverwriteGroupsForUserTx(ctx context.Context, userUUID u
 	return nil
 }
 
-func (p *PostgresStore) RequestApprovalTx(ctx context.Context, execID string, action RequestApprovalParam) (AddApprovalRequestRow, error) {
+func (p *PostgresStore) RequestApprovalTx(ctx context.Context, execID string, namespaceUUID uuid.UUID, action RequestApprovalParam) (AddApprovalRequestRow, error) {
 	if len(action.Approvers) == 0 {
 		return AddApprovalRequestRow{}, fmt.Errorf("no approvers specified")
 	}
@@ -77,7 +77,10 @@ func (p *PostgresStore) RequestApprovalTx(ctx context.Context, execID string, ac
 	}
 	defer tx.Rollback()
 
-	e, err := p.GetExecutionByExecID(ctx, execID)
+	e, err := p.GetExecutionByExecID(ctx, GetExecutionByExecIDParams{
+		ExecID: execID,
+		Uuid:   namespaceUUID,
+	})
 	if err != nil {
 		return AddApprovalRequestRow{}, fmt.Errorf("could not get exec details for %s: %w", execID, err)
 	}

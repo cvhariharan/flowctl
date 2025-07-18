@@ -178,6 +178,17 @@ func (q *Queries) GetNodeByUUID(ctx context.Context, arg GetNodeByUUIDParams) (G
 }
 
 const getNodesByNames = `-- name: GetNodesByNames :many
+WITH updated_credentials AS (
+    UPDATE credentials 
+    SET last_accessed = NOW() 
+    WHERE id IN (
+        SELECT DISTINCT n.credential_id 
+        FROM nodes n 
+        JOIN namespaces ns ON n.namespace_id = ns.id 
+        WHERE n.name = ANY($1::text[]) AND ns.uuid = $2 AND n.credential_id IS NOT NULL
+    )
+    RETURNING id, uuid, name, key_type, key_data, namespace_id, last_accessed, created_at, updated_at
+)
 SELECT 
     n.id, n.uuid, n.name, n.hostname, n.port, n.username, n.os_family, n.tags, n.auth_method, n.credential_id, n.namespace_id, n.created_at, n.updated_at,
     ns.uuid AS namespace_uuid,

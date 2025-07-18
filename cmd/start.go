@@ -153,7 +153,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	views.Use(h.Authenticate, h.NamespaceMiddleware)
 
 	// views.POST("/trigger/:flow", h.HandleFlowTrigger)
-	views.GET("/:namespace/:flow", h.HandleFlowFormView)
+	views.GET("/:namespace/flows/:flow", h.HandleFlowFormView)
 	views.GET("/:namespace", h.HandleFlowsListView)
 	views.GET("/:namespace/results/:flowID/:logID", h.HandleFlowExecutionResults)
 	views.GET("/:namespace/nodes", h.HandleNodesView)
@@ -377,7 +377,7 @@ func startWorker(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	core := core.NewCore(flows, s, asynqClient, redisClient, keeper, enforcer)
 
 	flowLogger := streamlogger.NewStreamLogger(redisClient)
-	flowRunner := tasks.NewFlowRunner(flowLogger, runner.NewDockerArtifactsManager("./artifacts"), core.BeforeActionHook, nil)
+	flowRunner := tasks.NewFlowRunner(flowLogger, runner.NewDockerArtifactsManager("./artifacts"), core.BeforeActionHook, nil, logger)
 
 	st := tasks.NewStatusTracker(s)
 

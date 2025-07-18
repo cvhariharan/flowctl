@@ -6,13 +6,13 @@ package repo
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 
 	"github.com/google/uuid"
 )
 
 type Querier interface {
+	AccessCredential(ctx context.Context, arg AccessCredentialParams) (Credential, error)
 	AddApprovalRequest(ctx context.Context, arg AddApprovalRequestParams) (AddApprovalRequestRow, error)
 	AddExecutionLog(ctx context.Context, arg AddExecutionLogParams) (ExecutionLog, error)
 	AddGroupToUserByUUID(ctx context.Context, arg AddGroupToUserByUUIDParams) error
@@ -38,22 +38,22 @@ type Querier interface {
 	GetAllUsersWithGroups(ctx context.Context) ([]UserView, error)
 	GetApprovalByUUID(ctx context.Context, arg GetApprovalByUUIDParams) (GetApprovalByUUIDRow, error)
 	GetApprovalRequestForActionAndExec(ctx context.Context, arg GetApprovalRequestForActionAndExecParams) (Approval, error)
-	GetChildrenByParentUUID(ctx context.Context, parentExecID sql.NullString) ([]ExecutionLog, error)
+	GetChildrenByParentUUID(ctx context.Context, arg GetChildrenByParentUUIDParams) ([]ExecutionLog, error)
 	GetCredentialByID(ctx context.Context, arg GetCredentialByIDParams) (GetCredentialByIDRow, error)
 	GetCredentialByUUID(ctx context.Context, arg GetCredentialByUUIDParams) (GetCredentialByUUIDRow, error)
-	GetExecutionByExecID(ctx context.Context, execID string) (GetExecutionByExecIDRow, error)
+	GetExecutionByExecID(ctx context.Context, arg GetExecutionByExecIDParams) (GetExecutionByExecIDRow, error)
 	GetExecutionByExecIDWithNamespace(ctx context.Context, arg GetExecutionByExecIDWithNamespaceParams) (GetExecutionByExecIDWithNamespaceRow, error)
-	GetExecutionByID(ctx context.Context, id int32) (ExecutionLog, error)
+	GetExecutionByID(ctx context.Context, arg GetExecutionByIDParams) (ExecutionLog, error)
 	GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]ExecutionLog, error)
 	GetFlowBySlug(ctx context.Context, arg GetFlowBySlugParams) (Flow, error)
-	GetFlowFromExecID(ctx context.Context, execID string) (GetFlowFromExecIDRow, error)
+	GetFlowFromExecID(ctx context.Context, arg GetFlowFromExecIDParams) (Flow, error)
 	GetFlowFromExecIDWithNamespace(ctx context.Context, arg GetFlowFromExecIDWithNamespaceParams) (Flow, error)
 	GetFlowsByNamespace(ctx context.Context, argUuid uuid.UUID) ([]GetFlowsByNamespaceRow, error)
 	GetGroupByName(ctx context.Context, name string) (Group, error)
 	GetGroupByUUID(ctx context.Context, argUuid uuid.UUID) (Group, error)
 	GetGroupByUUIDWithUsers(ctx context.Context, argUuid uuid.UUID) (GroupView, error)
 	GetGroupsWithNamespaceAccess(ctx context.Context, argUuid uuid.UUID) ([]GetGroupsWithNamespaceAccessRow, error)
-	GetInputForExecByUUID(ctx context.Context, execID string) (json.RawMessage, error)
+	GetInputForExecByUUID(ctx context.Context, arg GetInputForExecByUUIDParams) (json.RawMessage, error)
 	GetNamespaceByName(ctx context.Context, name string) (Namespace, error)
 	GetNamespaceByUUID(ctx context.Context, argUuid uuid.UUID) (Namespace, error)
 	GetNamespaceMembers(ctx context.Context, argUuid uuid.UUID) ([]GetNamespaceMembersRow, error)

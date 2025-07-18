@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_9vbT6wmstn
 createdAt: 2025-07-14T09:48:37.928067785
-updatedAt: 2025-07-16T14:09:39.220492225
+updatedAt: 2025-07-18T06:27:01.096142440
 workspaceId: wk_f7os23Vq2X
 folderId: fl_MPBCYB62xJ
 authentication: {}
@@ -18,7 +18,7 @@ body:
       "tags": [],
       "auth": {
         "method": "password",
-        "credential_id": "50b0ba8f-e6f5-4e62-82de-14d9f1005f34"
+        "credential_id": "c74d1c3a-208c-41db-bdc9-bd8b9df04675"
       }
     }
 bodyType: application/json
@@ -31,5 +31,5 @@ headers:
 method: POST
 name: Create Node
 sortPriority: 500.0
-url: http://localhost:7000/api/v1/test/nodes
+url: http://localhost:7000/api/v1/default/nodes
 urlParameters: []

@@ -16,16 +16,19 @@ import (
 
 const addExecutionLog = `-- name: AddExecutionLog :one
 WITH user_lookup AS (
-    SELECT id FROM users WHERE uuid = $5
+    SELECT id FROM users WHERE users.uuid = $5
+), namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $6
 )
 INSERT INTO execution_log (
     exec_id,
     parent_exec_id,
     flow_id,
     input,
-    triggered_by
+    triggered_by,
+    namespace_id
 ) VALUES (
-    $1, $2, $3, $4, (SELECT id FROM user_lookup)
+    $1, $2, $3, $4, (SELECT id FROM user_lookup), (SELECT id FROM namespace_lookup)
 ) RETURNING id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, namespace_id, created_at, updated_at
 `
 
@@ -35,6 +38,7 @@ type AddExecutionLogParams struct {
 	FlowID       int32           `db:"flow_id" json:"flow_id"`
 	Input        json.RawMessage `db:"input" json:"input"`
 	Uuid         uuid.UUID       `db:"uuid" json:"uuid"`
+	Uuid_2       uuid.UUID       `db:"uuid_2" json:"uuid_2"`
 }
 
 func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams) (ExecutionLog, error) {
@@ -44,6 +48,7 @@ func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams
 		arg.FlowID,
 		arg.Input,
 		arg.Uuid,
+		arg.Uuid_2,
 	)
 	var i ExecutionLog
 	err := row.Scan(
@@ -63,11 +68,20 @@ func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams
 }
 
 const getChildrenByParentUUID = `-- name: GetChildrenByParentUUID :many
-SELECT id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, namespace_id, created_at, updated_at FROM execution_log WHERE parent_exec_id = $1
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+)
+SELECT id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, namespace_id, created_at, updated_at FROM execution_log 
+WHERE execution_log.parent_exec_id = $1 AND execution_log.namespace_id = (SELECT id FROM namespace_lookup)
 `
 
-func (q *Queries) GetChildrenByParentUUID(ctx context.Context, parentExecID sql.NullString) ([]ExecutionLog, error) {
-	rows, err := q.db.QueryContext(ctx, getChildrenByParentUUID, parentExecID)
+type GetChildrenByParentUUIDParams struct {
+	ParentExecID sql.NullString `db:"parent_exec_id" json:"parent_exec_id"`
+	Uuid         uuid.UUID      `db:"uuid" json:"uuid"`
+}
+
+func (q *Queries) GetChildrenByParentUUID(ctx context.Context, arg GetChildrenByParentUUIDParams) ([]ExecutionLog, error) {
+	rows, err := q.db.QueryContext(ctx, getChildrenByParentUUID, arg.ParentExecID, arg.Uuid)
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +116,9 @@ func (q *Queries) GetChildrenByParentUUID(ctx context.Context, parentExecID sql.
 }
 
 const getExecutionByExecID = `-- name: GetExecutionByExecID :one
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+)
 SELECT
     el.id, el.exec_id, el.flow_id, el.parent_exec_id, el.input, el.error, el.status, el.triggered_by, el.namespace_id, el.created_at, el.updated_at,
     u.uuid AS triggered_by_uuid
@@ -111,7 +128,13 @@ INNER JOIN
     users u ON el.triggered_by = u.id
 WHERE
     el.exec_id = $1
+    AND el.namespace_id = (SELECT id FROM namespace_lookup)
 `
+
+type GetExecutionByExecIDParams struct {
+	ExecID string    `db:"exec_id" json:"exec_id"`
+	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
+}
 
 type GetExecutionByExecIDRow struct {
 	ID              int32           `db:"id" json:"id"`
@@ -128,8 +151,8 @@ type GetExecutionByExecIDRow struct {
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
 }
 
-func (q *Queries) GetExecutionByExecID(ctx context.Context, execID string) (GetExecutionByExecIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getExecutionByExecID, execID)
+func (q *Queries) GetExecutionByExecID(ctx context.Context, arg GetExecutionByExecIDParams) (GetExecutionByExecIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getExecutionByExecID, arg.ExecID, arg.Uuid)
 	var i GetExecutionByExecIDRow
 	err := row.Scan(
 		&i.ID,
@@ -207,11 +230,20 @@ func (q *Queries) GetExecutionByExecIDWithNamespace(ctx context.Context, arg Get
 }
 
 const getExecutionByID = `-- name: GetExecutionByID :one
-SELECT id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, namespace_id, created_at, updated_at FROM execution_log WHERE id = $1
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+)
+SELECT id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, namespace_id, created_at, updated_at FROM execution_log 
+WHERE execution_log.id = $1 AND execution_log.namespace_id = (SELECT id FROM namespace_lookup)
 `
 
-func (q *Queries) GetExecutionByID(ctx context.Context, id int32) (ExecutionLog, error) {
-	row := q.db.QueryRowContext(ctx, getExecutionByID, id)
+type GetExecutionByIDParams struct {
+	ID   int32     `db:"id" json:"id"`
+	Uuid uuid.UUID `db:"uuid" json:"uuid"`
+}
+
+func (q *Queries) GetExecutionByID(ctx context.Context, arg GetExecutionByIDParams) (ExecutionLog, error) {
+	row := q.db.QueryRowContext(ctx, getExecutionByID, arg.ID, arg.Uuid)
 	var i ExecutionLog
 	err := row.Scan(
 		&i.ID,
@@ -286,25 +318,22 @@ func (q *Queries) GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFl
 const getFlowFromExecID = `-- name: GetFlowFromExecID :one
 WITH exec_log AS (
     SELECT flow_id FROM execution_log WHERE exec_id = $1
+), namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
 )
-SELECT id, slug, name, checksum, description, namespace_id, created_at, updated_at, flow_id FROM flows inner join exec_log on exec_log.flow_id = flows.id
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.namespace_id, f.created_at, f.updated_at FROM flows f 
+INNER JOIN exec_log el ON el.flow_id = f.id
+WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
 `
 
-type GetFlowFromExecIDRow struct {
-	ID          int32          `db:"id" json:"id"`
-	Slug        string         `db:"slug" json:"slug"`
-	Name        string         `db:"name" json:"name"`
-	Checksum    string         `db:"checksum" json:"checksum"`
-	Description sql.NullString `db:"description" json:"description"`
-	NamespaceID int32          `db:"namespace_id" json:"namespace_id"`
-	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
-	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
-	FlowID      int32          `db:"flow_id" json:"flow_id"`
+type GetFlowFromExecIDParams struct {
+	ExecID string    `db:"exec_id" json:"exec_id"`
+	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
 }
 
-func (q *Queries) GetFlowFromExecID(ctx context.Context, execID string) (GetFlowFromExecIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getFlowFromExecID, execID)
-	var i GetFlowFromExecIDRow
+func (q *Queries) GetFlowFromExecID(ctx context.Context, arg GetFlowFromExecIDParams) (Flow, error) {
+	row := q.db.QueryRowContext(ctx, getFlowFromExecID, arg.ExecID, arg.Uuid)
+	var i Flow
 	err := row.Scan(
 		&i.ID,
 		&i.Slug,
@@ -314,7 +343,6 @@ func (q *Queries) GetFlowFromExecID(ctx context.Context, execID string) (GetFlow
 		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.FlowID,
 	)
 	return i, err
 }
@@ -352,18 +380,32 @@ func (q *Queries) GetFlowFromExecIDWithNamespace(ctx context.Context, arg GetFlo
 }
 
 const getInputForExecByUUID = `-- name: GetInputForExecByUUID :one
-SELECT input FROM execution_log WHERE exec_id = $1
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+)
+SELECT input FROM execution_log 
+WHERE execution_log.exec_id = $1 AND execution_log.namespace_id = (SELECT id FROM namespace_lookup)
 `
 
-func (q *Queries) GetInputForExecByUUID(ctx context.Context, execID string) (json.RawMessage, error) {
-	row := q.db.QueryRowContext(ctx, getInputForExecByUUID, execID)
+type GetInputForExecByUUIDParams struct {
+	ExecID string    `db:"exec_id" json:"exec_id"`
+	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
+}
+
+func (q *Queries) GetInputForExecByUUID(ctx context.Context, arg GetInputForExecByUUIDParams) (json.RawMessage, error) {
+	row := q.db.QueryRowContext(ctx, getInputForExecByUUID, arg.ExecID, arg.Uuid)
 	var input json.RawMessage
 	err := row.Scan(&input)
 	return input, err
 }
 
 const updateExecutionStatus = `-- name: UpdateExecutionStatus :one
-UPDATE execution_log SET status=$1, error=$2, updated_at=$3 WHERE exec_id = $4 RETURNING id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, namespace_id, created_at, updated_at
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $5
+)
+UPDATE execution_log SET status=$1, error=$2, updated_at=$3 
+WHERE exec_id = $4 AND namespace_id = (SELECT id FROM namespace_lookup) 
+RETURNING id, exec_id, flow_id, parent_exec_id, input, error, status, triggered_by, namespace_id, created_at, updated_at
 `
 
 type UpdateExecutionStatusParams struct {
@@ -371,6 +413,7 @@ type UpdateExecutionStatusParams struct {
 	Error     sql.NullString  `db:"error" json:"error"`
 	UpdatedAt time.Time       `db:"updated_at" json:"updated_at"`
 	ExecID    string          `db:"exec_id" json:"exec_id"`
+	Uuid      uuid.UUID       `db:"uuid" json:"uuid"`
 }
 
 func (q *Queries) UpdateExecutionStatus(ctx context.Context, arg UpdateExecutionStatusParams) (ExecutionLog, error) {
@@ -379,6 +422,7 @@ func (q *Queries) UpdateExecutionStatus(ctx context.Context, arg UpdateExecution
 		arg.Error,
 		arg.UpdatedAt,
 		arg.ExecID,
+		arg.Uuid,
 	)
 	var i ExecutionLog
 	err := row.Scan(

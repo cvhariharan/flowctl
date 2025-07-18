@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"time"
 
@@ -51,10 +52,11 @@ type FlowRunner struct {
 	artifactManager  runner.ArtifactManager
 	onBeforeActionFn HookFn
 	onAfterActionFn  HookFn
+	debugLogger *slog.Logger
 }
 
-func NewFlowRunner(logger *streamlogger.StreamLogger, artifactManager runner.ArtifactManager, onBeforeActionFn, onAfterActionFn HookFn) *FlowRunner {
-	return &FlowRunner{logger: logger, artifactManager: artifactManager, onBeforeActionFn: onBeforeActionFn, onAfterActionFn: onAfterActionFn}
+func NewFlowRunner(logger *streamlogger.StreamLogger, artifactManager runner.ArtifactManager, onBeforeActionFn, onAfterActionFn HookFn, debugLogger *slog.Logger) *FlowRunner {
+	return &FlowRunner{logger: logger, artifactManager: artifactManager, onBeforeActionFn: onBeforeActionFn, onAfterActionFn: onAfterActionFn, debugLogger: debugLogger.With("component", "flow_runner")}
 }
 
 func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) error {
@@ -83,6 +85,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 
 		if r.onBeforeActionFn != nil {
 			if err := r.onBeforeActionFn(ctx, payload.ExecID, payload.ParentExecID, action, payload.NamespaceID); err != nil {
+				r.debugLogger.Debug("could not run before action func", "error", err)
 				return err
 			}
 		}
@@ -101,6 +104,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 
 		if r.onAfterActionFn != nil {
 			if err := r.onAfterActionFn(ctx, payload.ExecID, payload.ParentExecID, action, payload.NamespaceID); err != nil {
+				r.debugLogger.Debug("could not run after action func", "error", err)
 				return err
 			}
 		}

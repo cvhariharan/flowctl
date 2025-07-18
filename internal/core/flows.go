@@ -106,7 +106,14 @@ func (c *Core) SearchFlows(ctx context.Context, namespaceID string, query string
 func (c *Core) GetFlowFromLogID(logID string, namespaceID string) (models.Flow, error) {
 	f, ok := c.logMap[logID]
 	if !ok {
-		df, err := c.store.GetFlowFromExecID(context.Background(), logID)
+		namespaceUUID, err := uuid.Parse(namespaceID)
+		if err != nil {
+			return models.Flow{}, fmt.Errorf("invalid namespace UUID: %w", err)
+		}
+		df, err := c.store.GetFlowFromExecID(context.Background(), repo.GetFlowFromExecIDParams{
+			ExecID: logID,
+			Uuid:   namespaceUUID,
+		})
 		if err != nil {
 			return models.Flow{}, fmt.Errorf("could not get flow for exec id %s: %w", logID, err)
 		}
@@ -130,7 +137,7 @@ func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[
 
 // ResumeFlowExecution moves the task to a resume queue for further processing.
 func (c *Core) ResumeFlowExecution(ctx context.Context, execID string, actionID string, userUUID string, namespaceID string) error {
-	exec, err := c.GetExecutionByExecID(ctx, execID)
+	exec, err := c.GetExecutionByExecID(ctx, execID, namespaceID)
 	if err != nil {
 		return fmt.Errorf("could not get exec %s: %w", execID, err)
 	}
@@ -255,6 +262,7 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 		FlowID:       f.Meta.DBID,
 		Input:        inputB,
 		Uuid:         userID,
+		Uuid_2:       namespaceUUID,
 	})
 	if err != nil {
 		return "", fmt.Errorf("could not add entry to execution log: %w", err)
@@ -298,7 +306,14 @@ func (c *Core) GetAllExecutionSummary(ctx context.Context, f models.Flow, trigge
 }
 
 func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string, namespaceID string) (models.ExecutionSummary, error) {
-	e, err := c.store.GetExecutionByExecID(ctx, execID)
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return models.ExecutionSummary{}, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+	e, err := c.store.GetExecutionByExecID(ctx, repo.GetExecutionByExecIDParams{
+		ExecID: execID,
+		Uuid:   namespaceUUID,
+	})
 	if err != nil {
 		return models.ExecutionSummary{}, fmt.Errorf("could not get exec %s by exec id: %w", execID, err)
 	}
@@ -317,9 +332,16 @@ func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string, n
 	}, nil
 }
 
-func (c *Core) GetInputForExec(ctx context.Context, execID string) (map[string]interface{}, error) {
+func (c *Core) GetInputForExec(ctx context.Context, execID string, namespaceID string) (map[string]interface{}, error) {
 	var input map[string]interface{}
-	in, err := c.store.GetInputForExecByUUID(ctx, execID)
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+	in, err := c.store.GetInputForExecByUUID(ctx, repo.GetInputForExecByUUIDParams{
+		ExecID: execID,
+		Uuid:   namespaceUUID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("error getting input for %s: %w", execID, err)
 	}
@@ -331,8 +353,15 @@ func (c *Core) GetInputForExec(ctx context.Context, execID string) (map[string]i
 	return input, nil
 }
 
-func (c *Core) GetExecutionByExecID(ctx context.Context, execID string) (models.Execution, error) {
-	e, err := c.store.GetExecutionByExecID(ctx, execID)
+func (c *Core) GetExecutionByExecID(ctx context.Context, execID string, namespaceID string) (models.Execution, error) {
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return models.Execution{}, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+	e, err := c.store.GetExecutionByExecID(ctx, repo.GetExecutionByExecIDParams{
+		ExecID: execID,
+		Uuid:   namespaceUUID,
+	})
 	if err != nil {
 		return models.Execution{}, fmt.Errorf("could not get execution for exec %s: %w", execID, err)
 	}
