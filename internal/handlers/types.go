@@ -4,6 +4,10 @@ import (
 	"github.com/cvhariharan/autopilot/internal/core/models"
 )
 
+const (
+	TimeFormat = "2006-01-02T15:04:05Z"
+)
+
 type AuthReq struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -78,9 +82,10 @@ type FlowInputValidationError struct {
 }
 
 type FlowLogResp struct {
-	MType   string            `json:"message_type"`
-	Value   string            `json:"value"`
-	Results map[string]string `json:"results,omitempty"`
+	ActionID string			   `json:"action_id"`
+	MType    string            `json:"message_type"`
+	Value    string            `json:"value"`
+	Results  map[string]string `json:"results,omitempty"`
 }
 
 type PaginateRequest struct {
@@ -338,4 +343,31 @@ func coreNamespaceMembersToResp(members []models.NamespaceMember) NamespaceMembe
 		resp[i] = coreNamespaceMemberToResp(m)
 	}
 	return NamespaceMembersResponse{Members: resp}
+}
+
+type ExecutionStatus string
+const (
+	ExecutionStatusPending   ExecutionStatus = "pending"
+	ExecutionStatusCompleted ExecutionStatus = "completed"
+	ExecutionStatusErrored   ExecutionStatus = "errored"
+)
+
+type ExecutionSummary struct {
+	ID 	   		string 		    `json:"id"`
+	Status 		ExecutionStatus `json:"status"`
+	TriggeredBy string     		`json:"triggered_by"`
+	CreatedAt   string 	   		`json:"started_at"`
+	CompletedAt string 	   		`json:"completed_at"`
+	Duration    string 			`json:"duration"`
+}
+
+func coreExecutionSummaryToExecutionSummary(e models.ExecutionSummary) ExecutionSummary {
+	return ExecutionSummary{
+		ID:          e.ExecID,
+		Status:      ExecutionStatus(e.Status),
+		TriggeredBy: e.TriggeredBy,
+		CreatedAt:   e.CreatedAt.Format(TimeFormat),
+		CompletedAt: e.CompletedAt.Format(TimeFormat),
+		Duration:    e.Duration(),
+	}
 }

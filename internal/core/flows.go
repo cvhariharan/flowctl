@@ -65,7 +65,7 @@ func (c *Core) GetFlowsPaginated(ctx context.Context, namespaceID string, limit,
 
 	var fs []models.Flow
 	var pageCount, totalCount int64
-	
+
 	for _, v := range flows {
 		fs = append(fs, c.flows[fmt.Sprintf("%s:%s", v.Slug, namespaceID)])
 		pageCount = v.PageCount
@@ -93,7 +93,7 @@ func (c *Core) SearchFlows(ctx context.Context, namespaceID string, query string
 
 	var fs []models.Flow
 	var pageCount, totalCount int64
-	
+
 	for _, v := range flows {
 		fs = append(fs, c.flows[fmt.Sprintf("%s:%s", v.Slug, namespaceID)])
 		pageCount = v.PageCount
@@ -325,6 +325,7 @@ func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string, n
 
 	return models.ExecutionSummary{
 		ExecID:      execID,
+		Status: 	 models.ExecutionStatus(e.Status),
 		Flow:        f,
 		CreatedAt:   e.CreatedAt,
 		CompletedAt: e.UpdatedAt,

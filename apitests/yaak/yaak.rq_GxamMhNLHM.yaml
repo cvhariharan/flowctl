@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_GxamMhNLHM
+createdAt: 2025-07-18T10:36:12.018648118
+updatedAt: 2025-07-18T10:37:21.665514753
+workspaceId: wk_f7os23Vq2X
+folderId: fl_XaZk4pk63J
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Get Summary
+sortPriority: 249.9999
+url: http://localhost:7000/api/v1/default/flows/summary/5ffd1cd6-77e5-493d-9e58-e6849ac5ba87
+urlParameters: []

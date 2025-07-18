@@ -200,6 +200,20 @@ func (h *Handler) HandleNodesView(c echo.Context) error {
 	return c.Render(http.StatusOK, "nodes_test", data)
 }
 
+func (h *Handler) HandleCredentialsView(c echo.Context) error {
+	namespace := c.Param("namespace")
+	data := struct {
+		Page
+	}{
+		Page: Page{
+			Title: "Credentials",
+			Namespace: namespace,
+		},
+	}
+
+	return c.Render(http.StatusOK, "credentials", data)
+}
+
 func (h *Handler) HandleApprovalView(c echo.Context) error {
 	namespace := c.Param("namespace")
 	data := struct {
@@ -266,21 +280,6 @@ func (h *Handler) HandleNodeView(c echo.Context) error {
 	}
 
 	return c.Render(http.StatusOK, "node_management", data)
-}
-
-func (h *Handler) HandleCredentialView(c echo.Context) error {
-	namespace := c.Param("namespace")
-	data := struct {
-		Page
-		Credential models.Credential
-	}{
-		Page: Page{
-			Title:     "Credential Details",
-			Namespace: namespace,
-		},
-	}
-
-	return c.Render(http.StatusOK, "credential_management", data)
 }
 
 // func (h *Handler) HandleExecutionSummary(c echo.Context) error {

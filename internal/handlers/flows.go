@@ -90,7 +90,7 @@ func (h *Handler) HandleLogStreaming(c echo.Context) error {
 			return nil
 		}
 	}
-	c.Logger().Info("msg ch closed")
+
 	return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed"))
 }
 
@@ -104,6 +104,7 @@ func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, w
 		}
 
 		if err := json.NewEncoder(&buf).Encode(FlowLogResp{
+			ActionID: msg.ActionID,
 			MType:   string(msg.MType),
 			Results: res,
 		}); err != nil {
@@ -112,6 +113,7 @@ func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, w
 	default:
 		h.logger.Debug("Default message", "value", string(msg.Val))
 		if err := json.NewEncoder(&buf).Encode(FlowLogResp{
+			ActionID: msg.ActionID,
 			MType: string(msg.MType),
 			Value: string(msg.Val),
 		}); err != nil {
@@ -200,4 +202,24 @@ func (h *Handler) HandleGetFlow(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, flow)
+}
+
+func (h *Handler) HandleGetExecutionSummary(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	execID := c.Param("execID")
+	if execID == "" {
+		return wrapError(http.StatusBadRequest, "execution ID cannot be empty", nil, nil)
+	}
+
+	execSummary, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), execID, namespace)
+	if err != nil {
+		return wrapError(http.StatusNotFound, "execution not found", err, nil)
+	}
+
+	response := coreExecutionSummaryToExecutionSummary(execSummary)
+	return c.JSON(http.StatusOK, response)
 }

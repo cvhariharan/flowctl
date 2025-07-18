@@ -90,6 +90,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 			}
 		}
 
+		// Only run action if it has not already run, if it has run, use the existing results
 		res, err := streamLogger.Results(action.ID)
 		if err != nil {
 			res, err = r.runAction(ctx, action, payload.Workflow.Meta.SrcDir, payload.Input, streamLogger)
