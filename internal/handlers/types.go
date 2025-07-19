@@ -118,19 +118,19 @@ type ApprovalActionResp struct {
 
 type ApprovalPaginateRequest struct {
 	Status string `query:"status" validate:"oneof='' pending approved rejected"`
+	Filter string `query:"filter"`
 	Page   int    `query:"page"`
 	Count  int    `query:"count_per_page"`
 }
 
 type ApprovalResp struct {
-	ID          string   `json:"id"`
-	ActionID    string   `json:"action_id"`
-	Status      string   `json:"status"`
-	ExecID      string   `json:"exec_id"`
-	RequestedBy string   `json:"requested_by"`
-	Approvers   []string `json:"approvers"`
-	CreatedAt   string   `json:"created_at"`
-	UpdatedAt   string   `json:"updated_at"`
+	ID          string `json:"id"`
+	ActionID    string `json:"action_id"`
+	Status      string `json:"status"`
+	ExecID      string `json:"exec_id"`
+	RequestedBy string `json:"requested_by"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
 }
 
 type ApprovalsPaginateResponse struct {

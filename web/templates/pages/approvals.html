@@ -42,7 +42,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                         <input type="text"
-                               placeholder="Search approvals..."
+                               placeholder="Search by Action ID or Exec ID..."
                                x-model="searchQuery"
                                @input.debounce.300ms="searchApprovals()"
                                class="pl-10 pr-4 py-2 w-80 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -136,7 +136,6 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Execution</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested By</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approvers</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -178,17 +177,6 @@
                                 <!-- Requested By Column -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" x-text="approval.requested_by"></td>
 
-                                <!-- Approvers Column -->
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex flex-wrap gap-1">
-                                        <template x-for="approver in approval.approvers" :key="approver">
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800" x-text="approver"></span>
-                                        </template>
-                                        <template x-if="!approval.approvers || approval.approvers.length === 0">
-                                            <span class="text-xs text-gray-400">No approvers</span>
-                                        </template>
-                                    </div>
-                                </td>
 
                                 <!-- Created Column -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -294,17 +282,27 @@ function approvalsManager() {
                 if (this.statusFilter) {
                     url += `&status=${encodeURIComponent(this.statusFilter)}`;
                 }
+                if (this.searchQuery) {
+                    url += `&filter=${encodeURIComponent(this.searchQuery)}`;
+                }
 
                 const response = await fetch(url);
                 const data = await response.json();
+
+                if (!response.ok) {
+                    const errorMessage = data.error || data.message || `HTTP ${response.status}: ${response.statusText}`;
+                    throw new Error(errorMessage);
+                }
 
                 this.approvals = data.approvals || [];
                 this.pageCount = data.page_count || 1;
                 this.totalCount = data.total_count || 0;
             } catch (error) {
                 console.error('Failed to fetch approvals:', error);
-                this.notifyError('Failed to fetch approvals');
+                this.notifyError(`Failed to fetch approvals: ${error.message}`);
                 this.approvals = [];
+                this.pageCount = 1;
+                this.totalCount = 0;
             } finally {
                 this.loading = false;
             }

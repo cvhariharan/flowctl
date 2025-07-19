@@ -243,6 +243,7 @@ filtered AS (
     JOIN users u ON el.triggered_by = u.id
     WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
       AND (CASE WHEN $2::text = '' THEN TRUE ELSE a.status = $2::approval_status END)
+      AND (CASE WHEN $3::text = '' THEN TRUE ELSE (lower(a.action_id) LIKE '%' || lower($3::text) || '%' OR lower(el.exec_id) LIKE '%' || lower($3::text) || '%') END)
 ),
 total AS (
     SELECT COUNT(*) AS total_count
@@ -252,10 +253,10 @@ paged AS (
     SELECT id, uuid, exec_log_id, action_id, status, approvers, decided_by, namespace_id, created_at, updated_at, requested_by, exec_id
     FROM filtered
     ORDER BY created_at DESC
-    LIMIT $3 OFFSET $4
+    LIMIT $4 OFFSET $5
 ),
 page_count AS (
-    SELECT CEIL(total.total_count::numeric / $3::numeric)::bigint AS page_count
+    SELECT CEIL(total.total_count::numeric / $4::numeric)::bigint AS page_count
     FROM total
 )
 SELECT
@@ -268,6 +269,7 @@ FROM paged p, page_count pc, total t
 type GetApprovalsPaginatedParams struct {
 	Uuid    uuid.UUID `db:"uuid" json:"uuid"`
 	Column2 string    `db:"column_2" json:"column_2"`
+	Column3 string    `db:"column_3" json:"column_3"`
 	Limit   int32     `db:"limit" json:"limit"`
 	Offset  int32     `db:"offset" json:"offset"`
 }
@@ -293,6 +295,7 @@ func (q *Queries) GetApprovalsPaginated(ctx context.Context, arg GetApprovalsPag
 	rows, err := q.db.QueryContext(ctx, getApprovalsPaginated,
 		arg.Uuid,
 		arg.Column2,
+		arg.Column3,
 		arg.Limit,
 		arg.Offset,
 	)

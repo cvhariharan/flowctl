@@ -127,6 +127,7 @@ filtered AS (
     JOIN users u ON el.triggered_by = u.id
     WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
       AND (CASE WHEN $2::text = '' THEN TRUE ELSE a.status = $2::approval_status END)
+      AND (CASE WHEN $3::text = '' THEN TRUE ELSE (lower(a.action_id) LIKE '%' || lower($3::text) || '%' OR lower(el.exec_id) LIKE '%' || lower($3::text) || '%') END)
 ),
 total AS (
     SELECT COUNT(*) AS total_count
@@ -136,10 +137,10 @@ paged AS (
     SELECT *
     FROM filtered
     ORDER BY created_at DESC
-    LIMIT $3 OFFSET $4
+    LIMIT $4 OFFSET $5
 ),
 page_count AS (
-    SELECT CEIL(total.total_count::numeric / $3::numeric)::bigint AS page_count
+    SELECT CEIL(total.total_count::numeric / $4::numeric)::bigint AS page_count
     FROM total
 )
 SELECT

@@ -137,25 +137,19 @@ func (h *Handler) HandleListApprovals(c echo.Context) error {
 		req.Count = CountPerPage
 	}
 
-	approvals, pageCount, totalCount, err := h.co.GetApprovalsPaginated(c.Request().Context(), namespace, req.Status, req.Page+1, req.Count)
+	approvals, pageCount, totalCount, err := h.co.GetApprovalsPaginated(c.Request().Context(), namespace, req.Status, req.Filter, req.Page+1, req.Count)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, "could not get approvals", err, nil)
 	}
 
 	approvalResponses := make([]ApprovalResp, len(approvals))
 	for i, approval := range approvals {
-		approvers, err := models.ConvertJSONApproversToList(approval.Approvers)
-		if err != nil {
-			return wrapError(http.StatusInternalServerError, "could not convert approvers", err, nil)
-		}
-
 		approvalResponses[i] = ApprovalResp{
 			ID:          approval.Uuid.String(),
 			ActionID:    approval.ActionID,
 			Status:      string(approval.Status),
 			ExecID:      approval.ExecID,
 			RequestedBy: approval.RequestedBy,
-			Approvers:   approvers,
 			CreatedAt:   approval.CreatedAt.Format(TimeFormat),
 			UpdatedAt:   approval.UpdatedAt.Format(TimeFormat),
 		}
