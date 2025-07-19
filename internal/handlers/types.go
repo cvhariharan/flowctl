@@ -116,6 +116,29 @@ type ApprovalActionResp struct {
 	Message string `json:"messages"`
 }
 
+type ApprovalPaginateRequest struct {
+	Status string `query:"status" validate:"oneof='' pending approved rejected"`
+	Page   int    `query:"page"`
+	Count  int    `query:"count_per_page"`
+}
+
+type ApprovalResp struct {
+	ID          string   `json:"id"`
+	ActionID    string   `json:"action_id"`
+	Status      string   `json:"status"`
+	ExecID      string   `json:"exec_id"`
+	RequestedBy string   `json:"requested_by"`
+	Approvers   []string `json:"approvers"`
+	CreatedAt   string   `json:"created_at"`
+	UpdatedAt   string   `json:"updated_at"`
+}
+
+type ApprovalsPaginateResponse struct {
+	Approvals  []ApprovalResp `json:"approvals"`
+	PageCount  int64          `json:"page_count"`
+	TotalCount int64          `json:"total_count"`
+}
+
 // Node related types
 type NodeAuth struct {
 	Method       string `json:"method" validate:"required,oneof=private_key password"`

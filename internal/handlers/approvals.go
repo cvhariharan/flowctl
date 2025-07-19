@@ -109,3 +109,61 @@ func (h *Handler) HandleApprovalAction(c echo.Context) error {
 		Message: message,
 	})
 }
+
+func (h *Handler) HandleListApprovals(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	var req ApprovalPaginateRequest
+	if err := c.Bind(&req); err != nil {
+		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(http.StatusBadRequest, "request validation failed", err, nil)
+	}
+
+	if req.Page < 0 || req.Count < 0 {
+		return wrapError(http.StatusBadRequest, "invalid pagination parameters", nil, nil)
+	}
+
+	if req.Page > 0 {
+		req.Page -= 1
+	}
+
+	if req.Count == 0 {
+		req.Count = CountPerPage
+	}
+
+	approvals, pageCount, totalCount, err := h.co.GetApprovalsPaginated(c.Request().Context(), namespace, req.Status, req.Page+1, req.Count)
+	if err != nil {
+		return wrapError(http.StatusInternalServerError, "could not get approvals", err, nil)
+	}
+
+	approvalResponses := make([]ApprovalResp, len(approvals))
+	for i, approval := range approvals {
+		approvers, err := models.ConvertJSONApproversToList(approval.Approvers)
+		if err != nil {
+			return wrapError(http.StatusInternalServerError, "could not convert approvers", err, nil)
+		}
+
+		approvalResponses[i] = ApprovalResp{
+			ID:          approval.Uuid.String(),
+			ActionID:    approval.ActionID,
+			Status:      string(approval.Status),
+			ExecID:      approval.ExecID,
+			RequestedBy: approval.RequestedBy,
+			Approvers:   approvers,
+			CreatedAt:   approval.CreatedAt.Format(TimeFormat),
+			UpdatedAt:   approval.UpdatedAt.Format(TimeFormat),
+		}
+	}
+
+	return c.JSON(http.StatusOK, ApprovalsPaginateResponse{
+		Approvals:  approvalResponses,
+		PageCount:  pageCount,
+		TotalCount: totalCount,
+	})
+}

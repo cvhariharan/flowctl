@@ -94,6 +94,7 @@ func (p *PostgresStore) RequestApprovalTx(ctx context.Context, execID string, na
 		ExecLogID: e.ID,
 		Approvers: approvers,
 		ActionID:  action.ID,
+		Uuid: 	   namespaceUUID,
 	})
 	if err != nil {
 		return AddApprovalRequestRow{}, fmt.Errorf("could not create approval request: %w", err)

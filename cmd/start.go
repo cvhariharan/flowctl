@@ -209,6 +209,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	namespaceGroup.DELETE("/credentials/:credID", h.HandleDeleteCredential, h.AuthorizeNamespaceAction(models.ResourceCredential, models.RBACActionDelete))
 
 	// Approval routes - operators and admins
+	namespaceGroup.GET("/approvals", h.HandleListApprovals,  h.AuthorizeNamespaceAction(models.ResourceApproval, models.RBACActionApprove))
 	namespaceGroup.POST("/approvals/:approvalID", h.HandleApprovalAction, h.AuthorizeNamespaceAction(models.ResourceApproval, models.RBACActionApprove), h.ApprovalMiddleware)
 
 	// Namespace management - admins only

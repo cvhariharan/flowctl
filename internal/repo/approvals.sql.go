@@ -19,9 +19,10 @@ WITH inserted_approval AS (
     INSERT INTO approvals (
         exec_log_id,
         approvers,
-        action_id
+        action_id,
+        namespace_id
     ) VALUES (
-        $1, $2, $3
+        $1, $2, $3, (SELECT id FROM namespaces where namespaces.uuid = $4)
     ) RETURNING id, uuid, exec_log_id, action_id, status, approvers, decided_by, namespace_id, created_at, updated_at
 )
 SELECT
@@ -36,6 +37,7 @@ type AddApprovalRequestParams struct {
 	ExecLogID int32           `db:"exec_log_id" json:"exec_log_id"`
 	Approvers json.RawMessage `db:"approvers" json:"approvers"`
 	ActionID  string          `db:"action_id" json:"action_id"`
+	Uuid      uuid.UUID       `db:"uuid" json:"uuid"`
 }
 
 type AddApprovalRequestRow struct {
@@ -53,7 +55,12 @@ type AddApprovalRequestRow struct {
 }
 
 func (q *Queries) AddApprovalRequest(ctx context.Context, arg AddApprovalRequestParams) (AddApprovalRequestRow, error) {
-	row := q.db.QueryRowContext(ctx, addApprovalRequest, arg.ExecLogID, arg.Approvers, arg.ActionID)
+	row := q.db.QueryRowContext(ctx, addApprovalRequest,
+		arg.ExecLogID,
+		arg.Approvers,
+		arg.ActionID,
+		arg.Uuid,
+	)
 	var i AddApprovalRequestRow
 	err := row.Scan(
 		&i.ID,
@@ -76,7 +83,7 @@ WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $3
 ), updated AS (
     UPDATE approvals SET status = 'approved', decided_by = $2, updated_at = NOW()
-    WHERE approvals.uuid = $1 
+    WHERE approvals.uuid = $1
     AND approvals.exec_log_id IN (
         SELECT el.id FROM execution_log el
         JOIN flows f ON el.flow_id = f.id
@@ -192,7 +199,7 @@ WITH exec_lookup AS (
 SELECT a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.namespace_id, a.created_at, a.updated_at FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
 JOIN flows f ON el.flow_id = f.id
-WHERE a.exec_log_id = (SELECT id FROM exec_lookup) 
+WHERE a.exec_log_id = (SELECT id FROM exec_lookup)
   AND a.action_id = $2
   AND f.namespace_id = (SELECT id FROM namespace_lookup)
 `
@@ -221,6 +228,110 @@ func (q *Queries) GetApprovalRequestForActionAndExec(ctx context.Context, arg Ge
 	return i, err
 }
 
+const getApprovalsPaginated = `-- name: GetApprovalsPaginated :many
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $1
+),
+filtered AS (
+    SELECT
+        a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.approvers, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
+        u.name as requested_by,
+        el.exec_id
+    FROM approvals a
+    JOIN execution_log el ON a.exec_log_id = el.id
+    JOIN flows f ON el.flow_id = f.id
+    JOIN users u ON el.triggered_by = u.id
+    WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND (CASE WHEN $2::text = '' THEN TRUE ELSE a.status = $2::approval_status END)
+),
+total AS (
+    SELECT COUNT(*) AS total_count
+    FROM filtered
+),
+paged AS (
+    SELECT id, uuid, exec_log_id, action_id, status, approvers, decided_by, namespace_id, created_at, updated_at, requested_by, exec_id
+    FROM filtered
+    ORDER BY created_at DESC
+    LIMIT $3 OFFSET $4
+),
+page_count AS (
+    SELECT CEIL(total.total_count::numeric / $3::numeric)::bigint AS page_count
+    FROM total
+)
+SELECT
+    p.id, p.uuid, p.exec_log_id, p.action_id, p.status, p.approvers, p.decided_by, p.namespace_id, p.created_at, p.updated_at, p.requested_by, p.exec_id,
+    pc.page_count,
+    t.total_count
+FROM paged p, page_count pc, total t
+`
+
+type GetApprovalsPaginatedParams struct {
+	Uuid    uuid.UUID `db:"uuid" json:"uuid"`
+	Column2 string    `db:"column_2" json:"column_2"`
+	Limit   int32     `db:"limit" json:"limit"`
+	Offset  int32     `db:"offset" json:"offset"`
+}
+
+type GetApprovalsPaginatedRow struct {
+	ID          int32           `db:"id" json:"id"`
+	Uuid        uuid.UUID       `db:"uuid" json:"uuid"`
+	ExecLogID   int32           `db:"exec_log_id" json:"exec_log_id"`
+	ActionID    string          `db:"action_id" json:"action_id"`
+	Status      ApprovalStatus  `db:"status" json:"status"`
+	Approvers   json.RawMessage `db:"approvers" json:"approvers"`
+	DecidedBy   sql.NullInt32   `db:"decided_by" json:"decided_by"`
+	NamespaceID int32           `db:"namespace_id" json:"namespace_id"`
+	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
+	RequestedBy string          `db:"requested_by" json:"requested_by"`
+	ExecID      string          `db:"exec_id" json:"exec_id"`
+	PageCount   int64           `db:"page_count" json:"page_count"`
+	TotalCount  int64           `db:"total_count" json:"total_count"`
+}
+
+func (q *Queries) GetApprovalsPaginated(ctx context.Context, arg GetApprovalsPaginatedParams) ([]GetApprovalsPaginatedRow, error) {
+	rows, err := q.db.QueryContext(ctx, getApprovalsPaginated,
+		arg.Uuid,
+		arg.Column2,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetApprovalsPaginatedRow
+	for rows.Next() {
+		var i GetApprovalsPaginatedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.ExecLogID,
+			&i.ActionID,
+			&i.Status,
+			&i.Approvers,
+			&i.DecidedBy,
+			&i.NamespaceID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.RequestedBy,
+			&i.ExecID,
+			&i.PageCount,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPendingApprovalRequestForExec = `-- name: GetPendingApprovalRequestForExec :one
 WITH exec_lookup AS (
     SELECT id FROM execution_log WHERE execution_log.exec_id = $1
@@ -234,7 +345,7 @@ FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
 JOIN flows f ON el.flow_id = f.id
 JOIN users u ON el.triggered_by = u.id
-WHERE a.exec_log_id = (SELECT id FROM exec_lookup) 
+WHERE a.exec_log_id = (SELECT id FROM exec_lookup)
   AND a.status = 'pending'
   AND f.namespace_id = (SELECT id FROM namespace_lookup)
 `

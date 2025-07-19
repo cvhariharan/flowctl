@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_gqLG3iESsz
+createdAt: 2025-07-19T09:53:13.981267232
+updatedAt: 2025-07-19T13:51:40.548013552
+workspaceId: wk_f7os23Vq2X
+folderId: fl_XCBR5FPkHS
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: List Approvals
+sortPriority: 1999.9999
+url: http://localhost:7000/api/v1/default/approvals?status=approved
+urlParameters: []

@@ -372,3 +372,28 @@ func (c *Core) GetApprovalRequest(ctx context.Context, approvalUUID string, name
 
 	return approval, nil
 }
+
+func (c *Core) GetApprovalsPaginated(ctx context.Context, namespaceID, status string, page, countPerPage int) ([]repo.GetApprovalsPaginatedRow, int64, int64, error) {
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return nil, -1, -1, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+
+	offset := (page - 1) * countPerPage
+
+	approvals, err := c.store.GetApprovalsPaginated(ctx, repo.GetApprovalsPaginatedParams{
+		Uuid:    namespaceUUID,
+		Column2: status,
+		Limit:   int32(countPerPage),
+		Offset:  int32(offset),
+	})
+	if err != nil {
+		return nil, -1, -1, fmt.Errorf("failed to get paginated approvals: %w", err)
+	}
+
+	if len(approvals) == 0 {
+		return approvals, 0, 0, nil
+	}
+
+	return approvals, approvals[0].PageCount, approvals[0].TotalCount, nil
+}
