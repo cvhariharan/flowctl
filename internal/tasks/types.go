@@ -52,7 +52,7 @@ type Action struct {
 	Name      string         `yaml:"name" validate:"required"`
 	Executor  string         `yaml:"executor" validate:"required,oneof=script docker"`
 	With      map[string]any `yaml:"with" validate:"required"`
-	Approval  ApprovalList   `yaml:"approval"`
+	Approval  bool           `yaml:"approval"`
 	Variables []Variable     `yaml:"variables"`
 	Artifacts []string       `yaml:"artifacts"`
 	Condition string         `yaml:"condition"`
@@ -98,7 +98,6 @@ func (v Variable) Value() string {
 	return ""
 }
 
-type ApprovalList []string
 type Output map[string]any
 
 type Flow struct {

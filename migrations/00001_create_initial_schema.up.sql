@@ -150,7 +150,6 @@ CREATE TABLE IF NOT EXISTS approvals (
     exec_log_id INTEGER NOT NULL,
     action_id VARCHAR(50) NOT NULL,
     status approval_status NOT NULL DEFAULT 'pending',
-    approvers JSONB DEFAULT '{}'::jsonb NOT NULL,
     decided_by INTEGER,
     namespace_id INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

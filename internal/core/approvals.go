@@ -95,16 +95,11 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 			return fmt.Errorf("could not approve request %s: %w", approvalUUID, err)
 		}
 
-		approvers, err := models.ConvertJSONApproversToList(a.Approvers)
-		if err != nil {
-			return fmt.Errorf("could not convert approvers to list: %w", err)
-		}
 		approval = models.ApprovalRequest{
 			UUID:        a.Uuid.String(),
 			Status:      models.ApprovalType(a.Status),
 			ActionID:    a.ActionID,
 			RequestedBy: a.RequestedBy,
-			Approvers:   approvers,
 		}
 		execLogID = a.ExecLogID
 	case models.ApprovalStatusRejected:
@@ -116,16 +111,11 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 		if err != nil {
 			return fmt.Errorf("could not reject request %s: %w", approvalUUID, err)
 		}
-		approvers, err := models.ConvertJSONApproversToList(a.Approvers)
-		if err != nil {
-			return fmt.Errorf("could not convert approvers to list: %w", err)
-		}
 		approval = models.ApprovalRequest{
 			UUID:        a.Uuid.String(),
 			Status:      models.ApprovalType(a.Status),
 			ActionID:    a.ActionID,
 			RequestedBy: a.RequestedBy,
-			Approvers:   approvers,
 		}
 		execLogID = a.ExecLogID
 	}
@@ -177,14 +167,9 @@ func (c *Core) RequestApproval(ctx context.Context, execID string, action models
 		return "", fmt.Errorf("pending approval request: %s", approvalReq.UUID)
 	}
 
-	areq, err := c.store.RequestApprovalTx(ctx, execID, namespaceUUID, repo.RequestApprovalParam{ID: action.ID, Approvers: action.Approval})
+	areq, err := c.store.RequestApprovalTx(ctx, execID, namespaceUUID, repo.RequestApprovalParam{ID: action.ID})
 	if err != nil {
 		return "", err
-	}
-
-	approvers, err := models.ConvertJSONApproversToList(areq.Approvers)
-	if err != nil {
-		return "", fmt.Errorf("could not convert approvers to list: %w", err)
 	}
 
 	approvalReq = models.ApprovalRequest{
@@ -193,7 +178,6 @@ func (c *Core) RequestApproval(ctx context.Context, execID string, action models
 		ActionID:    action.ID,
 		ExecID:      execID,
 		RequestedBy: areq.RequestedBy,
-		Approvers:   approvers,
 	}
 
 	if err := c.cacheApproval(ctx, exec.ID, approvalReq); err != nil {
@@ -241,18 +225,12 @@ func (c *Core) GetPendingApprovalsForExec(ctx context.Context, execID string, na
 			return models.ApprovalRequest{}, ErrNil
 		}
 
-		approvers, err := models.ConvertJSONApproversToList(areq.Approvers)
-		if err != nil {
-			return models.ApprovalRequest{}, fmt.Errorf("could not convert approvers to list: %w", err)
-		}
-
 		existingReq = models.ApprovalRequest{
 			UUID:        areq.Uuid.String(),
 			Status:      models.ApprovalType(areq.Status),
 			ActionID:    areq.ActionID,
 			ExecID:      execID,
 			RequestedBy: areq.RequestedBy,
-			Approvers:   approvers,
 		}
 
 		if err := c.cacheApproval(ctx, exec.ID, existingReq); err != nil {
@@ -268,7 +246,7 @@ func (c *Core) GetPendingApprovalsForExec(ctx context.Context, execID string, na
 }
 
 func (c *Core) BeforeActionHook(ctx context.Context, execID, parentExecID string, action tasks.Action, namespaceID string) error {
-	if len(action.Approval) == 0 {
+	if !action.Approval {
 		return nil
 	}
 
@@ -349,18 +327,12 @@ func (c *Core) GetApprovalRequest(ctx context.Context, approvalUUID string, name
 			return models.ApprovalRequest{}, fmt.Errorf("error getting execution: %w", err)
 		}
 
-		approvers, err := models.ConvertJSONApproversToList(areq.Approvers)
-		if err != nil {
-			return models.ApprovalRequest{}, fmt.Errorf("could not convert approvers to list: %w", err)
-		}
-
 		approval = models.ApprovalRequest{
 			UUID:        areq.Uuid.String(),
 			Status:      models.ApprovalType(areq.Status),
 			ActionID:    areq.ActionID,
 			ExecID:      exec.ExecID,
 			RequestedBy: areq.RequestedBy,
-			Approvers:   approvers,
 		}
 
 		if err := c.cacheApproval(ctx, areq.ExecLogID, approval); err != nil {

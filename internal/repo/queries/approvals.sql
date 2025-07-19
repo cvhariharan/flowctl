@@ -2,11 +2,10 @@
 WITH inserted_approval AS (
     INSERT INTO approvals (
         exec_log_id,
-        approvers,
         action_id,
         namespace_id
     ) VALUES (
-        $1, $2, $3, (SELECT id FROM namespaces where namespaces.uuid = $4)
+        $1, $2, (SELECT id FROM namespaces where namespaces.uuid = $3)
     ) RETURNING *
 )
 SELECT

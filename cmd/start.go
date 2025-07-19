@@ -161,7 +161,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	// views.GET("/logs/:logID", h.HandleLogStreaming)
 	// views.GET("/summary/:flowID", h.HandleExecutionSummary)
 
-	views.GET("/:namespace/approvals/:approvalID", h.HandleApprovalView, h.ApprovalMiddleware)
+	views.GET("/:namespace/approvals/:approvalID", h.HandleApprovalView)
 
 	api := e.Group("/api/v1", h.Authenticate)
 
@@ -211,7 +211,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 
 	// Approval routes - operators and admins
 	namespaceGroup.GET("/approvals", h.HandleListApprovals,  h.AuthorizeNamespaceAction(models.ResourceApproval, models.RBACActionApprove))
-	namespaceGroup.POST("/approvals/:approvalID", h.HandleApprovalAction, h.AuthorizeNamespaceAction(models.ResourceApproval, models.RBACActionApprove), h.ApprovalMiddleware)
+	namespaceGroup.POST("/approvals/:approvalID", h.HandleApprovalAction, h.AuthorizeNamespaceAction(models.ResourceApproval, models.RBACActionApprove))
 
 	// Namespace management - admins only
 	namespaceGroup.GET("/members", h.HandleGetNamespaceMembers, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionView))

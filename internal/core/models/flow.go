@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"strings"
 
 	"github.com/cvhariharan/autopilot/internal/tasks"
 	"github.com/expr-lang/expr"
@@ -39,7 +38,7 @@ type Action struct {
 	Name      string         `yaml:"name" validate:"required"`
 	Executor  string         `yaml:"executor" validate:"required,oneof=script docker"`
 	With      map[string]any `yaml:"with" validate:"required"`
-	Approval  ApprovalList   `yaml:"approval"`
+	Approval  bool           `yaml:"approval"`
 	Variables []Variable     `yaml:"variables"`
 	Artifacts []string       `yaml:"artifacts"`
 	Condition string         `yaml:"condition"`
@@ -47,11 +46,6 @@ type Action struct {
 }
 
 func TaskActionToAction(a tasks.Action) Action {
-	var approvalList ApprovalList
-	for _, approver := range a.Approval {
-		approvalList = append(approvalList, approver)
-	}
-
 	var variables []Variable
 	for _, v := range a.Variables {
 		variables = append(variables, Variable(v))
@@ -68,7 +62,7 @@ func TaskActionToAction(a tasks.Action) Action {
 		With:      a.With,
 		On:        nodeNames,
 		Executor:  a.Executor,
-		Approval:  approvalList,
+		Approval:  a.Approval,
 		Variables: variables,
 		Artifacts: a.Artifacts,
 		Condition: a.Condition,
@@ -85,7 +79,6 @@ type Metadata struct {
 }
 
 type Variable map[string]any
-type ApprovalList []string
 
 func (v Variable) Valid() bool {
 	return !(len(v) > 1)
@@ -167,7 +160,7 @@ func ToTaskFlowModel(f Flow, nodeLookupFunc func(nodeNames []string) ([]Node, er
 			With:      v.With,
 			On:        NodesToTaskNodesModel(nodes),
 			Executor:  v.Executor,
-			Approval:  tasks.ApprovalList(v.Approval),
+			Approval:  v.Approval,
 			Variables: tvs,
 			Artifacts: v.Artifacts,
 			Condition: v.Condition,
@@ -236,11 +229,6 @@ func (f Flow) Validate() error {
 			return fmt.Errorf("action ID %s is reused, actions IDs should be unique", action.ID)
 		}
 		actionsIDs[action.ID] = 1
-		for _, approver := range action.Approval {
-			if !strings.HasPrefix(approver, "users/") && !strings.HasPrefix(approver, "groups/") {
-				return fmt.Errorf("error validating action approval %s: approver should have a users/ or groups/ prefix", action.ID)
-			}
-		}
 	}
 
 	return validate.Struct(f)
@@ -257,16 +245,14 @@ func (f Flow) GetActionIndexByID(id string) (int, error) {
 }
 
 func (f Flow) IsApprovalRequired() bool {
-	var isApprovalRequired bool
 	for _, action := range f.Actions {
-		if len(action.Approval) > 0 {
-			isApprovalRequired = true
-			break
+		if action.Approval {
+			return true
 		}
 	}
-
-	return isApprovalRequired
+	return false
 }
+
 
 func (f Flow) ValidateInput(inputs map[string]interface{}) *FlowValidationError {
 	for _, input := range f.Inputs {

@@ -230,16 +230,15 @@ func (ns NullUserRoleType) Value() (driver.Value, error) {
 }
 
 type Approval struct {
-	ID          int32           `db:"id" json:"id"`
-	Uuid        uuid.UUID       `db:"uuid" json:"uuid"`
-	ExecLogID   int32           `db:"exec_log_id" json:"exec_log_id"`
-	ActionID    string          `db:"action_id" json:"action_id"`
-	Status      ApprovalStatus  `db:"status" json:"status"`
-	Approvers   json.RawMessage `db:"approvers" json:"approvers"`
-	DecidedBy   sql.NullInt32   `db:"decided_by" json:"decided_by"`
-	NamespaceID int32           `db:"namespace_id" json:"namespace_id"`
-	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
-	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
+	ID          int32          `db:"id" json:"id"`
+	Uuid        uuid.UUID      `db:"uuid" json:"uuid"`
+	ExecLogID   int32          `db:"exec_log_id" json:"exec_log_id"`
+	ActionID    string         `db:"action_id" json:"action_id"`
+	Status      ApprovalStatus `db:"status" json:"status"`
+	DecidedBy   sql.NullInt32  `db:"decided_by" json:"decided_by"`
+	NamespaceID int32          `db:"namespace_id" json:"namespace_id"`
+	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
 }
 
 type CasbinRule struct {
