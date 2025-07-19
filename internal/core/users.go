@@ -144,8 +144,8 @@ func (c *Core) CreateUser(ctx context.Context, name, username string, loginType 
 
 	var urole repo.UserRoleType
 	switch userRole {
-	case models.AdminUserRole:
-		urole = repo.UserRoleTypeAdmin
+	case models.SuperuserUserRole:
+		urole = repo.UserRoleTypeSuperuser
 	case models.StandardUserRole:
 		urole = repo.UserRoleTypeUser
 	default:

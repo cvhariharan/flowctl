@@ -4,7 +4,7 @@ type NamespaceRole string
 
 const (
 	NamespaceRoleUser     NamespaceRole = "user"
-	NamespaceRoleOperator NamespaceRole = "operator"
+	NamespaceRoleReviewer NamespaceRole = "reviewer"
 	NamespaceRoleAdmin    NamespaceRole = "admin"
 )
 

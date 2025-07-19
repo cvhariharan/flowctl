@@ -37,7 +37,7 @@ CREATE TYPE user_login_type AS ENUM (
 );
 
 CREATE TYPE user_role_type AS ENUM (
-    'admin',
+    'superuser',
     'user'
 );
 
@@ -219,7 +219,7 @@ CREATE TABLE namespace_members (
     subject_uuid UUID NOT NULL,
     subject_type VARCHAR(10) NOT NULL CHECK (subject_type IN ('user', 'group')),
     namespace_id INT NOT NULL REFERENCES namespaces(id) ON DELETE CASCADE,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'operator', 'admin')),
+    role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'reviewer', 'admin')),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_namespace_member UNIQUE(subject_uuid, subject_type, namespace_id)

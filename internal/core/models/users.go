@@ -14,8 +14,8 @@ const (
 	// Password based login
 	StandardLoginType UserLoginType = "standard"
 
-	AdminUserRole    UserRoleType = "admin"
-	StandardUserRole UserRoleType = "user"
+	SuperuserUserRole UserRoleType = "superuser"
+	StandardUserRole  UserRoleType = "user"
 )
 
 type UserInfo struct {

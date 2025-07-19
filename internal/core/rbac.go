@@ -15,12 +15,11 @@ func (c *Core) InitializeRBACPolicies() error {
 	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceFlow), string(models.RBACActionView))
 	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceNode), string(models.RBACActionView))
 	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceCredential), string(models.RBACActionView))
-	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceExecution), string(models.RBACActionView))
 	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceFlow), string(models.RBACActionExecute))
 
-	// Operator role policies (inherits from user) - for all namespaces
-	c.enforcer.AddPolicy("role:operator", "*", string(models.ResourceApproval), string(models.RBACActionApprove))
-	c.enforcer.AddPolicy("role:operator", "*", string(models.ResourceExecution), string(models.RBACActionView))
+	// Reviewer role policies (inherits from user) - for all namespaces
+	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceApproval), "*")
+	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceExecution), string(models.RBACActionView))
 
 	// Admin role policies - for all namespaces
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNamespace), string(models.RBACActionUpdate))
@@ -32,8 +31,8 @@ func (c *Core) InitializeRBACPolicies() error {
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceCredential), string(models.RBACActionDelete))
 
 	// Role inheritance - for all namespaces
-	c.enforcer.AddGroupingPolicy("role:operator", "role:user", "*")
-	c.enforcer.AddGroupingPolicy("role:admin", "role:operator", "*")
+	c.enforcer.AddGroupingPolicy("role:reviewer", "role:user", "*")
+	c.enforcer.AddGroupingPolicy("role:admin", "role:reviewer", "*")
 
 	return c.enforcer.SavePolicy()
 }
@@ -107,7 +106,7 @@ func (c *Core) CheckPermission(ctx context.Context, userID string, namespaceID s
 		return false, err
 	}
 
-	if user.Role == "admin" {
+	if user.Role == "superuser" {
 		return true, nil
 	}
 
@@ -154,8 +153,8 @@ func (c *Core) GetUserNamespaces(ctx context.Context, userID string) ([]models.N
 		return nil, err
 	}
 
-	if user.Role == "admin" {
-		// Global admins have admin access to all namespaces
+	if user.Role == "superuser" {
+		// Global superusers have admin access to all namespaces
 		namespaces, err := c.store.GetAllNamespaces(ctx)
 		if err != nil {
 			return nil, err

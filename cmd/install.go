@@ -112,7 +112,7 @@ func initAdmin(store repo.Store) error {
 			Username:  viper.GetString("app.admin_username"),
 			Password:  sql.NullString{String: string(hashedPassword), Valid: true},
 			LoginType: "standard",
-			Role:      "admin",
+			Role:      "superuser",
 			Name:      "admin",
 		})
 		if err != nil {

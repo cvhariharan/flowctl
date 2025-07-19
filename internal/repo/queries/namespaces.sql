@@ -13,7 +13,7 @@ WITH filtered AS (
     LEFT JOIN group_memberships gm ON gna.group_id = gm.group_id
     LEFT JOIN users u ON gm.user_id = u.id
     WHERE (
-        (SELECT role FROM users WHERE users.uuid = $1) = 'admin'
+        (SELECT role FROM users WHERE users.uuid = $1) = 'superuser'
         OR (u.uuid = $1 AND gna.namespace_id IS NOT NULL)
     )
 ),
