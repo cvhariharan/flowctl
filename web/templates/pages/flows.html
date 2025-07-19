@@ -33,40 +33,7 @@
                                class="pl-10 pr-4 py-2 w-80 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     </div>
 
-                    <!-- User Menu -->
-                    <div class="relative" x-init="fetchUserProfile()">
-                        <div class="flex items-center space-x-3 cursor-pointer" @click="userSettingsOpen = !userSettingsOpen">
-                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                                <span class="text-white text-sm font-medium" x-text="userProfile ? userProfile.name.split(' ').map(n => n[0]).join('').substring(0, 2) : 'U'"></span>
-                            </div>
-                            <span class="text-gray-700 text-sm font-medium" x-text="userProfile ? userProfile.name : 'Loading...'"></span>
-                            <svg class="w-4 h-4 text-gray-500 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                        </div>
-                        
-                        <!-- Dropdown Menu -->
-                        <div x-show="userSettingsOpen" @click.away="userSettingsOpen = false" 
-                             x-transition:enter="transition ease-out duration-100"
-                             x-transition:enter-start="transform opacity-0 scale-95"
-                             x-transition:enter-end="transform opacity-100 scale-100"
-                             x-transition:leave="transition ease-in duration-75"
-                             x-transition:leave-start="transform opacity-100 scale-100"
-                             x-transition:leave-end="transform opacity-0 scale-95"
-                             class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
-                            <div class="py-1">
-                                <div class="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
-                                    <div class="font-medium" x-text="userProfile ? userProfile.name : ''"></div>
-                                    <div class="text-gray-500" x-text="userProfile ? userProfile.username : ''"></div>
-                                    <div class="text-xs text-gray-400" x-text="userProfile ? userProfile.role : ''"></div>
-                                </div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
-                                <div class="border-t border-gray-100"></div>
-                                <a href="/logout" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign out</a>
-                            </div>
-                        </div>
-                    </div>
+                    {{ template "partials/user_dropdown" . }}
                 </div>
             </div>
         </header>
@@ -174,8 +141,6 @@
     // Alpine.js initialization for flows management
     function flowsManager() {
         return {
-            userSettingsOpen: false,
-            userProfile: null,
             searchQuery: '',
             selectedNamespace: '{{ .Page.Namespace }}',
             flows: [],
@@ -233,27 +198,6 @@
                 this.loadFlows();
             },
 
-            fetchUserProfile() {
-                fetch('/api/v1/users/profile', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch user profile: ${response.status} ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    this.userProfile = data;
-                })
-                .catch(error => {
-                    this.notifyError('Failed to load user profile');
-                    this.user = { name: 'User', username: 'unknown', role: 'user' };
-                });
-            },
 
             runFlow(flowId) {
                 console.log('Running flow:', flowId);
