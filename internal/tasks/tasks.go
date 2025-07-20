@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/cvhariharan/autopilot/internal/executor"
@@ -52,8 +53,8 @@ type FlowRunner struct {
 	artifactManager  runner.ArtifactManager
 	onBeforeActionFn HookFn
 	onAfterActionFn  HookFn
-	debugLogger *slog.Logger
-	redisClient redis.UniversalClient
+	debugLogger      *slog.Logger
+	redisClient      redis.UniversalClient
 }
 
 func NewFlowRunner(redisClient redis.UniversalClient, artifactManager runner.ArtifactManager, onBeforeActionFn, onAfterActionFn HookFn, debugLogger *slog.Logger) *FlowRunner {
@@ -166,33 +167,69 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 	}
 
 	if len(action.On) == 0 {
-		return exec.Execute(jobCtx, executor.ExecutionContext{
-			Inputs:     inputVars,
-			WithConfig: withConfig,
-			Artifacts:  action.Artifacts,
-			Stdout:     streamlogger,
-			Stderr:     streamlogger,
-		})
+		action.On = append(action.On, Node{})
 	}
+
+	type ExecResults struct {
+		result map[string]string
+		err    error
+	}
+	var wg sync.WaitGroup
+	resChan := make(chan ExecResults, len(action.On))
 
 	for _, node := range action.On {
-		return exec.Execute(jobCtx, executor.ExecutionContext{
-			Inputs:     inputVars,
-			WithConfig: withConfig,
-			Artifacts:  action.Artifacts,
-			Stdout:     streamlogger,
-			Stderr:     streamlogger,
-			Node: executor.Node{
-				Hostname: node.Hostname,
-				Port:     node.Port,
-				Username: node.Username,
-				Auth: executor.NodeAuth{
-					Method: string(node.Auth.Method),
-					Key:    node.Auth.Key,
+		wg.Add(1)
+		go func(node Node, resChan chan ExecResults) {
+			defer wg.Done()
+			res, err := exec.Execute(jobCtx, executor.ExecutionContext{
+				Inputs:     inputVars,
+				WithConfig: withConfig,
+				Artifacts:  action.Artifacts,
+				Stdout:     streamlogger,
+				Stderr:     streamlogger,
+				Node: executor.Node{
+					Hostname: node.Hostname,
+					Port:     node.Port,
+					Username: node.Username,
+					Auth: executor.NodeAuth{
+						Method: string(node.Auth.Method),
+						Key:    node.Auth.Key,
+					},
 				},
-			},
-		})
+			})
+
+			// Add node.Name prefix to result keys
+			prefixedRes := make(map[string]string)
+			if res != nil {
+				for key, value := range res {
+					prefixedKey := key
+					if node.Name != "" {
+						prefixedKey = node.Name + "." + key
+					}
+					prefixedRes[prefixedKey] = value
+				}
+			}
+
+			resChan <- ExecResults{
+				result: prefixedRes,
+				err:    err,
+			}
+		}(node, resChan)
 	}
 
-	return nil, fmt.Errorf("could not run action %s on any nodes", action.ID)
+	wg.Wait()
+	close(resChan)
+
+	// Merge all results into a single map
+	mergedResults := make(map[string]string)
+	for res := range resChan {
+		if res.err != nil {
+			return nil, res.err
+		}
+		for key, value := range res.result {
+			mergedResults[key] = value
+		}
+	}
+
+	return mergedResults, nil
 }

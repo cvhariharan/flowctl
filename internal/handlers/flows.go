@@ -51,7 +51,7 @@ func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 	// Add to queue
 	execID, err := h.co.QueueFlowExecution(c.Request().Context(), f, req, user.ID, namespace)
 	if err != nil {
-		return wrapError(http.StatusBadRequest, "could not trigger flow", err, nil)
+		return wrapError(http.StatusBadRequest, fmt.Sprintf("could not trigger flow: %v", err), err, nil)
 	}
 	return c.JSON(http.StatusOK, FlowTriggerResp{
 		ExecID: execID,
@@ -105,8 +105,8 @@ func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, w
 
 		if err := json.NewEncoder(&buf).Encode(FlowLogResp{
 			ActionID: msg.ActionID,
-			MType:   string(msg.MType),
-			Results: res,
+			MType:    string(msg.MType),
+			Results:  res,
 		}); err != nil {
 			return err
 		}
@@ -114,8 +114,8 @@ func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, w
 		h.logger.Debug("Default message", "value", string(msg.Val))
 		if err := json.NewEncoder(&buf).Encode(FlowLogResp{
 			ActionID: msg.ActionID,
-			MType: string(msg.MType),
-			Value: string(msg.Val),
+			MType:    string(msg.MType),
+			Value:    string(msg.Val),
 		}); err != nil {
 			return err
 		}
