@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sync"
 	"time"
@@ -74,6 +77,13 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 		payload.StartingActionIdx = len(payload.Workflow.Actions)
 	}
 
+	// Create temporary directory for artifacts shared across all actions in this flow
+	artifactDir, err := os.MkdirTemp("", fmt.Sprintf("artifacts-%s-", payload.ExecID))
+	if err != nil {
+		return fmt.Errorf("failed to create artifact directory: %w", err)
+	}
+	defer os.RemoveAll(artifactDir)
+
 	streamID := payload.ExecID
 	if payload.ParentExecID != "" {
 		streamID = payload.ParentExecID
@@ -95,7 +105,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 		// Only run action if it has not already run, if it has run, use the existing results
 		res, err := streamLogger.Results(action.ID)
 		if err != nil {
-			res, err = r.runAction(ctx, action, payload.Workflow.Meta.SrcDir, payload.Input, streamLogger)
+			res, err = r.runAction(ctx, action, payload.Workflow.Meta.SrcDir, payload.Input, streamLogger, artifactDir)
 			if err != nil {
 				streamLogger.Checkpoint(action.ID, err.Error(), streamlogger.ErrMessageType)
 				return err
@@ -116,18 +126,53 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 	return nil
 }
 
-func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string, input map[string]interface{}, streamlogger *streamlogger.StreamLogger) (map[string]string, error) {
-	streamlogger = streamlogger.WithActionID(action.ID)
-	var exec executor.Executor
-	switch action.Executor {
-	case "docker":
-		var err error
-		exec, err = executor.NewDockerExecutor(action.ID, executor.DockerRunnerOptions{})
+// pushArtifacts pushes existing artifact files from the artifact directory to the executor
+func (r *FlowRunner) pushArtifacts(ctx context.Context, exec executor.Executor, artifactDir string) error {
+	return filepath.WalkDir(artifactDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil, fmt.Errorf("failed to create docker executor for action %s: %w", action.ID, err)
+			return err
+		}
+		if !d.IsDir() {
+			relPath, err := filepath.Rel(artifactDir, path)
+			if err != nil {
+				return err
+			}
+			// Push file to executor using the relative path as remote path
+			if err := exec.PushFile(ctx, path, relPath); err != nil {
+				return fmt.Errorf("failed to push artifact %s: %w", relPath, err)
+			}
+		}
+		return nil
+	})
+}
+
+// pullArtifacts pulls specified artifact files from the executor to the artifact directory
+// If nodeName is provided, artifacts are placed in a subdirectory named after the node
+func (r *FlowRunner) pullArtifacts(ctx context.Context, exec executor.Executor, artifactDir string, artifacts []string, nodeName string) error {
+	for _, artifact := range artifacts {
+		var localPath string
+		if nodeName != "" {
+			// Create subdirectory for the node
+			localPath = filepath.Join(artifactDir, nodeName, artifact)
+		} else {
+			localPath = filepath.Join(artifactDir, artifact)
+		}
+		
+		// Create directory if it doesn't exist
+		if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil {
+			return fmt.Errorf("failed to create directory for artifact %s: %w", artifact, err)
+		}
+		
+		// Pull file from executor using artifact path as remote path
+		if err := exec.PullFile(ctx, artifact, localPath); err != nil {
+			return fmt.Errorf("failed to pull artifact %s from node %s: %w", artifact, nodeName, err)
 		}
 	}
-	defer exec.Close()
+	return nil
+}
+
+func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string, input map[string]interface{}, streamlogger *streamlogger.StreamLogger, artifactDir string) (map[string]string, error) {
+	streamlogger = streamlogger.WithActionID(action.ID)
 
 	// pattern to extract interpolated variables
 	pattern := `{{\s*([^}]+)\s*}}`
@@ -181,6 +226,36 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 		wg.Add(1)
 		go func(node Node, resChan chan ExecResults) {
 			defer wg.Done()
+			
+			// Create a separate executor instance for each node
+			var exec executor.Executor
+			switch action.Executor {
+			case "docker":
+				var err error
+				nodeExecutorID := fmt.Sprintf("%s-%s", action.ID, node.Name)
+				if node.Name == "" {
+					nodeExecutorID = action.ID
+				}
+				exec, err = executor.NewDockerExecutor(nodeExecutorID, executor.DockerRunnerOptions{})
+				if err != nil {
+					resChan <- ExecResults{
+						result: nil,
+						err:    fmt.Errorf("failed to create docker executor for action %s node %s: %w", action.ID, node.Name, err),
+					}
+					return
+				}
+			}
+			defer exec.Close()
+
+			// Push existing artifacts to this node's executor before execution
+			if err := r.pushArtifacts(jobCtx, exec, artifactDir); err != nil {
+				resChan <- ExecResults{
+					result: nil,
+					err:    fmt.Errorf("failed to push artifacts to node %s: %w", node.Name, err),
+				}
+				return
+			}
+
 			res, err := exec.Execute(jobCtx, executor.ExecutionContext{
 				Inputs:     inputVars,
 				WithConfig: withConfig,
@@ -197,6 +272,13 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 					},
 				},
 			})
+
+			// Pull artifacts from this node after successful execution
+			if err == nil && len(action.Artifacts) > 0 {
+				if pullErr := r.pullArtifacts(jobCtx, exec, artifactDir, action.Artifacts, node.Name); pullErr != nil {
+					err = fmt.Errorf("execution succeeded but failed to pull artifacts: %w", pullErr)
+				}
+			}
 
 			// Add node.Name prefix to result keys
 			prefixedRes := make(map[string]string)
