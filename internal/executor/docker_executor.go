@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	WORKING_DIR = "/app"
+	WORKING_DIR = "/"
 	PUSH_DIR    = "/push"
 	PULL_DIR    = "/pull"
 )
@@ -67,6 +67,7 @@ func NewDockerExecutor(name string, dockerOptions DockerRunnerOptions) (Executor
 	return &DockerExecutor{
 		name:          jobName,
 		dockerOptions: dockerOptions,
+		artifactsDirectory: fmt.Sprintf("/tmp/docker-artifacts-%s", xid.New().String()),
 	}, nil
 }
 
@@ -148,7 +149,6 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx ExecutionContext) 
 	}
 
 	// create artifacts directory
-	d.artifactsDirectory = fmt.Sprintf("/tmp/docker-artifacts-%s", xid.New().String())
 	if err := d.createFileOrDirectory(filepath.Join(d.artifactsDirectory, PUSH_DIR), true); err != nil {
 		return nil, fmt.Errorf("failed to create artifacts directory: %w", err)
 	}
@@ -321,12 +321,13 @@ func (d *DockerExecutor) getArtifactsFromContainer(ctx context.Context, containe
 			}
 			defer tar.Close()
 
-			if err := d.createFileOrDirectory(filepath.Join(d.artifactsDirectory, PULL_DIR, f), false); err != nil {
-				return fmt.Errorf("unable to create artifact file %s: %v", f, err)
+			if err := d.createFileOrDirectory(filepath.Join(d.artifactsDirectory, PULL_DIR, filepath.Dir(f)), true); err != nil {
+				return fmt.Errorf("unable to create artifact base directory %s: %v", f, err)
 			}
 
-			if err := archive.Untar(tar, filepath.Join(d.artifactsDirectory, PULL_DIR), &archive.TarOptions{
-				NoLchown: true,
+			if err := archive.Untar(tar, filepath.Join(d.artifactsDirectory, PULL_DIR, filepath.Dir(f)), &archive.TarOptions{
+				NoLchown:             true,
+				NoOverwriteDirNonDir: true,
 			}); err != nil {
 				return fmt.Errorf("unable to untar artifact %s: %v", f, err)
 			}
@@ -493,6 +494,10 @@ func createSSHTunnel(ctx context.Context, client RemoteClient) (net.Listener, er
 // remoteFilePath is the path inside the container where the file should be uploaded
 func (d *DockerExecutor) PushFile(ctx context.Context, localFilePath string, remoteFilePath string) error {
 	destPath := filepath.Join(d.artifactsDirectory, PUSH_DIR, remoteFilePath)
+	if err := d.createFileOrDirectory(filepath.Dir(destPath), true); err != nil {
+		return fmt.Errorf("failed to create directory for %s: %w", destPath, err)
+	}
+
 	srcFile, err := os.Open(filepath.Clean(localFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to open local file %s: %w", localFilePath, err)
