@@ -293,16 +293,89 @@ func (c *Core) GetAllExecutionSummary(ctx context.Context, f models.Flow, trigge
 
 	var m []models.ExecutionSummary
 	for _, v := range execs {
-
 		m = append(m, models.ExecutionSummary{
-			ExecID:      v.ExecID,
-			CreatedAt:   v.CreatedAt,
-			CompletedAt: v.UpdatedAt,
-			Status:      models.ExecutionStatus(v.Status),
+			ExecID:          v.ExecID,
+			FlowName:        v.FlowName,
+			CreatedAt:       v.CreatedAt,
+			CompletedAt:     v.UpdatedAt,
+			Status:          models.ExecutionStatus(v.Status),
+			TriggeredByName: v.TriggeredByName,
+			TriggeredByID:   v.TriggeredByUuid.String(),
 		})
 	}
 
 	return m, nil
+}
+
+func (c *Core) GetExecutionSummaryPaginated(ctx context.Context, f models.Flow, namespaceID string, limit, offset int) ([]models.ExecutionSummary, int64, int64, error) {
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+
+	execs, err := c.store.GetExecutionsByFlowPaginated(ctx, repo.GetExecutionsByFlowPaginatedParams{
+		ID:     f.Meta.DBID,
+		Uuid:   namespaceUUID,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("could not get paginated executions for %s: %w", f.Meta.ID, err)
+	}
+
+	var m []models.ExecutionSummary
+	var pageCount, totalCount int64
+
+	for _, v := range execs {
+		m = append(m, models.ExecutionSummary{
+			ExecID:          v.ExecID,
+			FlowName:        v.FlowName,
+			CreatedAt:       v.CreatedAt,
+			CompletedAt:     v.UpdatedAt,
+			Status:          models.ExecutionStatus(v.Status),
+			TriggeredByName: v.TriggeredByName,
+			TriggeredByID:   v.TriggeredByUuid.String(),
+		})
+		pageCount = v.PageCount
+		totalCount = v.TotalCount
+	}
+
+	return m, pageCount, totalCount, nil
+}
+
+func (c *Core) GetAllExecutionSummaryPaginated(ctx context.Context, namespaceID string, limit, offset int) ([]models.ExecutionSummary, int64, int64, error) {
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+
+	execs, err := c.store.GetAllExecutionsPaginated(ctx, repo.GetAllExecutionsPaginatedParams{
+		Uuid:   namespaceUUID,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("could not get all paginated executions: %w", err)
+	}
+
+	var m []models.ExecutionSummary
+	var pageCount, totalCount int64
+
+	for _, v := range execs {
+		m = append(m, models.ExecutionSummary{
+			ExecID:          v.ExecID,
+			FlowName:        v.FlowName,
+			CreatedAt:       v.CreatedAt,
+			CompletedAt:     v.UpdatedAt,
+			Status:          models.ExecutionStatus(v.Status),
+			TriggeredByName: v.TriggeredByName,
+			TriggeredByID:   v.TriggeredByUuid.String(),
+		})
+		pageCount = v.PageCount
+		totalCount = v.TotalCount
+	}
+
+	return m, pageCount, totalCount, nil
 }
 
 func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string, namespaceID string) (models.ExecutionSummary, error) {
@@ -318,18 +391,14 @@ func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string, n
 		return models.ExecutionSummary{}, fmt.Errorf("could not get exec %s by exec id: %w", execID, err)
 	}
 
-	f, err := c.GetFlowFromLogID(execID, namespaceID)
-	if err != nil {
-		return models.ExecutionSummary{}, fmt.Errorf("could not get flow for exec %s: %w", execID, err)
-	}
-
 	return models.ExecutionSummary{
-		ExecID:      execID,
-		Status: 	 models.ExecutionStatus(e.Status),
-		Flow:        f,
-		CreatedAt:   e.CreatedAt,
-		CompletedAt: e.UpdatedAt,
-		TriggeredBy: e.TriggeredByUuid.String(),
+		ExecID:          execID,
+		FlowName:        e.FlowName,
+		Status:          models.ExecutionStatus(e.Status),
+		CreatedAt:       e.CreatedAt,
+		CompletedAt:     e.UpdatedAt,
+		TriggeredByName: e.TriggeredByName,
+		TriggeredByID:   e.TriggeredByUuid.String(),
 	}, nil
 }
 

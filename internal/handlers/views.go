@@ -126,12 +126,6 @@ func (h *Handler) HandleFlowExecutionResults(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
 	}
 
-	user, ok := c.Get("user").(models.UserInfo)
-	if !ok {
-		data.ErrMessage = "could not get user details"
-		return c.Render(http.StatusBadRequest, "flow_status", data)
-	}
-
 	flowID := c.Param("flowID")
 	if flowID == "" {
 		data.ErrMessage = "flow id cannot be empty"
@@ -167,16 +161,6 @@ func (h *Handler) HandleFlowExecutionResults(c echo.Context) error {
 	}
 	data.Actions = actions
 
-	exec, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), logID, namespaceID)
-	if err != nil {
-		data.ErrMessage = err.Error()
-		return c.Render(http.StatusBadRequest, "flow_status", data)
-	}
-
-	if exec.TriggeredBy != user.ID {
-		data.ErrMessage = "you are not allowed to view this execution summary"
-		return c.Render(http.StatusForbidden, "flow_status", data)
-	}
 	data.LogID = logID
 
 	return c.Render(http.StatusOK, "flow_status", data)
@@ -340,6 +324,20 @@ func (h *Handler) HandleMembersView(c echo.Context) error {
 	}
 
 	return c.Render(http.StatusOK, "members", data)
+}
+
+func (h *Handler) HandleHistoryView(c echo.Context) error {
+	namespace := c.Param("namespace")
+	data := struct {
+		Page
+	}{
+		Page: Page{
+			Title:     "History",
+			Namespace: namespace,
+		},
+	}
+
+	return c.Render(http.StatusOK, "history", data)
 }
 
 // func (h *Handler) HandleExecutionSummary(c echo.Context) error {

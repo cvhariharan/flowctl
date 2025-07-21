@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS flows (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     FOREIGN KEY (namespace_id) REFERENCES namespaces(id) ON DELETE CASCADE
 );
-CREATE INDEX idx_flows_slug ON flows(slug);
+CREATE UNIQUE INDEX idx_flows_slug ON flows(slug);
 CREATE UNIQUE INDEX idx_flows_slug_namespace ON flows(slug, namespace_id);
 CREATE INDEX idx_flows_namespace_id ON flows(namespace_id);
 

@@ -283,6 +283,12 @@ type FlowsPaginateResponse struct {
 	TotalCount int64          `json:"total_count"`
 }
 
+type ExecutionsPaginateResponse struct {
+	Executions []ExecutionSummary `json:"executions"`
+	PageCount  int64              `json:"page_count"`
+	TotalCount int64              `json:"total_count"`
+}
+
 func coreFlowToFlow(flow models.Flow) FlowListItem {
 	return FlowListItem{
 		ID:          flow.Meta.ID,
@@ -377,6 +383,7 @@ const (
 
 type ExecutionSummary struct {
 	ID 	   		string 		    `json:"id"`
+	FlowName		string			`json:"flow_name"`
 	Status 		ExecutionStatus `json:"status"`
 	TriggeredBy string     		`json:"triggered_by"`
 	CreatedAt   string 	   		`json:"started_at"`
@@ -387,8 +394,9 @@ type ExecutionSummary struct {
 func coreExecutionSummaryToExecutionSummary(e models.ExecutionSummary) ExecutionSummary {
 	return ExecutionSummary{
 		ID:          e.ExecID,
+		FlowName:    e.FlowName,
 		Status:      ExecutionStatus(e.Status),
-		TriggeredBy: e.TriggeredBy,
+		TriggeredBy: e.TriggeredByName,
 		CreatedAt:   e.CreatedAt.Format(TimeFormat),
 		CompletedAt: e.CompletedAt.Format(TimeFormat),
 		Duration:    e.Duration(),

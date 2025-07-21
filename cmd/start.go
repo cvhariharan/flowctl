@@ -159,6 +159,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	views.GET("/:namespace/credentials", h.HandleCredentialsView)
 	views.GET("/:namespace/approvals", h.HandleApprovalsListView)
 	views.GET("/:namespace/members", h.HandleMembersView)
+	views.GET("/:namespace/history", h.HandleHistoryView)
 	// views.GET("/summary/:flowID", h.HandleExecutionSummary)
 
 	views.GET("/:namespace/approvals/:approvalID", h.HandleApprovalView)
@@ -192,7 +193,9 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	// Flow routes - users can view and execute
 	namespaceGroup.GET("/flows", h.HandleFlowsPagination, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
 	namespaceGroup.GET("/flows/:flowID", h.HandleGetFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
-	namespaceGroup.GET("/flows/summary/:execID", h.HandleGetExecutionSummary, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
+	namespaceGroup.GET("/flows/executions/:execID", h.HandleGetExecutionSummary, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
+	namespaceGroup.GET("/flows/:flowID/executions", h.HandleExecutionsPagination, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionView))
+	namespaceGroup.GET("/flows/executions", h.HandleAllExecutionsPagination, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionView))
 	namespaceGroup.POST("/trigger/:flow", h.HandleFlowTrigger, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionExecute))
 	namespaceGroup.GET("/logs/:logID", h.HandleLogStreaming, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionView))
 	// Node routes - only admins can create/update/delete

@@ -223,3 +223,93 @@ func (h *Handler) HandleGetExecutionSummary(c echo.Context) error {
 	response := coreExecutionSummaryToExecutionSummary(execSummary)
 	return c.JSON(http.StatusOK, response)
 }
+
+func (h *Handler) HandleExecutionsPagination(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	flowID := c.Param("flowID")
+	if flowID == "" {
+		return wrapError(http.StatusBadRequest, "flow ID cannot be empty", nil, nil)
+	}
+
+	var req PaginateRequest
+	if err := c.Bind(&req); err != nil {
+		return wrapError(http.StatusInternalServerError, "invalid request", err, nil)
+	}
+
+	if req.Page < 0 || req.Count < 0 {
+		return wrapError(http.StatusInternalServerError, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
+	}
+
+	if req.Page > 0 {
+		req.Page -= 1
+	}
+
+	if req.Count == 0 {
+		req.Count = CountPerPage
+	}
+
+	flow, err := h.co.GetFlowByID(flowID, namespace)
+	if err != nil {
+		return wrapError(http.StatusNotFound, "flow not found", err, nil)
+	}
+
+	executions, pageCount, totalCount, err := h.co.GetExecutionSummaryPaginated(c.Request().Context(), flow, namespace, req.Count, req.Count*req.Page)
+	if err != nil {
+		return wrapError(http.StatusInternalServerError, "could not get paginated executions", err, nil)
+	}
+
+	executionItems := make([]ExecutionSummary, len(executions))
+	for i, exec := range executions {
+		executionItems[i] = coreExecutionSummaryToExecutionSummary(exec)
+	}
+
+	return c.JSON(http.StatusOK, ExecutionsPaginateResponse{
+		Executions: executionItems,
+		PageCount:  pageCount,
+		TotalCount: totalCount,
+	})
+}
+
+func (h *Handler) HandleAllExecutionsPagination(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	var req PaginateRequest
+	if err := c.Bind(&req); err != nil {
+		return wrapError(http.StatusInternalServerError, "invalid request", err, nil)
+	}
+
+	if req.Page < 0 || req.Count < 0 {
+		return wrapError(http.StatusInternalServerError, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
+	}
+
+	if req.Page > 0 {
+		req.Page -= 1
+	}
+
+	if req.Count == 0 {
+		req.Count = CountPerPage
+	}
+
+	executions, pageCount, totalCount, err := h.co.GetAllExecutionSummaryPaginated(c.Request().Context(), namespace, req.Count, req.Count*req.Page)
+	if err != nil {
+		return wrapError(http.StatusInternalServerError, "could not get all paginated executions", err, nil)
+	}
+
+	executionItems := make([]ExecutionSummary, len(executions))
+	for i, exec := range executions {
+		executionItems[i] = coreExecutionSummaryToExecutionSummary(exec)
+	}
+
+	return c.JSON(http.StatusOK, ExecutionsPaginateResponse{
+		Executions: executionItems,
+		PageCount:  pageCount,
+		TotalCount: totalCount,
+	})
+}

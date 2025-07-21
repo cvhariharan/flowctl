@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_3WKDBeH5Zq
+createdAt: 2025-07-21T10:13:38.336000563
+updatedAt: 2025-07-21T10:14:18.186076745
+workspaceId: wk_f7os23Vq2X
+folderId: fl_XaZk4pk63J
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Get Executions
+sortPriority: 250.0009
+url: http://localhost:7000/api/v1/default/flows/test_flow_6/executions
+urlParameters: []

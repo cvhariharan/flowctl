@@ -32,6 +32,7 @@ type Querier interface {
 	DeleteNamespace(ctx context.Context, argUuid uuid.UUID) error
 	DeleteNode(ctx context.Context, arg DeleteNodeParams) error
 	DeleteUserByUUID(ctx context.Context, argUuid uuid.UUID) error
+	GetAllExecutionsPaginated(ctx context.Context, arg GetAllExecutionsPaginatedParams) ([]GetAllExecutionsPaginatedRow, error)
 	GetAllGroups(ctx context.Context) ([]Group, error)
 	GetAllGroupsWithUsers(ctx context.Context) ([]GroupView, error)
 	GetAllNamespaces(ctx context.Context) ([]Namespace, error)
@@ -39,13 +40,14 @@ type Querier interface {
 	GetApprovalByUUID(ctx context.Context, arg GetApprovalByUUIDParams) (GetApprovalByUUIDRow, error)
 	GetApprovalRequestForActionAndExec(ctx context.Context, arg GetApprovalRequestForActionAndExecParams) (Approval, error)
 	GetApprovalsPaginated(ctx context.Context, arg GetApprovalsPaginatedParams) ([]GetApprovalsPaginatedRow, error)
-	GetChildrenByParentUUID(ctx context.Context, arg GetChildrenByParentUUIDParams) ([]ExecutionLog, error)
+	GetChildrenByParentUUID(ctx context.Context, arg GetChildrenByParentUUIDParams) ([]GetChildrenByParentUUIDRow, error)
 	GetCredentialByID(ctx context.Context, arg GetCredentialByIDParams) (GetCredentialByIDRow, error)
 	GetCredentialByUUID(ctx context.Context, arg GetCredentialByUUIDParams) (GetCredentialByUUIDRow, error)
 	GetExecutionByExecID(ctx context.Context, arg GetExecutionByExecIDParams) (GetExecutionByExecIDRow, error)
 	GetExecutionByExecIDWithNamespace(ctx context.Context, arg GetExecutionByExecIDWithNamespaceParams) (GetExecutionByExecIDWithNamespaceRow, error)
-	GetExecutionByID(ctx context.Context, arg GetExecutionByIDParams) (ExecutionLog, error)
-	GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]ExecutionLog, error)
+	GetExecutionByID(ctx context.Context, arg GetExecutionByIDParams) (GetExecutionByIDRow, error)
+	GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]GetExecutionsByFlowRow, error)
+	GetExecutionsByFlowPaginated(ctx context.Context, arg GetExecutionsByFlowPaginatedParams) ([]GetExecutionsByFlowPaginatedRow, error)
 	GetFlowBySlug(ctx context.Context, arg GetFlowBySlugParams) (Flow, error)
 	GetFlowFromExecID(ctx context.Context, arg GetFlowFromExecIDParams) (Flow, error)
 	GetFlowFromExecIDWithNamespace(ctx context.Context, arg GetFlowFromExecIDWithNamespaceParams) (Flow, error)
