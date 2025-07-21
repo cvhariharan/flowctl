@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -82,6 +83,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 	if err != nil {
 		return fmt.Errorf("failed to create artifact directory: %w", err)
 	}
+	log.Println("artifact dir: ", artifactDir)
 	defer os.RemoveAll(artifactDir)
 
 	streamID := payload.ExecID
@@ -133,13 +135,14 @@ func (r *FlowRunner) pushArtifacts(ctx context.Context, exec executor.Executor, 
 			return err
 		}
 		if !d.IsDir() {
-			relPath, err := filepath.Rel(artifactDir, path)
+			rPath, err := filepath.Rel(artifactDir, path)
 			if err != nil {
 				return err
 			}
+			log.Println("local path: ", path, " remote file: ", rPath)
 			// Push file to executor using the relative path as remote path
-			if err := exec.PushFile(ctx, path, relPath); err != nil {
-				return fmt.Errorf("failed to push artifact %s: %w", relPath, err)
+			if err := exec.PushFile(ctx, path, rPath); err != nil {
+				return fmt.Errorf("failed to push artifact %s: %w", path, err)
 			}
 		}
 		return nil
@@ -157,12 +160,12 @@ func (r *FlowRunner) pullArtifacts(ctx context.Context, exec executor.Executor, 
 		} else {
 			localPath = filepath.Join(artifactDir, artifact)
 		}
-		
+
 		// Create directory if it doesn't exist
 		if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil {
 			return fmt.Errorf("failed to create directory for artifact %s: %w", artifact, err)
 		}
-		
+
 		// Pull file from executor using artifact path as remote path
 		if err := exec.PullFile(ctx, artifact, localPath); err != nil {
 			return fmt.Errorf("failed to pull artifact %s from node %s: %w", artifact, nodeName, err)
@@ -226,7 +229,7 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 		wg.Add(1)
 		go func(node Node, resChan chan ExecResults) {
 			defer wg.Done()
-			
+
 			// Create a separate executor instance for each node
 			var exec executor.Executor
 			switch action.Executor {
