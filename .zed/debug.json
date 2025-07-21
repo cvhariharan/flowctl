@@ -11,7 +11,9 @@
     "program": ".",
     "args": ["start", "--worker"],
     "buildFlags": [],
-    "env": {}
+    "env": {
+      "DOCKER_HOST": "unix:///run/user/1000/podman/podman.sock"
+    }
   },
   {
     "adapter": "Delve",
@@ -21,6 +23,8 @@
     "program": ".",
     "args": ["start"],
     "buildFlags": [],
-    "env": {}
+    "env": {
+
+    }
   }
 ]
