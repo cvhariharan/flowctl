@@ -4,8 +4,8 @@ WITH user_lookup AS (
 ), namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $5
 ), next_version AS (
-    SELECT COALESCE(MAX(version), -1) + 1 as version 
-    FROM execution_log 
+    SELECT COALESCE(MAX(version), -1) + 1 as version
+    FROM execution_log
     WHERE exec_id = $1 AND namespace_id = (SELECT id FROM namespace_lookup)
 )
 INSERT INTO execution_log (
@@ -23,12 +23,12 @@ INSERT INTO execution_log (
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $5
 ), latest_version AS (
-    SELECT MAX(version) as version 
-    FROM execution_log 
+    SELECT MAX(version) as version
+    FROM execution_log
     WHERE exec_id = $4 AND namespace_id = (SELECT id FROM namespace_lookup)
 )
 UPDATE execution_log SET status=$1, error=$2, updated_at=$3
-WHERE exec_id = $4 
+WHERE execution_log.exec_id = $4
   AND version = (SELECT version FROM latest_version)
   AND namespace_id = (SELECT id FROM namespace_lookup)
 RETURNING *;
@@ -103,23 +103,33 @@ WHERE
     AND f.namespace_id = (SELECT id FROM namespace_lookup);
 
 -- name: GetFlowFromExecID :one
-WITH exec_log AS (
-    SELECT flow_id FROM execution_log WHERE exec_id = $1
-), namespace_lookup AS (
+WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
+), latest_exec_log AS (
+    SELECT flow_id 
+    FROM execution_log 
+    WHERE exec_id = $1 
+    ORDER BY version DESC 
+    LIMIT 1
 )
 SELECT f.* FROM flows f
-INNER JOIN exec_log el ON el.flow_id = f.id
+INNER JOIN latest_exec_log el ON el.flow_id = f.id
 WHERE f.namespace_id = (SELECT id FROM namespace_lookup);
 
 -- name: GetFlowFromExecIDWithNamespace :one
-WITH exec_log AS (
-    SELECT flow_id FROM execution_log WHERE exec_id = $1
-), namespace_lookup AS (
+WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
+), latest_exec_log AS (
+    SELECT flow_id 
+    FROM execution_log el
+    INNER JOIN flows f ON el.flow_id = f.id
+    WHERE el.exec_id = $1 
+      AND f.namespace_id = (SELECT id FROM namespace_lookup)
+    ORDER BY el.version DESC 
+    LIMIT 1
 )
 SELECT f.* FROM flows f
-INNER JOIN exec_log el ON el.flow_id = f.id
+INNER JOIN latest_exec_log el ON el.flow_id = f.id
 WHERE f.namespace_id = (SELECT id FROM namespace_lookup);
 
 -- name: GetExecutionByID :one
@@ -137,9 +147,15 @@ WHERE el.id = $1 AND el.namespace_id = (SELECT id FROM namespace_lookup);
 -- name: GetInputForExecByUUID :one
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
+), latest_execution AS (
+    SELECT MAX(version) as max_version
+    FROM execution_log
+    WHERE exec_id = $1 AND namespace_id = (SELECT id FROM namespace_lookup)
 )
 SELECT input FROM execution_log
-WHERE execution_log.exec_id = $1 AND execution_log.namespace_id = (SELECT id FROM namespace_lookup);
+WHERE execution_log.exec_id = $1 
+  AND execution_log.namespace_id = (SELECT id FROM namespace_lookup)
+  AND execution_log.version = (SELECT max_version FROM latest_execution);
 
 
 -- name: GetExecutionsByFlowPaginated :many

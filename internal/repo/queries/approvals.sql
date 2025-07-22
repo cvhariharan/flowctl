@@ -82,23 +82,24 @@ JOIN users u ON el.triggered_by = u.id
 WHERE a.uuid = $1 AND f.namespace_id = (SELECT id FROM namespace_lookup);
 
 -- name: GetApprovalRequestForActionAndExec :one
-WITH exec_lookup AS (
-    SELECT id FROM execution_log WHERE execution_log.exec_id = $1
-), namespace_lookup AS (
+WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $3
 )
 SELECT a.* FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
 JOIN flows f ON el.flow_id = f.id
-WHERE a.exec_log_id = (SELECT id FROM exec_lookup)
+WHERE el.exec_id = $1
   AND a.action_id = $2
   AND f.namespace_id = (SELECT id FROM namespace_lookup);
 
 -- name: GetPendingApprovalRequestForExec :one
-WITH exec_lookup AS (
-    SELECT id FROM execution_log WHERE execution_log.exec_id = $1
-), namespace_lookup AS (
+WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
+), latest_version AS (
+    SELECT MAX(version) as max_version
+    FROM execution_log
+    WHERE exec_id = $1
+      AND namespace_id = (SELECT id FROM namespace_lookup)
 )
 SELECT
     a.*,
@@ -107,9 +108,10 @@ FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
 JOIN flows f ON el.flow_id = f.id
 JOIN users u ON el.triggered_by = u.id
-WHERE a.exec_log_id = (SELECT id FROM exec_lookup)
+WHERE el.exec_id = $1
   AND a.status = 'pending'
-  AND f.namespace_id = (SELECT id FROM namespace_lookup);
+  AND f.namespace_id = (SELECT id FROM namespace_lookup)
+  AND el.version = (SELECT max_version FROM latest_version);
 
 -- name: GetApprovalsPaginated :many
 WITH namespace_lookup AS (

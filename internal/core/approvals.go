@@ -245,16 +245,13 @@ func (c *Core) GetPendingApprovalsForExec(ctx context.Context, execID string, na
 	return models.ApprovalRequest{}, nil
 }
 
-func (c *Core) BeforeActionHook(ctx context.Context, execID, parentExecID string, action tasks.Action, namespaceID string) error {
+func (c *Core) BeforeActionHook(ctx context.Context, execID string, action tasks.Action, namespaceID string) error {
 	if !action.Approval {
 		return nil
 	}
 
 	// use parent exec ID if available for approval requests
 	eID := execID
-	if parentExecID != "" {
-		eID = parentExecID
-	}
 
 	namespaceUUID, err := uuid.Parse(namespaceID)
 	if err != nil {

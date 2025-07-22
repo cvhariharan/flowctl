@@ -2,12 +2,10 @@ package core
 
 import (
 	"context"
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/cvhariharan/autopilot/internal/core/models"
@@ -213,10 +211,13 @@ func (c *Core) getNodesByNames(ctx context.Context, nodeNames []string, namespac
 }
 
 // queueFlow adds a flow to the execution queue. If the actionIndex is not zero, it is moved to a resume queue.
-func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]interface{}, parentExecID string, actionIndex int, userUUID string, namespaceID string) (string, error) {
-	execID := uuid.NewString()
-	// store the mapping between logID and flowID
-	c.logMap[execID] = f.Meta.ID
+func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]interface{}, execID string, actionIndex int, userUUID string, namespaceID string) (string, error) {
+	queue := "default"
+	// If execID is empty, it is a new flow execution
+	if execID == "" {
+		execID = uuid.NewString()
+		queue = "resume"
+	}
 
 	userID, err := uuid.Parse(userUUID)
 	if err != nil {
@@ -235,17 +236,11 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 		return "", fmt.Errorf("error converting flow to task model: %w", err)
 	}
 
-	log.Println(taskFlow)
-
-	task, err := tasks.NewFlowExecution(taskFlow, input, actionIndex, execID, parentExecID, namespaceID)
+	task, err := tasks.NewFlowExecution(taskFlow, input, actionIndex, execID, namespaceID)
 	if err != nil {
 		return "", fmt.Errorf("error creating task: %v", err)
 	}
 
-	queue := "default"
-	if actionIndex > 0 {
-		queue = "resume"
-	}
 	_, err = c.q.Enqueue(task, asynq.Retention(24*time.Hour), asynq.Queue(queue))
 	if err != nil {
 		return "", err
@@ -258,7 +253,6 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 
 	_, err = c.store.AddExecutionLog(ctx, repo.AddExecutionLogParams{
 		ExecID:       execID,
-		ParentExecID: sql.NullString{String: parentExecID, Valid: len(parentExecID) > 0},
 		FlowID:       f.Meta.DBID,
 		Input:        inputB,
 		Uuid:         userID,
@@ -448,7 +442,7 @@ func (c *Core) GetExecutionByExecID(ctx context.Context, execID string, namespac
 
 	return models.Execution{
 		ExecID:       e.ExecID,
-		ParentExecID: e.ParentExecID.String,
+		Version: 	  int64(e.Version),
 		Input:        input,
 		ErrorMsg:     e.Error.String,
 		TriggeredBy:  u.Uuid.String(),

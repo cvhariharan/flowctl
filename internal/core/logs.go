@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -21,17 +20,17 @@ func (c *Core) StreamLogs(ctx context.Context, logID string, namespaceID string)
 
 	errCh, err := c.checkErrors(ctx, logID, namespaceID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting execution %s errors: %w", logID, err)
 	}
 
 	logCh, err := c.streamLogs(ctx, logID, namespaceID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading logs for execution %s: %w", logID, err)
 	}
 
 	approvalCh, err := c.checkApprovalRequests(ctx, logID, namespaceID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting approval requests for execution %s: %w", logID, err)
 	}
 
 	go func(ch chan models.StreamMessage) {
@@ -75,23 +74,6 @@ func (c *Core) streamLogs(ctx context.Context, execID string, namespaceID string
 		return nil, err
 	}
 
-	eID := execID
-	if exec.ParentExecID != "" {
-		eID = exec.ParentExecID
-	}
-
-	namespaceUUID, err := uuid.Parse(namespaceID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid namespace UUID: %w", err)
-	}
-	children, err := c.store.GetChildrenByParentUUID(ctx, repo.GetChildrenByParentUUIDParams{
-		ParentExecID: sql.NullString{String: eID, Valid: len(eID) > 0},
-		Uuid:         namespaceUUID,
-	})
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("could not get children for exec %s: %w", execID, err)
-	}
-
 	go func(ch chan models.StreamMessage) {
 		defer close(ch)
 		lastProcessedID := "0"
@@ -99,10 +81,10 @@ func (c *Core) streamLogs(ctx context.Context, execID string, namespaceID string
 		// used to decide when to close the stream
 		// a close message is used to signify an end of stream but all the children write to the same stream
 		// this can create many close messages so the stream should only be closed when the last child sends a close message
-		closeCount := len(children)
+		closeCount := exec.Version
 		for {
 			result, err := c.redisClient.XRead(ctx, &redis.XReadArgs{
-				Streams: []string{eID, lastProcessedID},
+				Streams: []string{execID, lastProcessedID},
 				Count:   200,
 				Block:   0,
 			}).Result()

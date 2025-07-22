@@ -39,14 +39,13 @@ type FlowExecutionPayload struct {
 	Input             map[string]interface{}
 	StartingActionIdx int
 	ExecID            string
-	ParentExecID      string
 	NamespaceID       string
 }
 
-type HookFn func(ctx context.Context, execID, parentExecID string, action Action, namespaceID string) error
+type HookFn func(ctx context.Context, execID string, action Action, namespaceID string) error
 
-func NewFlowExecution(f Flow, input map[string]interface{}, startingActionIdx int, ExecID, parentExecID, namespaceID string) (*asynq.Task, error) {
-	payload, err := json.Marshal(FlowExecutionPayload{Workflow: f, Input: input, StartingActionIdx: startingActionIdx, ExecID: ExecID, ParentExecID: parentExecID, NamespaceID: namespaceID})
+func NewFlowExecution(f Flow, input map[string]interface{}, startingActionIdx int, ExecID, namespaceID string) (*asynq.Task, error) {
+	payload, err := json.Marshal(FlowExecutionPayload{Workflow: f, Input: input, StartingActionIdx: startingActionIdx, ExecID: ExecID, NamespaceID: namespaceID})
 	if err != nil {
 		return nil, err
 	}
@@ -87,9 +86,6 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 	defer os.RemoveAll(artifactDir)
 
 	streamID := payload.ExecID
-	if payload.ParentExecID != "" {
-		streamID = payload.ParentExecID
-	}
 
 	streamLogger := streamlogger.NewStreamLogger(r.redisClient).WithID(streamID)
 	defer streamLogger.Close(payload.ExecID)
@@ -98,7 +94,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 		action := payload.Workflow.Actions[i]
 
 		if r.onBeforeActionFn != nil {
-			if err := r.onBeforeActionFn(ctx, payload.ExecID, payload.ParentExecID, action, payload.NamespaceID); err != nil {
+			if err := r.onBeforeActionFn(ctx, payload.ExecID, action, payload.NamespaceID); err != nil {
 				r.debugLogger.Debug("could not run before action func", "error", err)
 				return err
 			}
@@ -118,7 +114,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 		}
 
 		if r.onAfterActionFn != nil {
-			if err := r.onAfterActionFn(ctx, payload.ExecID, payload.ParentExecID, action, payload.NamespaceID); err != nil {
+			if err := r.onAfterActionFn(ctx, payload.ExecID, action, payload.NamespaceID); err != nil {
 				r.debugLogger.Debug("could not run after action func", "error", err)
 				return err
 			}
@@ -234,7 +230,7 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 				if node.Name == "" {
 					nodeExecutorID = action.ID
 				}
-				
+
 				// Convert task node to executor node
 				execNode := executor.Node{
 					Hostname: node.Hostname,
@@ -245,7 +241,7 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 						Key:    node.Auth.Key,
 					},
 				}
-				
+
 				exec, err = executor.NewDockerExecutor(nodeExecutorID, executor.DockerRunnerOptions{}, execNode)
 				if err != nil {
 					resChan <- ExecResults{
