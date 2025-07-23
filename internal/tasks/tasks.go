@@ -223,26 +223,34 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 
 			// Create a separate executor instance for each node
 			var exec executor.Executor
+			nodeExecutorID := fmt.Sprintf("%s-%s", action.ID, node.Name)
+			if node.Name == "" {
+				nodeExecutorID = action.ID
+			}
+			// Convert task node to executor node
+			execNode := executor.Node{
+				Hostname: node.Hostname,
+				Port:     node.Port,
+				Username: node.Username,
+				Auth: executor.NodeAuth{
+					Method: string(node.Auth.Method),
+					Key:    node.Auth.Key,
+				},
+			}
 			switch action.Executor {
 			case "docker":
 				var err error
-				nodeExecutorID := fmt.Sprintf("%s-%s", action.ID, node.Name)
-				if node.Name == "" {
-					nodeExecutorID = action.ID
-				}
-
-				// Convert task node to executor node
-				execNode := executor.Node{
-					Hostname: node.Hostname,
-					Port:     node.Port,
-					Username: node.Username,
-					Auth: executor.NodeAuth{
-						Method: string(node.Auth.Method),
-						Key:    node.Auth.Key,
-					},
-				}
-
 				exec, err = executor.NewDockerExecutor(nodeExecutorID, executor.DockerRunnerOptions{}, execNode)
+				if err != nil {
+					resChan <- ExecResults{
+						result: nil,
+						err:    fmt.Errorf("failed to create docker executor for action %s node %s: %w", action.ID, node.Name, err),
+					}
+					return
+				}
+			case "script":
+				var err error
+				exec, err = executor.NewScriptExecutor(nodeExecutorID, execNode)
 				if err != nil {
 					resChan <- ExecResults{
 						result: nil,
