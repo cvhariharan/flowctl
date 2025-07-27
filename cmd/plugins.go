@@ -5,5 +5,7 @@ package cmd
 import (
 	_ "github.com/cvhariharan/autopilot/executors/docker"
 	_ "github.com/cvhariharan/autopilot/executors/script"
+	_ "github.com/cvhariharan/autopilot/remote/ssh"
+	_ "github.com/cvhariharan/autopilot/remote/qssh"
 	_ "github.com/cvhariharan/autopilot/sdk/executor"
 )

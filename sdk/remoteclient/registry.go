@@ -7,22 +7,21 @@ import (
 	"github.com/cvhariharan/autopilot/sdk/executor"
 )
 
-// Factory defines the signature for creating a new RemoteClient.
-type Factory func(node executor.Node) (RemoteClient, error)
+// NewRemoteClientFunc defines the signature for creating a new RemoteClient.
+type NewRemoteClientFunc func(node executor.Node) (RemoteClient, error)
 
 var (
-	registry = make(map[string]Factory)
+	registry = make(map[string]NewRemoteClientFunc)
 	mu       sync.RWMutex
 )
 
 // Register is called by remote client modules to make themselves available.
-func Register(protocolName string, factory Factory) {
+func Register(protocolName string, factory NewRemoteClientFunc) {
 	mu.Lock()
 	defer mu.Unlock()
 	if _, exists := registry[protocolName]; exists {
 		panic(fmt.Sprintf("remote client for protocol '%s' is already registered", protocolName))
 	}
-	fmt.Printf("[Autopilot Remote SDK] Registering remote client: %s\n", protocolName)
 	registry[protocolName] = factory
 }
 

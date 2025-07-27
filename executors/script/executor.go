@@ -29,6 +29,10 @@ type ScriptExecutor struct {
 	stderr             io.Writer
 }
 
+func init() {
+	executor.RegisterExecutor("script", NewScriptExecutor)
+}
+
 func NewScriptExecutor(name string, node executor.Node) (executor.Executor, error) {
 	jobName := fmt.Sprintf("script-%s-%s", name, xid.New().String())
 

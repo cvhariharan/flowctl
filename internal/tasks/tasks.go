@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cvhariharan/autopilot/internal/runner"
 	"github.com/cvhariharan/autopilot/internal/streamlogger"
 	"github.com/cvhariharan/autopilot/sdk/executor"
 	"github.com/expr-lang/expr"
@@ -53,15 +52,14 @@ func NewFlowExecution(f Flow, input map[string]interface{}, startingActionIdx in
 }
 
 type FlowRunner struct {
-	artifactManager  runner.ArtifactManager
 	onBeforeActionFn HookFn
 	onAfterActionFn  HookFn
 	debugLogger      *slog.Logger
 	redisClient      redis.UniversalClient
 }
 
-func NewFlowRunner(redisClient redis.UniversalClient, artifactManager runner.ArtifactManager, onBeforeActionFn, onAfterActionFn HookFn, debugLogger *slog.Logger) *FlowRunner {
-	return &FlowRunner{redisClient: redisClient, artifactManager: artifactManager, onBeforeActionFn: onBeforeActionFn, onAfterActionFn: onAfterActionFn, debugLogger: debugLogger.With("component", "flow_runner")}
+func NewFlowRunner(redisClient redis.UniversalClient, onBeforeActionFn, onAfterActionFn HookFn, debugLogger *slog.Logger) *FlowRunner {
+	return &FlowRunner{redisClient: redisClient, onBeforeActionFn: onBeforeActionFn, onAfterActionFn: onAfterActionFn, debugLogger: debugLogger.With("component", "flow_runner")}
 }
 
 func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) error {
@@ -246,6 +244,13 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 				return
 			}
 			exec, err = ef(nodeExecutorID, execNode)
+			if err != nil {
+				resChan <- ExecResults{
+					result: nil,
+					err:    fmt.Errorf("failed to create executor for %s: %w", action.ID, err),
+				}
+				return
+			}
 			defer exec.Close()
 
 			// Push existing artifacts to this node's executor before execution

@@ -86,6 +86,7 @@ func NewDockerExecutor(name string, node executor.Node) (executor.Executor, erro
 			return nil, fmt.Errorf("failed to create remote client for node %s: %w", node.Hostname, err)
 		}
 		executor.remoteClient = remoteClient
+		log.Println(clientType)
 	}
 
 	return executor, nil

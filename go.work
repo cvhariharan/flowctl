@@ -4,6 +4,7 @@ use (
 	.
 	./executors/docker
 	./executors/script
+	./remote/qssh
 	./remote/ssh
 	./sdk/executor
 	./sdk/remoteclient
