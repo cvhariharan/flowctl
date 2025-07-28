@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cvhariharan/autopilot/sdk/executor"
-	"github.com/cvhariharan/autopilot/sdk/remoteclient"
+	"github.com/cvhariharan/flowctl/sdk/executor"
+	"github.com/cvhariharan/flowctl/sdk/remoteclient"
 	"github.com/cvhariharan/qssh"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"

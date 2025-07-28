@@ -12,8 +12,8 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/cvhariharan/autopilot/internal/core"
-	"github.com/cvhariharan/autopilot/internal/core/models"
+	"github.com/cvhariharan/flowctl/internal/core"
+	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"

@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cvhariharan/autopilot/internal/repo"
+	"github.com/cvhariharan/flowctl/internal/repo"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 )

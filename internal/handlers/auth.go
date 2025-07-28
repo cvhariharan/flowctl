@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/cvhariharan/autopilot/internal/core/models"
+	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
 	"github.com/zerodha/simplesessions/v3"
@@ -188,7 +188,7 @@ func (h *Handler) HandleAuthCallback(c echo.Context) error {
 
 	user, err := h.co.GetUserByUsernameWithGroups(c.Request().Context(), claims.Email)
 	if err != nil {
-		return wrapError(http.StatusForbidden, "user does not exist in autopilot", err, nil)
+		return wrapError(http.StatusForbidden, "user does not exist in flowctl", err, nil)
 	}
 
 	sess.Set("method", "oidc")

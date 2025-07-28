@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cvhariharan/autopilot/internal/core/models"
-	"github.com/cvhariharan/autopilot/internal/repo"
+	"github.com/cvhariharan/flowctl/internal/core/models"
+	"github.com/cvhariharan/flowctl/internal/repo"
 	"github.com/google/uuid"
 )
 

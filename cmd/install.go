@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/cvhariharan/autopilot/internal/repo"
+	"github.com/cvhariharan/flowctl/internal/repo"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"

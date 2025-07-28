@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/cvhariharan/autopilot/sdk/executor"
+	"github.com/cvhariharan/flowctl/sdk/executor"
 )
 
 // NewRemoteClientFunc defines the signature for creating a new RemoteClient.

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/cvhariharan/autopilot/internal/core/models"
+	"github.com/cvhariharan/flowctl/internal/core/models"
 )
 
 const (

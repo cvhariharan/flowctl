@@ -3,8 +3,8 @@ package ssh
 import (
 	"fmt"
 
-	"github.com/cvhariharan/autopilot/sdk/executor"
-	"github.com/cvhariharan/autopilot/sdk/remoteclient"
+	"github.com/cvhariharan/flowctl/sdk/executor"
+	"github.com/cvhariharan/flowctl/sdk/remoteclient"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )

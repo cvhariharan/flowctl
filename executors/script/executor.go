@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cvhariharan/autopilot/sdk/executor"
-	"github.com/cvhariharan/autopilot/sdk/remoteclient"
+	"github.com/cvhariharan/flowctl/sdk/executor"
+	"github.com/cvhariharan/flowctl/sdk/remoteclient"
 	"github.com/hashicorp/go-envparse"
 	"github.com/rs/xid"
 	"gopkg.in/yaml.v3"

@@ -13,8 +13,8 @@ import (
 
 	"os"
 
-	"github.com/cvhariharan/autopilot/sdk/executor"
-	"github.com/cvhariharan/autopilot/sdk/remoteclient"
+	"github.com/cvhariharan/flowctl/sdk/executor"
+	"github.com/cvhariharan/flowctl/sdk/remoteclient"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"

@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"github.com/cvhariharan/autopilot/internal/repo"
+	"github.com/cvhariharan/flowctl/internal/repo"
 )
 
 const TimeFormat = "2006-01-02T15:04:05Z"

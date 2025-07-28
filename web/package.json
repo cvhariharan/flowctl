@@ -1,5 +1,5 @@
 {
-  "name": "autopilot-frontend",
+  "name": "flowctl-frontend",
   "scripts": {
     "build:css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --watch"
   },

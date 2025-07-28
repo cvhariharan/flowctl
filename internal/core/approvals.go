@@ -8,9 +8,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/cvhariharan/autopilot/internal/core/models"
-	"github.com/cvhariharan/autopilot/internal/repo"
-	"github.com/cvhariharan/autopilot/internal/tasks"
+	"github.com/cvhariharan/flowctl/internal/core/models"
+	"github.com/cvhariharan/flowctl/internal/repo"
+	"github.com/cvhariharan/flowctl/internal/tasks"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )

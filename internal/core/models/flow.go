@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/cvhariharan/autopilot/internal/tasks"
+	"github.com/cvhariharan/flowctl/internal/tasks"
 	"github.com/expr-lang/expr"
 	"github.com/go-playground/validator/v10"
 )

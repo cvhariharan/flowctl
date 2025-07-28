@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cvhariharan/autopilot/internal/streamlogger"
-	"github.com/cvhariharan/autopilot/sdk/executor"
+	"github.com/cvhariharan/flowctl/internal/streamlogger"
+	"github.com/cvhariharan/flowctl/sdk/executor"
 	"github.com/expr-lang/expr"
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
@@ -227,9 +227,9 @@ func (r *FlowRunner) runAction(ctx context.Context, action Action, srcdir string
 			}
 			// Convert task node to executor node
 			execNode := executor.Node{
-				Hostname: node.Hostname,
-				Port:     node.Port,
-				Username: node.Username,
+				Hostname:       node.Hostname,
+				Port:           node.Port,
+				Username:       node.Username,
 				ConnectionType: node.ConnectionType,
 				Auth: executor.NodeAuth{
 					Method: string(node.Auth.Method),

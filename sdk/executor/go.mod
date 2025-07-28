@@ -1,3 +1,3 @@
-module github.com/cvhariharan/autopilot/sdk/executor
+module github.com/cvhariharan/flowctl/sdk/executor
 
 go 1.24.5
