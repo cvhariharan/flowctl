@@ -35,7 +35,7 @@ import (
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start autopilot server or worker",
+	Short: "Start flowctl server or worker",
 	Long:  "Use --worker to start a worker. The default command runs the server",
 	Run: func(cmd *cobra.Command, args []string) {
 		isWorker, _ := cmd.Flags().GetBool("worker")
@@ -44,7 +44,7 @@ var startCmd = &cobra.Command{
 }
 
 func init() {
-	startCmd.Flags().Bool("worker", false, "Start autopilot worker")
+	startCmd.Flags().Bool("worker", false, "Start flowctl worker")
 	rootCmd.AddCommand(startCmd)
 }
 

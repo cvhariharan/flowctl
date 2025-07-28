@@ -14,7 +14,7 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "autopilot",
+	Use:   "flowctl",
 	Short: "Self-service workflow execution engine",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		configPath, _ := cmd.Flags().GetString("config")
@@ -48,15 +48,15 @@ func init() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml")
 	viper.AddConfigPath(".")
-	viper.SetEnvPrefix("AUTOPILOT")
+	viper.SetEnvPrefix("FLOWCTL")
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.RegisterAlias("AUTOPILOT_SECRETS_", "secrets.")
+	viper.RegisterAlias("FLOWCTL_SECRETS_", "secrets.")
 
 	// Default Config
-	viper.SetDefault("db.dbname", "autopilot")
-	viper.SetDefault("db.user", "autopilot")
-	viper.SetDefault("db.password", "autopilot")
+	viper.SetDefault("db.dbname", "flowctl")
+	viper.SetDefault("db.user", "flowctl")
+	viper.SetDefault("db.password", "flowctl")
 	viper.SetDefault("db.host", "127.0.0.1")
 	viper.SetDefault("db.port", 5432)
 
@@ -64,8 +64,8 @@ func init() {
 	viper.SetDefault("redis.port", 6379)
 	viper.SetDefault("redis.password", "")
 
-	viper.SetDefault("app.admin_username", "autopilot_admin")
-	viper.SetDefault("app.admin_password", "autopilot_password")
+	viper.SetDefault("app.admin_username", "flowctl_admin")
+	viper.SetDefault("app.admin_password", "flowctl_password")
 	viper.SetDefault("app.root_url", "http://localhost:7000")
 	viper.SetDefault("app.use_tls", false)
 	viper.SetDefault("app.http_tls_cert", "server_cert.pem")

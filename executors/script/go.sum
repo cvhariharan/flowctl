@@ -1,0 +1,14 @@
+github.com/cvhariharan/flowctl v0.0.0-20250728145512-aa56676fc961 h1:hx/vfbj+71CrasIXPqbHafCPBpsF2hOC0GJnYcYotcc=
+github.com/cvhariharan/flowctl v0.0.0-20250728145512-aa56676fc961/go.mod h1:HTO0aF7BXE+lmcbyvjDL8eCxH1bZxEGMc+McQGd5olE=
+github.com/cvhariharan/flowctl/sdk/executor v0.0.0-20250728145512-aa56676fc961 h1:W+GTmSKcg57k+WgksCP6S4K7LJN3m5/CvNcns+khwyQ=
+github.com/cvhariharan/flowctl/sdk/executor v0.0.0-20250728145512-aa56676fc961/go.mod h1:YCqeQSuKkvNkj5LOkjuzqM0n3GaS+mMCyEpV4hcMaQI=
+github.com/cvhariharan/flowctl/sdk/remoteclient v0.0.0-20250728145512-aa56676fc961 h1:ofbcNiehEVe2GFIJ4E8GMwYkf+xWXOMpdH/S5oU1i6Q=
+github.com/cvhariharan/flowctl/sdk/remoteclient v0.0.0-20250728145512-aa56676fc961/go.mod h1:qQAkxk1C2YrRJrpQojLfqks9Lcoa4+0x/UpfvRxqhbk=
+github.com/hashicorp/go-envparse v0.1.0 h1:bE++6bhIsNCPLvgDZkYqo3nA+/PFI51pkrHdmPSDFPY=
+github.com/hashicorp/go-envparse v0.1.0/go.mod h1:OHheN1GoygLlAkTlXLXvAdnXdZxy8JUweQ1rAXx1xnc=
+github.com/rs/xid v1.6.0 h1:fV591PaemRlL6JfRxGDEPl69wICngIQ3shQtzfy2gxU=
+github.com/rs/xid v1.6.0/go.mod h1:7XoLgs4eV+QndskICGsho+ADou8ySMSjJKDIan90Nz0=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
