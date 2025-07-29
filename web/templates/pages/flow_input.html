@@ -7,7 +7,7 @@
     }
 </style>
 
-<div class="flex h-screen bg-gray-50" x-data="flowForm('{{.Flow.Meta.ID}}')">
+<div class="flex h-screen bg-gray-50" x-data="flowFormAndHistory('{{.Flow.Meta.ID}}', '{{ .Page.Namespace }}')">
     <!-- Sidebar -->
     {{ template "partials/sidebar" . }}
 
@@ -54,107 +54,273 @@
                 </div>
             </div>
 
-            <!-- Form Section -->
+            <!-- Tab Navigation -->
+            <div class="bg-white border-b border-gray-200 px-6">
+                <nav class="max-w-4xl mx-auto flex space-x-8" aria-label="Tabs">
+                    <button @click="activeTab = 'run'" :class="activeTab === 'run' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                        Run Flow
+                    </button>
+                    <button @click="activeTab = 'history'" :class="activeTab === 'history' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                        History
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Tab Content -->
             <div class="px-6 py-8 bg-gray-50">
-                <div class="max-w-2xl mx-auto">
-                    <!-- Form Card -->
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                            <h2 class="text-lg font-semibold text-gray-900">Configuration Parameters</h2>
-                            <p class="text-sm text-gray-600 mt-1">Configure the inputs for this flow execution</p>
-                        </div>
-                        
-                        <form @submit.prevent="submit" id="flow-form" class="p-6 space-y-6">
-                            {{ range .Flow.Inputs }}
-                            <div>
-                                <label for="{{ .Name }}" class="block text-sm font-medium text-gray-700 mb-2">
-                                    {{ .Label }}
-                                    {{ if eq .Required true }}<span class="text-red-500">*</span>{{ end }}
-                                </label>
-                                <input 
-                                    type="{{ .Type }}" 
-                                    id="{{ .Name }}" 
-                                    name="{{ .Name }}" 
-                                    placeholder="{{ .Description }}"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    {{ if eq .Required true }}required{{ end }}
-                                />
-                                <p class="text-sm text-red-600 mt-1" x-text="errors['{{ .Name }}']"></p>
-                                {{ if .Description }}<p class="text-sm text-gray-500 mt-1">{{ .Description }}</p>{{ end }}
+                <!-- Run Flow Tab -->
+                <div x-show="activeTab === 'run'" class="max-w-2xl mx-auto">
+                        <!-- Form Card -->
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                <h2 class="text-lg font-semibold text-gray-900">Configuration Parameters</h2>
+                                <p class="text-sm text-gray-600 mt-1">Configure the inputs for this flow execution</p>
                             </div>
-                            {{ end }}
-
-                            <!-- Actions -->
-                            <div class="flex gap-3 pt-6 border-t border-gray-200">
-                                <button 
-                                    type="button" 
-                                    onclick="window.history.back()"
-                                    class="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit" 
-                                    :disabled="loading"
-                                    class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors transform hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:transform-none"
-                                >
-                                    <span x-show="!loading" class="inline-flex items-center gap-2">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                        Run Flow
-                                    </span>
-                                    <span x-show="loading" class="inline-flex items-center gap-2">
-                                        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Starting Flow...
-                                    </span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Flow Actions Summary -->
-                    {{ if .Flow.Actions }}
-                    <div class="bg-gray-50 rounded-lg p-4 mt-6" x-data="{ 
-                        actions: [
-                            {{ range $index, $action := .Flow.Actions }}
-                            {{ if $index }},{{ end }}
-                            { name: {{ toJson .Name }}, executor: {{ toJson .Executor }} }
-                            {{ end }}
-                        ]
-                    }">
-                        <h3 class="text-sm font-medium text-gray-900 mb-3 flex items-center">
-                            <svg class="w-4 h-4 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                            </svg>
-                            <span x-text="`Flow Actions (${actions.length} step${actions.length !== 1 ? 's' : ''})`"></span>
-                        </h3>
-                        <div class="space-y-2">
-                            <template x-for="(action, index) in actions" :key="index">
+                            
+                            <form @submit.prevent="submit" id="flow-form" class="p-6 space-y-6">
+                                {{ range .Flow.Inputs }}
                                 <div>
-                                    <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
-                                        <div class="flex items-center">
-                                            <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium mr-3" x-text="index + 1"></div>
-                                            <div class="text-sm font-medium text-gray-900" x-text="action.name"></div>
-                                        </div>
-                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-md bg-blue-100 text-blue-800" x-text="action.executor"></span>
-                                    </div>
-                                    
-                                    <!-- Arrow connecting actions -->
-                                    <div x-show="index < actions.length - 1" class="flex justify-center">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-                                        </svg>
-                                    </div>
+                                    <label for="{{ .Name }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                        {{ .Label }}
+                                        {{ if eq .Required true }}<span class="text-red-500">*</span>{{ end }}
+                                    </label>
+                                    <input 
+                                        type="{{ .Type }}" 
+                                        id="{{ .Name }}" 
+                                        name="{{ .Name }}" 
+                                        placeholder="{{ .Description }}"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        {{ if eq .Required true }}required{{ end }}
+                                    />
+                                    <p class="text-sm text-red-600 mt-1" x-text="errors['{{ .Name }}']"></p>
+                                    {{ if .Description }}<p class="text-sm text-gray-500 mt-1">{{ .Description }}</p>{{ end }}
                                 </div>
-                            </template>
+                                {{ end }}
+
+                                <!-- Actions -->
+                                <div class="flex gap-3 pt-6 border-t border-gray-200">
+                                    <button 
+                                        type="button" 
+                                        onclick="window.history.back()"
+                                        class="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        :disabled="loading"
+                                        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors transform hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:transform-none"
+                                    >
+                                        <span x-show="!loading" class="inline-flex items-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            Run Flow
+                                        </span>
+                                        <span x-show="loading" class="inline-flex items-center gap-2">
+                                            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Starting Flow...
+                                        </span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Flow Actions Summary -->
+                        {{ if .Flow.Actions }}
+                        <div class="bg-gray-50 rounded-lg p-4 mt-6" x-data="{ 
+                            actions: [
+                                {{ range $index, $action := .Flow.Actions }}
+                                {{ if $index }},{{ end }}
+                                { name: {{ toJson .Name }}, executor: {{ toJson .Executor }} }
+                                {{ end }}
+                            ]
+                        }">
+                            <h3 class="text-sm font-medium text-gray-900 mb-3 flex items-center">
+                                <svg class="w-4 h-4 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                </svg>
+                                <span x-text="`Flow Actions (${actions.length} step${actions.length !== 1 ? 's' : ''})`"></span>
+                            </h3>
+                            <div class="space-y-2">
+                                <template x-for="(action, index) in actions" :key="index">
+                                    <div>
+                                        <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
+                                            <div class="flex items-center">
+                                                <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium mr-3" x-text="index + 1"></div>
+                                                <div class="text-sm font-medium text-gray-900" x-text="action.name"></div>
+                                            </div>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium rounded-md bg-blue-100 text-blue-800" x-text="action.executor"></span>
+                                        </div>
+                                        
+                                        <!-- Arrow connecting actions -->
+                                        <div x-show="index < actions.length - 1" class="flex justify-center">
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        {{ end }}
+                    </div>
+
+                <!-- History Tab -->
+                <div x-show="activeTab === 'history'" class="max-w-6xl mx-auto">
+                    <!-- Loading State -->
+                    <div x-show="historyLoading" class="flex items-center justify-center h-64">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <span class="ml-3 text-gray-600">Loading execution history...</span>
+                    </div>
+
+                    <!-- Error Message -->
+                    <div x-show="historyError" class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div class="flex">
+                            <svg class="w-5 h-5 text-red-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">Error</h3>
+                                <p class="mt-1 text-sm text-red-700" x-text="historyError"></p>
+                            </div>
                         </div>
                     </div>
-                    {{ end }}
+
+                    <!-- Executions Table -->
+                    <div x-show="!historyLoading && flowExecutions.length > 0" class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                            <h3 class="text-lg font-semibold text-gray-900">Execution History for {{ .Flow.Meta.Name }}</h3>
+                            <p class="text-sm text-gray-600 mt-1">Past executions of this flow</p>
+                        </div>
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Execution ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Triggered By</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Started At</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <template x-for="execution in flowExecutions" :key="execution.id">
+                                    <tr class="hover:bg-gray-50 cursor-pointer" @click="viewExecution(execution.id)">
+                                        <!-- Execution ID Column -->
+                                        <td class="px-6 py-4 whitespace-nowrap w-48">
+                                            <div class="flex items-center">
+                                                <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center mr-3 flex-shrink-0">
+                                                    <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                                    </svg>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="text-xs text-gray-500 font-mono truncate" x-text="execution.id"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <!-- Status Column -->
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                                  :class="{
+                                                      'bg-green-100 text-green-800': execution.status === 'completed',
+                                                      'bg-yellow-100 text-yellow-800': execution.status === 'pending',
+                                                      'bg-red-100 text-red-800': execution.status === 'errored'
+                                                  }">
+                                                <span class="w-1.5 h-1.5 mr-1.5 rounded-full"
+                                                      :class="{
+                                                          'bg-green-400': execution.status === 'completed',
+                                                          'bg-yellow-400': execution.status === 'pending',
+                                                          'bg-red-400': execution.status === 'errored'
+                                                      }"></span>
+                                                <span x-text="capitalizeStatus(execution.status)"></span>
+                                            </span>
+                                        </td>
+
+                                        <!-- Triggered By Column -->
+                                        <td class="px-6 py-4 whitespace-nowrap w-32">
+                                            <span class="text-sm font-medium text-gray-900 truncate" x-text="execution.triggered_by || 'System'"></span>
+                                        </td>
+
+                                        <!-- Started At Column -->
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-40">
+                                            <span class="truncate" x-text="formatDateTime(execution.started_at)"></span>
+                                        </td>
+
+                                        <!-- Duration Column -->
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <span x-text="execution.duration || formatDuration(execution.started_at, execution.completed_at)"></span>
+                                        </td>
+
+                                        <!-- Actions Column -->
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium w-32">
+                                            <button @click.stop="viewExecution(execution.id)"
+                                                    class="text-blue-600 hover:text-blue-800 mr-3">
+                                                View
+                                            </button>
+                                            <button @click.stop="viewLogs(execution.id)"
+                                                    class="text-green-600 hover:text-green-800">
+                                                Logs
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div x-show="!historyLoading && flowExecutions.length === 0 && !historyError" class="flex flex-col items-center justify-center h-64 text-center">
+                        <svg class="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">No execution history</h3>
+                        <p class="text-gray-500 mb-4">No executions found for this flow. Run the flow to see history here.</p>
+                    </div>
+
+                    <!-- Pagination Controls -->
+                    <div class="flex items-center justify-between mt-6" x-show="!historyLoading && historyPageCount > 1">
+                        <!-- Results Info -->
+                        <div class="flex items-center text-sm text-gray-700">
+                            <span>Showing </span>
+                            <span class="font-medium" x-text="((historyCurrentPage - 1) * historyItemsPerPage) + 1"></span>
+                            <span> to </span>
+                            <span class="font-medium" x-text="Math.min(historyCurrentPage * historyItemsPerPage, historyTotalCount)"></span>
+                            <span> of </span>
+                            <span class="font-medium" x-text="historyTotalCount"></span>
+                            <span> results</span>
+                        </div>
+
+                        <!-- Pagination Buttons -->
+                        <div class="flex space-x-1">
+                            <button @click="goToHistoryPage(historyCurrentPage - 1)"
+                                    :disabled="historyCurrentPage === 1"
+                                    :class="historyCurrentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'"
+                                    class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg">
+                                Previous
+                            </button>
+
+                            <template x-for="page in historyPaginationPages" :key="page">
+                                <button @click="goToHistoryPage(page)"
+                                        :class="page === historyCurrentPage ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'"
+                                        class="px-3 py-2 text-sm font-medium border rounded-lg"
+                                        x-text="page"></button>
+                            </template>
+
+                            <button @click="goToHistoryPage(historyCurrentPage + 1)"
+                                    :disabled="historyCurrentPage === historyPageCount"
+                                    :class="historyCurrentPage === historyPageCount ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'"
+                                    class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg">
+                                Next
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -162,10 +328,36 @@
 </div>
 
 <script>
-    function flowForm(flowId) {
+    function flowFormAndHistory(flowId, namespace) {
         return {
+            // Tab state
+            activeTab: 'run',
+            
+            // Form state  
             loading: false,
             errors: {},
+            
+            // History state
+            flowExecutions: [],
+            historyLoading: false,
+            historyError: '',
+            historyCurrentPage: 1,
+            historyItemsPerPage: 20,
+            historyTotalCount: 0,
+            historyPageCount: 0,
+
+            get historyPaginationPages() {
+                const pages = [];
+                const start = Math.max(1, this.historyCurrentPage - 2);
+                const end = Math.min(this.historyPageCount, this.historyCurrentPage + 2);
+
+                for (let i = start; i <= end; i++) {
+                    pages.push(i);
+                }
+
+                return pages;
+            },
+
             async submit(event) {
                 this.loading = true;
                 this.errors = {};
@@ -178,7 +370,7 @@
                 });
 
                 try {
-                    const response = await fetch(`/api/v1/{{ .Page.Namespace }}/trigger/${flowId}`, {
+                    const response = await fetch(`/api/v1/${namespace}/trigger/${flowId}`, {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json',
@@ -204,7 +396,7 @@
                             );
                         }
                     } else {
-                        window.location.href = `/view/{{ .Page.Namespace }}/results/{{ .Flow.Meta.ID }}/${data.exec_id}`;
+                        window.location.href = `/view/${namespace}/results/${flowId}/${data.exec_id}`;
                     }
                 } catch (error) {
                     window.dispatchEvent(
@@ -216,6 +408,100 @@
                     this.loading = false;
                 }
             },
+
+            async loadFlowHistory() {
+                this.historyLoading = true;
+                this.historyError = '';
+
+                try {
+                    const url = new URL(`/api/v1/${namespace}/flows/${flowId}/executions`, window.location.origin);
+                    url.searchParams.append('page', this.historyCurrentPage);
+                    url.searchParams.append('count', this.historyItemsPerPage);
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        this.historyError = data.error || 'Failed to fetch execution history';
+                        this.flowExecutions = [];
+                        return;
+                    }
+
+                    this.flowExecutions = data.executions || [];
+                    this.historyTotalCount = data.total_count || 0;
+                    this.historyPageCount = data.page_count || 1;
+                } catch (error) {
+                    console.error('Error loading flow history:', error);
+                    this.historyError = 'Failed to load execution history';
+                    this.flowExecutions = [];
+                } finally {
+                    this.historyLoading = false;
+                }
+            },
+
+            goToHistoryPage(page) {
+                if (page < 1 || page > this.historyPageCount) return;
+                this.historyCurrentPage = page;
+                this.loadFlowHistory();
+            },
+
+            viewExecution(executionId) {
+                window.location.href = `/view/${namespace}/results/${flowId}/${executionId}`;
+            },
+
+            viewLogs(executionId) {
+                const logUrl = `/view/${namespace}/logs/${executionId}`;
+                window.open(logUrl, '_blank');
+            },
+
+            capitalizeStatus(status) {
+                if (!status) return '';
+                return status.charAt(0).toUpperCase() + status.slice(1);
+            },
+
+            formatDateTime(dateString) {
+                if (!dateString) return 'Unknown';
+                const date = new Date(dateString);
+                return date.toLocaleString();
+            },
+
+            formatDuration(startedAt, completedAt) {
+                if (!startedAt) return 'Unknown';
+                if (!completedAt) return 'Running...';
+
+                const start = new Date(startedAt);
+                const end = new Date(completedAt);
+                const durationMs = end - start;
+
+                if (durationMs < 1000) return '<1s';
+
+                const seconds = Math.floor(durationMs / 1000);
+                const minutes = Math.floor(seconds / 60);
+                const hours = Math.floor(minutes / 60);
+
+                if (hours > 0) {
+                    return `${hours}h ${minutes % 60}m`;
+                } else if (minutes > 0) {
+                    return `${minutes}m ${seconds % 60}s`;
+                } else {
+                    return `${seconds}s`;
+                }
+            },
+
+            // Initialize - load history when switching to history tab
+            init() {
+                this.$watch('activeTab', (newTab) => {
+                    if (newTab === 'history' && this.flowExecutions.length === 0 && !this.historyLoading) {
+                        this.loadFlowHistory();
+                    }
+                });
+            }
         };
     }
 </script>
