@@ -4,12 +4,21 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+)
+
+const (
+	maxFileSize = 100 * 1024 * 1024 // 100MB
+	tempDirName = "/tmp"
 )
 
 var (
@@ -51,16 +60,83 @@ func convertRequestInputs(req map[string]interface{}, flow models.Flow) error {
 	return nil
 }
 
+// processFileUpload handles a single file upload and returns the temporary file path
+func (h *Handler) processFileUpload(c echo.Context, input models.Input, namespace, flowID string) (string, error) {
+	file, err := c.FormFile(input.Name)
+	if err != nil {
+		if input.Required {
+			return "", fmt.Errorf("file %s is required", input.Name)
+		}
+		return "", nil
+	}
+
+	// Validate file size
+	if file.Size > maxFileSize {
+		return "", fmt.Errorf("file %s is too large (max %dMB)", input.Name, maxFileSize/(1024*1024))
+	}
+
+	// Create secure temporary directory
+	tmpDir, err := os.MkdirTemp(tempDirName, fmt.Sprintf("flow_%s_%s_*", flowID, namespace))
+	if err != nil {
+		return "", fmt.Errorf("could not create temp directory for storing the uploaded file: %w", err)
+	}
+
+	// Sanitize filename
+	filename := filepath.Base(filepath.Clean(file.Filename))
+	if filename == "" || filename == "." || filename == ".." {
+		filename = "uploaded_file"
+	}
+	tmpFilePath := filepath.Join(tmpDir, filename)
+
+	// Save uploaded file
+	src, err := file.Open()
+	if err != nil {
+		return "", fmt.Errorf("failed to open uploaded file: %w", err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(tmpFilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		return "", fmt.Errorf("failed to save uploaded file: %w", err)
+	}
+
+	return tmpFilePath, nil
+}
+
+// processFlowInputs processes all flow inputs from the request and returns a map of input values
+func (h *Handler) processFlowInputs(c echo.Context, flow models.Flow, namespace string) (map[string]interface{}, error) {
+	req := make(map[string]interface{})
+
+	for _, input := range flow.Inputs {
+		switch input.Type {
+		case models.INPUT_TYPE_FILE:
+			filePath, err := h.processFileUpload(c, input, namespace, flow.Meta.ID)
+			if err != nil {
+				return nil, err
+			}
+			if filePath != "" {
+				req[input.Name] = filePath
+			}
+			log.Println(filePath)
+		default:
+			if value := c.FormValue(input.Name); value != "" {
+				req[input.Name] = value
+			}
+		}
+	}
+
+	return req, nil
+}
+
 func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 	user, ok := c.Get("user").(models.UserInfo)
 	if !ok {
 		return wrapError(http.StatusBadRequest, "could not get user details", nil, nil)
-	}
-
-	var req map[string]interface{}
-	// This is done to only bind request body and ignore path / query params
-	if err := (&echo.DefaultBinder{}).BindBody(c, &req); err != nil {
-		return wrapError(http.StatusBadRequest, "could not parse request", err, nil)
 	}
 
 	namespace, ok := c.Get("namespace").(string)
@@ -71,6 +147,11 @@ func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 	f, err := h.co.GetFlowByID(c.Param("flow"), namespace)
 	if err != nil {
 		return wrapError(http.StatusBadRequest, "could not get flow", err, nil)
+	}
+
+	req, err := h.processFlowInputs(c, f, namespace)
+	if err != nil {
+		return wrapError(http.StatusBadRequest, "failed to process inputs", err, nil)
 	}
 
 	if len(f.Actions) == 0 {

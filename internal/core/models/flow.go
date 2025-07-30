@@ -30,7 +30,7 @@ type Input struct {
 	Validation  string    `yaml:"validation" json:"validation"`
 	Required    bool      `yaml:"required" json:"required"`
 	Default     string    `yaml:"default" json:"default"`
-	Options     []string  `yaml:"options" json:"options"` // For select dropdown options
+	Options     []string  `yaml:"options" json:"options"`
 }
 
 type Action struct {

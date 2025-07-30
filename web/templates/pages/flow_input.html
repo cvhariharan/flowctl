@@ -435,20 +435,11 @@
                 this.loading = true;
                 this.errors = {};
                 const formData = new FormData(event.target);
-                const jsonData = {};
-
-                // Convert FormData to JSON object
-                formData.forEach((value, key) => {
-                    jsonData[key] = value;
-                });
 
                 try {
                     const response = await fetch(`/api/v1/${namespace}/trigger/${flowId}`, {
                         method: "POST",
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(jsonData),
+                        body: formData,
                     });
                     let data;
                     try {
