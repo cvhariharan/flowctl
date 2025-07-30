@@ -2,8 +2,8 @@ package models
 
 import (
 	"fmt"
-	"log"
 	"regexp"
+	"slices"
 
 	"github.com/cvhariharan/flowctl/internal/tasks"
 	"github.com/expr-lang/expr"
@@ -266,6 +266,13 @@ func (f Flow) ValidateInput(inputs map[string]interface{}) *FlowValidationError 
 
 		if err := validateType(input.Name, value, InputType(input.Type)); err != nil {
 			return &FlowValidationError{FieldName: input.Name, Msg: "Wrong input type"}
+		}
+
+		// If this is a select type, check that the value is in the list
+		if input.Type == INPUT_TYPE_SELECT  {
+			if !slices.Contains(input.Options, value.(string)) {
+				return &FlowValidationError{FieldName: input.Name, Msg: "The selected value is not part of the list"}
+			}
 		}
 
 		if input.Validation == "" {
