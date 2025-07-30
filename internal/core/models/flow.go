@@ -2,7 +2,7 @@ package models
 
 import (
 	"fmt"
-	"reflect"
+	"log"
 	"regexp"
 
 	"github.com/cvhariharan/flowctl/internal/tasks"
@@ -13,24 +13,24 @@ import (
 type InputType string
 
 const (
-	INPUT_TYPE_STRING       InputType = "string"
-	INPUT_TYPE_INT          InputType = "int"
-	INPUT_TYPE_FLOAT        InputType = "float"
-	INPUT_TYPE_BOOL         InputType = "bool"
-	INPUT_TYPE_SLICE_STRING InputType = "slice_string"
-	INPUT_TYPE_SLICE_INT    InputType = "slice_int"
-	INPUT_TYPE_SLICE_UINT   InputType = "slice_uint"
-	INPUT_TYPE_SLICE_FLOAT  InputType = "slice_float"
+	INPUT_TYPE_STRING   InputType = "string"
+	INPUT_TYPE_NUMBER   InputType = "number"
+	INPUT_TYPE_PASSWORD InputType = "password"
+	INPUT_TYPE_FILE     InputType = "file"
+	INPUT_TYPE_DATETIME InputType = "datetime"
+	INPUT_TYPE_CHECKBOX InputType = "checkbox"
+	INPUT_TYPE_SELECT   InputType = "select"
 )
 
 type Input struct {
 	Name        string    `yaml:"name" json:"name" validate:"required,alphanum_underscore"`
-	Type        InputType `yaml:"type" json:"type" validate:"required,oneof=string int float bool slice_string slice_int slice_uint slice_float"`
+	Type        InputType `yaml:"type" json:"type" validate:"required,oneof=string number password file datetime checkbox select"`
 	Label       string    `yaml:"label" json:"label"`
 	Description string    `yaml:"description" json:"description"`
 	Validation  string    `yaml:"validation" json:"validation"`
 	Required    bool      `yaml:"required" json:"required"`
 	Default     string    `yaml:"default" json:"default"`
+	Options     []string  `yaml:"options" json:"options"` // For select dropdown options
 }
 
 type Action struct {
@@ -257,7 +257,7 @@ func (f Flow) IsApprovalRequired() bool {
 func (f Flow) ValidateInput(inputs map[string]interface{}) *FlowValidationError {
 	for _, input := range f.Inputs {
 		value, exists := inputs[input.Name]
-		if !exists || reflect.ValueOf(value).IsZero() {
+		if !exists {
 			if input.Required {
 				return &FlowValidationError{FieldName: input.Name, Msg: "This is a required field"}
 			}
@@ -301,69 +301,22 @@ func (f Flow) ValidateInput(inputs map[string]interface{}) *FlowValidationError 
 
 func validateType(name string, val interface{}, t InputType) error {
 	switch t {
-	case INPUT_TYPE_STRING:
+	case INPUT_TYPE_STRING, INPUT_TYPE_PASSWORD, INPUT_TYPE_FILE, INPUT_TYPE_DATETIME, INPUT_TYPE_SELECT:
 		_, ok := val.(string)
 		if !ok {
 			return fmt.Errorf("input %s must be a string", name)
 		}
-	case INPUT_TYPE_INT:
-		_, ok := val.(int)
-		if !ok {
-			return fmt.Errorf("input %s must be an integer", name)
+	case INPUT_TYPE_NUMBER:
+		switch val.(type) {
+		case int, int64, float64:
+			// Already valid number types (for direct API calls)
+		default:
+			return fmt.Errorf("input %s must be a number", name)
 		}
-	case INPUT_TYPE_FLOAT:
-		_, ok := val.(float64)
-		if !ok {
-			return fmt.Errorf("input %s must be a float", name)
-		}
-	case INPUT_TYPE_BOOL:
+	case INPUT_TYPE_CHECKBOX:
 		_, ok := val.(bool)
 		if !ok {
 			return fmt.Errorf("input %s must be a boolean", name)
-		}
-	case INPUT_TYPE_SLICE_STRING:
-		slice, ok := val.([]interface{})
-		if !ok {
-			return fmt.Errorf("input %s must be a slice of strings", name)
-		}
-		for _, item := range slice {
-			_, ok := item.(string)
-			if !ok {
-				return fmt.Errorf("input %s must be a slice of strings", name)
-			}
-		}
-	case INPUT_TYPE_SLICE_INT:
-		slice, ok := val.([]interface{})
-		if !ok {
-			return fmt.Errorf("input %s must be a slice of integers", name)
-		}
-		for _, item := range slice {
-			_, ok := item.(int)
-			if !ok {
-				return fmt.Errorf("input %s must be a slice of integers", name)
-			}
-		}
-	case INPUT_TYPE_SLICE_UINT:
-		slice, ok := val.([]interface{})
-		if !ok {
-			return fmt.Errorf("input %s must be a slice of unsigned integers", name)
-		}
-		for _, item := range slice {
-			_, ok := item.(uint64)
-			if !ok {
-				return fmt.Errorf("input %s must be a slice of unsigned integers", name)
-			}
-		}
-	case INPUT_TYPE_SLICE_FLOAT:
-		slice, ok := val.([]interface{})
-		if !ok {
-			return fmt.Errorf("input %s must be a slice of floats", name)
-		}
-		for _, item := range slice {
-			_, ok := item.(float64)
-			if !ok {
-				return fmt.Errorf("input %s must be a slice of floats", name)
-			}
 		}
 	default:
 		return fmt.Errorf("unknown input type: %s", t)

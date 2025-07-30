@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/gorilla/websocket"
@@ -14,6 +15,41 @@ import (
 var (
 	upgrader = websocket.Upgrader{}
 )
+
+// convertRequestInputs converts request values from strings to their appropriate types based on flow input definitions
+func convertRequestInputs(req map[string]interface{}, flow models.Flow) error {
+	for _, input := range flow.Inputs {
+		value, exists := req[input.Name]
+		if !exists {
+			continue
+		}
+
+		if strVal, ok := value.(string); ok {
+			switch input.Type {
+			case models.INPUT_TYPE_NUMBER:
+				if strVal == "" {
+					// Let validation handle empty required fields
+					continue
+				}
+				// Try to parse as int first, then float
+				if intVal, err := strconv.Atoi(strVal); err == nil {
+					req[input.Name] = intVal
+				} else if floatVal, err := strconv.ParseFloat(strVal, 64); err == nil {
+					req[input.Name] = floatVal
+				} else {
+					return fmt.Errorf("field %s must be a valid number", input.Name)
+				}
+			case models.INPUT_TYPE_CHECKBOX:
+				// Convert string to boolean
+				req[input.Name] = strVal == "true"
+			case models.INPUT_TYPE_STRING, models.INPUT_TYPE_PASSWORD, models.INPUT_TYPE_FILE, models.INPUT_TYPE_DATETIME, models.INPUT_TYPE_SELECT:
+				// Keep as string
+				continue
+			}
+		}
+	}
+	return nil
+}
 
 func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 	user, ok := c.Get("user").(models.UserInfo)
@@ -39,6 +75,11 @@ func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 
 	if len(f.Actions) == 0 {
 		return wrapError(http.StatusBadRequest, "no actions in flow", nil, nil)
+	}
+
+	// Convert string inputs to appropriate types
+	if err := convertRequestInputs(req, f); err != nil {
+		return wrapError(http.StatusBadRequest, "input conversion error", err, nil)
 	}
 
 	if err := f.ValidateInput(req); err != nil {

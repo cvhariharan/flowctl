@@ -68,46 +68,188 @@
 
             <!-- Tab Content -->
             <div class="px-6 py-8 bg-gray-50">
-                <!-- Run Flow Tab -->
-                <div x-show="activeTab === 'run'" class="max-w-2xl mx-auto">
-                        <!-- Form Card -->
-                        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                                <h2 class="text-lg font-semibold text-gray-900">Configuration Parameters</h2>
-                                <p class="text-sm text-gray-600 mt-1">Configure the inputs for this flow execution</p>
-                            </div>
-                            
-                            <form @submit.prevent="submit" id="flow-form" class="p-6 space-y-6">
-                                {{ range .Flow.Inputs }}
-                                <div>
-                                    <label for="{{ .Name }}" class="block text-sm font-medium text-gray-700 mb-2">
-                                        {{ .Label }}
-                                        {{ if eq .Required true }}<span class="text-red-500">*</span>{{ end }}
-                                    </label>
-                                    <input 
-                                        type="{{ .Type }}" 
-                                        id="{{ .Name }}" 
-                                        name="{{ .Name }}" 
-                                        placeholder="{{ .Description }}"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        {{ if eq .Required true }}required{{ end }}
+                <div class="max-w-2xl mx-auto">
+                    <!-- Form Card -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                            <h2 class="text-lg font-semibold text-gray-900">Configuration Parameters</h2>
+                            <p class="text-sm text-gray-600 mt-1">Configure the inputs for this flow execution</p>
+                        </div>
+
+                        <form @submit.prevent="submit" id="flow-form" class="p-6 space-y-6">
+                            {{ range .Flow.Inputs }}
+                            <div>
+                                <label for="{{ .Name }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    {{ .Label }}
+                                    {{ if eq .Required true }}<span class="text-red-500">*</span>{{ end }}
+                                </label>
+
+                                {{ if eq .Type "string" }}
+                                <input
+                                    type="text"
+                                    id="{{ .Name }}"
+                                    name="{{ .Name }}"
+                                    value="{{ .Default }}"
+                                    placeholder="{{ .Description }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    {{ if eq .Required true }}required{{ end }}
+                                />
+                                {{ else if eq .Type "number" }}
+                                <input
+                                    type="number"
+                                    id="{{ .Name }}"
+                                    name="{{ .Name }}"
+                                    value="{{ .Default }}"
+                                    placeholder="{{ .Description }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    {{ if eq .Required true }}required{{ end }}
+                                />
+                                {{ else if eq .Type "password" }}
+                                <input
+                                    type="password"
+                                    id="{{ .Name }}"
+                                    name="{{ .Name }}"
+                                    placeholder="{{ .Description }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    {{ if eq .Required true }}required{{ end }}
+                                />
+                                {{ else if eq .Type "file" }}
+                                <input
+                                    type="file"
+                                    id="{{ .Name }}"
+                                    name="{{ .Name }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                    {{ if eq .Required true }}required{{ end }}
+                                />
+                                {{ else if eq .Type "datetime" }}
+                                <input
+                                    type="datetime-local"
+                                    id="{{ .Name }}"
+                                    name="{{ .Name }}"
+                                    value="{{ .Default }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    {{ if eq .Required true }}required{{ end }}
+                                />
+                                {{ else if eq .Type "checkbox" }}
+                                <div class="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="{{ .Name }}"
+                                        name="{{ .Name }}"
+                                        value="true"
+                                        {{ if eq .Default "true" }}checked{{ end }}
+                                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                     />
-                                    <p class="text-sm text-red-600 mt-1" x-text="errors['{{ .Name }}']"></p>
-                                    {{ if .Description }}<p class="text-sm text-gray-500 mt-1">{{ .Description }}</p>{{ end }}
+                                </div>
+                                {{ else if eq .Type "select" }}
+                                <select
+                                    id="{{ .Name }}"
+                                    name="{{ .Name }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    {{ if eq .Required true }}required{{ end }}
+                                >
+                                    <option value="">Select an option</option>
+                                    {{ range .Options }}
+                                    <option value="{{ . }}">{{ . }}</option>
+                                    {{ end }}
+                                </select>
+                                {{ else }}
+                                <input
+                                    type="text"
+                                    id="{{ .Name }}"
+                                    name="{{ .Name }}"
+                                    value="{{ .Default }}"
+                                    placeholder="{{ .Description }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    {{ if eq .Required true }}required{{ end }}
+                                />
+                                {{ end }}
+
+                                <p class="text-sm text-red-600 mt-1" x-text="errors['{{ .Name }}']"></p>
+                                {{ if .Description }}<p class="text-sm text-gray-500 mt-1">{{ .Description }}</p>{{ end }}
+                            </div>
+                            {{ end }}
+
+                            <!-- Actions -->
+                            <div class="flex gap-3 pt-6 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onclick="window.history.back()"
+                                    class="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    :disabled="loading"
+                                    class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors transform hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:transform-none"
+                                >
+                                    <span x-show="!loading" class="inline-flex items-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Run Flow
+                                    </span>
+                                    <span x-show="loading" class="inline-flex items-center gap-2">
+                                        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Starting Flow...
+                                    </span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Flow Actions Summary -->
+                    {{ if .Flow.Actions }}
+                    <div class="bg-gray-50 rounded-lg p-4 mt-6" x-data="{
+                        actions: [
+                            {{ range $index, $action := .Flow.Actions }}
+                            {{ if $index }},{{ end }}
+                            { name: {{ toJson .Name }}, executor: {{ toJson .Executor }} }
+                            {{ end }}
+                        ]
+                    }">
+                        <h3 class="text-sm font-medium text-gray-900 mb-3 flex items-center">
+                            <svg class="w-4 h-4 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                            <span x-text="`Flow Actions (${actions.length} step${actions.length !== 1 ? 's' : ''})`"></span>
+                        </h3>
+                        <div class="space-y-2">
+                            <template x-for="(action, index) in actions" :key="index">
+                                <div>
+                                    <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
+                                        <div class="flex items-center">
+                                            <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium mr-3" x-text="index + 1"></div>
+                                            <div class="text-sm font-medium text-gray-900" x-text="action.name"></div>
+                                        </div>
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-md bg-blue-100 text-blue-800" x-text="action.executor"></span>
+                                    </div>
+
+                                    <!-- Arrow connecting actions -->
+                                    <div x-show="index < actions.length - 1" class="flex justify-center">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                                        </svg>
+                                    </div>
                                 </div>
                                 {{ end }}
 
                                 <!-- Actions -->
                                 <div class="flex gap-3 pt-6 border-t border-gray-200">
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         onclick="window.history.back()"
                                         class="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
                                     >
                                         Cancel
                                     </button>
-                                    <button 
-                                        type="submit" 
+                                    <button
+                                        type="submit"
                                         :disabled="loading"
                                         class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors transform hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:transform-none"
                                     >
@@ -132,7 +274,7 @@
 
                         <!-- Flow Actions Summary -->
                         {{ if .Flow.Actions }}
-                        <div class="bg-gray-50 rounded-lg p-4 mt-6" x-data="{ 
+                        <div class="bg-gray-50 rounded-lg p-4 mt-6" x-data="{
                             actions: [
                                 {{ range $index, $action := .Flow.Actions }}
                                 {{ if $index }},{{ end }}
@@ -156,7 +298,7 @@
                                             </div>
                                             <span class="inline-flex px-2 py-1 text-xs font-medium rounded-md bg-blue-100 text-blue-800" x-text="action.executor"></span>
                                         </div>
-                                        
+
                                         <!-- Arrow connecting actions -->
                                         <div x-show="index < actions.length - 1" class="flex justify-center">
                                             <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -332,11 +474,11 @@
         return {
             // Tab state
             activeTab: 'run',
-            
-            // Form state  
+
+            // Form state
             loading: false,
             errors: {},
-            
+
             // History state
             flowExecutions: [],
             historyLoading: false,
