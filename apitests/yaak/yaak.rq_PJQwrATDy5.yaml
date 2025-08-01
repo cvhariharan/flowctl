@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_PJQwrATDy5
+createdAt: 2025-08-01T13:40:28.679208826
+updatedAt: 2025-08-01T13:42:03.275200636
+workspaceId: wk_f7os23Vq2X
+folderId: null
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Executor Config
+sortPriority: 8000.0
+url: http://localhost:7000/api/v1/executors/script/config
+urlParameters: []

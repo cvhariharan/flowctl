@@ -2,7 +2,7 @@ type: folder
 model: folder
 id: fl_XCBR5FPkHS
 createdAt: 2025-07-19T09:52:11.851060386
-updatedAt: 2025-07-19T09:52:47.388988661
+updatedAt: 2025-08-01T13:41:37.631135186
 workspaceId: wk_f7os23Vq2X
 folderId: null
 authentication: {}
@@ -10,4 +10,4 @@ authenticationType: null
 description: ''
 headers: []
 name: Approvals
-sortPriority: -1752726400000.0
+sortPriority: 1000.0

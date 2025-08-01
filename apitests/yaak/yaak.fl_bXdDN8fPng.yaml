@@ -2,7 +2,7 @@ type: folder
 model: folder
 id: fl_bXdDN8fPng
 createdAt: 2025-07-16T14:09:08.650165820
-updatedAt: 2025-07-16T14:09:08.650166316
+updatedAt: 2025-08-01T13:41:38.125179136
 workspaceId: wk_f7os23Vq2X
 folderId: null
 authentication: {}
@@ -10,4 +10,4 @@ authenticationType: null
 description: ''
 headers: []
 name: Credentials
-sortPriority: -1752675000000.0
+sortPriority: 5000.0

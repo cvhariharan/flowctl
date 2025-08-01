@@ -24,6 +24,7 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/gosimple/slug"
 	"github.com/hashicorp/go-envparse"
+	"github.com/invopop/jsonschema"
 	"github.com/rs/xid"
 	"gopkg.in/yaml.v3"
 )
@@ -35,8 +36,8 @@ const (
 )
 
 type DockerWithConfig struct {
-	Image  string `yaml:"image"`
-	Script string `yaml:"script"`
+	Image  string `yaml:"image" jsonschema:"title=image,description=Docker Image"`
+	Script string `yaml:"script" jsonschema:"title=script" jsonschema_extras:"widget=codeeditor"`
 }
 
 type DockerExecutor struct {
@@ -65,6 +66,7 @@ type DockerRunnerOptions struct {
 
 func init() {
 	executor.RegisterExecutor("docker", NewDockerExecutor)
+	executor.RegisterSchema("docker", GetSchema())
 }
 
 func NewDockerExecutor(name string, node executor.Node) (executor.Executor, error) {
@@ -90,6 +92,10 @@ func NewDockerExecutor(name string, node executor.Node) (executor.Executor, erro
 	}
 
 	return executor, nil
+}
+
+func GetSchema() interface{} {
+	return jsonschema.Reflect(&DockerWithConfig{})
 }
 
 func (d *DockerExecutor) withImage(image string) *DockerExecutor {

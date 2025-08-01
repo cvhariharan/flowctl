@@ -12,6 +12,7 @@ import (
 	"github.com/cvhariharan/flowctl/sdk/executor"
 	"github.com/cvhariharan/flowctl/sdk/remoteclient"
 	"github.com/hashicorp/go-envparse"
+	"github.com/invopop/jsonschema"
 	"github.com/rs/xid"
 	"gopkg.in/yaml.v3"
 )
@@ -31,6 +32,11 @@ type ScriptExecutor struct {
 
 func init() {
 	executor.RegisterExecutor("script", NewScriptExecutor)
+	executor.RegisterSchema("script", GetSchema())
+}
+
+func GetSchema() interface{} {
+	return jsonschema.Reflect(&ScriptWithConfig{})
 }
 
 func NewScriptExecutor(name string, node executor.Node) (executor.Executor, error) {

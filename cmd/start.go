@@ -166,25 +166,28 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	api := e.Group("/api/v1", h.Authenticate)
 
 	// Global admin endpoints for users and groups
-	api.GET("/users", h.HandleUserPagination)
+	api.GET("/users", h.HandleUserPagination, h.AuthorizeForRole("superuser"))
 	api.GET("/users/profile", h.HandleGetUserProfile)
-	api.GET("/users/:userID", h.HandleGetUser)
-	api.POST("/users", h.HandleCreateUser)
-	api.DELETE("/users/:userID", h.HandleDeleteUser)
-	api.PUT("/users/:userID", h.HandleUpdateUser)
+	api.GET("/users/:userID", h.HandleGetUser, h.AuthorizeForRole("superuser"))
+	api.POST("/users", h.HandleCreateUser, h.AuthorizeForRole("superuser"))
+	api.DELETE("/users/:userID", h.HandleDeleteUser, h.AuthorizeForRole("superuser"))
+	api.PUT("/users/:userID", h.HandleUpdateUser, h.AuthorizeForRole("superuser"))
 
-	api.GET("/groups", h.HandleGroupPagination)
-	api.GET("/groups/:groupID", h.HandleGetGroup)
-	api.PUT("/groups/:groupID", h.HandleUpdateGroup)
-	api.POST("/groups", h.HandleCreateGroup)
-	api.DELETE("/groups/:groupID", h.HandleDeleteGroup)
+	api.GET("/groups", h.HandleGroupPagination, h.AuthorizeForRole("superuser"))
+	api.GET("/groups/:groupID", h.HandleGetGroup, h.AuthorizeForRole("superuser"))
+	api.PUT("/groups/:groupID", h.HandleUpdateGroup, h.AuthorizeForRole("superuser"))
+	api.POST("/groups", h.HandleCreateGroup, h.AuthorizeForRole("superuser"))
+	api.DELETE("/groups/:groupID", h.HandleDeleteGroup, h.AuthorizeForRole("superuser"))
+
+	// No authorization required
+	api.GET("/executors/:executor/config", h.HandleGetExecutorConfig)
 
 	// Namespace management
 	api.GET("/namespaces", h.HandleListNamespaces)
 	api.GET("/namespaces/:namespaceID", h.HandleGetNamespace, h.NamespaceMiddleware)
-	api.POST("/namespaces", h.HandleCreateNamespace, h.AuthorizeForRole("admin"))
-	api.PUT("/namespaces/:namespaceID", h.HandleUpdateNamespace, h.AuthorizeForRole("admin"))
-	api.DELETE("/namespaces/:namespaceID", h.HandleDeleteNamespace, h.AuthorizeForRole("admin"))
+	api.POST("/namespaces", h.HandleCreateNamespace, h.AuthorizeForRole("superuser"))
+	api.PUT("/namespaces/:namespaceID", h.HandleUpdateNamespace, h.AuthorizeForRole("superuser"))
+	api.DELETE("/namespaces/:namespaceID", h.HandleDeleteNamespace, h.AuthorizeForRole("superuser"))
 
 	// Namespace-specific resource endpoints using RBAC
 	namespaceGroup := api.Group("/:namespace", h.NamespaceMiddleware)
