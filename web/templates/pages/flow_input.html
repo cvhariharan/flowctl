@@ -7,7 +7,7 @@
     }
 </style>
 
-<div class="flex h-screen bg-gray-50" x-data="flowFormAndHistory('{{.Flow.Meta.ID}}', '{{ .Page.Namespace }}')">
+<div class="flex h-screen bg-gray-50" x-data="flowFormAndHistory()">
     <!-- Sidebar -->
     {{ template "partials/sidebar" . }}
 
@@ -19,7 +19,7 @@
                 <div class="flex items-center text-sm text-gray-500">
                     <span>Flows</span>
                     <span class="mx-2">/</span>
-                    <span>{{ .Flow.Meta.Name }}</span>
+                    <span x-text="flowMeta.name || 'Loading...'"></span>
                     <span class="mx-2">/</span>
                     <span class="text-gray-900">Run Flow</span>
                 </div>
@@ -47,10 +47,8 @@
                             </svg>
                         </div>
                     </div>
-                    <h1 class="text-3xl font-bold text-white mb-2">{{ .Flow.Meta.Name }}</h1>
-                    <p class="text-lg text-white/90 max-w-xl mx-auto">
-                        {{ .Flow.Meta.Description }}
-                    </p>
+                    <h1 class="text-3xl font-bold text-white mb-2" x-text="flowMeta.name || 'Loading...'"></h1>
+                    <p class="text-lg text-white/90 max-w-xl mx-auto" x-text="flowMeta.description || 'Loading flow description...'"></p>
                 </div>
             </div>
 
@@ -219,23 +217,15 @@
                     </div>
 
                     <!-- Flow Actions Summary -->
-                    {{ if .Flow.Actions }}
-                    <div x-show="activeTab === 'run'" class="bg-gray-50 rounded-lg p-4 mt-6" x-data="{
-                        actions: [
-                            {{ range $index, $action := .Flow.Actions }}
-                            {{ if $index }},{{ end }}
-                            { name: {{ toJson .Name }}, executor: {{ toJson .Executor }} }
-                            {{ end }}
-                        ]
-                    }">
+                    <div x-show="activeTab === 'run' && flowMeta.actions && flowMeta.actions.length > 0" class="bg-gray-50 rounded-lg p-4 mt-6">
                         <h3 class="text-sm font-medium text-gray-900 mb-3 flex items-center">
                             <svg class="w-4 h-4 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                             </svg>
-                            <span x-text="`Flow Actions (${actions.length} step${actions.length !== 1 ? 's' : ''})`"></span>
+                            <span x-text="`Flow Actions (${flowMeta.actions?.length || 0} step${(flowMeta.actions?.length || 0) !== 1 ? 's' : ''})`"></span>
                         </h3>
                         <div class="space-y-2">
-                            <template x-for="(action, index) in actions" :key="index">
+                            <template x-for="(action, index) in flowMeta.actions" :key="index">
                                 <div>
                                     <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
                                         <div class="flex items-center">
@@ -246,7 +236,7 @@
                                     </div>
 
                                     <!-- Arrow connecting actions -->
-                                    <div x-show="index < actions.length - 1" class="flex justify-center">
+                                    <div x-show="index < (flowMeta.actions?.length || 0) - 1" class="flex justify-center">
                                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
                                         </svg>
@@ -255,7 +245,6 @@
                             </template>
                         </div>
                     </div>
-                    {{ end }}
                 </div>
 
                 <!-- History Tab -->
@@ -282,7 +271,7 @@
                     <!-- Executions Table -->
                     <div x-show="!historyLoading && flowExecutions.length > 0" class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                         <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                            <h3 class="text-lg font-semibold text-gray-900">Execution History for {{ .Flow.Meta.Name }}</h3>
+                            <h3 class="text-lg font-semibold text-gray-900" x-text="`Execution History for ${flowMeta.name || 'Flow'}`"></h3>
                             <p class="text-sm text-gray-600 mt-1">Past executions of this flow</p>
                         </div>
                         <table class="min-w-full divide-y divide-gray-200">
@@ -416,8 +405,20 @@
 </div>
 
 <script>
-    function flowFormAndHistory(flowId, namespace) {
+    function flowFormAndHistory() {
         return {
+            // URL parameters extracted from current path
+            flowId: '',
+            namespace: '',
+            
+            // Flow metadata from API
+            flowMeta: {
+                name: '',
+                description: '',
+                actions: []
+            },
+            metaLoading: false,
+
             // Tab state
             activeTab: 'run',
 
@@ -483,7 +484,7 @@
                 }
 
                 try {
-                    const response = await fetch(`/api/v1/${namespace}/trigger/${flowId}`, {
+                    const response = await fetch(`/api/v1/${this.namespace}/trigger/${this.flowId}`, {
                         method: "POST",
                         body: formData,
                     });
@@ -506,7 +507,7 @@
                             );
                         }
                     } else {
-                        window.location.href = `/view/${namespace}/results/${flowId}/${data.exec_id}`;
+                        window.location.href = `/view/${this.namespace}/results/${this.flowId}/${data.exec_id}`;
                     }
                 } catch (error) {
                     window.dispatchEvent(
@@ -524,7 +525,7 @@
                 this.historyError = '';
 
                 try {
-                    const url = new URL(`/api/v1/${namespace}/flows/${flowId}/executions`, window.location.origin);
+                    const url = new URL(`/api/v1/${this.namespace}/flows/${this.flowId}/executions`, window.location.origin);
                     url.searchParams.append('page', this.historyCurrentPage);
                     url.searchParams.append('count', this.historyItemsPerPage);
 
@@ -562,11 +563,11 @@
             },
 
             viewExecution(executionId) {
-                window.location.href = `/view/${namespace}/results/${flowId}/${executionId}`;
+                window.location.href = `/view/${this.namespace}/results/${this.flowId}/${executionId}`;
             },
 
             viewLogs(executionId) {
-                const logUrl = `/view/${namespace}/logs/${executionId}`;
+                const logUrl = `/view/${this.namespace}/logs/${executionId}`;
                 window.open(logUrl, '_blank');
             },
 
@@ -604,12 +605,50 @@
                 }
             },
 
+            async loadFlowMeta() {
+                console.log('Loading flow metadata...');
+                this.metaLoading = true;
+
+                try {
+                    const url = `/api/v1/${this.namespace}/flows/${this.flowId}/meta`;
+                    console.log('Fetching metadata from:', url);
+                    
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+                    console.log('Meta response data:', data);
+
+                    if (!response.ok) {
+                        console.error('Meta API Error:', data);
+                        this.notifyError(data.error || 'Failed to load flow metadata');
+                        return;
+                    }
+
+                    this.flowMeta = {
+                        name: data.meta?.name || '',
+                        description: data.meta?.description || '',
+                        actions: data.actions || []
+                    };
+                    console.log('Flow metadata loaded:', this.flowMeta);
+                } catch (error) {
+                    console.error('Error loading flow metadata:', error);
+                    this.notifyError('Failed to load flow metadata');
+                } finally {
+                    this.metaLoading = false;
+                }
+            },
+
             async loadFlowInputs() {
                 console.log('Loading flow inputs...');
                 this.formLoading = true;
 
                 try {
-                    const url = `/api/v1/${namespace}/flows/${flowId}/inputs`;
+                    const url = `/api/v1/${this.namespace}/flows/${this.flowId}/inputs`;
                     console.log('Fetching from:', url);
                     
                     const response = await fetch(url, {
@@ -646,9 +685,28 @@
                 );
             },
 
-            // Initialize - load inputs and history when switching tabs
+            // Extract URL parameters from current path
+            extractUrlParams() {
+                const path = window.location.pathname;
+                // Expected path: /view/{namespace}/flows/{flowId}
+                const pathParts = path.split('/');
+                if (pathParts.length >= 5 && pathParts[1] === 'view' && pathParts[3] === 'flows') {
+                    this.namespace = pathParts[2];
+                    this.flowId = pathParts[4];
+                    console.log('Extracted URL params:', { namespace: this.namespace, flowId: this.flowId });
+                } else {
+                    console.error('Could not extract namespace and flowId from URL:', path);
+                }
+            },
+
+            // Initialize - extract URL params, load metadata, inputs and setup history tab watching
             init() {
-                this.loadFlowInputs();
+                this.extractUrlParams();
+                
+                if (this.namespace && this.flowId) {
+                    this.loadFlowMeta();
+                    this.loadFlowInputs();
+                }
                 
                 this.$watch('activeTab', (newTab) => {
                     if (newTab === 'history' && this.flowExecutions.length === 0 && !this.historyLoading) {

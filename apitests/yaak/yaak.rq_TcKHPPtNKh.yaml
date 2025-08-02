@@ -1,8 +1,8 @@
 type: http_request
 model: http_request
-id: rq_7CZVVfT33X
-createdAt: 2025-08-01T16:05:24.637922239
-updatedAt: 2025-08-02T05:50:27.722845513
+id: rq_TcKHPPtNKh
+createdAt: 2025-08-02T05:50:34.558785126
+updatedAt: 2025-08-02T05:51:11.935697044
 workspaceId: wk_f7os23Vq2X
 folderId: fl_XaZk4pk63J
 authentication: {}
@@ -12,7 +12,7 @@ bodyType: null
 description: ''
 headers: []
 method: GET
-name: Flow Inputs
-sortPriority: -0.0001
-url: http://localhost:7000/api/v1/default/flows/test_flow_2/inputs
+name: Flow Meta
+sortPriority: -0.0002
+url: http://localhost:7000/api/v1/default/flows/test_flow_2/meta
 urlParameters: []

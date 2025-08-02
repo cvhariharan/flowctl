@@ -272,6 +272,10 @@
 <script>
 function membersManager() {
     return {
+        // URL parameters extracted from current path
+        namespace: '',
+        
+        // Data state
         members: [],
         searchResults: [],
         searchQuery: '',
@@ -288,8 +292,26 @@ function membersManager() {
             role: ''
         },
 
+        // Extract URL parameters from current path
+        extractUrlParams() {
+            const path = window.location.pathname;
+            // Expected path: /view/{namespace}/members
+            const pathParts = path.split('/');
+            if (pathParts.length >= 4 && pathParts[1] === 'view' && pathParts[3] === 'members') {
+                this.namespace = pathParts[2];
+                console.log('Extracted namespace:', this.namespace);
+            } else {
+                console.error('Could not extract namespace from URL:', path);
+            }
+        },
+
         init() {
-            this.fetchMembers();
+            this.extractUrlParams();
+            
+            if (this.namespace) {
+                this.fetchMembers();
+            }
+            
             // Close dropdown when clicking outside
             document.addEventListener('click', (e) => {
                 if (!e.target.closest('.relative')) {
@@ -301,7 +323,7 @@ function membersManager() {
         async fetchMembers() {
             this.loading = true;
             try {
-                const response = await fetch(`/api/v1/{{ .Page.Namespace }}/members`);
+                const response = await fetch(`/api/v1/${this.namespace}/members`);
                 const data = await response.json();
                 if (!response.ok) {
                     this.notifyError(data.error || 'Failed to fetch members');
@@ -381,7 +403,7 @@ function membersManager() {
             };
 
             try {
-                const response = await fetch(`/api/v1/{{ .Page.Namespace }}/members`, {
+                const response = await fetch(`/api/v1/${this.namespace}/members`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -414,7 +436,7 @@ function membersManager() {
         async confirmRemove() {
             if (this.removeMemberId) {
                 try {
-                    const response = await fetch(`/api/v1/{{ .Page.Namespace }}/members/${this.removeMemberId}`, {
+                    const response = await fetch(`/api/v1/${this.namespace}/members/${this.removeMemberId}`, {
                         method: 'DELETE'
                     });
 

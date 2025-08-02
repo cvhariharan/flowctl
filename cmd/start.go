@@ -159,10 +159,10 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	views.GET("/:namespace/approvals", h.HandleApprovalsListView)
 	views.GET("/:namespace/members", h.HandleMembersView)
 	views.GET("/:namespace/history", h.HandleHistoryView)
-	views.GET("/:namespace/editor/flow", h.HandleFlowCreateView)
+	// views.GET("/:namespace/editor/flow", h.HandleFlowCreateView)
 	// views.GET("/summary/:flowID", h.HandleExecutionSummary)
 
-	views.GET("/:namespace/approvals/:approvalID", h.HandleApprovalView)
+	// views.GET("/:namespace/approvals/:approvalID", h.HandleApprovalView)
 
 	api := e.Group("/api/v1", h.Authenticate)
 
@@ -201,6 +201,7 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 	namespaceGroup.GET("/flows/:flowID/executions", h.HandleExecutionsPagination, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionView))
 	namespaceGroup.GET("/flows/executions", h.HandleAllExecutionsPagination, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionView))
 	namespaceGroup.GET("/flows/:flowID/inputs", h.HandleGetFlowInputs, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
+	namespaceGroup.GET("/flows/:flowID/meta", h.HandleGetFlowMeta, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
 	namespaceGroup.POST("/trigger/:flow", h.HandleFlowTrigger, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionExecute))
 	namespaceGroup.GET("/logs/:logID", h.HandleLogStreaming, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionView))
 
@@ -229,9 +230,6 @@ func startServer(db *sqlx.DB, redisClient redis.UniversalClient, logger *slog.Lo
 
 	admin := e.Group("/admin")
 	admin.Use(h.AuthorizeForRole("superuser"))
-
-	admin.GET("/users", h.HandleUserManagementView)
-	admin.GET("/groups", h.HandleGroupManagementView)
 	admin.GET("/settings", h.HandleSettingsView)
 
 	rootURL := viper.GetString("app.root_url")

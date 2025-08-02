@@ -149,7 +149,7 @@
                 </svg>
                 <h3 class="text-lg font-medium text-gray-900 mb-2">No execution history</h3>
                 <p class="text-gray-500 mb-4">Executions will appear here once flows are triggered.</p>
-                <a href="/view/{{ .Page.Namespace }}/flows"
+                <a :href="`/view/${selectedNamespace}/flows`"
                    class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
                     Browse Flows
                 </a>
@@ -166,7 +166,7 @@ function historyManager() {
     return {
         executions: [],
         searchQuery: '',
-        selectedNamespace: '{{ .Page.Namespace }}',
+        selectedNamespace: '',
         loading: false,
         errorMessage: '',
         page: 1,
@@ -174,9 +174,26 @@ function historyManager() {
         totalCount: 0,
         pageCount: 0,
 
+        // Extract URL parameters from current path
+        extractUrlParams() {
+            const path = window.location.pathname;
+            // Expected path: /view/{namespace}/history
+            const pathParts = path.split('/');
+            if (pathParts.length >= 4 && pathParts[1] === 'view' && pathParts[3] === 'history') {
+                this.selectedNamespace = pathParts[2];
+                console.log('Extracted namespace:', this.selectedNamespace);
+            } else {
+                console.error('Could not extract namespace from URL:', path);
+            }
+        },
+
         init() {
+            this.extractUrlParams();
             console.log('History manager initialized for namespace:', this.selectedNamespace);
-            this.loadExecutions();
+            
+            if (this.selectedNamespace) {
+                this.loadExecutions();
+            }
         },
 
 

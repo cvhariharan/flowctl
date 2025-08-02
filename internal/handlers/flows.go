@@ -457,3 +457,27 @@ func (h *Handler) HandleGetFlowInputs(c echo.Context) error {
 		Inputs: inputs,
 	})
 }
+
+func (h *Handler) HandleGetFlowMeta(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+	}
+
+	flowID := c.Param("flowID")
+	if flowID == "" {
+		return wrapError(http.StatusBadRequest, "flow ID cannot be empty", nil, nil)
+	}
+
+	flow, err := h.co.GetFlowByID(flowID, namespace)
+	if err != nil {
+		return wrapError(http.StatusNotFound, "flow not found", err, nil)
+	}
+
+	meta := coreFlowMetatoFlowMeta(flow.Meta)
+	actions := coreFlowActionstoFlowActions(flow.Actions)
+	return c.JSON(http.StatusOK, FlowMetaResp{
+		Metadata: meta,
+		Actions:  actions,
+	})
+}

@@ -83,10 +83,25 @@ function sidebarManager() {
     return {
         namespaceDropdownOpen: false,
         namespaces: [],
-        selectedNamespace: '{{ .Page.Namespace }}',
+        selectedNamespace: '',
         userProfile: null,
         
+        // Extract namespace from current URL path
+        extractCurrentNamespace() {
+            const path = window.location.pathname;
+            // Expected paths: /view/{namespace}/... or /view/{namespace}
+            const pathParts = path.split('/');
+            if (pathParts.length >= 3 && pathParts[1] === 'view') {
+                this.selectedNamespace = pathParts[2];
+                console.log('Extracted current namespace:', this.selectedNamespace);
+            } else {
+                console.log('No namespace found in URL path:', path);
+                this.selectedNamespace = '';
+            }
+        },
+
         init() {
+            this.extractCurrentNamespace();
             this.fetchNamespaces();
             this.fetchUserProfile();
         },

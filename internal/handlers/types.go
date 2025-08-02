@@ -308,6 +308,53 @@ func coreFlowInputsToInputs(inputs []models.Input) []FlowInput {
 	return flowInputs
 }
 
+type FlowMeta struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Namespace   string `json:"namespace"`
+}
+
+func coreFlowMetatoFlowMeta(m models.Metadata) FlowMeta {
+	return FlowMeta{
+		ID:          m.ID,
+		Name:        m.Name,
+		Description: m.Description,
+		Namespace:   m.Namespace,
+	}
+}
+
+type FlowAction struct {
+	ID       string   `json:"id"`
+	Name     string   `json:"name"`
+	Executor string   `json:"executor"`
+	Approval bool     `json:"approval"`
+	On       []string `json:"on"`
+}
+
+func coreFlowActiontoFlowAction(a models.Action) FlowAction {
+	return FlowAction{
+		ID:       a.ID,
+		Name:     a.Name,
+		Executor: a.Executor,
+		Approval: a.Approval,
+		On:       a.On,
+	}
+}
+
+func coreFlowActionstoFlowActions(a []models.Action) []FlowAction {
+	f := make([]FlowAction, 0)
+	for _, v := range a {
+		f = append(f, coreFlowActiontoFlowAction(v))
+	}
+	return f
+}
+
+type FlowMetaResp struct {
+	Metadata FlowMeta     `json:"meta"`
+	Actions  []FlowAction `json:"actions"`
+}
+
 type FlowListResponse struct {
 	Flows []FlowListItem `json:"flows"`
 }

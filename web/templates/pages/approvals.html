@@ -213,6 +213,10 @@
 <script>
 function approvalsManager() {
     return {
+        // URL parameters extracted from current path
+        namespace: '',
+        
+        // Data state
         approvals: [],
         searchQuery: '',
         statusFilter: '',
@@ -233,14 +237,31 @@ function approvalsManager() {
             return this.approvals.filter(approval => approval.status === 'rejected').length;
         },
 
+        // Extract URL parameters from current path
+        extractUrlParams() {
+            const path = window.location.pathname;
+            // Expected path: /view/{namespace}/approvals
+            const pathParts = path.split('/');
+            if (pathParts.length >= 4 && pathParts[1] === 'view' && pathParts[3] === 'approvals') {
+                this.namespace = pathParts[2];
+                console.log('Extracted namespace:', this.namespace);
+            } else {
+                console.error('Could not extract namespace from URL:', path);
+            }
+        },
+
         init() {
-            this.fetchApprovals();
+            this.extractUrlParams();
+            
+            if (this.namespace) {
+                this.fetchApprovals();
+            }
         },
 
         async fetchApprovals() {
             this.loading = true;
             try {
-                let url = `/api/v1/{{ .Page.Namespace }}/approvals?page=${this.page}&count_per_page=12`;
+                let url = `/api/v1/${this.namespace}/approvals?page=${this.page}&count_per_page=12`;
                 if (this.statusFilter) {
                     url += `&status=${encodeURIComponent(this.statusFilter)}`;
                 }
@@ -298,7 +319,7 @@ function approvalsManager() {
 
         async performApprovalAction(approvalId, action) {
             try {
-                const response = await fetch(`/api/v1/{{ .Page.Namespace }}/approvals/${approvalId}`, {
+                const response = await fetch(`/api/v1/${this.namespace}/approvals/${approvalId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

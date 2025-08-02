@@ -2,7 +2,7 @@
 {{ template "partials/header" . }}
 
 <div class="flex h-screen bg-gray-50"
-     x-data="flowStatusComponent('{{ .LogID }}', {{ toJson .Actions }})">
+     x-data="flowStatusComponent()">
     <!-- Sidebar -->
     {{ template "partials/sidebar" . }}
 
@@ -14,7 +14,7 @@
                 <div class="flex items-center text-sm text-gray-500">
                     <span>Flows</span>
                     <span class="mx-2">/</span>
-                    <span class="text-gray-900" x-text="flowName || '{{ .Flow.Meta.Name }}'"></span>
+                    <span class="text-gray-900" x-text="flowName || 'Loading...'"></span>
                     <span class="mx-2">/</span>
                     <span class="text-gray-900">Execution Status</span>
                 </div>
@@ -63,12 +63,12 @@
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                     <div class="flex justify-between items-start">
                         <div>
-                            <h1 class="text-2xl font-semibold text-gray-900" x-text="flowName || '{{ .Flow.Meta.Name }}'"></h1>
+                            <h1 class="text-2xl font-semibold text-gray-900" x-text="flowName || 'Loading...'"></h1>
                             <p class="text-gray-600 mt-1">Started at <span x-text="startTime"></span></p>
                         </div>
                         <div class="text-right">
                             <p class="text-sm text-gray-500">Execution ID</p>
-                            <p class="font-mono text-sm text-gray-900">{{ .LogID }}</p>
+                            <p class="font-mono text-sm text-gray-900" x-text="logID"></p>
                         </div>
                     </div>
                 </div>
@@ -192,7 +192,7 @@
                                 <p class="mt-1 text-sm text-yellow-700">This flow requires manual approval to continue execution.</p>
                             </div>
                         </div>
-                        <a :href="`/view/approvals/${approvalID}`"
+                        <a :href="`/view/${namespace}/approvals/${approvalID}`"
                            class="ml-4 inline-flex items-center px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-md hover:bg-yellow-700 transition-colors">
                             Review Request
                             <svg class="ml-2 -mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,9 +227,18 @@
 </div>
 
 <script>
-function flowStatusComponent(logID, actions) {
+function flowStatusComponent() {
     return {
-        actions: actions || [],
+        // URL parameters extracted from current path
+        logID: '',
+        namespace: '',
+        flowID: '',
+        
+        // Flow metadata from API
+        actions: [],
+        metaLoading: false,
+        
+        // Execution state
         currentActionIndex: -1,
         logOutput: '',
         results: {},
@@ -245,9 +254,67 @@ function flowStatusComponent(logID, actions) {
         completedActions: [],
         hasReceivedMessages: false,
 
+        // Extract URL parameters from current path
+        extractUrlParams() {
+            const path = window.location.pathname;
+            // Expected path: /view/{namespace}/results/{flowID}/{logID}
+            const pathParts = path.split('/');
+            if (pathParts.length >= 6 && pathParts[1] === 'view' && pathParts[3] === 'results') {
+                this.namespace = pathParts[2];
+                this.flowID = pathParts[4];
+                this.logID = pathParts[5];
+                console.log('Extracted URL params:', { namespace: this.namespace, flowID: this.flowID, logID: this.logID });
+            } else {
+                console.error('Could not extract namespace, flowID and logID from URL:', path);
+            }
+        },
+
+        // Load flow metadata from API
+        async loadFlowMeta() {
+            if (!this.namespace || !this.flowID) return;
+            
+            console.log('Loading flow metadata...');
+            this.metaLoading = true;
+
+            try {
+                const url = `/api/v1/${this.namespace}/flows/${this.flowID}/meta`;
+                console.log('Fetching metadata from:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                console.log('Meta response data:', data);
+
+                if (!response.ok) {
+                    console.error('Meta API Error:', data);
+                    this.notifyError(data.error || 'Failed to load flow metadata');
+                    return;
+                }
+
+                this.actions = data.actions || [];
+                this.flowName = data.meta?.name || '';
+                console.log('Flow metadata loaded:', { actions: this.actions, flowName: this.flowName });
+            } catch (error) {
+                console.error('Error loading flow metadata:', error);
+                this.notifyError('Failed to load flow metadata');
+            } finally {
+                this.metaLoading = false;
+            }
+        },
+
         init() {
-            this.connectWebSocket();
-            this.fetchExecutionSummary();
+            this.extractUrlParams();
+            
+            if (this.namespace && this.flowID && this.logID) {
+                this.loadFlowMeta();
+                this.connectWebSocket();
+                this.fetchExecutionSummary();
+            }
 
             // Auto-scroll logs
             this.$watch('logOutput', () => {
@@ -261,7 +328,7 @@ function flowStatusComponent(logID, actions) {
         },
 
         connectWebSocket() {
-            this.ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/{{ .Page.Namespace }}/logs/${logID}`);
+            this.ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/${this.namespace}/logs/${this.logID}`);
 
             this.ws.onmessage = (event) => {
                 this.hasReceivedMessages = true;
@@ -295,7 +362,7 @@ function flowStatusComponent(logID, actions) {
 
         async fetchExecutionSummary() {
             try {
-                const response = await fetch(`/api/v1/{{ .Page.Namespace }}/flows/executions/${logID}`);
+                const response = await fetch(`/api/v1/${this.namespace}/flows/executions/${this.logID}`);
                 const data = await response.json();
 
                 if (response.ok) {

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 	"net/http"
@@ -62,279 +61,99 @@ func (h *Handler) HandleFlowsListView(c echo.Context) error {
 }
 
 func (h *Handler) HandleFlowFormView(c echo.Context) error {
-	namespace := c.Param("namespace")
-
-	data := struct {
-		Page
-		Flow models.Flow
-	}{
-		Page: Page{
-			Title:     "Flow Input",
-			Namespace: namespace,
-		},
-	}
-
-	namespaceID, ok := c.Get("namespace").(string)
-	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
-	}
-
-	flow, err := h.co.GetFlowByID(c.Param("flow"), namespaceID)
-	if err != nil {
-		data.ErrMessage = err.Error()
-		return c.Render(http.StatusBadRequest, "flow_input", data)
-	}
-	data.Flow = flow
-
-	return c.Render(http.StatusOK, "flow_input", data)
+	return c.Render(http.StatusOK, "flow_input", nil)
 }
 
 func (h *Handler) HandleFlowExecutionResults(c echo.Context) error {
-	namespace := c.Param("namespace")
-
-	data := struct {
-		Page
-		Flow    models.Flow
-		LogID   string
-		Actions []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		} `json:"actions"`
-	}{
-		Page: Page{
-			Title:     "Flow Execution Results",
-			Namespace: namespace,
-		},
-	}
-
-	namespaceID, ok := c.Get("namespace").(string)
-	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
-	}
-
-	flowID := c.Param("flowID")
-	if flowID == "" {
-		data.ErrMessage = "flow id cannot be empty"
-		return c.Render(http.StatusBadRequest, "flow_status", data)
-	}
-
-	logID := c.Param("logID")
-	if logID == "" {
-		data.ErrMessage = "execution id cannot be empty"
-		return c.Render(http.StatusBadRequest, "flow_status", data)
-	}
-
-	f, err := h.co.GetFlowByID(flowID, namespaceID)
-	if err != nil {
-		data.ErrMessage = err.Error()
-		return c.Render(http.StatusBadRequest, "flow_status", data)
-	}
-	data.Flow = f
-
-	// Extract action IDs and names from the flow
-	actions := make([]struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	}, len(f.Actions))
-	for i, action := range f.Actions {
-		actions[i] = struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		}{
-			ID:   action.ID,
-			Name: action.Name,
-		}
-	}
-	data.Actions = actions
-
-	data.LogID = logID
-
-	return c.Render(http.StatusOK, "flow_status", data)
-}
-
-func (h *Handler) HandleUserManagementView(c echo.Context) error {
-	data := struct {
-		Page
-	}{
-		Page: Page{
-			Title: "User Management",
-		},
-	}
-
-	return c.Render(http.StatusOK, "user_management", data)
-}
-
-func (h *Handler) HandleGroupManagementView(c echo.Context) error {
-	data := struct {
-		Page
-	}{
-		Page: Page{
-			Title: "Group Management",
-		},
-	}
-
-	return c.Render(http.StatusOK, "group_management", data)
+	return c.Render(http.StatusOK, "flow_status", nil)
 }
 
 func (h *Handler) HandleSettingsView(c echo.Context) error {
-	data := struct {
-		Page
-	}{
-		Page: Page{
-			Title: "Settings",
-		},
-	}
-
-	return c.Render(http.StatusOK, "settings", data)
+	return c.Render(http.StatusOK, "settings", nil)
 }
 
-func (h *Handler) HandleFlowCreateView(c echo.Context) error {
-	data := struct {
-		Page
-	}{
-		Page: Page{
-			Title: "Create Flow",
-		},
-	}
+// func (h *Handler) HandleFlowCreateView(c echo.Context) error {
+// 	data := struct {
+// 		Page
+// 	}{
+// 		Page: Page{
+// 			Title: "Create Flow",
+// 		},
+// 	}
 
-	return c.Render(http.StatusOK, "flow_create", data)
-}
+// 	return c.Render(http.StatusOK, "flow_create", data)
+// }
 
 func (h *Handler) HandleNodesView(c echo.Context) error {
-	namespace := c.Param("namespace")
-	data := struct {
-		Page
-	}{
-		Page: Page{
-			Title:     "Nodes",
-			Namespace: namespace,
-		},
-	}
-
-	return c.Render(http.StatusOK, "nodes_test", data)
+	return c.Render(http.StatusOK, "nodes_management", nil)
 }
 
 func (h *Handler) HandleCredentialsView(c echo.Context) error {
-	namespace := c.Param("namespace")
-	data := struct {
-		Page
-	}{
-		Page: Page{
-			Title:     "Credentials",
-			Namespace: namespace,
-		},
-	}
-
-	return c.Render(http.StatusOK, "credentials", data)
+	return c.Render(http.StatusOK, "credentials", nil)
 }
 func (h *Handler) HandleApprovalsListView(c echo.Context) error {
-	namespace := c.Param("namespace")
-	data := struct {
-		Page
-	}{
-		Page: Page{
-			Title:     "Credentials",
-			Namespace: namespace,
-		},
-	}
-	return c.Render(http.StatusOK, "approvals_list", data)
+	return c.Render(http.StatusOK, "approvals_list", nil)
 }
 
-func (h *Handler) HandleApprovalView(c echo.Context) error {
-	namespace := c.Param("namespace")
-	data := struct {
-		Page
-		Request struct {
-			ID          string
-			Title       string
-			Description string
-			RequestedBy string
-		}
-	}{
-		Page: Page{
-			Title:     "Approval Requests",
-			Namespace: namespace,
-		},
-	}
+// func (h *Handler) HandleApprovalView(c echo.Context) error {
+// 	namespace := c.Param("namespace")
+// 	data := struct {
+// 		Page
+// 		Request struct {
+// 			ID          string
+// 			Title       string
+// 			Description string
+// 			RequestedBy string
+// 		}
+// 	}{
+// 		Page: Page{
+// 			Title:     "Approval Requests",
+// 			Namespace: namespace,
+// 		},
+// 	}
 
-	namespaceID, ok := c.Get("namespace").(string)
-	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
-	}
+// 	namespaceID, ok := c.Get("namespace").(string)
+// 	if !ok {
+// 		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+// 	}
 
-	approvalID := c.Param("approvalID")
-	if approvalID == "" {
-		data.ErrMessage = "approval ID cannot be empty"
-		return c.Render(http.StatusBadRequest, "approval", data)
-	}
+// 	approvalID := c.Param("approvalID")
+// 	if approvalID == "" {
+// 		data.ErrMessage = "approval ID cannot be empty"
+// 		return c.Render(http.StatusBadRequest, "approval", data)
+// 	}
 
-	areq, err := h.co.GetApprovalRequest(c.Request().Context(), approvalID, namespaceID)
-	if err != nil {
-		data.ErrMessage = err.Error()
-		return c.Render(http.StatusBadRequest, "approval", data)
-	}
+// 	areq, err := h.co.GetApprovalRequest(c.Request().Context(), approvalID, namespaceID)
+// 	if err != nil {
+// 		data.ErrMessage = err.Error()
+// 		return c.Render(http.StatusBadRequest, "approval", data)
+// 	}
 
-	if areq.Status != models.ApprovalStatusPending {
-		data.ErrMessage = "request has already been processed"
-		return c.Render(http.StatusBadRequest, "approval", data)
-	}
+// 	if areq.Status != models.ApprovalStatusPending {
+// 		data.ErrMessage = "request has already been processed"
+// 		return c.Render(http.StatusBadRequest, "approval", data)
+// 	}
 
-	f, err := h.co.GetFlowFromLogID(areq.ExecID, namespaceID)
-	if err != nil {
-		data.ErrMessage = err.Error()
-		return c.Render(http.StatusBadRequest, "approval", data)
-	}
+// 	f, err := h.co.GetFlowFromLogID(areq.ExecID, namespaceID)
+// 	if err != nil {
+// 		data.ErrMessage = err.Error()
+// 		return c.Render(http.StatusBadRequest, "approval", data)
+// 	}
 
-	data.Request.ID = approvalID
-	data.Request.Title = f.Meta.Name
-	data.Request.Description = fmt.Sprintf("Approval request to execute action %q from flow %q", areq.ActionID, f.Meta.Name)
-	data.Request.RequestedBy = areq.RequestedBy
+// 	data.Request.ID = approvalID
+// 	data.Request.Title = f.Meta.Name
+// 	data.Request.Description = fmt.Sprintf("Approval request to execute action %q from flow %q", areq.ActionID, f.Meta.Name)
+// 	data.Request.RequestedBy = areq.RequestedBy
 
-	return c.Render(http.StatusOK, "approval", data)
-}
-
-func (h *Handler) HandleNodeView(c echo.Context) error {
-	namespace := c.Param("namespace")
-	data := struct {
-		Page
-		Node models.Node
-	}{
-		Page: Page{
-			Title:     "Node Details",
-			Namespace: namespace,
-		},
-	}
-
-	return c.Render(http.StatusOK, "node_management", data)
-}
+// 	return c.Render(http.StatusOK, "approval", data)
+// }
 
 func (h *Handler) HandleMembersView(c echo.Context) error {
-	namespace := c.Param("namespace")
-	data := struct {
-		Page
-		Node models.Node
-	}{
-		Page: Page{
-			Title:     "Members",
-			Namespace: namespace,
-		},
-	}
-
-	return c.Render(http.StatusOK, "members", data)
+	return c.Render(http.StatusOK, "members", nil)
 }
 
 func (h *Handler) HandleHistoryView(c echo.Context) error {
-	namespace := c.Param("namespace")
-	data := struct {
-		Page
-	}{
-		Page: Page{
-			Title:     "History",
-			Namespace: namespace,
-		},
-	}
-
-	return c.Render(http.StatusOK, "history", data)
+	return c.Render(http.StatusOK, "history", nil)
 }
 
 // func (h *Handler) HandleExecutionSummary(c echo.Context) error {
