@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"log"
@@ -10,12 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/a-h/templ"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/cvhariharan/flowctl/internal/core"
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/go-playground/validator/v10"
-	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/zerodha/simplesessions/stores/postgres/v3"
 	"github.com/zerodha/simplesessions/v3"
@@ -38,9 +35,9 @@ type OIDCAuthConfig struct {
 }
 
 type Handler struct {
-	co       *core.Core
-	validate *validator.Validate
-	appRoot  string
+	co         *core.Core
+	validate   *validator.Validate
+	appRoot    string
 	sessMgr    *simplesessions.Manager
 	authconfig OIDCAuthConfig
 	logger     *slog.Logger
@@ -99,11 +96,6 @@ func (h *Handler) HandlePing(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func render(c echo.Context, component templ.Component, status int) error {
-	c.Response().Writer.WriteHeader(status)
-	return component.Render(c.Request().Context(), c.Response().Writer)
-}
-
 // func showErrorPage(c echo.Context, code int, message string) error {
 // 	return ui.ErrorPage(code, message).Render(c.Request().Context(), c.Response().Writer)
 // }
@@ -126,19 +118,6 @@ func render(c echo.Context, component templ.Component, status int) error {
 // 		c.Logger().Error(err)
 // 	}
 // }
-
-func renderToWebsocket(c echo.Context, component templ.Component, ws *websocket.Conn) error {
-	var buf bytes.Buffer
-	if err := component.Render(c.Request().Context(), &buf); err != nil {
-		return fmt.Errorf("could not render component: %w", err)
-	}
-
-	if err := ws.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
-		return fmt.Errorf("could not send to websocket: %w", err)
-	}
-
-	return nil
-}
 
 func formatValidationErrors(err error) string {
 	if err == nil {

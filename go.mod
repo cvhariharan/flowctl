@@ -3,7 +3,6 @@ module github.com/cvhariharan/flowctl
 go 1.24.5
 
 require (
-	github.com/a-h/templ v0.3.924
 	github.com/casbin/casbin/v2 v2.110.0
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/cvhariharan/flowctl/executors/docker v0.0.0-20250728145512-aa56676fc961
@@ -36,6 +35,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
 	github.com/casbin/govaluate v1.3.0 // indirect
+	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
