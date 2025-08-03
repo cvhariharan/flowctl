@@ -144,14 +144,14 @@ func (c *Core) checkErrors(ctx context.Context, execID string, namespaceID strin
 				return
 			default:
 				namespaceUUID, err := uuid.Parse(namespaceID)
-			if err != nil {
-				ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte(fmt.Errorf("invalid namespace UUID: %w", err).Error())}
-				return
-			}
-			exec, err := c.store.GetExecutionByExecID(ctx, repo.GetExecutionByExecIDParams{
-				ExecID: execID,
-				Uuid:   namespaceUUID,
-			})
+				if err != nil {
+					ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte(fmt.Errorf("invalid namespace UUID: %w", err).Error())}
+					return
+				}
+				exec, err := c.store.GetExecutionByExecID(ctx, repo.GetExecutionByExecIDParams{
+					ExecID: execID,
+					Uuid:   namespaceUUID,
+				})
 				if err != nil {
 					ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte(fmt.Errorf("error reading task status: %w", err).Error())}
 					return
