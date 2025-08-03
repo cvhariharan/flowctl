@@ -7,6 +7,9 @@
   import Tabs from '$lib/components/shared/Tabs.svelte';
   import PipelineProgress from '$lib/components/flow-status/PipelineProgress.svelte';
   import LogsView from '$lib/components/flow-status/LogsView.svelte';
+  import FlowInfoCard from '$lib/components/flow-status/FlowInfoCard.svelte';
+  import ExecutionOutputTable from '$lib/components/flow-status/ExecutionOutputTable.svelte';
+  import EmptyState from '$lib/components/flow-status/EmptyState.svelte';
   import type { PageData } from './$types';
   import type { FlowMetaResp, ExecutionSummary } from '$lib/types';
 
@@ -222,47 +225,32 @@
 
 <div class="flex h-screen bg-gray-50">
   <main class="flex-1 flex flex-col overflow-hidden">
-    <!-- Header -->
-    <header class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
-      <div class="flex items-center gap-5">
-        <div class="flex items-center text-sm text-gray-500">
-          <span>Flows</span>
-          <span class="mx-2">/</span>
-          <span class="text-gray-900">{flowName || 'Loading...'}</span>
-          <span class="mx-2">/</span>
-          <span class="text-gray-900">Execution Status</span>
-        </div>
-      </div>
-      <div class="flex items-center gap-4">
+    <Header 
+      breadcrumbs={['Flows', flowName || 'Loading...', 'Execution Status']}
+      actions={[
+        {
+          label: 'Back to Flows',
+          onClick: goBack,
+          variant: 'secondary'
+        }
+      ]}
+    >
+      {#snippet children()}
         <div class="flex items-center gap-2">
           <span class="text-sm text-gray-500">Status:</span>
           <StatusBadge value={status} />
         </div>
-        <button onclick={goBack} class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-          </svg>
-          Back to Flows
-        </button>
-      </div>
-    </header>
+      {/snippet}
+    </Header>
 
     <!-- Page Content -->
     <div class="flex-1 overflow-y-auto p-6 bg-gray-50">
       <div class="max-w-7xl mx-auto">
-        <!-- Flow Info Card -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div class="flex justify-between items-start">
-            <div>
-              <h1 class="text-2xl font-semibold text-gray-900">{flowName || 'Loading...'}</h1>
-              <p class="text-gray-600 mt-1">Started at {startTime}</p>
-            </div>
-            <div class="text-right">
-              <p class="text-sm text-gray-500">Execution ID</p>
-              <p class="font-mono text-sm text-gray-900">{logId}</p>
-            </div>
-          </div>
-        </div>
+        <FlowInfoCard 
+          flowName={flowName || 'Loading...'}
+          {startTime}
+          executionId={logId}
+        />
 
         <!-- Pipeline Progress -->
         <div class="mb-6">
@@ -290,34 +278,9 @@
                 showCursor={true}
               />
             {:else if activeTab === 'output'}
-              {#if Object.keys(results).length > 0}
-                <div class="overflow-hidden rounded-lg border border-gray-200">
-                  <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                      <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Variable</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                      </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                      {#each Object.entries(results) as [key, value]}
-                        <tr class="hover:bg-gray-50 transition-colors">
-                          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-mono">{key}</td>
-                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <code class="px-2 py-1 bg-green-50 text-green-700 rounded">{value}</code>
-                          </td>
-                        </tr>
-                      {/each}
-                    </tbody>
-                  </table>
-                </div>
-              {:else}
-                <div class="text-center py-12 text-gray-500">
-                  <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                  </svg>
-                  <p class="mt-2">No output variables yet</p>
-                </div>
+              <ExecutionOutputTable {results} />
+              {#if Object.keys(results).length === 0}
+                <EmptyState message="No output variables yet" />
               {/if}
             {/if}
           </div>

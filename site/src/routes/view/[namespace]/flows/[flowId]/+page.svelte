@@ -150,7 +150,7 @@
 </svelte:head>
 
 <Header 
-  breadcrumbs={['Flows', data.flowMeta?.meta?.name || 'Loading...']} 
+  breadcrumbs={[`${page.params.namespace}`, 'Flows', data.flowMeta?.meta?.name || 'Loading...']} 
   actions={[
     { label: 'Back to Flows', onClick: () => goto(`/view/${namespace}/flows`), variant: 'secondary' }
   ]}

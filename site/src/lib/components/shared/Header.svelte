@@ -4,11 +4,13 @@
   let { 
     breadcrumbs = [], 
     actions = [],
-    showUserDropdown = true 
+    showUserDropdown = true,
+    children
   }: { 
     breadcrumbs?: string[],
     actions?: Array<{ label: string, onClick: () => void, variant?: 'primary' | 'secondary' }>,
-    showUserDropdown?: boolean
+    showUserDropdown?: boolean,
+    children?: any
   } = $props();
 </script>
 
@@ -29,6 +31,10 @@
     </div>
     
     <div class="flex items-center space-x-4">
+      {#if children}
+        {@render children()}
+      {/if}
+      
       {#each actions as action}
         <button 
           onclick={action.onClick}

@@ -108,54 +108,65 @@
   <title>Flows - {page.params.namespace} - Flowctl</title>
 </svelte:head>
 
-<Header breadcrumbs={['Flows']} />
-<div class="max-w-7xl mx-auto p-6">
-  <!-- Header -->
-  <div class="flex items-center justify-between mb-6">
-    <PageHeader 
-      title="Flows" 
-      subtitle="Manage and run your workflows" 
-    />
-    <SearchInput 
-      bind:value={searchValue}
-      placeholder="Search flows..."
-      {loading}
-      onSearch={handleSearch}
-    />
-  </div>
+<div class="flex h-screen bg-gray-50">
+  <main class="flex-1 flex flex-col overflow-hidden">
+    <Header breadcrumbs={[`${page.params.namespace}`, 'Flows']}>
+      {#snippet children()}
+        <SearchInput 
+          bind:value={searchValue}
+          placeholder="Search flows..."
+          {loading}
+          onSearch={handleSearch}
+        />
+      {/snippet}
+    </Header>
+    
+    <!-- Page Content -->
+    <div class="flex-1 overflow-y-auto p-6 bg-gray-50">
+      <div class="max-w-8xl mx-auto">
 
-  <!-- Error Message -->
-  {#if error}
-    <ErrorMessage message={error} />
-  {/if}
+        <div class="flex items-center justify-between mb-6">
+          <PageHeader 
+            title="Flows" 
+            subtitle="Manage and run your workflows" 
+          />
+        </div>
 
-  <!-- Flows Table -->
-  <Table 
-    {columns}
-    data={flows}
-    {actions}
-    {loading}
-    onRowClick={(row) => goToFlow(row.slug)}
-    emptyMessage={searchValue ? 'Try adjusting your search' : 'No flows are available in this namespace'}
-    emptyIcon={`
-      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-      </svg>
-    `}
-  />
+        <!-- Error Message -->
+        {#if error}
+          <ErrorMessage message={error} />
+        {/if}
 
-  <!-- Pagination and Count -->
-  {#if flows.length > 0}
-    <div class="mt-6 flex items-center justify-between">
-      <div class="text-sm text-gray-700">
-        Showing {flows.length} of {totalCount} flows
+        <!-- Flows Table -->
+        <Table 
+          {columns}
+          data={flows}
+          {actions}
+          {loading}
+          onRowClick={(row) => goToFlow(row.slug)}
+          emptyMessage={searchValue ? 'Try adjusting your search' : 'No flows are available in this namespace'}
+          emptyIcon={`
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          `}
+        />
+
+        <!-- Pagination and Count -->
+        {#if flows.length > 0}
+          <div class="mt-6 flex items-center justify-between">
+            <div class="text-sm text-gray-700">
+              Showing {flows.length} of {totalCount} flows
+            </div>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={pageCount}
+              {loading}
+              on:page-change={handlePageChange}
+            />
+          </div>
+        {/if}
       </div>
-      <Pagination 
-        currentPage={currentPage}
-        totalPages={pageCount}
-        {loading}
-        on:page-change={handlePageChange}
-      />
     </div>
-  {/if}
+  </main>
 </div>
