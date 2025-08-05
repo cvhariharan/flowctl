@@ -158,7 +158,7 @@
 
 <FlowHero 
   name={data.flowMeta?.meta?.name || 'Loading...'} 
-  description={data.flowMeta?.meta?.description || 'Loading flow description...'} 
+  description={data.flowMeta?.meta?.description || ''} 
 />
 
 <div class="bg-white border-b border-gray-200 px-6">

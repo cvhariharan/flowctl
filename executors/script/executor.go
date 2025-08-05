@@ -18,8 +18,8 @@ import (
 )
 
 type ScriptWithConfig struct {
-	Script      string `yaml:"script" jsonschema:"title=script"`
-	Interpreter string `yaml:"interpreter" jsonschema:"title=interpreter"`
+	Script      string `yaml:"script" json:"script" jsonschema:"title=script"`
+	Interpreter string `yaml:"interpreter" json:"interpreter" jsonschema:"title=interpreter"`
 }
 
 type ScriptExecutor struct {

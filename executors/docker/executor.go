@@ -36,8 +36,8 @@ const (
 )
 
 type DockerWithConfig struct {
-	Image  string `yaml:"image" jsonschema:"title=image,description=Docker Image"`
-	Script string `yaml:"script" jsonschema:"title=script" jsonschema_extras:"widget=codeeditor"`
+	Image  string `yaml:"image" json:"image" jsonschema:"title=image,description=Docker Image"`
+	Script string `yaml:"script" json:"script" jsonschema:"title=script" jsonschema_extras:"widget=codeeditor"`
 }
 
 type DockerExecutor struct {
