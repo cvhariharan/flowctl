@@ -1,6 +1,7 @@
 <script lang="ts">
   import { apiClient } from '$lib/apiClient.js';
   import { createSlug } from '$lib/utils';
+  import CodeEditor from '$lib/components/shared/CodeEditor.svelte';
 
   let {
     actions = $bindable(),
@@ -319,6 +320,22 @@
                               max={property.maximum}
                               placeholder={placeholder}
                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            />
+                            {#if description}
+                              <p class="mt-1 text-xs text-gray-500">{description}</p>
+                            {/if}
+                          </div>
+                        {:else if property.widget === 'codeeditor'}
+                          <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                              {label}
+                              {#if isRequired}<span class="text-red-500">*</span>{/if}
+                            </label>
+                            <CodeEditor 
+                              value={action.with[key] || ''}
+                              language={property.language || 'python'}
+                              height="200px"
+                              onchange={(val) => updateConfigValue(action, key, val)}
                             />
                             {#if description}
                               <p class="mt-1 text-xs text-gray-500">{description}</p>
