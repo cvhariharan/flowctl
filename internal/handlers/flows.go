@@ -15,8 +15,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/gosimple/slug"
 	"github.com/labstack/echo/v4"
-	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -494,29 +492,8 @@ func (h *Handler) HandleCreateFlow(c echo.Context) error {
 		return wrapError(http.StatusBadRequest, "flow validation error", err, nil)
 	}
 
-	flowsDir := viper.GetString("app.flows_directory")
-	if flowsDir == "" {
-		flowsDir = "flows"
-	}
-
-	namespaceDirPath := filepath.Join(flowsDir, namespace)
-	if err := os.MkdirAll(namespaceDirPath, 0755); err != nil {
-		return wrapError(http.StatusInternalServerError, "could not create namespace directory", err, nil)
-	}
-
-	yamlFilePath := filepath.Join(namespaceDirPath, fmt.Sprintf("%s.yaml", flow.Meta.ID))
-
-	if _, err := os.Stat(yamlFilePath); err == nil {
-		return wrapError(http.StatusConflict, "flow with this ID already exists", nil, nil)
-	}
-
-	yamlData, err := yaml.Marshal(flow)
-	if err != nil {
-		return wrapError(http.StatusInternalServerError, "could not marshal flow to YAML", err, nil)
-	}
-
-	if err := os.WriteFile(yamlFilePath, yamlData, 0644); err != nil {
-		return wrapError(http.StatusInternalServerError, "could not write flow file", err, nil)
+	if err := h.co.CreateFlow(flow, namespace); err != nil {
+		return wrapError(http.StatusConflict, err.Error(), err, nil)
 	}
 
 	return c.JSON(http.StatusCreated, FlowCreateResp{

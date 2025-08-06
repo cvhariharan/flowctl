@@ -2,10 +2,17 @@ package core
 
 import (
 	"context"
+	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"maps"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
@@ -13,6 +20,7 @@ import (
 	"github.com/cvhariharan/flowctl/internal/tasks"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -188,13 +196,13 @@ func (c *Core) getNodesByNames(ctx context.Context, nodeNames []string, namespac
 		}
 
 		nodes = append(nodes, models.Node{
-			ID:       v.Uuid.String(),
-			Name:     v.Name,
-			Hostname: v.Hostname,
-			Port:     int(v.Port),
-			Username: v.Username,
-			OSFamily: v.OsFamily,
-			Tags:     v.Tags,
+			ID:             v.Uuid.String(),
+			Name:           v.Name,
+			Hostname:       v.Hostname,
+			Port:           int(v.Port),
+			Username:       v.Username,
+			OSFamily:       v.OsFamily,
+			Tags:           v.Tags,
 			ConnectionType: string(v.ConnectionType),
 			Auth: models.NodeAuth{
 				CredentialID: v.CredentialUuid.UUID.String(),
@@ -253,11 +261,11 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 	}
 
 	_, err = c.store.AddExecutionLog(ctx, repo.AddExecutionLogParams{
-		ExecID:       execID,
-		FlowID:       f.Meta.DBID,
-		Input:        inputB,
-		Uuid:         userID,
-		Uuid_2:       namespaceUUID,
+		ExecID: execID,
+		FlowID: f.Meta.DBID,
+		Input:  inputB,
+		Uuid:   userID,
+		Uuid_2: namespaceUUID,
 	})
 	if err != nil {
 		return "", fmt.Errorf("could not add entry to execution log: %w", err)
@@ -446,10 +454,186 @@ func (c *Core) GetExecutionByExecID(ctx context.Context, execID string, namespac
 	}
 
 	return models.Execution{
-		ExecID:       e.ExecID,
-		Version: 	  int64(e.Version),
-		Input:        input,
-		ErrorMsg:     e.Error.String,
-		TriggeredBy:  u.Uuid.String(),
+		ExecID:      e.ExecID,
+		Version:     int64(e.Version),
+		Input:       input,
+		ErrorMsg:    e.Error.String,
+		TriggeredBy: u.Uuid.String(),
 	}, nil
+}
+
+func (c *Core) CreateFlow(f models.Flow, namespaceName string) error {
+	if _, exists := c.flows[f.Meta.ID]; exists {
+		return fmt.Errorf("flow with id %s already exists", f.Meta.ID)
+	}
+
+	namespaceDirPath := filepath.Join(c.flowDirectory, namespaceName)
+	if err := os.MkdirAll(namespaceDirPath, 0755); err != nil {
+		return fmt.Errorf("could not create namespace directory: %w", err)
+	}
+
+	flowDir := filepath.Join(namespaceDirPath, f.Meta.ID)
+	if err := os.MkdirAll(flowDir, 0755); err != nil {
+		return fmt.Errorf("could not create flow directory: %w", err)
+	}
+
+	yamlFilePath := filepath.Join(flowDir, fmt.Sprintf("%s.yaml", f.Meta.ID))
+	if _, err := os.Stat(yamlFilePath); err == nil {
+		return fmt.Errorf("flow with this ID already exists: %w", err)
+	}
+
+	yamlData, err := yaml.Marshal(f)
+	if err != nil {
+		return fmt.Errorf("could not marshal flow to YAML: %w", err)
+	}
+
+	if err := os.WriteFile(yamlFilePath, yamlData, 0644); err != nil {
+		return fmt.Errorf("could not write flow file: %w", err)
+	}
+
+	importedFlow, namespaceUUID, err := c.importFlowFromFile(yamlFilePath, namespaceName)
+	if err != nil {
+		return fmt.Errorf("could not import flow after creation: %w", err)
+	}
+
+	c.flows[fmt.Sprintf("%s:%s", importedFlow.Meta.ID, namespaceUUID)] = importedFlow
+	return nil
+}
+
+func (c *Core) LoadFlows() error {
+	m := make(map[string]models.Flow)
+
+	// Read immediate subdirectories
+	entries, err := os.ReadDir(c.flowDirectory)
+	if err != nil {
+		return fmt.Errorf("error reading flow directory: %w", err)
+	}
+
+	// Each subdirectory in the root flows directory should be a namespace
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		namespaceDir := filepath.Join(c.flowDirectory, entry.Name())
+		namespaceFlows, err := c.processNamespaceFlows(namespaceDir)
+		if err != nil {
+			log.Printf("could process flows from namespace %s: %v", entry.Name(), err)
+			continue
+		}
+
+		maps.Copy(m, namespaceFlows)
+	}
+	c.flows = m
+	return nil
+}
+
+// processNamespaceFlows iterates through directories in the namespace directory and imports the first yaml file per directory as flow. The files are sorted by name.
+func (c *Core) processNamespaceFlows(namespaceDir string) (map[string]models.Flow, error) {
+	m := make(map[string]models.Flow)
+
+	entries, err := os.ReadDir(namespaceDir)
+	if err != nil {
+		return nil, fmt.Errorf("error reading namespace %s directory: %w", namespaceDir, err)
+	}
+
+	namespaceName := filepath.Base(namespaceDir)
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		// Find the YAML file in the flow directory
+		flowDir := filepath.Join(namespaceDir, entry.Name())
+		flowFiles, err := os.ReadDir(flowDir)
+		if err != nil {
+			log.Printf("error reading flow directory %s: %v", flowDir, err)
+			continue
+		}
+
+		var yamlPath string
+		for _, file := range flowFiles {
+			if !file.IsDir() && (strings.HasSuffix(strings.ToLower(file.Name()), ".yml") || strings.HasSuffix(strings.ToLower(file.Name()), ".yaml")) {
+				yamlPath = filepath.Join(flowDir, file.Name())
+				break
+			}
+		}
+
+		if yamlPath == "" {
+			log.Printf("no YAML file found in flow directory %s", flowDir)
+			continue
+		}
+
+		f, nsUUID, err := c.importFlowFromFile(yamlPath, namespaceName)
+		if err != nil {
+			log.Printf("error importing flow from %s: %v", yamlPath, err)
+			continue
+		}
+
+		m[fmt.Sprintf("%s:%s", f.Meta.ID, nsUUID)] = f
+	}
+
+	return m, nil
+}
+
+func (c *Core) importFlowFromFile(yamlFilePath, namespaceName string) (models.Flow, string, error) {
+	data, err := os.ReadFile(yamlFilePath)
+	if err != nil {
+		return models.Flow{}, "", fmt.Errorf("error reading file %s: %w", yamlFilePath, err)
+	}
+
+	h := sha256.New()
+	h.Write(data)
+	checksum := hex.EncodeToString(h.Sum(nil))
+	var f models.Flow
+	if err := yaml.Unmarshal(data, &f); err != nil {
+		return models.Flow{}, "", fmt.Errorf("error parsing YAML in %s: %w", yamlFilePath, err)
+	}
+
+	if err := f.Validate(); err != nil {
+		return models.Flow{}, "", fmt.Errorf("validation error in %s: %w", yamlFilePath, err)
+	}
+
+	f.Meta.SrcDir = filepath.Base(filepath.Dir(yamlFilePath))
+	if f.Meta.Namespace == "" {
+		f.Meta.Namespace = namespaceName
+	}
+
+	if f.Meta.Namespace != namespaceName {
+		return models.Flow{}, "", fmt.Errorf("flow namespace %s does not match expected namespace %s", f.Meta.Namespace, namespaceName)
+	}
+
+	ns, err := c.store.GetNamespaceByName(context.Background(), f.Meta.Namespace)
+	if err != nil {
+		return models.Flow{}, "", fmt.Errorf("error getting namespace %s: %w", f.Meta.Namespace, err)
+	}
+
+	fd, err := c.store.GetFlowBySlug(context.Background(), repo.GetFlowBySlugParams{
+		Slug: f.Meta.ID,
+		Uuid: ns.Uuid,
+	})
+	if err != nil {
+		fd, err = c.store.CreateFlow(context.Background(), repo.CreateFlowParams{
+			Slug:        f.Meta.ID,
+			Name:        f.Meta.Name,
+			Checksum:    checksum,
+			Description: sql.NullString{String: f.Meta.Description, Valid: true},
+			Name_2:      f.Meta.Namespace,
+		})
+	} else if fd.Checksum != checksum {
+		fd, err = c.store.UpdateFlow(context.Background(), repo.UpdateFlowParams{
+			Name:        f.Meta.Name,
+			Description: sql.NullString{String: f.Meta.Description, Valid: true},
+			Checksum:    checksum,
+			Slug:        f.Meta.ID,
+			Name_2:      f.Meta.Namespace,
+		})
+	}
+	if err != nil {
+		return models.Flow{}, "", fmt.Errorf("database operation failed for flow %s: %w", f.Meta.ID, err)
+	}
+
+	f.Meta.DBID = fd.ID
+	return f, ns.Uuid.String(), nil
 }

@@ -21,18 +21,29 @@ type Core struct {
 	keeper      *secrets.Keeper
 
 	// store the mapping between logID and flowID
-	logMap map[string]string
+	logMap   map[string]string
 	enforcer *casbin.Enforcer
+
+	flowDirectory string
 }
 
-func NewCore(flows map[string]models.Flow, s repo.Store, q *asynq.Client, redisClient redis.UniversalClient, keeper *secrets.Keeper, enforcer *casbin.Enforcer) *Core {
-	return &Core{
-		store:       s,
-		redisClient: redisClient,
-		q:           q,
-		flows:       flows,
-		logMap:      make(map[string]string),
-		keeper:      keeper,
-		enforcer: 	 enforcer,
+func NewCore(flowsDirectory string, s repo.Store, q *asynq.Client, redisClient redis.UniversalClient, keeper *secrets.Keeper, enforcer *casbin.Enforcer) (*Core, error) {
+	c := &Core{
+		store:         s,
+		redisClient:   redisClient,
+		q:             q,
+		flowDirectory: flowsDirectory,
+		flows:         make(map[string]models.Flow),
+		logMap:        make(map[string]string),
+		keeper:        keeper,
+		enforcer:      enforcer,
 	}
+
+	if err := c.LoadFlows(); err != nil {
+		return nil, err
+	}
+	if err := c.InitializeRBACPolicies(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
