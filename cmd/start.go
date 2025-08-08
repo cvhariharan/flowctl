@@ -166,6 +166,7 @@ func startServer(db *sqlx.DB, co *core.Core, logger *slog.Logger) {
 	// No authorization required
 	api.GET("/executors/:executor/config", h.HandleGetExecutorConfig)
 	api.GET("/executors", h.HandleListExecutors)
+	api.GET("/permissions", h.HandleGetCasbinPermissions)
 
 	// Namespace management
 	api.GET("/namespaces", h.HandleListNamespaces)

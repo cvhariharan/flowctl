@@ -234,6 +234,43 @@ func (q *Queries) GetUserByUsernameWithGroups(ctx context.Context, username stri
 	return i, err
 }
 
+const getUsersByRole = `-- name: GetUsersByRole :many
+SELECT id, uuid, name, username, password, login_type, role, created_at, updated_at FROM users WHERE role = $1
+`
+
+func (q *Queries) GetUsersByRole(ctx context.Context, role UserRoleType) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getUsersByRole, role)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Name,
+			&i.Username,
+			&i.Password,
+			&i.LoginType,
+			&i.Role,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeAllGroupsForUserByUUID = `-- name: RemoveAllGroupsForUserByUUID :exec
 WITH
 user_lookup AS (

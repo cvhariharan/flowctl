@@ -2,7 +2,9 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/repo"
 	"github.com/google/uuid"
@@ -24,8 +26,8 @@ func (c *Core) InitializeRBACPolicies() error {
 	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceApproval), "*")
 	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceExecution), string(models.RBACActionView))
 
-
 	// Admin role policies - for all namespaces
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceFlow), string(models.RBACActionCreate))
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNamespace), string(models.RBACActionUpdate))
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNode), string(models.RBACActionCreate))
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNode), string(models.RBACActionUpdate))
@@ -66,7 +68,7 @@ func (c *Core) AssignNamespaceRole(ctx context.Context, subjectID string, subjec
 		}
 
 		_, err = c.store.AssignUserNamespaceRole(ctx, repo.AssignUserNamespaceRoleParams{
-			SubjectUuid:   user.Uuid,
+			SubjectUuid: user.Uuid,
 			Uuid:        namespaceUUID,
 			Role:        string(role),
 		})
@@ -85,7 +87,7 @@ func (c *Core) AssignNamespaceRole(ctx context.Context, subjectID string, subjec
 		}
 
 		_, err = c.store.AssignGroupNamespaceRole(ctx, repo.AssignGroupNamespaceRoleParams{
-			SubjectUuid:   group.Uuid,
+			SubjectUuid: group.Uuid,
 			Uuid:        namespaceUUID,
 			Role:        string(role),
 		})
@@ -213,7 +215,7 @@ func (c *Core) RemoveNamespaceMember(ctx context.Context, membershipID, namespac
 
 	// Remove from database
 	m, err := c.store.RemoveNamespaceMember(ctx, repo.RemoveNamespaceMemberParams{
-		Uuid:	namespaceUUID,
+		Uuid:   namespaceUUID,
 		Uuid_2: membershipUUID,
 	})
 	if err != nil {
@@ -242,7 +244,7 @@ func (c *Core) GetNamespaceMembers(ctx context.Context, namespaceID string) ([]m
 	var result []models.NamespaceMember
 	for _, row := range rows {
 		member := models.NamespaceMember{
-			ID: 		 row.Uuid.String(),
+			ID:          row.Uuid.String(),
 			SubjectType: row.SubjectType,
 			Role:        models.NamespaceRole(row.Role),
 			CreatedAt:   row.CreatedAt.Format("2006-01-02T15:04:05Z"),
@@ -270,4 +272,38 @@ func (c *Core) GetNamespaceMembers(ctx context.Context, namespaceID string) ([]m
 	}
 
 	return result, nil
+}
+
+// GetPermissions returns the casbin policies for the user
+func (c *Core) GetPermissionsForUser(userID string) (string, error) {
+	policies, _ := c.enforcer.GetPolicy()
+	groupingPolicies, _ := c.enforcer.GetGroupingPolicy()
+
+	modelText := c.enforcer.GetModel().ToText()
+
+	// Combine all policies into a single array with type prefixes
+	var allPolicies [][]string
+
+	for _, policy := range policies {
+		policyWithType := append([]string{"p"}, policy...)
+		allPolicies = append(allPolicies, policyWithType)
+	}
+
+	for _, grouping := range groupingPolicies {
+		groupingWithType := append([]string{"g"}, grouping...)
+		allPolicies = append(allPolicies, groupingWithType)
+	}
+
+	response := map[string]interface{}{
+		"p": allPolicies,
+		"g": [][]string{}, // Empty as all policies are in 'p' array, this is a workaround for a bug in casbin.js
+		"m": modelText,
+	}
+
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		return "", err
+	}
+
+	return string(responseBytes), nil
 }

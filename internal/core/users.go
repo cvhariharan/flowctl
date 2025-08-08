@@ -63,8 +63,8 @@ func (c *Core) GetUserWithUUIDWithGroups(ctx context.Context, userUUID string) (
 func (c *Core) SearchUser(ctx context.Context, query string, limit, offset int) ([]models.UserWithGroups, int64, int64, error) {
 	u, err := c.store.SearchUsersWithGroups(ctx, repo.SearchUsersWithGroupsParams{
 		Column1: query,
-		Limit: int32(limit),
-		Offset: int32(offset),
+		Limit:   int32(limit),
+		Offset:  int32(offset),
 	})
 	if err != nil {
 		return nil, -1, -1, err
@@ -244,4 +244,22 @@ func (c *Core) repoUserToUser(user repo.User) models.User {
 
 	u = u.WithPassword(user.Password.String)
 	return u
+}
+
+// GrantSuperusersAdminAccessToAllNamespaces queries for all users with superuser role
+// and adds a grouping policy to them to have admin access to all namespaces
+func (c *Core) GrantSuperusersAdminAccessToAllNamespaces(ctx context.Context) error {
+	// Get all superusers
+	superusers, err := c.store.GetUsersByRole(ctx, repo.UserRoleTypeSuperuser)
+	if err != nil {
+		return fmt.Errorf("could not get superusers: %w", err)
+	}
+
+	// Grant admin access to each superuser for all namespaces using wildcard
+	for _, user := range superusers {
+		userSubject := fmt.Sprintf("user:%s", user.Uuid.String())
+		c.enforcer.AddGroupingPolicy(userSubject, "role:admin", "*")
+	}
+
+	return c.enforcer.SavePolicy()
 }

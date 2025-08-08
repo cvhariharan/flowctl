@@ -6,19 +6,20 @@ export const load: LayoutLoad = async ({ params, parent }) => {
   const { user } = await parent();
   const namespace = params.namespace;
   
-  // Check if user has access to this namespace
+  // Check if user has access to this namespace and get the namespace object
   try {
     const namespacesResponse = await apiClient.namespaces.list();
-    const accessibleNamespaces = namespacesResponse.namespaces.map(ns => ns.name);
+    const namespaceObject = namespacesResponse.namespaces.find(ns => ns.name === namespace);
     
-    if (!accessibleNamespaces.includes(namespace)) {
+    if (!namespaceObject) {
       error(403, 'Access denied. You do not have permission to access this namespace.');
     }
+
+    return {
+      namespace: namespaceObject.name,
+      namespaceId: namespaceObject.id
+    };
   } catch (err) {
     error(500, 'Could not retrieve the namespace');
   }
-  
-  return {
-    namespace
-  };
 };

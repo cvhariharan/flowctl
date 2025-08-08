@@ -78,3 +78,6 @@ user_lookup AS (
     SELECT id FROM users WHERE users.uuid = sqlc.arg(user_uuid)
 )
 DELETE FROM group_memberships WHERE user_id = ( SELECT id FROM user_lookup );
+
+-- name: GetUsersByRole :many
+SELECT * FROM users WHERE role = $1;

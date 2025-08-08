@@ -224,3 +224,23 @@ func (h *Handler) handleUnauthenticated(c echo.Context) error {
 	// For web requests, redirect to login page
 	return c.Redirect(http.StatusTemporaryRedirect, LoginPath)
 }
+
+// HandleGetCasbinPermissions returns policies for casbin.js
+// It doesn't use the subject query param set by the frontend but instead uses the session user
+func (h *Handler) HandleGetCasbinPermissions(c echo.Context) error {
+	user, err := h.getUserInfo(c)
+	if err != nil {
+		return wrapError(http.StatusBadRequest, "could not get user info", err, nil)
+	}
+
+	p, err := h.co.GetPermissionsForUser(user.ID)
+	if err != nil {
+		return wrapError(http.StatusNotFound, "could not get permissions for user", err, nil)
+	}
+
+	return c.JSON(http.StatusOK, struct {
+		Data string `json:"data"`
+	}{
+		Data: p,
+	})
+}

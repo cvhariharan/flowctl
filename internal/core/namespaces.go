@@ -145,7 +145,7 @@ func (c *Core) CanAccessNamespace(ctx context.Context, userID string, namespaceI
 	// Check if user belongs to any group with access to the namespace
 	hasAccess, err := c.store.CheckUserNamespaceAccess(ctx, repo.CheckUserNamespaceAccessParams{
 		UserID: user.ID,
-		Uuid: namespaceUUID,
+		Uuid:   namespaceUUID,
 	})
 	if err != nil {
 		return false, err
@@ -153,7 +153,6 @@ func (c *Core) CanAccessNamespace(ctx context.Context, userID string, namespaceI
 
 	return hasAccess, nil
 }
-
 
 func (c *Core) GetGroupsWithNamespaceAccess(ctx context.Context, namespaceID string) ([]models.Group, error) {
 	namespaceUUID, err := uuid.Parse(namespaceID)
@@ -169,8 +168,8 @@ func (c *Core) GetGroupsWithNamespaceAccess(ctx context.Context, namespaceID str
 	var groups []models.Group
 	for _, gr := range g {
 		groups = append(groups, models.Group{
-			ID: gr.Uuid.String(),
-			Name: gr.Name,
+			ID:          gr.Uuid.String(),
+			Name:        gr.Name,
 			Description: gr.Description.String,
 		})
 	}
@@ -190,7 +189,7 @@ func (c *Core) GrantGroupNamespaceAccess(ctx context.Context, groupID, namespace
 	}
 
 	_, err = c.store.GrantGroupNamespaceAccess(ctx, repo.GrantGroupNamespaceAccessParams{
-		Uuid: groupUUID,
+		Uuid:   groupUUID,
 		Uuid_2: namespaceUUID,
 	})
 	return err
@@ -208,7 +207,7 @@ func (c *Core) RevokeGroupNamespaceAccess(ctx context.Context, groupID, namespac
 	}
 
 	return c.store.RevokeGroupNamespaceAccess(ctx, repo.RevokeGroupNamespaceAccessParams{
-		Uuid: groupUUID,
+		Uuid:   groupUUID,
 		Uuid_2: namespaceUUID,
 	})
 }

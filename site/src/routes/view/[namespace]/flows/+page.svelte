@@ -10,20 +10,41 @@
   import PageHeader from "$lib/components/shared/PageHeader.svelte";
   import type { TableColumn, TableAction, FlowListItem } from "$lib/types";
   import { FLOWS_PER_PAGE } from "$lib/constants";
+  import { Authorizer } from "casbin.js";
 
   let { data } = $props();
   let searchValue = $state("");
-  let debounceTimer: number;
   let flows = $state(data.flows);
   let pageCount = $state(data.pageCount);
   let totalCount = $state(data.totalCount);
   let currentPage = $state(data.currentPage);
   let error = $state(data.error);
   let loading = $state(false);
+  let canCreateFlow = $state(false);
 
   const goToFlow = (flowSlug: string) => {
     goto(`/view/${page.params.namespace}/flows/${flowSlug}`);
   };
+
+  // Check permissions on component mount
+  const checkPermissions = async () => {
+    try {
+      const authorizer = new Authorizer('auto', {
+        endpoint: '/api/v1/permissions'
+      });
+      await authorizer.setUser(`user:${data.user?.id!}`);
+
+      // Check if user can create flows in this namespace  
+      const result = await authorizer.can('view', 'flow', data.namespaceId);
+      canCreateFlow = result;
+    } catch (err) {
+      console.error('Failed to check permissions:', err);
+      canCreateFlow = false;
+    }
+  };
+
+  // Run permission check on mount
+  checkPermissions();
 
   const loadFlows = async (filter: string = "", pageNumber: number = 1) => {
     loading = true;
@@ -125,6 +146,17 @@
   <div class="max-w-7xl mx-auto">
     <div class="flex items-center justify-between mb-6">
       <PageHeader title="Flows" subtitle="Manage and run your workflows" />
+      {#if canCreateFlow}
+        <button
+          class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          onclick={() => goto(`/view/${page.params.namespace}/flows/create`)}
+        >
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          Add Flow
+        </button>
+      {/if}
     </div>
 
     <!-- Error Message -->

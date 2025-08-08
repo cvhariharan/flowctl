@@ -71,6 +71,7 @@ type Querier interface {
 	GetUserByUsernameWithGroups(ctx context.Context, username string) (UserView, error)
 	GetUserGroups(ctx context.Context, argUuid uuid.UUID) ([]Group, error)
 	GetUserNamespacesWithRoles(ctx context.Context, argUuid uuid.UUID) ([]GetUserNamespacesWithRolesRow, error)
+	GetUsersByRole(ctx context.Context, role UserRoleType) ([]User, error)
 	GrantGroupNamespaceAccess(ctx context.Context, arg GrantGroupNamespaceAccessParams) (GroupNamespaceAccess, error)
 	ListCredentials(ctx context.Context, arg ListCredentialsParams) ([]ListCredentialsRow, error)
 	ListFlows(ctx context.Context, arg ListFlowsParams) ([]ListFlowsRow, error)

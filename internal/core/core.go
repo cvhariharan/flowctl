@@ -1,6 +1,8 @@
 package core
 
 import (
+	"context"
+
 	"github.com/casbin/casbin/v2"
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/repo"
@@ -45,5 +47,11 @@ func NewCore(flowsDirectory string, s repo.Store, q *asynq.Client, redisClient r
 	if err := c.InitializeRBACPolicies(); err != nil {
 		return nil, err
 	}
+
+	// Grant all superusers admin access to all namespaces
+	if err := c.GrantSuperusersAdminAccessToAllNamespaces(context.Background()); err != nil {
+		return nil, err
+	}
+
 	return c, nil
 }
