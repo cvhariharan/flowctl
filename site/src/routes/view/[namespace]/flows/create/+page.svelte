@@ -37,6 +37,9 @@
   let saving = $state(false);
   let saveError = $state('');
   const availableExecutors = data.availableExecutors;
+  
+  // Executor configs for actions
+  let executorConfigs = $state({} as Record<string, any>);
 
   onMount(() => {
     // Add first action by default
@@ -75,45 +78,7 @@
     });
   }
 
-  function validateFlow() {
-    const errors: string[] = [];
-
-    // Validate metadata
-    if (!flow.metadata.name) errors.push('Flow Name is required');
-
-    // Validate inputs
-    const inputNames = new Set();
-    flow.inputs.forEach((input, i) => {
-      if (!input.name) errors.push(`Input #${i+1} is missing a name`);
-      else if (inputNames.has(input.name)) errors.push(`Duplicate input name: ${input.name}`);
-      else inputNames.add(input.name);
-
-      if (!input.type) errors.push(`Input "${input.name || i+1}" is missing a type`);
-    });
-
-    // Validate actions
-    const actionNames = new Set();
-    const actionIds = new Set();
-    flow.actions.forEach((action, i) => {
-      if (!action.name) errors.push(`Action #${i+1} is missing a name`);
-      else if (actionNames.has(action.name)) errors.push(`Duplicate action name: ${action.name}`);
-      else actionNames.add(action.name);
-
-      if (!action.id) errors.push(`Action "${action.name || i+1}" is missing an ID`);
-      else if (actionIds.has(action.id)) errors.push(`Duplicate action ID: ${action.id}`);
-      else actionIds.add(action.id);
-
-      if (!action.executor) errors.push(`Action "${action.name || i+1}" is missing an executor`);
-    });
-
-    validationResult = { success: errors.length === 0, errors: errors };
-    showValidation = true;
-    return errors.length === 0;
-  }
-
-  async function saveFlow() {
-    if (!validateFlow()) return;
-    
+  async function saveFlow() { 
     saving = true;
     saveError = '';
     
@@ -196,6 +161,7 @@
           bind:actions={flow.actions} 
           {addAction} 
           {availableExecutors}
+          bind:executorConfigs={executorConfigs}
         />
         
         <!-- Submit Button at Bottom -->

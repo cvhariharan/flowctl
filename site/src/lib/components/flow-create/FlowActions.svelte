@@ -6,14 +6,14 @@
   let {
     actions = $bindable(),
     addAction,
-    availableExecutors
+    availableExecutors,
+    executorConfigs = $bindable()
   }: {
     actions: any[];
     addAction: () => void;
     availableExecutors: Array<{name: string, display_name: string}>;
+    executorConfigs: Record<string, any>;
   } = $props();
-
-  let executorConfigs = $state({} as Record<string, any>);
   let draggedIndex: number | null = null;
 
   function removeAction(index: number) {

@@ -40,10 +40,34 @@
   let loadError = $state('');
   let saveError = $state('');
   const availableExecutors = data.availableExecutors;
+  
+  // Executor configs for actions
+  let executorConfigs = $state({} as Record<string, any>);
 
   onMount(async () => {
     await loadFlowConfig();
   });
+
+  async function loadExecutorConfigs(actions: any[]) {
+    const executorTypes = [...new Set(actions.map(action => action.executor).filter(Boolean))];
+    
+    for (const executor of executorTypes) {
+      try {
+        const config = await apiClient.executors.getConfig(executor);
+        
+        // Handle both direct schema and $ref-based schemas
+        if (config.$defs && config.$ref) {
+          const refPath = config.$ref.replace('#/$defs/', '');
+          const schema = config.$defs[refPath];
+          executorConfigs[executor] = schema || config;
+        } else {
+          executorConfigs[executor] = config;
+        }
+      } catch (error) {
+        console.error(`Error loading config for executor ${executor}:`, error);
+      }
+    }
+  }
 
   async function loadFlowConfig() {
     loading = true;
@@ -74,6 +98,11 @@
         on: action.on ? action.on.join(',') : '',
         collapsed: false
       }));
+      
+      // Load executor configs for all actions
+      if (flow.actions.length > 0) {
+        await loadExecutorConfigs(flow.actions);
+      }
       
     } catch (error: any) {
       console.error('Error loading flow config:', error);
@@ -119,45 +148,7 @@
     });
   }
 
-  function validateFlow() {
-    const errors: string[] = [];
-
-    // Validate metadata
-    if (!flow.metadata.name) errors.push('Flow Name is required');
-
-    // Validate inputs
-    const inputNames = new Set();
-    flow.inputs.forEach((input, i) => {
-      if (!input.name) errors.push(`Input #${i+1} is missing a name`);
-      else if (inputNames.has(input.name)) errors.push(`Duplicate input name: ${input.name}`);
-      else inputNames.add(input.name);
-
-      if (!input.type) errors.push(`Input "${input.name || i+1}" is missing a type`);
-    });
-
-    // Validate actions
-    const actionNames = new Set();
-    const actionIds = new Set();
-    flow.actions.forEach((action, i) => {
-      if (!action.name) errors.push(`Action #${i+1} is missing a name`);
-      else if (actionNames.has(action.name)) errors.push(`Duplicate action name: ${action.name}`);
-      else actionNames.add(action.name);
-
-      if (!action.id) errors.push(`Action "${action.name || i+1}" is missing an ID`);
-      else if (actionIds.has(action.id)) errors.push(`Duplicate action ID: ${action.id}`);
-      else actionIds.add(action.id);
-
-      if (!action.executor) errors.push(`Action "${action.name || i+1}" is missing an executor`);
-    });
-
-    validationResult = { success: errors.length === 0, errors: errors };
-    showValidation = true;
-    return errors.length === 0;
-  }
-
   async function updateFlow() {
-    if (!validateFlow()) return;
-    
     saving = true;
     saveError = '';
     
@@ -261,6 +252,7 @@
             bind:actions={flow.actions} 
             {addAction} 
             {availableExecutors}
+            bind:executorConfigs={executorConfigs}
           />
           
           <!-- Submit Button at Bottom -->
