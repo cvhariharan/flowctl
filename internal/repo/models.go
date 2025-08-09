@@ -348,13 +348,6 @@ type GroupMembership struct {
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 }
 
-type GroupNamespaceAccess struct {
-	ID          int32     `db:"id" json:"id"`
-	GroupID     int32     `db:"group_id" json:"group_id"`
-	NamespaceID int32     `db:"namespace_id" json:"namespace_id"`
-	CreatedAt   time.Time `db:"created_at" json:"created_at"`
-}
-
 type GroupView struct {
 	ID          int32          `db:"id" json:"id"`
 	Uuid        uuid.UUID      `db:"uuid" json:"uuid"`

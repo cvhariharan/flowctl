@@ -7,7 +7,6 @@ package repo
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -83,26 +82,6 @@ func (q *Queries) AssignUserNamespaceRole(ctx context.Context, arg AssignUserNam
 	return i, err
 }
 
-const checkUserNamespaceAccess = `-- name: CheckUserNamespaceAccess :one
-SELECT EXISTS (
-    SELECT 1 FROM group_namespace_access gna
-    JOIN group_memberships gm ON gna.group_id = gm.group_id
-    WHERE gm.user_id = $1 AND gna.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $2)
-) AS has_access
-`
-
-type CheckUserNamespaceAccessParams struct {
-	UserID int32     `db:"user_id" json:"user_id"`
-	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
-}
-
-func (q *Queries) CheckUserNamespaceAccess(ctx context.Context, arg CheckUserNamespaceAccessParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, checkUserNamespaceAccess, arg.UserID, arg.Uuid)
-	var has_access bool
-	err := row.Scan(&has_access)
-	return has_access, err
-}
-
 const createNamespace = `-- name: CreateNamespace :one
 INSERT INTO namespaces (name)
 VALUES ($1)
@@ -150,54 +129,6 @@ func (q *Queries) GetAllNamespaces(ctx context.Context) ([]Namespace, error) {
 			&i.Name,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getGroupsWithNamespaceAccess = `-- name: GetGroupsWithNamespaceAccess :many
-SELECT g.id, g.uuid, g.name, g.description, g.created_at, g.updated_at, gna.created_at AS access_granted_at
-FROM groups g
-JOIN group_namespace_access gna ON g.id = gna.group_id
-WHERE gna.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $1)
-`
-
-type GetGroupsWithNamespaceAccessRow struct {
-	ID              int32          `db:"id" json:"id"`
-	Uuid            uuid.UUID      `db:"uuid" json:"uuid"`
-	Name            string         `db:"name" json:"name"`
-	Description     sql.NullString `db:"description" json:"description"`
-	CreatedAt       time.Time      `db:"created_at" json:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at" json:"updated_at"`
-	AccessGrantedAt time.Time      `db:"access_granted_at" json:"access_granted_at"`
-}
-
-func (q *Queries) GetGroupsWithNamespaceAccess(ctx context.Context, argUuid uuid.UUID) ([]GetGroupsWithNamespaceAccessRow, error) {
-	rows, err := q.db.QueryContext(ctx, getGroupsWithNamespaceAccess, argUuid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetGroupsWithNamespaceAccessRow
-	for rows.Next() {
-		var i GetGroupsWithNamespaceAccessRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Uuid,
-			&i.Name,
-			&i.Description,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.AccessGrantedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -303,52 +234,6 @@ func (q *Queries) GetNamespaceMembers(ctx context.Context, argUuid uuid.UUID) ([
 	return items, nil
 }
 
-const getNamespacesForGroup = `-- name: GetNamespacesForGroup :many
-SELECT n.id, n.uuid, n.name, n.created_at, n.updated_at, gna.created_at AS access_granted_at
-FROM namespaces n
-JOIN group_namespace_access gna ON n.id = gna.namespace_id
-WHERE gna.group_id = (SELECT id FROM groups WHERE groups.uuid = $1)
-`
-
-type GetNamespacesForGroupRow struct {
-	ID              int32     `db:"id" json:"id"`
-	Uuid            uuid.UUID `db:"uuid" json:"uuid"`
-	Name            string    `db:"name" json:"name"`
-	CreatedAt       time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt       time.Time `db:"updated_at" json:"updated_at"`
-	AccessGrantedAt time.Time `db:"access_granted_at" json:"access_granted_at"`
-}
-
-func (q *Queries) GetNamespacesForGroup(ctx context.Context, argUuid uuid.UUID) ([]GetNamespacesForGroupRow, error) {
-	rows, err := q.db.QueryContext(ctx, getNamespacesForGroup, argUuid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetNamespacesForGroupRow
-	for rows.Next() {
-		var i GetNamespacesForGroupRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Uuid,
-			&i.Name,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.AccessGrantedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getUserGroups = `-- name: GetUserGroups :many
 SELECT g.id, g.uuid, g.name, g.description, g.created_at, g.updated_at FROM groups g
 JOIN group_memberships gm ON g.id = gm.group_id
@@ -436,33 +321,6 @@ func (q *Queries) GetUserNamespacesWithRoles(ctx context.Context, argUuid uuid.U
 		return nil, err
 	}
 	return items, nil
-}
-
-const grantGroupNamespaceAccess = `-- name: GrantGroupNamespaceAccess :one
-INSERT INTO group_namespace_access (group_id, namespace_id)
-VALUES (
-    (SELECT id FROM groups WHERE groups.uuid = $1),
-    (SELECT id FROM namespaces WHERE namespaces.uuid = $2)
-)
-ON CONFLICT (group_id, namespace_id) DO NOTHING
-RETURNING id, group_id, namespace_id, created_at
-`
-
-type GrantGroupNamespaceAccessParams struct {
-	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
-	Uuid_2 uuid.UUID `db:"uuid_2" json:"uuid_2"`
-}
-
-func (q *Queries) GrantGroupNamespaceAccess(ctx context.Context, arg GrantGroupNamespaceAccessParams) (GroupNamespaceAccess, error) {
-	row := q.db.QueryRowContext(ctx, grantGroupNamespaceAccess, arg.Uuid, arg.Uuid_2)
-	var i GroupNamespaceAccess
-	err := row.Scan(
-		&i.ID,
-		&i.GroupID,
-		&i.NamespaceID,
-		&i.CreatedAt,
-	)
-	return i, err
 }
 
 const listNamespaces = `-- name: ListNamespaces :many
@@ -575,22 +433,6 @@ func (q *Queries) RemoveNamespaceMember(ctx context.Context, arg RemoveNamespace
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const revokeGroupNamespaceAccess = `-- name: RevokeGroupNamespaceAccess :exec
-DELETE FROM group_namespace_access
-WHERE group_id = (SELECT id FROM groups WHERE groups.uuid = $1)
-AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $2)
-`
-
-type RevokeGroupNamespaceAccessParams struct {
-	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
-	Uuid_2 uuid.UUID `db:"uuid_2" json:"uuid_2"`
-}
-
-func (q *Queries) RevokeGroupNamespaceAccess(ctx context.Context, arg RevokeGroupNamespaceAccessParams) error {
-	_, err := q.db.ExecContext(ctx, revokeGroupNamespaceAccess, arg.Uuid, arg.Uuid_2)
-	return err
 }
 
 const updateNamespace = `-- name: UpdateNamespace :one
