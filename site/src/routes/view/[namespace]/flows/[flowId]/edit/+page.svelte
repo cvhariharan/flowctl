@@ -10,6 +10,7 @@
   import type { PageData } from './$types';
   import type { FlowUpdateReq, FlowInputReq, FlowActionReq } from '$lib/types.js';
   import { goto } from '$app/navigation';
+  import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 
   let { data }: { data: PageData } = $props();
   const namespace = $page.params.namespace as string;
@@ -34,11 +35,9 @@
     errors: [] as string[]
   });
 
-  // Loading and error states
+  // Loading states
   let loading = $state(true);
   let saving = $state(false);
-  let loadError = $state('');
-  let saveError = $state('');
   const availableExecutors = data.availableExecutors;
   
   // Executor configs for actions
@@ -64,14 +63,13 @@
           executorConfigs[executor] = config;
         }
       } catch (error) {
-        console.error(`Error loading config for executor ${executor}:`, error);
+        handleInlineError(error, `Error loading config for executor ${executor}`);
       }
     }
   }
 
   async function loadFlowConfig() {
     loading = true;
-    loadError = '';
     
     try {
       const config = await apiClient.flows.getConfig(namespace, flowId);
@@ -105,12 +103,7 @@
       }
       
     } catch (error: any) {
-      console.error('Error loading flow config:', error);
-      if (error.data?.error) {
-        loadError = error.data.error;
-      } else {
-        loadError = 'Failed to load flow configuration. Please try again.';
-      }
+      handleInlineError(error, 'Error loading flow config');
     } finally {
       loading = false;
     }
@@ -150,7 +143,6 @@
 
   async function updateFlow() {
     saving = true;
-    saveError = '';
     
     try {
       // Transform the flow data to match the API schema for update
@@ -187,18 +179,13 @@
       };
 
       await apiClient.flows.update(namespace, flowId, flowData);
-      console.log('Flow updated successfully');
+      showSuccess('Flow Updated', 'Flow configuration has been updated successfully');
       
       // Redirect to the flow detail page
       await goto(`/view/${namespace}/flows/${flowId}`);
       
     } catch (error: any) {
-      console.error('Error updating flow:', error);
-      if (error.data?.error) {
-        saveError = error.data.error;
-      } else {
-        saveError = 'Failed to update flow. Please try again.';
-      }
+      handleInlineError(error, 'Error updating flow');
     } finally {
       saving = false;
     }
@@ -230,21 +217,6 @@
               <div class="h-4 bg-gray-200 rounded w-1/3"></div>
             </div>
           </div>
-        {:else if loadError}
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-            <div class="p-4 bg-red-50 border border-red-200 rounded-md">
-              <div class="flex">
-                <div class="flex-shrink-0">
-                  <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                  </svg>
-                </div>
-                <div class="ml-3">
-                  <p class="text-sm text-red-800">{loadError}</p>
-                </div>
-              </div>
-            </div>
-          </div>
         {:else}
           <FlowMetadata bind:metadata={flow.metadata} readonly={true} />
           <FlowInputs bind:inputs={flow.inputs} {addInput} />
@@ -257,21 +229,6 @@
           
           <!-- Submit Button at Bottom -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
-            {#if saveError}
-              <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                <div class="flex">
-                  <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                    </svg>
-                  </div>
-                  <div class="ml-3">
-                    <p class="text-sm text-red-800">{saveError}</p>
-                  </div>
-                </div>
-              </div>
-            {/if}
-            
             <div class="flex justify-end space-x-3">
               <button 
                 type="button"

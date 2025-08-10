@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ErrorMessage from '$lib/components/shared/ErrorMessage.svelte';
+	import { handleInlineError } from '$lib/utils/errorHandling';
 
 	let {
 		title,
@@ -16,17 +16,14 @@
 	} = $props();
 
 	let deleting = $state(false);
-	let error = $state<string | null>(null);
 
 	async function handleConfirm() {
 		deleting = true;
-		error = null;
 
 		try {
 			await onConfirm();
 		} catch (err) {
-			error = `Failed to delete item`;
-			console.error('Delete error:', err);
+			handleInlineError(err, `Unable to Delete ${itemName}`);
 		} finally {
 			deleting = false;
 		}
@@ -78,10 +75,6 @@
 			</p>
 		{/if}
 
-		<!-- Error Message -->
-		{#if error}
-			<ErrorMessage message={error} />
-		{/if}
 
 		<div class="flex justify-end gap-2">
 			<button

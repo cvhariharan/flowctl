@@ -10,6 +10,7 @@
   import type { PageData } from './$types';
   import type { FlowCreateReq, FlowInputReq, FlowActionReq } from '$lib/types.js';
   import { goto } from '$app/navigation';
+  import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 
   let { data }: { data: PageData } = $props();
   const namespace = $page.params.namespace as string;
@@ -33,9 +34,8 @@
     errors: [] as string[]
   });
 
-  // Loading and error states
+  // Loading states
   let saving = $state(false);
-  let saveError = $state('');
   const availableExecutors = data.availableExecutors;
   
   // Executor configs for actions
@@ -80,7 +80,6 @@
 
   async function saveFlow() { 
     saving = true;
-    saveError = '';
     
     try {
       // Transform the flow data to match the API schema
@@ -121,18 +120,13 @@
       };
 
       const result = await apiClient.flows.create(namespace, flowData);
-      console.log('Flow created successfully:', result);
+      showSuccess('Flow Created', `Flow "${flow.metadata.name}" has been created successfully.`);
       
       // Redirect to the flows list or flow detail page
       await goto(`/view/${namespace}/flows`);
       
     } catch (error: any) {
-      console.error('Error saving flow:', error);
-      if (error.data?.error) {
-        saveError = error.data.error;
-      } else {
-        saveError = 'Failed to create flow. Please try again.';
-      }
+      handleInlineError(error, 'Unable to Create Flow');
     } finally {
       saving = false;
     }
@@ -166,21 +160,6 @@
         
         <!-- Submit Button at Bottom -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
-          {#if saveError}
-            <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-              <div class="flex">
-                <div class="flex-shrink-0">
-                  <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                  </svg>
-                </div>
-                <div class="ml-3">
-                  <p class="text-sm text-red-800">{saveError}</p>
-                </div>
-              </div>
-            </div>
-          {/if}
-          
           <div class="flex justify-end">
             <button 
               type="button"

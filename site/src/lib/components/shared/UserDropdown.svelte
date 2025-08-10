@@ -1,6 +1,7 @@
 <script lang="ts">
   import { currentUser } from '$lib/stores/auth';
   import { apiClient } from '$lib/apiClient';
+  import { handleInlineError } from '$lib/utils/errorHandling';
 
   let userSettingsOpen = $state(false);
 
@@ -18,7 +19,7 @@
       await apiClient.auth.logout();
       window.location.href = '/login';
     } catch (error) {
-      console.error('Logout failed:', error);
+      handleInlineError(error, 'Unable to Log Out');
       // Force redirect even if logout fails
       window.location.href = '/login';
     }

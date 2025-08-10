@@ -13,6 +13,7 @@
 	import type { NodeResp, NodeReq } from '$lib/types';
     import { DEFAULT_PAGE_SIZE } from '$lib/constants';
     import Header from '$lib/components/shared/Header.svelte';
+	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 
 	let { data }: { data: PageData } = $props();
 
@@ -109,7 +110,7 @@
 			totalCount = response.total_count || 0;
 			pageCount = response.page_count || 1;
 		} catch (error) {
-			console.error('Failed to fetch nodes:', error);
+			handleInlineError(error, 'Unable to Load Nodes List');
 		} finally {
 			loading = false;
 		}
@@ -141,7 +142,7 @@
 			editingNodeData = node;
 			showModal = true;
 		} catch (error) {
-			console.error('Failed to load node:', error);
+			handleInlineError(error, 'Unable to Load Node Details');
 		}
 	}
 
@@ -160,9 +161,10 @@
 		try {
 			await apiClient.nodes.delete(data.namespace, deleteNodeId);
 			closeDeleteModal(); // Close modal after successful deletion
+			showSuccess('Node deleted', `Node ${deleteNodeName} has been successfully deleted.`);
 			await fetchNodes();
 		} catch (error) {
-			console.error('Failed to delete node:', error);
+			handleInlineError(error, 'Unable to Delete Node');
 			throw error;
 		}
 	}
@@ -177,13 +179,15 @@
 		try {
 			if (isEditMode && editingNodeId) {
 				await apiClient.nodes.update(data.namespace, editingNodeId, nodeData);
+				showSuccess('Node updated', `Node ${nodeData.name} has been successfully updated.`);
 			} else {
 				await apiClient.nodes.create(data.namespace, nodeData);
+				showSuccess('Node created', `Node ${nodeData.name} has been successfully created.`);
 			}
 			showModal = false;
 			await fetchNodes();
 		} catch (error) {
-			console.error('Failed to save node:', error);
+			handleInlineError(error, 'Unable to Save Node');
 			throw error;
 		}
 	}

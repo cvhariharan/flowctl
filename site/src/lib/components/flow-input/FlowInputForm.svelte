@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { FlowInput } from '$lib/types';
+  import { ApiError } from '$lib/apiClient';
+  import { handleInlineError } from '$lib/utils/errorHandling';
 
   let { inputs, namespace, flowId }: { inputs: FlowInput[], namespace: string, flowId: string } = $props();
 
@@ -20,25 +22,25 @@
         body: formData,
       });
 
-      const data = await response.json().catch(() => ({}));
-
       if (!response.ok) {
-        if (data.field) {
-          // Handle field-specific validation errors
-          errors[data.field] = data.error;
-        } else if (data.error) {
-          // General error message
-          errors.general = data.error;
-        } else {
-          errors.general = 'Failed to trigger flow';
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Handle validation errors with field details - show inline
+        if (errorData.details && errorData.details.field && errorData.details.error) {
+          errors[errorData.details.field] = errorData.details.error;
+        } 
+        // For non-validation errors, use common error handling
+        else {
+          const apiError = new ApiError(response.status, response.statusText, errorData);
+          handleInlineError(apiError, 'Unable to Start Flow');
         }
       } else {
+        const data = await response.json();
         // Success - redirect to results page
         window.location.href = `/view/${namespace}/results/${flowId}/${data.exec_id}`;
       }
     } catch (error) {
-      console.error('Failed to trigger flow:', error);
-      errors.general = 'Failed to trigger flow';
+      handleInlineError(error, 'Unable to Start Flow');
     } finally {
       loading = false;
     }

@@ -297,7 +297,8 @@ export interface FlowInputValidationError {
 
 export interface ApiErrorResponse {
   error: string;
-  details?: FlowInputValidationError[];
+  code?: string;
+  details?: Record<string, string> | FlowInputValidationError;
 }
 
 // Flow creation types

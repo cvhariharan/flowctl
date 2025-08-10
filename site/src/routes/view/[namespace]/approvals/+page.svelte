@@ -16,6 +16,7 @@
 	import type { ApprovalResp } from '$lib/types';
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
 	import Header from '$lib/components/shared/Header.svelte';
+	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 
 	let { data }: { data: PageData } = $props();
 
@@ -91,7 +92,7 @@
 			totalCount = response.total_count || 0;
 			pageCount = response.page_count || 1;
 		} catch (error) {
-			console.error('Failed to fetch approvals:', error);
+			handleInlineError(error, 'Unable to Load Approvals List');
 		} finally {
 			loading = false;
 		}
@@ -118,10 +119,9 @@
 		try {
 			await apiClient.approvals.action(data.namespace, approvalId, { action: 'approve' });
 			await fetchApprovals(searchQuery, statusFilter, currentPage);
-			notifySuccess('Approval approved successfully');
+			showSuccess('Approval Approved', 'The approval has been approved successfully');
 		} catch (error) {
-			console.error('Failed to approve:', error);
-			notifyError('Failed to approve approval');
+			handleInlineError(error, 'Unable to Approve Request');
 		}
 	}
 
@@ -129,10 +129,9 @@
 		try {
 			await apiClient.approvals.action(data.namespace, approvalId, { action: 'reject' });
 			await fetchApprovals(searchQuery, statusFilter, currentPage);
-			notifySuccess('Approval rejected successfully');
+			showSuccess('Approval Rejected', 'The approval has been rejected successfully');
 		} catch (error) {
-			console.error('Failed to reject:', error);
-			notifyError('Failed to reject approval');
+			handleInlineError(error, 'Unable to Reject Request');
 		}
 	}
 
@@ -150,21 +149,6 @@
 		return date.toLocaleDateString();
 	}
 
-	function notifySuccess(message: string) {
-		window.dispatchEvent(
-			new CustomEvent("notify", {
-				detail: { message, type: "success" },
-			})
-		);
-	}
-
-	function notifyError(message: string) {
-		window.dispatchEvent(
-			new CustomEvent("notify", {
-				detail: { message, type: "error" },
-			})
-		);
-	}
 
 </script>
 

@@ -13,6 +13,7 @@
 	import type { CredentialResp, CredentialReq } from '$lib/types';
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
 	import Header from '$lib/components/shared/Header.svelte';
+	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 
 	let { data }: { data: PageData } = $props();
 
@@ -99,7 +100,7 @@
 			totalCount = response.total_count || 0;
 			pageCount = response.page_count || 1;
 		} catch (error) {
-			console.error('Failed to fetch credentials:', error);
+			handleInlineError(error, 'Unable to Load Credentials List');
 		} finally {
 			loading = false;
 		}
@@ -132,7 +133,7 @@
 			editingCredentialData = credential;
 			showModal = true;
 		} catch (error) {
-			console.error('Failed to load credential:', error);
+			handleInlineError(error, 'Unable to Load Credential Details');
 		} finally {
 			loading = false;
 		}
@@ -153,10 +154,11 @@
 
 		try {
 			await apiClient.credentials.delete(data.namespace, deleteCredentialId);
+			showSuccess('Credential Deleted', `Successfully deleted credential "${deleteCredentialName}"`);
 			closeDeleteModal(); // Close modal after successful deletion
 			await fetchCredentials();
 		} catch (error) {
-			console.error('Failed to delete credential:', error);
+			handleInlineError(error, 'Unable to Delete Credential');
 			throw error;
 		}
 	}
@@ -171,13 +173,15 @@
 		try {
 			if (isEditMode && editingCredentialId) {
 				await apiClient.credentials.update(data.namespace, editingCredentialId, credentialData);
+				showSuccess('Credential Updated', `Successfully updated credential "${credentialData.name}"`);
 			} else {
 				await apiClient.credentials.create(data.namespace, credentialData);
+				showSuccess('Credential Created', `Successfully created credential "${credentialData.name}"`);
 			}
 			showModal = false;
 			await fetchCredentials();
 		} catch (error) {
-			console.error('Failed to save credential:', error);
+			handleInlineError(error, isEditMode ? 'Unable to Update Credential' : 'Unable to Create Credential');
 			throw error;
 		}
 	}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import GroupSelector from '$lib/components/shared/GroupSelector.svelte';
-	import ErrorMessage from '$lib/components/shared/ErrorMessage.svelte';
+	import { handleInlineError } from '$lib/utils/errorHandling';
 	import type { User, Group, UserWithGroups } from '$lib/types';
 
 	let {
@@ -22,18 +22,11 @@
 	let username = $state(userData?.username || '');
 	let selectedGroups = $state<Group[]>(userData?.groups || []);
 	let saving = $state(false);
-	let error = $state<string | null>(null);
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
 		
-		if (!name.trim() || !username.trim()) {
-			error = 'Name and username are required';
-			return;
-		}
-
 		saving = true;
-		error = null;
 
 		try {
 			await onSave({
@@ -42,8 +35,7 @@
 				groups: selectedGroups.map(g => g.id)
 			});
 		} catch (err) {
-			error = 'Failed to save user';
-			console.error('Save error:', err);
+			handleInlineError(err, isEditMode ? 'Unable to Update User' : 'Unable to Create User');
 		} finally {
 			saving = false;
 		}
@@ -114,10 +106,6 @@
 				/>
 			</div>
 
-			<!-- Error Message -->
-			{#if error}
-				<ErrorMessage message={error} />
-			{/if}
 
 			<!-- Action Buttons -->
 			<div class="flex justify-end gap-2 mt-6">

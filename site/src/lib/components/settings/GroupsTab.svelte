@@ -6,6 +6,7 @@
 	import GroupModal from './GroupModal.svelte';
 	import DeleteModal from '$lib/components/shared/DeleteModal.svelte';
 	import { apiClient } from '$lib/apiClient';
+	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 	import type { Group } from '$lib/types';
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
 
@@ -89,7 +90,7 @@
 			totalCount = response.total_count || 0;
 			pageCount = response.page_count || 1;
 		} catch (error) {
-			console.error('Failed to fetch groups:', error);
+			handleInlineError(error, 'Unable to Load Groups List');
 		} finally {
 			loading = false;
 		}
@@ -123,7 +124,7 @@
 			editingGroupData = group;
 			showGroupModal = true;
 		} catch (error) {
-			console.error('Failed to load group:', error);
+			handleInlineError(error, 'Unable to Load Group Details');
 		} finally {
 			loading = false;
 		}
@@ -138,13 +139,15 @@
 		try {
 			if (isEditMode && editingGroupId) {
 				await apiClient.groups.update(editingGroupId, groupData);
+				showSuccess('Group Updated', `Group "${groupData.name}" has been updated successfully`);
 			} else {
 				await apiClient.groups.create(groupData);
+				showSuccess('Group Created', `Group "${groupData.name}" has been created successfully`);
 			}
 			showGroupModal = false;
 			await fetchGroups(searchQuery, currentPage);
 		} catch (error) {
-			console.error('Failed to save group:', error);
+			handleInlineError(error, isEditMode ? 'Unable to Update Group' : 'Unable to Create Group');
 			throw error;
 		}
 	}
@@ -154,10 +157,11 @@
 		
 		try {
 			await apiClient.groups.delete(deleteData.id);
+			showSuccess('Group Deleted', `Group "${deleteData.name}" has been deleted successfully`);
 			showDeleteModal = false;
 			await fetchGroups(searchQuery, currentPage);
 		} catch (error) {
-			console.error('Failed to delete group:', error);
+			handleInlineError(error, 'Unable to Delete Group');
 			throw error;
 		}
 	}

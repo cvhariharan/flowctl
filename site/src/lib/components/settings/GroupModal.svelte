@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ErrorMessage from '$lib/components/shared/ErrorMessage.svelte';
+	import { handleInlineError } from '$lib/utils/errorHandling';
 	import type { Group } from '$lib/types';
 
 	let {
@@ -18,18 +18,11 @@
 	let name = $state(groupData?.name || '');
 	let description = $state(groupData?.description || '');
 	let saving = $state(false);
-	let error = $state<string | null>(null);
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
 		
-		if (!name.trim()) {
-			error = 'Name is required';
-			return;
-		}
-
 		saving = true;
-		error = null;
 
 		try {
 			await onSave({
@@ -37,8 +30,7 @@
 				description: description.trim()
 			});
 		} catch (err) {
-			error = 'Failed to save group';
-			console.error('Save error:', err);
+			handleInlineError(err, isEditMode ? 'Unable to Update Group' : 'Unable to Create Group');
 		} finally {
 			saving = false;
 		}
@@ -99,10 +91,6 @@
 				/>
 			</div>
 
-			<!-- Error Message -->
-			{#if error}
-				<ErrorMessage message={error} />
-			{/if}
 
 			<!-- Action Buttons -->
 			<div class="flex justify-end gap-2 mt-6">

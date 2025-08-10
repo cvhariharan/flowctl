@@ -8,9 +8,9 @@
   import ExecutionIdCell from '$lib/components/shared/ExecutionIdCell.svelte';
   import Tabs from '$lib/components/shared/Tabs.svelte';
   import Pagination from '$lib/components/shared/Pagination.svelte';
-  import ErrorMessage from '$lib/components/shared/ErrorMessage.svelte';
   import FlowHero from '$lib/components/flows/FlowHero.svelte';
   import FlowActionsSummary from '$lib/components/flow-input/FlowActionsSummary.svelte';
+  import { handleInlineError } from '$lib/utils/errorHandling';
   import type { PageData } from './$types';
   import type { TableColumn } from '$lib/types';
   import { DEFAULT_PAGE_SIZE } from '$lib/constants';
@@ -19,7 +19,6 @@
   
   let activeTab = $state<'run' | 'history'>('run');
   let historyLoading = $state(false);
-  let historyError = $state('');
   let flowExecutions = $state<any[]>([]);
   let historyCurrentPage = $state(1);
   let historyItemsPerPage = $state(DEFAULT_PAGE_SIZE);
@@ -32,14 +31,14 @@
 
   const loadFlowHistory = async () => {
     historyLoading = true;
-    historyError = '';
 
     try {
       const response = await fetch(`/api/v1/${namespace}/flows/${flowId}/executions?page=${historyCurrentPage}&count_per_page=${historyItemsPerPage}`);
       const result = await response.json();
 
       if (!response.ok) {
-        historyError = result.error || 'Failed to fetch execution history';
+        const apiError = new Error(result.error || 'Failed to fetch execution history');
+        handleInlineError(apiError, 'Unable to Load Flow History');
         flowExecutions = [];
         return;
       }
@@ -48,8 +47,7 @@
       historyTotalCount = result.total_count || 0;
       historyPageCount = result.page_count || 1;
     } catch (error) {
-      console.error('Error loading flow history:', error);
-      historyError = 'Failed to load execution history';
+      handleInlineError(error, 'Unable to Load Flow History');
       flowExecutions = [];
     } finally {
       historyLoading = false;
@@ -180,9 +178,6 @@
   <!-- History Tab -->
   {#if activeTab === 'history'}
     <div class="max-w-6xl mx-auto">
-      {#if historyError}
-        <ErrorMessage message={historyError} />
-      {/if}
 
       <Table
         columns={tableColumns}

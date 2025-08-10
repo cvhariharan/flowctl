@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { handleInlineError } from '$lib/utils/errorHandling';
 	import type { CredentialReq, CredentialResp } from '$lib/types';
 
 	interface Props {
@@ -16,11 +16,6 @@
 		onClose 
 	}: Props = $props();
 
-	const dispatch = createEventDispatcher<{
-		save: CredentialReq;
-		close: void;
-	}>();
-
 	// Form state
 	let formData = $state({
 		name: '',
@@ -29,7 +24,6 @@
 	});
 
 	let loading = $state(false);
-	let error = $state('');
 
 	// Initialize form data when credentialData changes
 	$effect(() => {
@@ -49,15 +43,9 @@
 		}
 	});
 
-	function handleSubmit() {
+	async function handleSubmit() {
 		try {
 			loading = true;
-			error = '';
-
-			if (!formData.name || !formData.key_type || !formData.key_data) {
-				error = 'All fields are required';
-				return;
-			}
 
 			const credentialFormData: CredentialReq = {
 				name: formData.name,
@@ -65,19 +53,15 @@
 				key_data: formData.key_data
 			};
 
-			// Emit save event and call onSave prop
-			dispatch('save', credentialFormData);
-			onSave(credentialFormData);
+			await onSave(credentialFormData);
 		} catch (err) {
-			console.error('Failed to save credential:', err);
-			error = 'Failed to save credential';
+			handleInlineError(err, isEditMode ? 'Unable to Update Credential' : 'Unable to Create Credential');
 		} finally {
 			loading = false;
 		}
 	}
 
 	function handleClose() {
-		dispatch('close');
 		onClose();
 	}
 
@@ -99,11 +83,6 @@
 			{isEditMode ? 'Edit Credential' : 'Add New Credential'}
 		</h3>
 
-		{#if error}
-			<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-				<p class="text-sm text-red-600">{error}</p>
-			</div>
-		{/if}
 
 		<form on:submit|preventDefault={handleSubmit}>
 			<div class="grid grid-cols-2 gap-4 mb-4">
@@ -158,6 +137,7 @@
 						type="password" 
 						class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
 						bind:value={formData.key_data}
+						placeholder="Enter password"
 						required
 						disabled={loading}
 					/>

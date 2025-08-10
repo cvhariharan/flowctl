@@ -1,5 +1,6 @@
 <script lang="ts">
   import { apiClient } from '$lib/apiClient.js';
+  import { handleInlineError } from '$lib/utils/errorHandling';
   import { createSlug } from '$lib/utils';
   import CodeEditor from '$lib/components/shared/CodeEditor.svelte';
 
@@ -69,7 +70,7 @@
         });
       }
     } catch (error) {
-      console.error('Error loading executor config:', error);
+      handleInlineError(error, 'Unable to Load Executor Configuration');
     }
   }
 

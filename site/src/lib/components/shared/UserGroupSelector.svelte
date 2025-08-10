@@ -1,5 +1,6 @@
 <script lang="ts">
   import { apiClient } from '$lib/apiClient';
+  import { handleInlineError } from '$lib/utils/errorHandling';
   import type { User, Group } from '$lib/types';
   
   let {
@@ -43,7 +44,7 @@
       }
       showDropdown = searchResults.length > 0;
     } catch (error) {
-      console.error('Failed to search subjects:', error);
+      handleInlineError(error, type === 'user' ? 'Unable to Search Users' : 'Unable to Search Groups');
       searchResults = [];
       showDropdown = false;
     } finally {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiClient } from '$lib/apiClient';
+  import { handleInlineError } from '$lib/utils/errorHandling';
   import type { Group } from '$lib/types';
   
   let {
@@ -34,7 +35,7 @@
       searchResults = allGroups;
       initialized = true;
     } catch (error) {
-      console.error('Failed to load groups:', error);
+      handleInlineError(error, 'Unable to Load Groups');
       allGroups = [];
       searchResults = [];
     } finally {

@@ -12,6 +12,7 @@
 	import { apiClient } from '$lib/apiClient';
 	import type { NamespaceMemberResp, NamespaceMemberReq } from '$lib/types';
 	import Header from '$lib/components/shared/Header.svelte';
+	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 
 	let { data }: { data: PageData } = $props();
 
@@ -71,8 +72,7 @@
 			const response = await apiClient.namespaces.members.list(data.namespace);
 			members = response.members || [];
 		} catch (error) {
-			console.error('Failed to fetch members:', error);
-			notifyError('Failed to fetch members');
+			handleInlineError(error, 'Unable to Load Members List');
 		} finally {
 			loading = false;
 		}
@@ -83,17 +83,16 @@
 			if (isEditMode && selectedMember) {
 				// Update existing member - only role can be updated
 				await apiClient.namespaces.members.update(data.namespace, selectedMember.id, { role: memberData.role });
-				notifySuccess('Member updated successfully');
+				showSuccess('Member Updated', 'Member updated successfully');
 			} else {
 				// Add new member
 				await apiClient.namespaces.members.add(data.namespace, memberData);
-				notifySuccess('Member added successfully');
+				showSuccess('Member Added', 'Member added successfully');
 			}
 			closeMemberModal();
 			await fetchMembers();
 		} catch (error) {
-			console.error('Failed to save member:', error);
-			notifyError(isEditMode ? 'Failed to update member' : 'Failed to add member');
+			handleInlineError(error, isEditMode ? 'Unable to Update Member Role' : 'Unable to Add Member');
 			throw error; // Re-throw so modal can handle it
 		}
 	}
@@ -123,10 +122,9 @@
 			await apiClient.namespaces.members.remove(data.namespace, deleteMemberId);
 			closeDeleteModal(); // Close modal after successful deletion
 			await fetchMembers();
-			notifySuccess('Member removed successfully');
+			showSuccess('Member Removed', 'Member removed successfully');
 		} catch (error) {
-			console.error('Failed to remove member:', error);
-			notifyError('Failed to remove member');
+			handleInlineError(error, 'Unable to Remove Member');
 			throw error;
 		}
 	}
@@ -156,21 +154,6 @@
 		return date.toLocaleDateString();
 	}
 
-	function notifySuccess(message: string) {
-		window.dispatchEvent(
-			new CustomEvent("notify", {
-				detail: { message, type: "success" },
-			})
-		);
-	}
-
-	function notifyError(message: string) {
-		window.dispatchEvent(
-			new CustomEvent("notify", {
-				detail: { message, type: "error" },
-			})
-		);
-	}
 </script>
 
 <svelte:head>

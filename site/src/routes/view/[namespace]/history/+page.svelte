@@ -12,6 +12,7 @@
 	import type { ExecutionSummary } from '$lib/types';
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
 	import Header from '$lib/components/shared/Header.svelte';
+	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 
 	let { data }: { data: PageData } = $props();
 
@@ -96,7 +97,7 @@
 			totalCount = response.total_count || 0;
 			pageCount = response.page_count || 1;
 		} catch (error) {
-			console.error('Failed to fetch execution history:', error);
+			handleInlineError(error, 'Unable to Load Execution History');
 		} finally {
 			loading = false;
 		}

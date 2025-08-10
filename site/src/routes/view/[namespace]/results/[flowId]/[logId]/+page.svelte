@@ -13,6 +13,7 @@
   import type { PageData } from './$types';
   import type { FlowMetaResp, ExecutionSummary } from '$lib/types';
   import { apiClient } from '$lib/apiClient';
+  import { handleInlineError, showInfo, showSuccess, showWarning } from '$lib/utils/errorHandling';
 
   let { data }: { 
     data: {
@@ -34,7 +35,6 @@
   let results = $state<Record<string, any>>({});
   let showApproval = $state(false);
   let approvalID = $state<string | null>(null);
-  let errorMessage = $state<string | null>(null);
   let activeTab = $state('logs');
   let startTime = $state('');
   let flowName = $state('');
@@ -81,7 +81,7 @@
       try { 
         msg = JSON.parse(event.data); 
       } catch (e) {
-        console.error('Failed to parse WebSocket message:', e);
+        handleInlineError(e, 'WebSocket Message Parse Error');
       }
       processMessage(msg);
     };
@@ -101,13 +101,13 @@
           }
         }
       } else if (event.reason) {
-        errorMessage = event.reason;
+        handleInlineError(new Error(event.reason), 'WebSocket Connection Error');
         status = 'errored';
       }
     };
 
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      handleInlineError(error, 'WebSocket Connection Error');
     };
   };
 
@@ -170,9 +170,8 @@
         // Check if the error indicates cancellation
         if (msg.value && msg.value.includes('cancelled')) {
           status = 'cancelled';
-          errorMessage = null; // Don't show error message for cancellation
         } else {
-          errorMessage = msg.value || "An error occurred.";
+          handleInlineError(new Error(msg.value || "An error occurred."), 'Flow Execution Error');
           status = 'errored';
         }
         if (currentActionIndex !== -1) {
@@ -186,7 +185,6 @@
         break;
       case 'cancelled':
         status = 'cancelled';
-        errorMessage = null; // Don't show error message for cancellation
         logOutput += (msg.value || 'Flow execution was cancelled') + '\n';
         break;
       default:
@@ -205,9 +203,6 @@
     return 'pending';
   };
 
-  const dismissError = () => {
-    errorMessage = null;
-  };
 
   const dismissApproval = () => {
     showApproval = false;
@@ -216,20 +211,19 @@
   const stopFlow = async () => {
     try {
       const result = await apiClient.executions.cancel(namespace, logId);
-      console.log('Flow cancellation initiated:', result);
       
       // Set status first, then close WebSocket to prevent race condition
       status = 'cancelled';
-      errorMessage = null; // Don't show error message for cancellation
       
       // Mark as manually closed and close WebSocket connection
       manuallyClosed = true;
       if (ws) {
         ws.close();
       }
+      
+      showWarning('Flow Cancellation', 'Flow cancellation signal has been sent');
     } catch (error) {
-      console.error('Error cancelling flow:', error);
-      errorMessage = `Failed to cancel flow: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      handleInlineError(error, 'Unable to Cancel Flow');
     }
   };
 
@@ -364,17 +358,6 @@
           </div>
         {/if}
 
-        {#if errorMessage}
-          <div class="mt-6">
-            <Alert
-              type="error"
-              title="Error"
-              message={errorMessage}
-              dismissible={true}
-              onDismiss={dismissError}
-            />
-          </div>
-        {/if}
       </div>
     </div>
   </main>

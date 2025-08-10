@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { handleInlineError } from '$lib/utils/errorHandling';
   import UserGroupSelector from '$lib/components/shared/UserGroupSelector.svelte';
   import type { NamespaceMemberReq, NamespaceMemberResp, User, Group } from '$lib/types';
   
@@ -19,10 +19,6 @@
     onClose
   }: Props = $props();
 
-  const dispatch = createEventDispatcher<{
-    save: NamespaceMemberReq;
-    close: void;
-  }>();
 
   // Form state
   let memberForm = $state<NamespaceMemberReq>({
@@ -33,7 +29,6 @@
   
   let selectedSubject = $state<User | Group | null>(null);
   let loading = $state(false);
-  let error = $state('');
 
   // Initialize form data when memberData changes or when show changes
   $effect(() => {
@@ -66,29 +61,30 @@
     memberForm.subject_id = '';
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     try {
       loading = true;
-      error = '';
-
-      if (!selectedSubject || !memberForm.role) {
-        error = 'Please select a member and role';
+      
+      // Basic client-side validation
+      if (!selectedSubject) {
+        handleInlineError(new Error('Please select a member'), 'Validation Error');
         return;
       }
-
-      // Emit save event and call onSave prop
-      dispatch('save', memberForm);
+      
+      if (!memberForm.role) {
+        handleInlineError(new Error('Please select a role'), 'Validation Error');
+        return;
+      }
+      
       onSave(memberForm);
     } catch (err) {
-      console.error('Failed to save member:', err);
-      error = 'Failed to save member';
+      handleInlineError(err, isEditMode ? 'Unable to Update Member Role' : 'Unable to Add Member to Namespace');
     } finally {
       loading = false;
     }
   }
 
   function handleClose() {
-    dispatch('close');
     onClose();
   }
 
@@ -99,7 +95,6 @@
       role: 'user'
     };
     selectedSubject = null;
-    error = '';
   }
 
   // Close on Escape key
@@ -122,11 +117,6 @@
           {isEditMode ? 'Edit Member' : 'Add Member'}
         </h3>
         
-        {#if error}
-          <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p class="text-sm text-red-600">{error}</p>
-          </div>
-        {/if}
         
         <form on:submit|preventDefault={handleSubmit}>
           <!-- Subject Type Selection -->
@@ -214,7 +204,7 @@
             </button>
             <button 
               type="submit"
-              disabled={!selectedSubject || !memberForm.role || loading}
+              disabled={loading}
               class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {#if loading}

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import { apiClient } from '$lib/apiClient';
+  import { handleInlineError } from '$lib/utils/errorHandling';
   import { currentUser } from '$lib/stores/auth';
   import type { NamespaceResp, Namespace } from '$lib/types';
   import { goto } from '$app/navigation';
@@ -41,7 +42,7 @@
       const data = await apiClient.namespaces.list({ count_per_page: DEFAULT_PAGE_SIZE });
       namespaces = data.namespaces || [];
     } catch (error) {
-      console.error('Failed to fetch namespaces:', error);
+      handleInlineError(error, 'Unable to Load Namespaces');
       namespaces = [];
     }
   };

@@ -6,6 +6,7 @@
 	import UserModal from './UserModal.svelte';
 	import DeleteModal from '$lib/components/shared/DeleteModal.svelte';
 	import { apiClient } from '$lib/apiClient';
+	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 	import type { User, Group, UserWithGroups } from '$lib/types';
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
 
@@ -108,7 +109,7 @@
 			totalCount = response.total_count || 0;
 			pageCount = response.page_count || 1;
 		} catch (error) {
-			console.error('Failed to fetch users:', error);
+			handleInlineError(error, 'Unable to Load Users List');
 		} finally {
 			loading = false;
 		}
@@ -142,7 +143,7 @@
 			editingUserData = user;
 			showUserModal = true;
 		} catch (error) {
-			console.error('Failed to load user:', error);
+			handleInlineError(error, 'Unable to Load User Details');
 		} finally {
 			loading = false;
 		}
@@ -157,13 +158,15 @@
 		try {
 			if (isEditMode && editingUserId) {
 				await apiClient.users.update(editingUserId, userData);
+				showSuccess('User Updated', `User "${userData.name}" has been updated successfully`);
 			} else {
 				await apiClient.users.create(userData);
+				showSuccess('User Created', `User "${userData.name}" has been created successfully`);
 			}
 			showUserModal = false;
 			await fetchUsers(searchQuery, currentPage);
 		} catch (error) {
-			console.error('Failed to save user:', error);
+			handleInlineError(error, isEditMode ? 'Unable to Update User' : 'Unable to Create User');
 			throw error;
 		}
 	}
@@ -173,10 +176,11 @@
 		
 		try {
 			await apiClient.users.delete(deleteData.id);
+			showSuccess('User Deleted', `User "${deleteData.name}" has been deleted successfully`);
 			showDeleteModal = false;
 			await fetchUsers(searchQuery, currentPage);
 		} catch (error) {
-			console.error('Failed to delete user:', error);
+			handleInlineError(error, 'Unable to Delete User');
 			throw error;
 		}
 	}

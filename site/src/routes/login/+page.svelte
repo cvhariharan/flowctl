@@ -1,6 +1,7 @@
 <script lang="ts">
   import { apiClient } from '$lib/apiClient';
   import { goto, invalidateAll } from '$app/navigation';
+  import { handleInlineError } from '$lib/utils/errorHandling';
   import Logo from '$lib/components/login/Logo.svelte';
   import LoginCard from '$lib/components/login/LoginCard.svelte';
   import Footer from '$lib/components/login/Footer.svelte';
@@ -8,25 +9,21 @@
   let username = $state('');
   let password = $state('');
   let loading = $state(false);
-  let error = $state('');
 
   const submit = async (event: SubmitEvent) => {
     event.preventDefault();
     if (!username || !password) {
-      error = 'Please fill in all fields';
       return;
     }
 
     loading = true;
-    error = '';
 
     try {
       await apiClient.auth.login({ username, password });
-      await invalidateAll(); // Refresh all load functions including layout
+      await invalidateAll();
       goto('/view/default/flows');
     } catch (err) {
-      console.error('Login failed:', err);
-      error = 'Invalid username or password';
+      handleInlineError(err, 'Unable to Sign In');
     } finally {
       loading = false;
     }
@@ -44,7 +41,6 @@
     <Logo />
     <LoginCard 
       onSubmit={submit} 
-      {error} 
       {loading} 
       bind:username 
       bind:password 

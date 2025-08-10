@@ -6,8 +6,8 @@
   import Table from "$lib/components/shared/Table.svelte";
   import Pagination from "$lib/components/shared/Pagination.svelte";
   import SearchInput from "$lib/components/shared/SearchInput.svelte";
-  import ErrorMessage from "$lib/components/shared/ErrorMessage.svelte";
   import PageHeader from "$lib/components/shared/PageHeader.svelte";
+  import { handleInlineError, showSuccess } from "$lib/utils/errorHandling";
   import type { TableColumn, TableAction, FlowListItem } from "$lib/types";
   import { FLOWS_PER_PAGE } from "$lib/constants";
   import { Authorizer } from "casbin.js";
@@ -19,7 +19,6 @@
   let pageCount = $state(data.pageCount);
   let totalCount = $state(data.totalCount);
   let currentPage = $state(data.currentPage);
-  let error = $state(data.error);
   let loading = $state(false);
   let canCreateFlow = $state(false);
   let canUpdateFlows = $state(false);
@@ -43,10 +42,16 @@
   const confirmDeleteFlow = async () => {
     if (!flowToDelete) return;
     
-    await apiClient.flows.delete(page.params.namespace!, flowToDelete.slug);
-    await loadFlows(searchValue, currentPage);
-    showDeleteModal = false;
-    flowToDelete = null;
+    try {
+      await apiClient.flows.delete(page.params.namespace!, flowToDelete.slug);
+      showSuccess('Flow Deleted', `Flow "${flowToDelete.name}" has been deleted successfully`);
+      await loadFlows(searchValue, currentPage);
+    } catch (err) {
+      handleInlineError(err, 'Unable to Delete Flow');
+    } finally {
+      showDeleteModal = false;
+      flowToDelete = null;
+    }
   };
 
   const cancelDelete = () => {
@@ -74,7 +79,7 @@
       const deleteResult = await authorizer.can('delete', 'flow', data.namespaceId);
       canDeleteFlows = deleteResult;
     } catch (err) {
-      console.error('Failed to check permissions:', err);
+      handleInlineError(err, 'Unable to Check Permissions');
       canCreateFlow = false;
       canUpdateFlows = false;
       canDeleteFlows = false;
@@ -86,7 +91,6 @@
 
   const loadFlows = async (filter: string = "", pageNumber: number = 1) => {
     loading = true;
-    error = "";
 
     try {
       const result = await apiClient.flows.list(page.params.namespace!, {
@@ -100,8 +104,7 @@
       totalCount = result.total_count;
       currentPage = pageNumber;
     } catch (err) {
-      error = "Failed to load flows";
-      console.error("Failed to load flows:", err);
+      handleInlineError(err, "Unable to Load Flows List");
     } finally {
       loading = false;
     }
@@ -211,10 +214,6 @@
       {/if}
     </div>
 
-    <!-- Error Message -->
-    {#if error}
-      <ErrorMessage message={error} />
-    {/if}
 
     <!-- Flows Table -->
     <Table

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { handleInlineError } from '$lib/utils/errorHandling';
 	import type { CredentialResp, NodeReq, NodeResp } from '$lib/types';
 
 	interface Props {
@@ -18,11 +18,6 @@
 		onClose 
 	}: Props = $props();
 
-	const dispatch = createEventDispatcher<{
-		save: NodeReq;
-		close: void;
-	}>();
-
 	// Form state
 	let formData = $state({
 		name: '',
@@ -40,7 +35,6 @@
 	});
 
 	let loading = $state(false);
-	let error = $state('');
 
 	// Initialize form data when nodeData changes
 	$effect(() => {
@@ -92,10 +86,9 @@
 		}
 	}
 
-	function handleSubmit() {
+	async function handleSubmit() {
 		try {
 			loading = true;
-			error = '';
 
 			const tags = formData.tagsString
 				.split(',')
@@ -116,19 +109,15 @@
 				}
 			};
 
-			// Emit save event and call onSave prop
-			dispatch('save', nodeFormData);
-			onSave(nodeFormData);
+			await onSave(nodeFormData);
 		} catch (err) {
-			console.error('Failed to save node:', err);
-			error = 'Failed to save node';
+			handleInlineError(err, isEditMode ? 'Unable to Update Node' : 'Unable to Create Node');
 		} finally {
 			loading = false;
 		}
 	}
 
 	function handleClose() {
-		dispatch('close');
 		onClose();
 	}
 
@@ -151,11 +140,6 @@
 			{isEditMode ? 'Edit Node' : 'Add Node'}
 		</h3>
 
-		{#if error}
-			<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-				<p class="text-sm text-red-600">{error}</p>
-			</div>
-		{/if}
 
 		<form on:submit|preventDefault={handleSubmit}>
 			<!-- Name -->
