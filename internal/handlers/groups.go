@@ -10,12 +10,12 @@ import (
 func (h *Handler) HandleGetGroup(c echo.Context) error {
 	groupID := c.Param("groupID")
 	if groupID == "" {
-		return wrapError(http.StatusBadRequest, "group id cannot be empty", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "group id cannot be empty", nil, nil)
 	}
 
 	group, err := h.co.GetGroupWithUsers(c.Request().Context(), groupID)
 	if err != nil {
-		return wrapError(http.StatusNotFound, "could not retrieve group", err, nil)
+		return wrapError(ErrResourceNotFound, "could not retrieve group", err, nil)
 	}
 
 	return c.JSON(http.StatusOK, GroupWithUsers{
@@ -30,16 +30,16 @@ func (h *Handler) HandleCreateGroup(c echo.Context) error {
 		Description string `form:"description" validate:"max=150"`
 	}
 	if err := c.Bind(&req); err != nil {
-		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
 	if err := h.validate.Struct(req); err != nil {
-		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
 	group, err := h.co.CreateGroup(c.Request().Context(), req.Name, req.Description)
 	if err != nil {
-		return wrapError(http.StatusBadRequest, "could not create group", err, nil)
+		return wrapError(ErrOperationFailed, "could not create group", err, nil)
 	}
 
 	return c.JSON(http.StatusCreated, GroupWithUsers{
@@ -51,7 +51,7 @@ func (h *Handler) HandleCreateGroup(c echo.Context) error {
 func (h *Handler) HandleUpdateGroup(c echo.Context) error {
 	groupID := c.Param("groupID")
 	if groupID == "" {
-		return wrapError(http.StatusBadRequest, "group id cannot be empty", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "group id cannot be empty", nil, nil)
 	}
 
 	var req struct {
@@ -59,16 +59,16 @@ func (h *Handler) HandleUpdateGroup(c echo.Context) error {
 		Description string `form:"description" validate:"max=150"`
 	}
 	if err := c.Bind(&req); err != nil {
-		return wrapError(http.StatusBadRequest, "could not decode request", err, nil)
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
 	if err := h.validate.Struct(req); err != nil {
-		return wrapError(http.StatusBadRequest, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
 	group, err := h.co.UpdateGroup(c.Request().Context(), groupID, req.Name, req.Description)
 	if err != nil {
-		return wrapError(http.StatusBadRequest, "could not update group", err, nil)
+		return wrapError(ErrOperationFailed, "could not update group", err, nil)
 	}
 
 	return c.JSON(http.StatusOK, GroupWithUsers{
@@ -81,16 +81,16 @@ func (h *Handler) HandleDeleteGroup(c echo.Context) error {
 	groupID := c.Param("groupID")
 
 	if groupID == "" {
-		return wrapError(http.StatusBadRequest, "group id cannot be empty", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "group id cannot be empty", nil, nil)
 	}
 
 	_, err := h.co.GetGroupByUUID(c.Request().Context(), groupID)
 	if err != nil {
-		return wrapError(http.StatusBadRequest, "could not get group", err, nil)
+		return wrapError(ErrResourceNotFound, "could not get group", err, nil)
 	}
 
 	if err := h.co.DeleteGroupByUUID(c.Request().Context(), groupID); err != nil {
-		return wrapError(http.StatusBadRequest, "could not delete group", err, nil)
+		return wrapError(ErrOperationFailed, "could not delete group", err, nil)
 	}
 
 	return c.NoContent(http.StatusOK)
@@ -99,11 +99,11 @@ func (h *Handler) HandleDeleteGroup(c echo.Context) error {
 func (h *Handler) HandleGroupPagination(c echo.Context) error {
 	var req PaginateRequest
 	if err := c.Bind(&req); err != nil {
-		return wrapError(http.StatusInternalServerError, "invalid request", err, nil)
+		return wrapError(ErrInvalidInput, "invalid request", err, nil)
 	}
 
 	if req.Page < 0 || req.Count < 0 {
-		return wrapError(http.StatusInternalServerError, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
+		return wrapError(ErrInvalidPagination, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
 	}
 
 	if req.Page > 0 {
@@ -115,7 +115,7 @@ func (h *Handler) HandleGroupPagination(c echo.Context) error {
 	}
 	g, pageCount, totalCount, err := h.co.SearchGroup(c.Request().Context(), req.Filter, req.Count, req.Count*req.Page)
 	if err != nil {
-		return wrapError(http.StatusBadRequest, "error retrieving groups", err, nil)
+		return wrapError(ErrOperationFailed, "error retrieving groups", err, nil)
 	}
 
 	var groups []GroupWithUsers

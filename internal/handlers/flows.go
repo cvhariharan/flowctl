@@ -138,35 +138,35 @@ func (h *Handler) processFlowInputs(c echo.Context, flow models.Flow, namespace 
 func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 	user, ok := c.Get("user").(models.UserInfo)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get user details", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get user details", nil, nil)
 	}
 
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	f, err := h.co.GetFlowByID(c.Param("flow"), namespace)
 	if err != nil {
-		return wrapError(http.StatusBadRequest, "could not get flow", err, nil)
+		return wrapError(ErrResourceNotFound, "could not get flow", err, nil)
 	}
 
 	req, err := h.processFlowInputs(c, f, namespace)
 	if err != nil {
-		return wrapError(http.StatusBadRequest, err.Error(), err, nil)
+		return wrapError(ErrValidationFailed, err.Error(), err, nil)
 	}
 
 	if len(f.Actions) == 0 {
-		return wrapError(http.StatusBadRequest, "no actions in flow", nil, nil)
+		return wrapError(ErrValidationFailed, "no actions in flow", nil, nil)
 	}
 
 	// Convert string inputs to appropriate types
 	if err := convertRequestInputs(req, f); err != nil {
-		return wrapError(http.StatusBadRequest, "input conversion error", err, nil)
+		return wrapError(ErrInvalidInput, "input conversion error", err, nil)
 	}
 
 	if err := f.ValidateInput(req); err != nil {
-		return wrapError(http.StatusBadRequest, "", err, FlowInputValidationError{
+		return wrapError(ErrValidationFailed, "", err, FlowInputValidationError{
 			FieldName:  err.FieldName,
 			ErrMessage: err.Msg,
 		})
@@ -175,7 +175,7 @@ func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 	// Add to queue
 	execID, err := h.co.QueueFlowExecution(c.Request().Context(), f, req, user.ID, namespace)
 	if err != nil {
-		return wrapError(http.StatusBadRequest, fmt.Sprintf("could not trigger flow: %v", err), err, nil)
+		return wrapError(ErrOperationFailed, fmt.Sprintf("could not trigger flow: %v", err), err, nil)
 	}
 	return c.JSON(http.StatusOK, FlowTriggerResp{
 		ExecID: execID,
@@ -185,7 +185,7 @@ func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 func (h *Handler) HandleLogStreaming(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	// Upgrade to WebSocket connection
@@ -257,16 +257,16 @@ func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, w
 func (h *Handler) HandleFlowsPagination(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	var req PaginateRequest
 	if err := c.Bind(&req); err != nil {
-		return wrapError(http.StatusInternalServerError, "invalid request", err, nil)
+		return wrapError(ErrInvalidInput, "invalid request", err, nil)
 	}
 
 	if req.Page < 0 || req.Count < 0 {
-		return wrapError(http.StatusInternalServerError, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
+		return wrapError(ErrInvalidPagination, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
 	}
 
 	if req.Page > 0 {
@@ -279,7 +279,7 @@ func (h *Handler) HandleFlowsPagination(c echo.Context) error {
 
 	flows, pageCount, totalCount, err := h.co.SearchFlows(c.Request().Context(), namespace, req.Filter, req.Count, req.Count*req.Page)
 	if err != nil {
-		return wrapError(http.StatusInternalServerError, "could not search flows", err, nil)
+		return wrapError(ErrOperationFailed, "could not search flows", err, nil)
 	}
 
 	flowItems := make([]FlowListItem, len(flows))
@@ -297,17 +297,17 @@ func (h *Handler) HandleFlowsPagination(c echo.Context) error {
 func (h *Handler) HandleGetFlow(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	flowID := c.Param("flowID")
 	if flowID == "" {
-		return wrapError(http.StatusBadRequest, "flow ID cannot be empty", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "flow ID cannot be empty", nil, nil)
 	}
 
 	flow, err := h.co.GetFlowByID(flowID, namespace)
 	if err != nil {
-		return wrapError(http.StatusNotFound, "flow not found", err, nil)
+		return wrapError(ErrResourceNotFound, "flow not found", err, nil)
 	}
 
 	return c.JSON(http.StatusOK, flow)
@@ -316,17 +316,17 @@ func (h *Handler) HandleGetFlow(c echo.Context) error {
 func (h *Handler) HandleGetExecutionSummary(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	execID := c.Param("execID")
 	if execID == "" {
-		return wrapError(http.StatusBadRequest, "execution ID cannot be empty", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "execution ID cannot be empty", nil, nil)
 	}
 
 	execSummary, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), execID, namespace)
 	if err != nil {
-		return wrapError(http.StatusNotFound, "execution not found", err, nil)
+		return wrapError(ErrResourceNotFound, "execution not found", err, nil)
 	}
 
 	response := coreExecutionSummaryToExecutionSummary(execSummary)
@@ -336,21 +336,21 @@ func (h *Handler) HandleGetExecutionSummary(c echo.Context) error {
 func (h *Handler) HandleExecutionsPagination(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	flowID := c.Param("flowID")
 	if flowID == "" {
-		return wrapError(http.StatusBadRequest, "flow ID cannot be empty", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "flow ID cannot be empty", nil, nil)
 	}
 
 	var req PaginateRequest
 	if err := c.Bind(&req); err != nil {
-		return wrapError(http.StatusInternalServerError, "invalid request", err, nil)
+		return wrapError(ErrInvalidInput, "invalid request", err, nil)
 	}
 
 	if req.Page < 0 || req.Count < 0 {
-		return wrapError(http.StatusInternalServerError, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
+		return wrapError(ErrInvalidPagination, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
 	}
 
 	if req.Page > 0 {
@@ -363,12 +363,12 @@ func (h *Handler) HandleExecutionsPagination(c echo.Context) error {
 
 	flow, err := h.co.GetFlowByID(flowID, namespace)
 	if err != nil {
-		return wrapError(http.StatusNotFound, "flow not found", err, nil)
+		return wrapError(ErrResourceNotFound, "flow not found", err, nil)
 	}
 
 	executions, pageCount, totalCount, err := h.co.GetExecutionSummaryPaginated(c.Request().Context(), flow, namespace, req.Count, req.Count*req.Page)
 	if err != nil {
-		return wrapError(http.StatusInternalServerError, "could not get paginated executions", err, nil)
+		return wrapError(ErrOperationFailed, "could not get paginated executions", err, nil)
 	}
 
 	executionItems := make([]ExecutionSummary, len(executions))
@@ -386,16 +386,16 @@ func (h *Handler) HandleExecutionsPagination(c echo.Context) error {
 func (h *Handler) HandleAllExecutionsPagination(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	var req PaginateRequest
 	if err := c.Bind(&req); err != nil {
-		return wrapError(http.StatusInternalServerError, "invalid request", err, nil)
+		return wrapError(ErrInvalidInput, "invalid request", err, nil)
 	}
 
 	if req.Page < 0 || req.Count < 0 {
-		return wrapError(http.StatusInternalServerError, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
+		return wrapError(ErrInvalidPagination, "invalid request, page or count per page cannot be less than 0", fmt.Errorf("page and count per page less than zero"), nil)
 	}
 
 	if req.Page > 0 {
@@ -408,7 +408,7 @@ func (h *Handler) HandleAllExecutionsPagination(c echo.Context) error {
 
 	executions, pageCount, totalCount, err := h.co.GetAllExecutionSummaryPaginated(c.Request().Context(), namespace, req.Count, req.Count*req.Page)
 	if err != nil {
-		return wrapError(http.StatusInternalServerError, "could not get all paginated executions", err, nil)
+		return wrapError(ErrOperationFailed, "could not get all paginated executions", err, nil)
 	}
 
 	executionItems := make([]ExecutionSummary, len(executions))
@@ -426,17 +426,17 @@ func (h *Handler) HandleAllExecutionsPagination(c echo.Context) error {
 func (h *Handler) HandleGetFlowInputs(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	flowID := c.Param("flowID")
 	if flowID == "" {
-		return wrapError(http.StatusBadRequest, "flow ID cannot be empty", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "flow ID cannot be empty", nil, nil)
 	}
 
 	flow, err := h.co.GetFlowByID(flowID, namespace)
 	if err != nil {
-		return wrapError(http.StatusNotFound, "flow not found", err, nil)
+		return wrapError(ErrResourceNotFound, "flow not found", err, nil)
 	}
 
 	inputs := coreFlowInputsToInputs(flow.Inputs)
@@ -448,17 +448,17 @@ func (h *Handler) HandleGetFlowInputs(c echo.Context) error {
 func (h *Handler) HandleGetFlowMeta(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	flowID := c.Param("flowID")
 	if flowID == "" {
-		return wrapError(http.StatusBadRequest, "flow ID cannot be empty", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "flow ID cannot be empty", nil, nil)
 	}
 
 	flow, err := h.co.GetFlowByID(flowID, namespace)
 	if err != nil {
-		return wrapError(http.StatusNotFound, "flow not found", err, nil)
+		return wrapError(ErrResourceNotFound, "flow not found", err, nil)
 	}
 
 	meta := coreFlowMetatoFlowMeta(flow.Meta)
@@ -473,12 +473,12 @@ func (h *Handler) HandleCreateFlow(c echo.Context) error {
 	namespace := c.Param("namespace")
 	namespaceID, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	var req FlowCreateReq
 	if err := c.Bind(&req); err != nil {
-		return wrapError(http.StatusBadRequest, "invalid request", err, nil)
+		return wrapError(ErrInvalidInput, "invalid request", err, nil)
 	}
 
 	flow := models.Flow{
@@ -494,11 +494,11 @@ func (h *Handler) HandleCreateFlow(c echo.Context) error {
 	h.logger.Debug("flow", flow)
 
 	if err := flow.Validate(); err != nil {
-		return wrapError(http.StatusBadRequest, "flow validation error", err, nil)
+		return wrapError(ErrValidationFailed, "flow validation error", err, nil)
 	}
 
 	if err := h.co.CreateFlow(c.Request().Context(), flow, namespaceID); err != nil {
-		return wrapError(http.StatusInternalServerError, err.Error(), err, nil)
+		return wrapError(ErrOperationFailed, err.Error(), err, nil)
 	}
 
 	return c.JSON(http.StatusCreated, FlowCreateResp{
@@ -509,18 +509,18 @@ func (h *Handler) HandleCreateFlow(c echo.Context) error {
 func (h *Handler) HandleUpdateFlow(c echo.Context) error {
 	namespaceID, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 	flowID := c.Param("flowID")
 
 	var req FlowUpdateReq
 	if err := c.Bind(&req); err != nil {
-		return wrapError(http.StatusBadRequest, "invalid request", err, nil)
+		return wrapError(ErrInvalidInput, "invalid request", err, nil)
 	}
 
 	f, err := h.co.GetFlowByID(flowID, namespaceID)
 	if err != nil {
-		return wrapError(http.StatusNotFound, "could not get flow", err, nil)
+		return wrapError(ErrResourceNotFound, "could not get flow", err, nil)
 	}
 
 	flow := models.Flow{
@@ -530,11 +530,11 @@ func (h *Handler) HandleUpdateFlow(c echo.Context) error {
 	}
 
 	if err := flow.Validate(); err != nil {
-		return wrapError(http.StatusBadRequest, "flow validation error", err, nil)
+		return wrapError(ErrValidationFailed, "flow validation error", err, nil)
 	}
 
 	if err := h.co.UpdateFlow(c.Request().Context(), flow, namespaceID); err != nil {
-		return wrapError(http.StatusInternalServerError, err.Error(), err, nil)
+		return wrapError(ErrOperationFailed, err.Error(), err, nil)
 	}
 
 	return c.JSON(http.StatusOK, FlowCreateResp{
@@ -545,12 +545,12 @@ func (h *Handler) HandleUpdateFlow(c echo.Context) error {
 func (h *Handler) HandleDeleteFlow(c echo.Context) error {
 	namespaceID, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 	flowID := c.Param("flowID")
 
 	if err := h.co.DeleteFlow(c.Request().Context(), flowID, namespaceID); err != nil {
-		return wrapError(http.StatusInternalServerError, err.Error(), err, nil)
+		return wrapError(ErrOperationFailed, err.Error(), err, nil)
 	}
 
 	return c.NoContent(http.StatusOK)
@@ -559,12 +559,12 @@ func (h *Handler) HandleDeleteFlow(c echo.Context) error {
 func (h *Handler) HandleGetFlowConfig(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	f, err := h.co.GetFlowByID(c.Param("flowID"), namespace)
 	if err != nil {
-		return wrapError(http.StatusNotFound, "could not get flow", err, nil)
+		return wrapError(ErrResourceNotFound, "could not get flow", err, nil)
 	}
 
 	return c.JSON(http.StatusOK, FlowCreateReq{
@@ -580,23 +580,23 @@ func (h *Handler) HandleGetFlowConfig(c echo.Context) error {
 func (h *Handler) HandleCancelExecution(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
-		return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
 	execID := c.Param("execID")
 	if execID == "" {
-		return wrapError(http.StatusBadRequest, "execution ID is required", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "execution ID is required", nil, nil)
 	}
 
 	// Verify the execution exists and user has permission to cancel it
 	_, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), execID, namespace)
 	if err != nil {
-		return wrapError(http.StatusNotFound, "execution not found", err, nil)
+		return wrapError(ErrResourceNotFound, "execution not found", err, nil)
 	}
 
 	err = h.co.CancelFlowExecution(c.Request().Context(), execID)
 	if err != nil {
-		return wrapError(http.StatusInternalServerError, "failed to cancel execution", err, nil)
+		return wrapError(ErrOperationFailed, "failed to cancel execution", err, nil)
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{

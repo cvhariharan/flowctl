@@ -60,7 +60,7 @@ func (h *Handler) initOIDC(authconfig OIDCAuthConfig) error {
 func (h *Handler) HandleLoginPage(c echo.Context) error {
 	var req AuthReq
 	if err := c.Bind(&req); err != nil {
-		return wrapError(http.StatusUnauthorized, "invalid request", err, nil)
+		return wrapError(ErrInvalidInput, "invalid request", err, nil)
 	}
 
 	sess, err := h.sessMgr.Acquire(nil, c, c)
@@ -77,21 +77,21 @@ func (h *Handler) HandleLoginPage(c echo.Context) error {
 	}
 
 	if req.Username == "" || req.Password == "" {
-		return wrapError(http.StatusUnauthorized, "username or password cannot be empty", fmt.Errorf("username or password cannot be empty"), nil)
+		return wrapError(ErrRequiredFieldMissing, "username or password cannot be empty", fmt.Errorf("username or password cannot be empty"), nil)
 	}
 
 	user, err := h.co.GetUserByUsernameWithGroups(c.Request().Context(), req.Username)
 	if err != nil {
-		return wrapError(http.StatusUnauthorized, "could not authenticate user", err, nil)
+		return wrapError(ErrAuthenticationFailed, "could not authenticate user", err, nil)
 	}
 
 	// not using password based login
 	if user.LoginType != models.StandardLoginType {
-		return wrapError(http.StatusUnauthorized, "invalid authentication method", fmt.Errorf("invalid authentication method for user: %s", user.ID), nil)
+		return wrapError(ErrAuthenticationFailed, "invalid authentication method", fmt.Errorf("invalid authentication method for user: %s", user.ID), nil)
 	}
 
 	if err := user.CheckPassword(req.Password); err != nil {
-		return wrapError(http.StatusUnauthorized, "invalid credentials", err, nil)
+		return wrapError(ErrInvalidCredentials, "invalid credentials", err, nil)
 	}
 
 	sess.Set("method", "password")
@@ -150,31 +150,31 @@ func generateRandomState() (string, error) {
 func (h *Handler) HandleAuthCallback(c echo.Context) error {
 	sess, err := h.sessMgr.Acquire(nil, c, c)
 	if err != nil {
-		return wrapError(http.StatusBadRequest, "session does not exist", err, nil)
+		return wrapError(ErrInvalidInput, "session does not exist", err, nil)
 	}
 
 	state, err := sess.Get("state")
 	if err != nil {
-		return wrapError(http.StatusBadRequest, "state not found", err, nil)
+		return wrapError(ErrInvalidInput, "state not found", err, nil)
 	}
 
 	if state.(string) != c.QueryParam("state") {
-		return wrapError(http.StatusBadRequest, "invalid state parameter", nil, nil)
+		return wrapError(ErrInvalidInput, "invalid state parameter", nil, nil)
 	}
 
 	token, err := h.authconfig.oauth2Config.Exchange(context.Background(), c.QueryParam("code"))
 	if err != nil {
-		return wrapError(http.StatusInternalServerError, "failed to exchange token", err, nil)
+		return wrapError(ErrOperationFailed, "failed to exchange token", err, nil)
 	}
 
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
-		return wrapError(http.StatusInternalServerError, "no id_token in token response", nil, nil)
+		return wrapError(ErrOperationFailed, "no id_token in token response", nil, nil)
 	}
 
 	idToken, err := h.authconfig.verifier.Verify(context.Background(), rawIDToken)
 	if err != nil {
-		return wrapError(http.StatusInternalServerError, "failed to verify ID token", err, nil)
+		return wrapError(ErrOperationFailed, "failed to verify ID token", err, nil)
 	}
 
 	var claims struct {
@@ -183,12 +183,12 @@ func (h *Handler) HandleAuthCallback(c echo.Context) error {
 		Groups []string `json:"groups"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
-		return wrapError(http.StatusInternalServerError, "failed to parse claims", err, nil)
+		return wrapError(ErrOperationFailed, "failed to parse claims", err, nil)
 	}
 
 	user, err := h.co.GetUserByUsernameWithGroups(c.Request().Context(), claims.Email)
 	if err != nil {
-		return wrapError(http.StatusForbidden, "user does not exist in flowctl", err, nil)
+		return wrapError(ErrForbidden, "user does not exist in flowctl", err, nil)
 	}
 
 	sess.Set("method", "oidc")
@@ -218,7 +218,7 @@ func (h *Handler) handleUnauthenticated(c echo.Context) error {
 
 	// For API requests, return 401
 	if strings.HasPrefix(c.Request().URL.Path, "/api/") {
-		return wrapError(http.StatusUnauthorized, "authentication required", nil, nil)
+		return wrapError(ErrAuthenticationFailed, "authentication required", nil, nil)
 	}
 
 	// For web requests, redirect to login page
@@ -230,12 +230,12 @@ func (h *Handler) handleUnauthenticated(c echo.Context) error {
 func (h *Handler) HandleGetCasbinPermissions(c echo.Context) error {
 	user, err := h.getUserInfo(c)
 	if err != nil {
-		return wrapError(http.StatusBadRequest, "could not get user info", err, nil)
+		return wrapError(ErrInternalError, "could not get user info", err, nil)
 	}
 
 	p, err := h.co.GetPermissionsForUser(user.ID)
 	if err != nil {
-		return wrapError(http.StatusNotFound, "could not get permissions for user", err, nil)
+		return wrapError(ErrResourceNotFound, "could not get permissions for user", err, nil)
 	}
 
 	return c.JSON(http.StatusOK, struct {

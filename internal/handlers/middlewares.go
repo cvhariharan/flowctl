@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"net/http"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/labstack/echo/v4"
@@ -73,7 +72,7 @@ func (h *Handler) AuthorizeForRole(expectedRole string) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			return wrapError(http.StatusForbidden, "unauthorized", nil, nil)
+			return wrapError(ErrUnauthorized, "unauthorized", nil, nil)
 		}
 	}
 }
@@ -83,21 +82,21 @@ func (h *Handler) AuthorizeNamespaceAction(resource models.Resource, action mode
 		return func(c echo.Context) error {
 			user, ok := c.Get("user").(models.UserInfo)
 			if !ok {
-				return wrapError(http.StatusForbidden, "could not get user details", nil, nil)
+				return wrapError(ErrForbidden, "could not get user details", nil, nil)
 			}
 
 			namespaceID, ok := c.Get("namespace").(string)
 			if !ok {
-				return wrapError(http.StatusBadRequest, "could not get namespace", nil, nil)
+				return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 			}
 
 			allowed, err := h.co.CheckPermission(c.Request().Context(), user.ID, namespaceID, resource, action)
 			if err != nil {
-				return wrapError(http.StatusInternalServerError, "could not check permissions", err, nil)
+				return wrapError(ErrOperationFailed, "could not check permissions", err, nil)
 			}
 
 			if !allowed {
-				return wrapError(http.StatusForbidden, "insufficient permissions", nil, nil)
+				return wrapError(ErrForbidden, "insufficient permissions", nil, nil)
 			}
 
 			return next(c)
@@ -110,27 +109,27 @@ func (h *Handler) NamespaceMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		namespace := c.Param("namespace")
 		if namespace == "" {
-			return wrapError(http.StatusBadRequest, "namespace cannot be empty", nil, nil)
+			return wrapError(ErrRequiredFieldMissing, "namespace cannot be empty", nil, nil)
 		}
 
 		ns, err := h.co.GetNamespaceByName(c.Request().Context(), namespace)
 		if err != nil {
-			return wrapError(http.StatusBadRequest, "could not find namespace", err, nil)
+			return wrapError(ErrResourceNotFound, "could not find namespace", err, nil)
 		}
 
 		user, ok := c.Get("user").(models.UserInfo)
 		if !ok {
-			return wrapError(http.StatusForbidden, "could not get user details", nil, nil)
+			return wrapError(ErrForbidden, "could not get user details", nil, nil)
 		}
 
 		// Basic access check - user must have at least view permission
 		hasAccess, err := h.co.CheckPermission(c.Request().Context(), user.ID, ns.ID, models.ResourceFlow, models.RBACActionView)
 		if err != nil {
-			return wrapError(http.StatusInternalServerError, "could not check namespace access", err, nil)
+			return wrapError(ErrOperationFailed, "could not check namespace access", err, nil)
 		}
 
 		if !hasAccess {
-			return wrapError(http.StatusForbidden, "user does not have access to this namespace", nil, nil)
+			return wrapError(ErrForbidden, "user does not have access to this namespace", nil, nil)
 		}
 
 		c.Set("namespace", ns.ID)
