@@ -13,6 +13,7 @@
 	import type { NamespaceMemberResp, NamespaceMemberReq } from '$lib/types';
 	import Header from '$lib/components/shared/Header.svelte';
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
+import type { TableAction } from '$lib/types';
 
 	let { data }: { data: PageData } = $props();
 
@@ -25,6 +26,7 @@
 	let selectedMember = $state<NamespaceMemberResp | null>(null);
 	let deleteMemberId = $state<string | null>(null);
 	let deleteMemberName = $state('');
+	let permissions = $state(data.permissions);
 
 	// Table configuration
 	let tableColumns = [
@@ -50,18 +52,27 @@
 		}
 	];
 
-	let tableActions = [
-		{
-			label: 'Edit',
-			onClick: (member: NamespaceMemberResp) => handleEdit(member),
-			className: 'text-blue-600 hover:text-blue-800'
-		},
-		{
-			label: 'Remove',
-			onClick: (member: NamespaceMemberResp) => handleDelete(member.id, member.subject_name),
-			className: 'text-red-600 hover:text-red-800'
+	const tableActions = $derived((): TableAction<NamespaceMemberResp>[] => {
+		const actionsList: TableAction<NamespaceMemberResp>[] = [];
+
+		if (permissions.canUpdate) {
+			actionsList.push({
+				label: 'Edit',
+				onClick: (member: NamespaceMemberResp) => handleEdit(member),
+				className: 'text-blue-600 hover:text-blue-800'
+			});
 		}
-	];
+
+		if (permissions.canDelete) {
+			actionsList.push({
+				label: 'Remove',
+				onClick: (member: NamespaceMemberResp) => handleDelete(member.id, member.subject_name),
+				className: 'text-red-600 hover:text-red-800'
+			});
+		}
+
+		return actionsList;
+	});
 
 	// Functions
 	async function fetchMembers() {
@@ -171,14 +182,14 @@
 	<PageHeader 
 		title="Members"
 		subtitle="Manage user and group access to this namespace"
-		actions={[
+		actions={permissions.canCreate ? [
 			{
 				label: 'Add Member',
 				onClick: handleAdd,
 				variant: 'primary',
 				icon: '<svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>'
 			}
-		]}
+		] : []}
 	/>
 
 	<!-- Members Table -->
@@ -186,7 +197,7 @@
 		<Table
 			data={members}
 			columns={tableColumns}
-			actions={tableActions}
+			actions={tableActions()}
 			{loading}
 			emptyMessage="No members found. Get started by adding users or groups to this namespace."
 		/>
