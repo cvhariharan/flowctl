@@ -12,7 +12,7 @@ export const load: PageLoad = async ({ params, url, parent }) => {
 		const permissions = await permissionChecker(user!, 'execution', namespaceId, ['view']);
 		if (!permissions.canRead) {
 			error(403, {
-				message: 'You do not have permission to create flows in this namespace',
+				message: 'You do not have permission to view execution history in this namespace',
 				code: 'INSUFFICIENT_PERMISSIONS'
 			});
 		}

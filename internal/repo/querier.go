@@ -37,6 +37,7 @@ type Querier interface {
 	GetAllExecutionsPaginated(ctx context.Context, arg GetAllExecutionsPaginatedParams) ([]GetAllExecutionsPaginatedRow, error)
 	GetAllGroups(ctx context.Context) ([]Group, error)
 	GetAllGroupsWithUsers(ctx context.Context) ([]GroupView, error)
+	GetAllNamespaceMembers(ctx context.Context) ([]GetAllNamespaceMembersRow, error)
 	GetAllNamespaces(ctx context.Context) ([]Namespace, error)
 	GetAllUsersWithGroups(ctx context.Context) ([]UserView, error)
 	GetApprovalByUUID(ctx context.Context, arg GetApprovalByUUIDParams) (GetApprovalByUUIDRow, error)

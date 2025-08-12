@@ -110,6 +110,67 @@ func (q *Queries) DeleteNamespace(ctx context.Context, argUuid uuid.UUID) error 
 	return err
 }
 
+const getAllNamespaceMembers = `-- name: GetAllNamespaceMembers :many
+SELECT
+    nm.uuid,
+    nm.subject_uuid,
+    nm.subject_type,
+    nm.role,
+    nm.namespace_id,
+    n.uuid as namespace_uuid,
+    n.name as namespace_name,
+    nm.created_at,
+    nm.updated_at
+FROM namespace_members nm
+JOIN namespaces n ON nm.namespace_id = n.id
+ORDER BY n.name, nm.role
+`
+
+type GetAllNamespaceMembersRow struct {
+	Uuid          uuid.UUID `db:"uuid" json:"uuid"`
+	SubjectUuid   uuid.UUID `db:"subject_uuid" json:"subject_uuid"`
+	SubjectType   string    `db:"subject_type" json:"subject_type"`
+	Role          string    `db:"role" json:"role"`
+	NamespaceID   int32     `db:"namespace_id" json:"namespace_id"`
+	NamespaceUuid uuid.UUID `db:"namespace_uuid" json:"namespace_uuid"`
+	NamespaceName string    `db:"namespace_name" json:"namespace_name"`
+	CreatedAt     time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at" json:"updated_at"`
+}
+
+func (q *Queries) GetAllNamespaceMembers(ctx context.Context) ([]GetAllNamespaceMembersRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllNamespaceMembers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllNamespaceMembersRow
+	for rows.Next() {
+		var i GetAllNamespaceMembersRow
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.SubjectUuid,
+			&i.SubjectType,
+			&i.Role,
+			&i.NamespaceID,
+			&i.NamespaceUuid,
+			&i.NamespaceName,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAllNamespaces = `-- name: GetAllNamespaces :many
 SELECT id, uuid, name, created_at, updated_at FROM namespaces ORDER BY name
 `

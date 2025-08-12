@@ -129,3 +129,18 @@ WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $1);
 
 -- name: GetAllNamespaces :many
 SELECT * FROM namespaces ORDER BY name;
+
+-- name: GetAllNamespaceMembers :many
+SELECT
+    nm.uuid,
+    nm.subject_uuid,
+    nm.subject_type,
+    nm.role,
+    nm.namespace_id,
+    n.uuid as namespace_uuid,
+    n.name as namespace_name,
+    nm.created_at,
+    nm.updated_at
+FROM namespace_members nm
+JOIN namespaces n ON nm.namespace_id = n.id
+ORDER BY n.name, nm.role;

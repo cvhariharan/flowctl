@@ -8,15 +8,26 @@ import { DEFAULT_PAGE_SIZE } from '$lib/constants';
 export const load: PageLoad = async ({ params, url, parent }) => {
 	const { user, namespaceId } = await parent();
 
+	// Check permissions
 	try {
-		const permissions = await permissionChecker(user!, 'node', namespaceId, ['create']);
-		if (!permissions.canCreate) {
+		const permissions = await permissionChecker(user!, 'node', namespaceId, ['view']);
+		if (!permissions.canRead) {
 			error(403, {
-				message: 'You do not have permission to create flows in this namespace',
+				message: 'You do not have permission to view nodes in this namespace',
 				code: 'INSUFFICIENT_PERMISSIONS'
 			});
 		}
+	} catch (err) {
+		if (err && typeof err === 'object' && 'status' in err) {
+			throw err; // Re-throw SvelteKit errors
+		}
+		error(500, {
+			message: 'Failed to check permissions',
+			code: 'PERMISSION_CHECK_FAILED'
+		});
+	}
 
+	try {
 		const { namespace } = params;
 		const page = Number(url.searchParams.get('page') || '1');
 		const search = url.searchParams.get('search') || '';

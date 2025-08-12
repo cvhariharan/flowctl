@@ -13,11 +13,21 @@ export const load: PageLoad = async ({ params, url, parent }) => {
 		const permissions = await permissionChecker(user!, 'approval', namespaceId, ['view']);
 		if (!permissions.canRead) {
 			error(403, {
-				message: 'You do not have permission to view approvals in this namespace',
+				message: 'You do not have permission to view flows in this namespace',
 				code: 'INSUFFICIENT_PERMISSIONS'
 			});
 		}
+	} catch (err) {
+		if (err && typeof err === 'object' && 'status' in err) {
+			throw err; // Re-throw SvelteKit errors (like the 403 above)
+		}
+		error(500, {
+			message: 'Failed to check permissions',
+			code: 'PERMISSION_CHECK_FAILED'
+		});
+	}
 
+	try {
 		const { namespace } = params;
 		const page = Number(url.searchParams.get('page') || '1');
 		const search = url.searchParams.get('search') || '';

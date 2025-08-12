@@ -1,6 +1,30 @@
+import { error } from '@sveltejs/kit';
+import type { PageLoad } from './$types';
 import { apiClient } from '$lib/apiClient';
+import { permissionChecker } from '$lib/utils/permissions';
 
-export const load = async ({ params }: { params: any }) => {
+export const load: PageLoad = async ({ params, parent }) => {
+  const { user, namespaceId } = await parent();
+
+  // Check permissions
+  try {
+    const permissions = await permissionChecker(user!, 'flow', namespaceId, ['view']);
+    if (!permissions.canRead) {
+      error(403, {
+        message: 'You do not have permission to view flows in this namespace',
+        code: 'INSUFFICIENT_PERMISSIONS'
+      });
+    }
+  } catch (err) {
+    if (err && typeof err === 'object' && 'status' in err) {
+      throw err; // Re-throw SvelteKit errors
+    }
+    error(500, {
+      message: 'Failed to check permissions',
+      code: 'PERMISSION_CHECK_FAILED'
+    });
+  }
+
   try {
     const [flowInputs, flowMeta] = await Promise.all([
       apiClient.flows.getInputs(params.namespace, params.flowId),
@@ -11,20 +35,7 @@ export const load = async ({ params }: { params: any }) => {
       flowInputs: flowInputs.inputs,
       flowMeta,
     };
-  } catch (error) {
-    console.error('Failed to load flow data:', error);
-    return {
-      flowInputs: [],
-      flowMeta: { 
-        meta: { 
-          id: '', 
-          name: '', 
-          description: '', 
-          namespace: params.namespace 
-        }, 
-        actions: [] 
-      },
-      error: 'Failed to load flow data'
-    };
+  } catch (err) {
+    error(500, 'Failed to load flow data');
   }
 };

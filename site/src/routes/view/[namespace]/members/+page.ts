@@ -1,10 +1,32 @@
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 import { apiClient } from '$lib/apiClient';
+import { permissionChecker } from '$lib/utils/permissions';
 
 export const ssr = false;
 
-export const load: PageLoad = async ({ params }) => {
+export const load: PageLoad = async ({ params, parent }) => {
+	const { user, namespaceId } = await parent();
+
+	// Check permissions
+	try {
+		const permissions = await permissionChecker(user!, 'user', namespaceId, ['view']);
+		if (!permissions.canRead) {
+			error(403, {
+				message: 'You do not have permission to view members in this namespace',
+				code: 'INSUFFICIENT_PERMISSIONS'
+			});
+		}
+	} catch (err) {
+		if (err && typeof err === 'object' && 'status' in err) {
+			throw err; // Re-throw SvelteKit errors
+		}
+		error(500, {
+			message: 'Failed to check permissions',
+			code: 'PERMISSION_CHECK_FAILED'
+		});
+	}
+
 	try {
 		const { namespace } = params;
 
@@ -16,7 +38,6 @@ export const load: PageLoad = async ({ params }) => {
 			namespace
 		};
 	} catch (err) {
-		console.error('Failed to load members data:', err);
-		throw error(500, 'Failed to load members data');
+		error(500, 'Failed to load members data');
 	}
 };

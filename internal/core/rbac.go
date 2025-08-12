@@ -13,13 +13,9 @@ import (
 // InitializeRBACPolicies sets up the base policies for each role
 // These policies apply to all namespaces using wildcard "*"
 func (c *Core) InitializeRBACPolicies() error {
-	// Clear all existing role-based policies to prevent duplicates
-	c.enforcer.RemoveFilteredPolicy(0, "role:user", "role:reviewer", "role:admin")
-
 	// User role policies - for all namespaces
 	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceFlow), string(models.RBACActionView))
 	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceFlow), string(models.RBACActionExecute))
-	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceNode), string(models.RBACActionView))
 	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceMembers), string(models.RBACActionView))
 	c.enforcer.AddPolicy("role:user", "*", string(models.ResourceNamespace), string(models.RBACActionView))
 
@@ -46,7 +42,11 @@ func (c *Core) InitializeRBACPolicies() error {
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceFlowSecret), string(models.RBACActionUpdate))
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceFlowSecret), string(models.RBACActionDelete))
 
-	// Role inheritance - for all namespaces
+	// Synchronize user/group role assignments from database
+	if err := c.SynchronizePolicies(context.Background()); err != nil {
+		return err
+	}
+
 	c.enforcer.AddGroupingPolicy("role:reviewer", "role:user", "*")
 	c.enforcer.AddGroupingPolicy("role:admin", "role:reviewer", "*")
 
@@ -313,4 +313,25 @@ func (c *Core) GetPermissionsForUser(userID string) (string, error) {
 	}
 
 	return string(responseBytes), nil
+}
+
+// SynchronizePolicies synchronizes Casbin policies from the namespace_members table
+// This ensures that the RBAC policies in Casbin match the role assignments stored in the database
+func (c *Core) SynchronizePolicies(ctx context.Context) error {
+	members, err := c.store.GetAllNamespaceMembers(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get namespace members: %w", err)
+	}
+
+	for _, member := range members {
+		subject := fmt.Sprintf("%s:%s", member.SubjectType, member.SubjectUuid.String())
+		role := fmt.Sprintf("role:%s", member.Role)
+		namespaceID := member.NamespaceUuid.String()
+
+		if _, err := c.enforcer.AddGroupingPolicy(subject, role, namespaceID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
