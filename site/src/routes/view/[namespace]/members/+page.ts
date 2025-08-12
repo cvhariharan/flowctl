@@ -10,7 +10,7 @@ export const load: PageLoad = async ({ params, parent }) => {
 
 	// Check permissions
 	try {
-		const permissions = await permissionChecker(user!, 'user', namespaceId, ['view']);
+		const permissions = await permissionChecker(user!, 'member', namespaceId, ['view']);
 		if (!permissions.canRead) {
 			error(403, {
 				message: 'You do not have permission to view members in this namespace',

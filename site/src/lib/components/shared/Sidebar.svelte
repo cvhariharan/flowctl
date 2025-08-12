@@ -8,12 +8,29 @@
   import { goto } from '$app/navigation';
   import { DEFAULT_PAGE_SIZE } from '$lib/constants';
   import { setContext } from 'svelte';
+  import { permissionChecker, type ResourcePermissions } from '$lib/utils/permissions';
 
   let { namespace }: {namespace: string} = $props();
 
   let namespaceDropdownOpen = $state(false);
   let namespaces = $state<Namespace[]>([]);
   let currentNamespace = page.params.namespace;
+  let currentNamespaceId = $state<string>('');
+  let permissions = $state<{
+    flows: ResourcePermissions;
+    nodes: ResourcePermissions;
+    credentials: ResourcePermissions;
+    members: ResourcePermissions;
+    approvals: ResourcePermissions;
+    history: ResourcePermissions;
+  }>({
+    flows: { canCreate: false, canUpdate: false, canDelete: false, canRead: false },
+    nodes: { canCreate: false, canUpdate: false, canDelete: false, canRead: false },
+    credentials: { canCreate: false, canUpdate: false, canDelete: false, canRead: false },
+    members: { canCreate: false, canUpdate: false, canDelete: false, canRead: false },
+    approvals: { canCreate: false, canUpdate: false, canDelete: false, canRead: false },
+    history: { canCreate: false, canUpdate: false, canDelete: false, canRead: false }
+  });
 
   const isActiveLink = (section: string): boolean => {
     const currentPath = page.url.pathname;
@@ -41,9 +58,43 @@
     try {
       const data = await apiClient.namespaces.list({ count_per_page: DEFAULT_PAGE_SIZE });
       namespaces = data.namespaces || [];
+      
+      // Set current namespace ID
+      const currentNs = namespaces.find(ns => ns.name === namespace);
+      if (currentNs) {
+        currentNamespaceId = currentNs.id;
+      }
     } catch (error) {
       handleInlineError(error, 'Unable to Load Namespaces');
       namespaces = [];
+    }
+  };
+
+  const checkAllPermissions = async () => {
+    if (!$currentUser || !currentNamespaceId) return;
+    
+    const resourceMappings = {
+      flows: 'flow',
+      nodes: 'node', 
+      credentials: 'credential',
+      members: 'member',
+      approvals: 'approval',
+      history: 'execution'
+    };
+    
+    try {
+      const permissionPromises = Object.entries(resourceMappings).map(async ([frontendKey, backendResource]) => {
+        const perms = await permissionChecker($currentUser, backendResource, currentNamespaceId, ['view']);
+        return { frontendKey, perms };
+      });
+      
+      const results = await Promise.all(permissionPromises);
+      
+      results.forEach(({ frontendKey, perms }) => {
+        permissions[frontendKey as keyof typeof permissions] = perms;
+      });
+    } catch (error) {
+      handleInlineError(error, 'Unable to Check Sidebar Permissions');
     }
   };
 
@@ -56,6 +107,14 @@
   onMount(() => {
     fetchNamespaces();
     setContext('namespace', 'default');
+    checkAllPermissions();
+  });
+
+  // Re-check permissions when currentUser or namespace changes
+  $effect(() => {
+    if ($currentUser && currentNamespaceId) {
+      checkAllPermissions();
+    }
   });
 </script>
 
@@ -110,78 +169,90 @@
 
   <!-- Navigation -->
   <nav class="flex-1 px-4 space-y-1">
-    <a 
-      href="/view/{namespace}/flows" 
-      class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-      class:bg-blue-600={isActiveLink('flows')}
-      class:text-white={isActiveLink('flows')}
-      class:text-gray-300={!isActiveLink('flows')}
-      class:hover:bg-slate-700={!isActiveLink('flows')}
-      class:hover:text-white={!isActiveLink('flows')}
-    >
-      <i class="ti ti-grid-dots text-xl mr-3 flex-shrink-0"></i>
-      Flows
-    </a>
-    <a 
-      href="/view/{namespace}/nodes" 
-      class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-      class:bg-blue-600={isActiveLink('nodes')}
-      class:text-white={isActiveLink('nodes')}
-      class:text-gray-300={!isActiveLink('nodes')}
-      class:hover:bg-slate-700={!isActiveLink('nodes')}
-      class:hover:text-white={!isActiveLink('nodes')}
-    >
-      <i class="ti ti-server text-xl mr-3 flex-shrink-0"></i>
-      Nodes
-    </a>
-    <a 
-      href="/view/{namespace}/credentials" 
-      class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-      class:bg-blue-600={isActiveLink('credentials')}
-      class:text-white={isActiveLink('credentials')}
-      class:text-gray-300={!isActiveLink('credentials')}
-      class:hover:bg-slate-700={!isActiveLink('credentials')}
-      class:hover:text-white={!isActiveLink('credentials')}
-    >
-      <i class="ti ti-key text-xl mr-3 flex-shrink-0"></i>
-      Credentials
-    </a>
-    <a 
-      href="/view/{namespace}/members" 
-      class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-      class:bg-blue-600={isActiveLink('members')}
-      class:text-white={isActiveLink('members')}
-      class:text-gray-300={!isActiveLink('members')}
-      class:hover:bg-slate-700={!isActiveLink('members')}
-      class:hover:text-white={!isActiveLink('members')}
-    >
-      <i class="ti ti-users text-xl mr-3 flex-shrink-0"></i>
-      Members
-    </a>
-    <a 
-      href="/view/{namespace}/approvals" 
-      class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-      class:bg-blue-600={isActiveLink('approvals')}
-      class:text-white={isActiveLink('approvals')}
-      class:text-gray-300={!isActiveLink('approvals')}
-      class:hover:bg-slate-700={!isActiveLink('approvals')}
-      class:hover:text-white={!isActiveLink('approvals')}
-    >
-      <i class="ti ti-circle-check text-xl mr-3 flex-shrink-0"></i>
-      Approvals
-    </a>
-    <a 
-      href="/view/{namespace}/history" 
-      class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-      class:bg-blue-600={isActiveLink('history')}
-      class:text-white={isActiveLink('history')}
-      class:text-gray-300={!isActiveLink('history')}
-      class:hover:bg-slate-700={!isActiveLink('history')}
-      class:hover:text-white={!isActiveLink('history')}
-    >
-      <i class="ti ti-clock text-xl mr-3 flex-shrink-0"></i>
-      History
-    </a>
+    {#if permissions.flows.canRead}
+      <a 
+        href="/view/{namespace}/flows" 
+        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+        class:bg-blue-600={isActiveLink('flows')}
+        class:text-white={isActiveLink('flows')}
+        class:text-gray-300={!isActiveLink('flows')}
+        class:hover:bg-slate-700={!isActiveLink('flows')}
+        class:hover:text-white={!isActiveLink('flows')}
+      >
+        <i class="ti ti-grid-dots text-xl mr-3 flex-shrink-0"></i>
+        Flows
+      </a>
+    {/if}
+    {#if permissions.nodes.canRead}
+      <a 
+        href="/view/{namespace}/nodes" 
+        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+        class:bg-blue-600={isActiveLink('nodes')}
+        class:text-white={isActiveLink('nodes')}
+        class:text-gray-300={!isActiveLink('nodes')}
+        class:hover:bg-slate-700={!isActiveLink('nodes')}
+        class:hover:text-white={!isActiveLink('nodes')}
+      >
+        <i class="ti ti-server text-xl mr-3 flex-shrink-0"></i>
+        Nodes
+      </a>
+    {/if}
+    {#if permissions.credentials.canRead}
+      <a 
+        href="/view/{namespace}/credentials" 
+        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+        class:bg-blue-600={isActiveLink('credentials')}
+        class:text-white={isActiveLink('credentials')}
+        class:text-gray-300={!isActiveLink('credentials')}
+        class:hover:bg-slate-700={!isActiveLink('credentials')}
+        class:hover:text-white={!isActiveLink('credentials')}
+      >
+        <i class="ti ti-key text-xl mr-3 flex-shrink-0"></i>
+        Credentials
+      </a>
+    {/if}
+    {#if permissions.members.canRead}
+      <a 
+        href="/view/{namespace}/members" 
+        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+        class:bg-blue-600={isActiveLink('members')}
+        class:text-white={isActiveLink('members')}
+        class:text-gray-300={!isActiveLink('members')}
+        class:hover:bg-slate-700={!isActiveLink('members')}
+        class:hover:text-white={!isActiveLink('members')}
+      >
+        <i class="ti ti-users text-xl mr-3 flex-shrink-0"></i>
+        Members
+      </a>
+    {/if}
+    {#if permissions.approvals.canRead}
+      <a 
+        href="/view/{namespace}/approvals" 
+        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+        class:bg-blue-600={isActiveLink('approvals')}
+        class:text-white={isActiveLink('approvals')}
+        class:text-gray-300={!isActiveLink('approvals')}
+        class:hover:bg-slate-700={!isActiveLink('approvals')}
+        class:hover:text-white={!isActiveLink('approvals')}
+      >
+        <i class="ti ti-circle-check text-xl mr-3 flex-shrink-0"></i>
+        Approvals
+      </a>
+    {/if}
+    {#if permissions.history.canRead}
+      <a 
+        href="/view/{namespace}/history" 
+        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+        class:bg-blue-600={isActiveLink('history')}
+        class:text-white={isActiveLink('history')}
+        class:text-gray-300={!isActiveLink('history')}
+        class:hover:bg-slate-700={!isActiveLink('history')}
+        class:hover:text-white={!isActiveLink('history')}
+      >
+        <i class="ti ti-clock text-xl mr-3 flex-shrink-0"></i>
+        History
+      </a>
+    {/if}
     <!-- Settings (only show for superusers) -->
     {#if $currentUser && $currentUser.role === 'superuser'}
       <a 

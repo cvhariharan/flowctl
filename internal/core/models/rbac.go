@@ -15,7 +15,7 @@ const (
 	ResourceFlowSecret Resource = "flow_secret"
 	ResourceNode       Resource = "node"
 	ResourceCredential Resource = "credential"
-	ResourceMembers    Resource = "members"
+	ResourceMember     Resource = "member"
 	ResourceExecution  Resource = "execution"
 	ResourceApproval   Resource = "approval"
 	ResourceNamespace  Resource = "namespace"
@@ -46,5 +46,5 @@ type NamespaceMember struct {
 	CreatedAt   string        `json:"created_at"`
 	UpdatedAt   string        `json:"updated_at"`
 	UserName    *string       `json:"user_name,omitempty"`
-	GroupName   *string 	  `json:"group_name,omitempty"`
+	GroupName   *string       `json:"group_name,omitempty"`
 }
