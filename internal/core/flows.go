@@ -751,16 +751,19 @@ func (c *Core) GetScheduledFlows() []models.Flow {
 	c.rwf.RLock()
 	defer c.rwf.RUnlock()
 
+	ctx := context.Background()
+	scheduledFlowRows, err := c.store.GetScheduledFlows(ctx)
+	if err != nil {
+		log.Printf("error getting scheduled flows from database: %v", err)
+		return nil
+	}
+
 	var scheduledFlows []models.Flow
-
-	// Iterate through all loaded flows
-	for _, flow := range c.flows {
-		// Skip flows without a schedule
-		if flow.Meta.Schedule == "" {
-			continue
+	for _, row := range scheduledFlowRows {
+		flowKey := fmt.Sprintf("%s:%s", row.Slug, row.NamespaceUuid.String())
+		if flow, exists := c.flows[flowKey]; exists {
+			scheduledFlows = append(scheduledFlows, flow)
 		}
-
-		scheduledFlows = append(scheduledFlows, flow)
 	}
 
 	return scheduledFlows

@@ -66,6 +66,7 @@ type Querier interface {
 	GetNodeByName(ctx context.Context, arg GetNodeByNameParams) (GetNodeByNameRow, error)
 	GetNodeByUUID(ctx context.Context, arg GetNodeByUUIDParams) (GetNodeByUUIDRow, error)
 	GetNodesByNames(ctx context.Context, arg GetNodesByNamesParams) ([]GetNodesByNamesRow, error)
+	GetScheduledFlows(ctx context.Context) ([]GetScheduledFlowsRow, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
 	GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (User, error)
 	GetUserByUUIDWithGroups(ctx context.Context, argUuid uuid.UUID) (UserView, error)

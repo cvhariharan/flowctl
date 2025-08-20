@@ -164,6 +164,60 @@ func (q *Queries) GetFlowsByNamespace(ctx context.Context, argUuid uuid.UUID) ([
 	return items, nil
 }
 
+const getScheduledFlows = `-- name: GetScheduledFlows :many
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedule, f.namespace_id, f.created_at, f.updated_at, n.uuid AS namespace_uuid
+FROM flows f
+JOIN namespaces n ON f.namespace_id = n.id
+WHERE f.cron_schedule IS NOT NULL AND f.cron_schedule != ''
+`
+
+type GetScheduledFlowsRow struct {
+	ID            int32          `db:"id" json:"id"`
+	Slug          string         `db:"slug" json:"slug"`
+	Name          string         `db:"name" json:"name"`
+	Checksum      string         `db:"checksum" json:"checksum"`
+	Description   sql.NullString `db:"description" json:"description"`
+	CronSchedule  sql.NullString `db:"cron_schedule" json:"cron_schedule"`
+	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
+	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
+	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
+}
+
+func (q *Queries) GetScheduledFlows(ctx context.Context) ([]GetScheduledFlowsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getScheduledFlows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetScheduledFlowsRow
+	for rows.Next() {
+		var i GetScheduledFlowsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Name,
+			&i.Checksum,
+			&i.Description,
+			&i.CronSchedule,
+			&i.NamespaceID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.NamespaceUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFlows = `-- name: ListFlows :many
 WITH filtered AS (
     SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedule, f.namespace_id, f.created_at, f.updated_at, n.uuid AS namespace_uuid FROM flows f

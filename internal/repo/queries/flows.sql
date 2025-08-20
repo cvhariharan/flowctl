@@ -107,3 +107,9 @@ SELECT
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t;
+
+-- name: GetScheduledFlows :many
+SELECT f.*, n.uuid AS namespace_uuid
+FROM flows f
+JOIN namespaces n ON f.namespace_id = n.id
+WHERE f.cron_schedule IS NOT NULL AND f.cron_schedule != '';

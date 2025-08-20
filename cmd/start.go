@@ -283,7 +283,7 @@ func startWorker(db *sqlx.DB, co *core.Core, redisClient redis.UniversalClient, 
 	periodicTaskManager, err := asynq.NewPeriodicTaskManager(asynq.PeriodicTaskManagerOpts{
 		RedisUniversalClient:       redisClient,
 		PeriodicTaskConfigProvider: scheduleProvider,
-		SyncInterval:               2 * time.Minute, // Check for schedule changes every 5 minutes
+		SyncInterval:               2 * time.Minute, // Check for schedule changes every 2 minutes
 		SchedulerOpts: &asynq.SchedulerOpts{
 			PreEnqueueFunc: preEnqueueFunc,
 		},

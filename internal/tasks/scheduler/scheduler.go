@@ -30,6 +30,7 @@ func NewFlowScheduleProvider(core *core.Core) *FlowScheduleProvider {
 func (p *FlowScheduleProvider) GetConfigs() ([]*asynq.PeriodicTaskConfig, error) {
 	// Use the existing GetScheduledFlows method from Core
 	scheduledFlows := p.core.GetScheduledFlows()
+	log.Printf("FlowScheduleProvider.GetConfigs() called, found %d scheduled flows", len(scheduledFlows))
 
 	var configs []*asynq.PeriodicTaskConfig
 
@@ -64,8 +65,10 @@ func (p *FlowScheduleProvider) GetConfigs() ([]*asynq.PeriodicTaskConfig, error)
 		}
 
 		configs = append(configs, config)
+		log.Printf("Added config for flow %s with schedule %s", flow.Meta.ID, flow.Meta.Schedule)
 	}
 
+	log.Printf("FlowScheduleProvider.GetConfigs() returning %d configs", len(configs))
 	return configs, nil
 }
 
