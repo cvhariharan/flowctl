@@ -75,6 +75,10 @@
     goto(`/view/${namespace}/results/${flowId}/${executionId}`)
   };
 
+  const handleRowClick = (execution: any) => {
+    viewExecution(execution.id);
+  };
+
   const formatDateTime = (dateString: string) => {
     if (!dateString) return 'Unknown';
     const date = new Date(dateString);
@@ -189,7 +193,7 @@
       <Table
         columns={tableColumns}
         data={flowExecutions}
-        onRowClick={viewExecution}
+        onRowClick={handleRowClick}
         loading={historyLoading}
         title="Execution History for {data.flowMeta?.meta?.name || 'Flow'}"
         subtitle="Past executions of this flow"

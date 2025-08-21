@@ -88,7 +88,8 @@ latest_versions AS (
 filtered AS (
     SELECT el.id, el.exec_id, el.flow_id, el.version, el.input, el.error, el.current_action_id, el.status, el.trigger_type, el.triggered_by, el.namespace_id, el.created_at, el.updated_at, u.name, u.username, u.uuid as triggered_by_uuid,
            CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-           f.name as flow_name
+           f.name as flow_name,
+           f.slug as flow_slug
     FROM execution_log el
     INNER JOIN flows f ON el.flow_id = f.id
     INNER JOIN users u ON el.triggered_by = u.id
@@ -99,7 +100,7 @@ total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ),
 paged AS (
-    SELECT id, exec_id, flow_id, version, input, error, current_action_id, status, trigger_type, triggered_by, namespace_id, created_at, updated_at, name, username, triggered_by_uuid, triggered_by_name, flow_name FROM filtered
+    SELECT id, exec_id, flow_id, version, input, error, current_action_id, status, trigger_type, triggered_by, namespace_id, created_at, updated_at, name, username, triggered_by_uuid, triggered_by_name, flow_name, flow_slug FROM filtered
     ORDER BY created_at DESC
     LIMIT $2 OFFSET $3
 ),
@@ -107,7 +108,7 @@ page_count AS (
     SELECT CEIL(total.total_count::numeric / $2::numeric)::bigint AS page_count FROM total
 )
 SELECT
-    p.id, p.exec_id, p.flow_id, p.version, p.input, p.error, p.current_action_id, p.status, p.trigger_type, p.triggered_by, p.namespace_id, p.created_at, p.updated_at, p.name, p.username, p.triggered_by_uuid, p.triggered_by_name, p.flow_name,
+    p.id, p.exec_id, p.flow_id, p.version, p.input, p.error, p.current_action_id, p.status, p.trigger_type, p.triggered_by, p.namespace_id, p.created_at, p.updated_at, p.name, p.username, p.triggered_by_uuid, p.triggered_by_name, p.flow_name, p.flow_slug,
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
@@ -138,6 +139,7 @@ type GetAllExecutionsPaginatedRow struct {
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
 	TriggeredByName string          `db:"triggered_by_name" json:"triggered_by_name"`
 	FlowName        string          `db:"flow_name" json:"flow_name"`
+	FlowSlug        string          `db:"flow_slug" json:"flow_slug"`
 	PageCount       int64           `db:"page_count" json:"page_count"`
 	TotalCount      int64           `db:"total_count" json:"total_count"`
 }
@@ -170,6 +172,7 @@ func (q *Queries) GetAllExecutionsPaginated(ctx context.Context, arg GetAllExecu
 			&i.TriggeredByUuid,
 			&i.TriggeredByName,
 			&i.FlowName,
+			&i.FlowSlug,
 			&i.PageCount,
 			&i.TotalCount,
 		); err != nil {
@@ -200,7 +203,8 @@ SELECT
     u.username,
     u.uuid AS triggered_by_uuid,
     CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-    f.name as flow_name
+    f.name as flow_name,
+    f.slug as flow_slug
 FROM
     execution_log el
 INNER JOIN
@@ -237,6 +241,7 @@ type GetExecutionByExecIDRow struct {
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
 	TriggeredByName string          `db:"triggered_by_name" json:"triggered_by_name"`
 	FlowName        string          `db:"flow_name" json:"flow_name"`
+	FlowSlug        string          `db:"flow_slug" json:"flow_slug"`
 }
 
 func (q *Queries) GetExecutionByExecID(ctx context.Context, arg GetExecutionByExecIDParams) (GetExecutionByExecIDRow, error) {
@@ -261,6 +266,7 @@ func (q *Queries) GetExecutionByExecID(ctx context.Context, arg GetExecutionByEx
 		&i.TriggeredByUuid,
 		&i.TriggeredByName,
 		&i.FlowName,
+		&i.FlowSlug,
 	)
 	return i, err
 }
@@ -280,7 +286,8 @@ SELECT
     u.username,
     u.uuid AS triggered_by_uuid,
     CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-    f.name as flow_name
+    f.name as flow_name,
+    f.slug as flow_slug
 FROM
     execution_log el
 INNER JOIN
@@ -317,6 +324,7 @@ type GetExecutionByExecIDWithNamespaceRow struct {
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
 	TriggeredByName string          `db:"triggered_by_name" json:"triggered_by_name"`
 	FlowName        string          `db:"flow_name" json:"flow_name"`
+	FlowSlug        string          `db:"flow_slug" json:"flow_slug"`
 }
 
 func (q *Queries) GetExecutionByExecIDWithNamespace(ctx context.Context, arg GetExecutionByExecIDWithNamespaceParams) (GetExecutionByExecIDWithNamespaceRow, error) {
@@ -341,6 +349,7 @@ func (q *Queries) GetExecutionByExecIDWithNamespace(ctx context.Context, arg Get
 		&i.TriggeredByUuid,
 		&i.TriggeredByName,
 		&i.FlowName,
+		&i.FlowSlug,
 	)
 	return i, err
 }
@@ -351,7 +360,8 @@ WITH namespace_lookup AS (
 )
 SELECT el.id, el.exec_id, el.flow_id, el.version, el.input, el.error, el.current_action_id, el.status, el.trigger_type, el.triggered_by, el.namespace_id, el.created_at, el.updated_at, u.name, u.username, u.uuid as triggered_by_uuid,
        CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-       f.name as flow_name
+       f.name as flow_name,
+       f.slug as flow_slug
 FROM execution_log el
 INNER JOIN users u ON el.triggered_by = u.id
 INNER JOIN flows f ON el.flow_id = f.id
@@ -382,6 +392,7 @@ type GetExecutionByIDRow struct {
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
 	TriggeredByName string          `db:"triggered_by_name" json:"triggered_by_name"`
 	FlowName        string          `db:"flow_name" json:"flow_name"`
+	FlowSlug        string          `db:"flow_slug" json:"flow_slug"`
 }
 
 func (q *Queries) GetExecutionByID(ctx context.Context, arg GetExecutionByIDParams) (GetExecutionByIDRow, error) {
@@ -406,6 +417,7 @@ func (q *Queries) GetExecutionByID(ctx context.Context, arg GetExecutionByIDPara
 		&i.TriggeredByUuid,
 		&i.TriggeredByName,
 		&i.FlowName,
+		&i.FlowSlug,
 	)
 	return i, err
 }
@@ -418,7 +430,8 @@ WITH user_lookup AS (
 )
 SELECT el.id, el.exec_id, el.flow_id, el.version, el.input, el.error, el.current_action_id, el.status, el.trigger_type, el.triggered_by, el.namespace_id, el.created_at, el.updated_at, u.name, u.username, u.uuid as triggered_by_uuid,
        CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-       f.name as flow_name
+       f.name as flow_name,
+       f.slug as flow_slug
 FROM execution_log el
 INNER JOIN flows f ON el.flow_id = f.id
 INNER JOIN users u ON el.triggered_by = u.id
@@ -452,6 +465,7 @@ type GetExecutionsByFlowRow struct {
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
 	TriggeredByName string          `db:"triggered_by_name" json:"triggered_by_name"`
 	FlowName        string          `db:"flow_name" json:"flow_name"`
+	FlowSlug        string          `db:"flow_slug" json:"flow_slug"`
 }
 
 func (q *Queries) GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]GetExecutionsByFlowRow, error) {
@@ -482,6 +496,7 @@ func (q *Queries) GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFl
 			&i.TriggeredByUuid,
 			&i.TriggeredByName,
 			&i.FlowName,
+			&i.FlowSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -511,7 +526,8 @@ latest_versions AS (
 filtered AS (
     SELECT el.id, el.exec_id, el.flow_id, el.version, el.input, el.error, el.current_action_id, el.status, el.trigger_type, el.triggered_by, el.namespace_id, el.created_at, el.updated_at, u.name, u.username, u.uuid as triggered_by_uuid,
            CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-           f.name as flow_name
+           f.name as flow_name,
+           f.slug as flow_slug
     FROM execution_log el
     INNER JOIN flows f ON el.flow_id = f.id
     INNER JOIN users u ON el.triggered_by = u.id
@@ -523,7 +539,7 @@ total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ),
 paged AS (
-    SELECT id, exec_id, flow_id, version, input, error, current_action_id, status, trigger_type, triggered_by, namespace_id, created_at, updated_at, name, username, triggered_by_uuid, triggered_by_name, flow_name FROM filtered
+    SELECT id, exec_id, flow_id, version, input, error, current_action_id, status, trigger_type, triggered_by, namespace_id, created_at, updated_at, name, username, triggered_by_uuid, triggered_by_name, flow_name, flow_slug FROM filtered
     ORDER BY created_at DESC
     LIMIT $3 OFFSET $4
 ),
@@ -531,7 +547,7 @@ page_count AS (
     SELECT CEIL(total.total_count::numeric / $3::numeric)::bigint AS page_count FROM total
 )
 SELECT
-    p.id, p.exec_id, p.flow_id, p.version, p.input, p.error, p.current_action_id, p.status, p.trigger_type, p.triggered_by, p.namespace_id, p.created_at, p.updated_at, p.name, p.username, p.triggered_by_uuid, p.triggered_by_name, p.flow_name,
+    p.id, p.exec_id, p.flow_id, p.version, p.input, p.error, p.current_action_id, p.status, p.trigger_type, p.triggered_by, p.namespace_id, p.created_at, p.updated_at, p.name, p.username, p.triggered_by_uuid, p.triggered_by_name, p.flow_name, p.flow_slug,
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
@@ -563,6 +579,7 @@ type GetExecutionsByFlowPaginatedRow struct {
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
 	TriggeredByName string          `db:"triggered_by_name" json:"triggered_by_name"`
 	FlowName        string          `db:"flow_name" json:"flow_name"`
+	FlowSlug        string          `db:"flow_slug" json:"flow_slug"`
 	PageCount       int64           `db:"page_count" json:"page_count"`
 	TotalCount      int64           `db:"total_count" json:"total_count"`
 }
@@ -600,6 +617,7 @@ func (q *Queries) GetExecutionsByFlowPaginated(ctx context.Context, arg GetExecu
 			&i.TriggeredByUuid,
 			&i.TriggeredByName,
 			&i.FlowName,
+			&i.FlowSlug,
 			&i.PageCount,
 			&i.TotalCount,
 		); err != nil {

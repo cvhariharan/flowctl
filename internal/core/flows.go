@@ -319,6 +319,7 @@ func (c *Core) GetAllExecutionSummary(ctx context.Context, f models.Flow, trigge
 		m = append(m, models.ExecutionSummary{
 			ExecID:          v.ExecID,
 			FlowName:        v.FlowName,
+			FlowID:          v.FlowSlug,
 			CreatedAt:       v.CreatedAt,
 			CompletedAt:     v.UpdatedAt,
 			Status:          models.ExecutionStatus(v.Status),
@@ -354,6 +355,7 @@ func (c *Core) GetExecutionSummaryPaginated(ctx context.Context, f models.Flow, 
 		m = append(m, models.ExecutionSummary{
 			ExecID:          v.ExecID,
 			FlowName:        v.FlowName,
+			FlowID:          v.FlowSlug,
 			CreatedAt:       v.CreatedAt,
 			CompletedAt:     v.UpdatedAt,
 			Status:          models.ExecutionStatus(v.Status),
@@ -390,6 +392,7 @@ func (c *Core) GetAllExecutionSummaryPaginated(ctx context.Context, namespaceID 
 		m = append(m, models.ExecutionSummary{
 			ExecID:          v.ExecID,
 			FlowName:        v.FlowName,
+			FlowID:          v.FlowSlug,
 			CreatedAt:       v.CreatedAt,
 			CompletedAt:     v.UpdatedAt,
 			Status:          models.ExecutionStatus(v.Status),

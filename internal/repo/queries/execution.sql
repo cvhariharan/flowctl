@@ -56,7 +56,8 @@ WITH user_lookup AS (
 )
 SELECT el.*, u.name, u.username, u.uuid as triggered_by_uuid,
        CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-       f.name as flow_name
+       f.name as flow_name,
+       f.slug as flow_slug
 FROM execution_log el
 INNER JOIN flows f ON el.flow_id = f.id
 INNER JOIN users u ON el.triggered_by = u.id
@@ -78,7 +79,8 @@ SELECT
     u.username,
     u.uuid AS triggered_by_uuid,
     CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-    f.name as flow_name
+    f.name as flow_name,
+    f.slug as flow_slug
 FROM
     execution_log el
 INNER JOIN
@@ -105,7 +107,8 @@ SELECT
     u.username,
     u.uuid AS triggered_by_uuid,
     CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-    f.name as flow_name
+    f.name as flow_name,
+    f.slug as flow_slug
 FROM
     execution_log el
 INNER JOIN
@@ -153,7 +156,8 @@ WITH namespace_lookup AS (
 )
 SELECT el.*, u.name, u.username, u.uuid as triggered_by_uuid,
        CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-       f.name as flow_name
+       f.name as flow_name,
+       f.slug as flow_slug
 FROM execution_log el
 INNER JOIN users u ON el.triggered_by = u.id
 INNER JOIN flows f ON el.flow_id = f.id
@@ -188,7 +192,8 @@ latest_versions AS (
 filtered AS (
     SELECT el.*, u.name, u.username, u.uuid as triggered_by_uuid,
            CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-           f.name as flow_name
+           f.name as flow_name,
+           f.slug as flow_slug
     FROM execution_log el
     INNER JOIN flows f ON el.flow_id = f.id
     INNER JOIN users u ON el.triggered_by = u.id
@@ -227,7 +232,8 @@ latest_versions AS (
 filtered AS (
     SELECT el.*, u.name, u.username, u.uuid as triggered_by_uuid,
            CONCAT(u.name, ' <', u.username, '>')::TEXT as triggered_by_name,
-           f.name as flow_name
+           f.name as flow_name,
+           f.slug as flow_slug
     FROM execution_log el
     INNER JOIN flows f ON el.flow_id = f.id
     INNER JOIN users u ON el.triggered_by = u.id

@@ -211,6 +211,7 @@ export type ExecutionStatus = 'cancelled' | 'pending' | 'completed' | 'errored' 
 export interface ExecutionSummary {
   id: string;
   flow_name: string;
+  flow_id: string;
   status: ExecutionStatus;
   triggered_by: string;
   current_action_id: string;

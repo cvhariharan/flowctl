@@ -18,10 +18,10 @@ type LogMessage struct {
 type MessageType string
 
 const (
-	LogMessageType      MessageType = "log"
-	ErrMessageType      MessageType = "error"
-	ResultMessageType   MessageType = "result"
-	ApprovalMessageType MessageType = "approval"
+	LogMessageType       MessageType = "log"
+	ErrMessageType       MessageType = "error"
+	ResultMessageType    MessageType = "result"
+	ApprovalMessageType  MessageType = "approval"
 	CancelledMessageType MessageType = "cancelled"
 )
 
@@ -131,6 +131,7 @@ const (
 type ExecutionSummary struct {
 	ExecID          string
 	FlowName        string
+	FlowID          string
 	Status          ExecutionStatus
 	TriggeredByName string
 	TriggeredByID   string

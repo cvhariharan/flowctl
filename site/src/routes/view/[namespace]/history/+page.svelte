@@ -54,10 +54,7 @@
 			key: 'started_at',
 			header: 'Started At',
 			render: (_value: any, execution: ExecutionSummary) => `
-				<div>
-					<div>${formatDate(execution.started_at)}</div>
-					<div class="text-xs text-gray-500">${formatTime(execution.started_at)}</div>
-				</div>
+				<div>${formatDateTime(execution.started_at)}</div>
 			`
 		},
 		{
@@ -68,19 +65,7 @@
 		}
 	];
 
-	let tableActions = [
-		{
-			label: 'View',
-			onClick: (execution: ExecutionSummary) => viewExecution(execution.id),
-			className: 'text-blue-600 hover:text-blue-800'
-		},
-		{
-			label: 'Logs',
-			onClick: (execution: ExecutionSummary) => viewLogs(execution.id),
-			className: 'text-green-600 hover:text-green-800'
-		}
-	];
-
+	
 	// Functions
 	async function fetchExecutions(filter: string = '', pageNumber: number = 1) {
 		if (!browser) return;
@@ -113,32 +98,19 @@
 		fetchExecutions('', currentPage);
 	}
 
-	function viewExecution(executionId: string) {
-		window.location.href = `/api/v1/${data.namespace}/flows/executions/${executionId}`;
+	function viewExecution(executionId: string, flowId?: string) {
+		if (flowId) {
+			window.location.href = `/view/${data.namespace}/results/${flowId}/${executionId}`;
+		} else {
+			// Fallback to API endpoint if no flowId available
+			window.location.href = `/api/v1/${data.namespace}/flows/executions/${executionId}`;
+		}
 	}
 
-	function viewLogs(executionId: string) {
-		const logUrl = `/view/${data.namespace}/logs/${executionId}`;
-		window.open(logUrl, '_blank');
-	}
-
-	function formatDate(dateString: string): string {
+	function formatDateTime(dateString: string): string {
 		if (!dateString) return 'Unknown';
 		const date = new Date(dateString);
-		const now = new Date();
-		const diffMs = now.getTime() - date.getTime();
-		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-		if (diffDays === 0) return 'Today';
-		if (diffDays === 1) return 'Yesterday';
-		if (diffDays < 7) return `${diffDays} days ago`;
-		return date.toLocaleDateString();
-	}
-
-	function formatTime(dateString: string): string {
-		if (!dateString) return '';
-		const date = new Date(dateString);
-		return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		return date.toLocaleString();
 	}
 
 	function formatDuration(startedAt: string, completedAt: string): string {
@@ -165,7 +137,7 @@
 	}
 
 	function handleRowClick(execution: ExecutionSummary) {
-		viewExecution(execution.id);
+		viewExecution(execution.id, execution.flow_id);
 	}
 </script>
 
@@ -196,7 +168,6 @@
 		<Table
 			data={executions}
 			columns={tableColumns}
-			actions={tableActions}
 			{loading}
 			onRowClick={handleRowClick}
 			emptyMessage="No execution history found. Executions will appear here once flows are triggered."

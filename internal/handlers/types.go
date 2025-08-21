@@ -490,6 +490,7 @@ const (
 type ExecutionSummary struct {
 	ID              string          `json:"id"`
 	FlowName        string          `json:"flow_name"`
+	FlowID          string          `json:"flow_id"`
 	Status          ExecutionStatus `json:"status"`
 	TriggeredBy     string          `json:"triggered_by"`
 	CurrentActionID string          `json:"current_action_id"`
@@ -502,6 +503,7 @@ func coreExecutionSummaryToExecutionSummary(e models.ExecutionSummary) Execution
 	return ExecutionSummary{
 		ID:              e.ExecID,
 		FlowName:        e.FlowName,
+		FlowID:          e.FlowID,
 		Status:          ExecutionStatus(e.Status),
 		TriggeredBy:     e.TriggeredByName,
 		CurrentActionID: e.CurrentActionID,
