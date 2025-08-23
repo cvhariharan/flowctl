@@ -8,6 +8,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -132,6 +133,7 @@ WITH namespace_lookup AS (
 )
 SELECT
     a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
+    el.exec_id,
     u.name as requested_by
 FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -155,6 +157,7 @@ type GetApprovalByUUIDRow struct {
 	NamespaceID int32          `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
+	ExecID      string         `db:"exec_id" json:"exec_id"`
 	RequestedBy string         `db:"requested_by" json:"requested_by"`
 }
 
@@ -171,6 +174,7 @@ func (q *Queries) GetApprovalByUUID(ctx context.Context, arg GetApprovalByUUIDPa
 		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ExecID,
 		&i.RequestedBy,
 	)
 	return i, err
@@ -222,6 +226,7 @@ WITH namespace_lookup AS (
 )
 SELECT
     a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
+    el.exec_id,
     u.name as requested_by
 FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -247,6 +252,7 @@ type GetApprovalRequestForExecRow struct {
 	NamespaceID int32          `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
+	ExecID      string         `db:"exec_id" json:"exec_id"`
 	RequestedBy string         `db:"requested_by" json:"requested_by"`
 }
 
@@ -263,6 +269,69 @@ func (q *Queries) GetApprovalRequestForExec(ctx context.Context, arg GetApproval
 		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ExecID,
+		&i.RequestedBy,
+	)
+	return i, err
+}
+
+const getApprovalWithInputsByUUID = `-- name: GetApprovalWithInputsByUUID :one
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+)
+SELECT
+    a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
+    el.exec_id,
+    el.input as exec_inputs,
+    f.name as flow_name,
+    f.slug as flow_slug,
+    u.name as requested_by
+FROM approvals a
+JOIN execution_log el ON a.exec_log_id = el.id
+JOIN flows f ON el.flow_id = f.id
+JOIN users u ON el.triggered_by = u.id
+WHERE a.uuid = $1 AND f.namespace_id = (SELECT id FROM namespace_lookup)
+`
+
+type GetApprovalWithInputsByUUIDParams struct {
+	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
+	Uuid_2 uuid.UUID `db:"uuid_2" json:"uuid_2"`
+}
+
+type GetApprovalWithInputsByUUIDRow struct {
+	ID          int32           `db:"id" json:"id"`
+	Uuid        uuid.UUID       `db:"uuid" json:"uuid"`
+	ExecLogID   int32           `db:"exec_log_id" json:"exec_log_id"`
+	ActionID    string          `db:"action_id" json:"action_id"`
+	Status      ApprovalStatus  `db:"status" json:"status"`
+	DecidedBy   sql.NullInt32   `db:"decided_by" json:"decided_by"`
+	NamespaceID int32           `db:"namespace_id" json:"namespace_id"`
+	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
+	ExecID      string          `db:"exec_id" json:"exec_id"`
+	ExecInputs  json.RawMessage `db:"exec_inputs" json:"exec_inputs"`
+	FlowName    string          `db:"flow_name" json:"flow_name"`
+	FlowSlug    string          `db:"flow_slug" json:"flow_slug"`
+	RequestedBy string          `db:"requested_by" json:"requested_by"`
+}
+
+func (q *Queries) GetApprovalWithInputsByUUID(ctx context.Context, arg GetApprovalWithInputsByUUIDParams) (GetApprovalWithInputsByUUIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getApprovalWithInputsByUUID, arg.Uuid, arg.Uuid_2)
+	var i GetApprovalWithInputsByUUIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.ExecLogID,
+		&i.ActionID,
+		&i.Status,
+		&i.DecidedBy,
+		&i.NamespaceID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ExecID,
+		&i.ExecInputs,
+		&i.FlowName,
+		&i.FlowSlug,
 		&i.RequestedBy,
 	)
 	return i, err
@@ -275,8 +344,8 @@ WITH namespace_lookup AS (
 filtered AS (
     SELECT
         a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
-        u.name as requested_by,
-        el.exec_id
+        el.exec_id,
+        u.name as requested_by
     FROM approvals a
     JOIN execution_log el ON a.exec_log_id = el.id
     JOIN flows f ON el.flow_id = f.id
@@ -290,7 +359,7 @@ total AS (
     FROM filtered
 ),
 paged AS (
-    SELECT id, uuid, exec_log_id, action_id, status, decided_by, namespace_id, created_at, updated_at, requested_by, exec_id
+    SELECT id, uuid, exec_log_id, action_id, status, decided_by, namespace_id, created_at, updated_at, exec_id, requested_by
     FROM filtered
     ORDER BY created_at DESC
     LIMIT $4 OFFSET $5
@@ -300,7 +369,7 @@ page_count AS (
     FROM total
 )
 SELECT
-    p.id, p.uuid, p.exec_log_id, p.action_id, p.status, p.decided_by, p.namespace_id, p.created_at, p.updated_at, p.requested_by, p.exec_id,
+    p.id, p.uuid, p.exec_log_id, p.action_id, p.status, p.decided_by, p.namespace_id, p.created_at, p.updated_at, p.exec_id, p.requested_by,
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
@@ -324,8 +393,8 @@ type GetApprovalsPaginatedRow struct {
 	NamespaceID int32          `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
-	RequestedBy string         `db:"requested_by" json:"requested_by"`
 	ExecID      string         `db:"exec_id" json:"exec_id"`
+	RequestedBy string         `db:"requested_by" json:"requested_by"`
 	PageCount   int64          `db:"page_count" json:"page_count"`
 	TotalCount  int64          `db:"total_count" json:"total_count"`
 }
@@ -355,8 +424,8 @@ func (q *Queries) GetApprovalsPaginated(ctx context.Context, arg GetApprovalsPag
 			&i.NamespaceID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.RequestedBy,
 			&i.ExecID,
+			&i.RequestedBy,
 			&i.PageCount,
 			&i.TotalCount,
 		); err != nil {
@@ -388,6 +457,7 @@ WITH namespace_lookup AS (
 )
 SELECT
     a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
+    el.exec_id,
     u.name as requested_by
 FROM updated a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -410,6 +480,7 @@ type RejectRequestByUUIDRow struct {
 	NamespaceID int32          `db:"namespace_id" json:"namespace_id"`
 	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
+	ExecID      string         `db:"exec_id" json:"exec_id"`
 	RequestedBy string         `db:"requested_by" json:"requested_by"`
 }
 
@@ -426,6 +497,7 @@ func (q *Queries) RejectRequestByUUID(ctx context.Context, arg RejectRequestByUU
 		&i.NamespaceID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ExecID,
 		&i.RequestedBy,
 	)
 	return i, err

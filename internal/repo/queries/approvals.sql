@@ -50,6 +50,7 @@ WITH namespace_lookup AS (
 )
 SELECT
     a.*,
+    el.exec_id,
     u.name as requested_by
 FROM updated a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -74,6 +75,24 @@ WITH namespace_lookup AS (
 )
 SELECT
     a.*,
+    el.exec_id,
+    u.name as requested_by
+FROM approvals a
+JOIN execution_log el ON a.exec_log_id = el.id
+JOIN flows f ON el.flow_id = f.id
+JOIN users u ON el.triggered_by = u.id
+WHERE a.uuid = $1 AND f.namespace_id = (SELECT id FROM namespace_lookup);
+
+-- name: GetApprovalWithInputsByUUID :one
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+)
+SELECT
+    a.*,
+    el.exec_id,
+    el.input as exec_inputs,
+    f.name as flow_name,
+    f.slug as flow_slug,
     u.name as requested_by
 FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -103,6 +122,7 @@ WITH namespace_lookup AS (
 )
 SELECT
     a.*,
+    el.exec_id,
     u.name as requested_by
 FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
@@ -119,8 +139,8 @@ WITH namespace_lookup AS (
 filtered AS (
     SELECT
         a.*,
-        u.name as requested_by,
-        el.exec_id
+        el.exec_id,
+        u.name as requested_by
     FROM approvals a
     JOIN execution_log el ON a.exec_log_id = el.id
     JOIN flows f ON el.flow_id = f.id

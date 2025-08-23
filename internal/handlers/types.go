@@ -152,6 +152,19 @@ type ApprovalResp struct {
 	UpdatedAt   string `json:"updated_at"`
 }
 
+type ApprovalDetailsResp struct {
+	ID          string          `json:"id"`
+	ActionID    string          `json:"action_id"`
+	Status      string          `json:"status"`
+	ExecID      string          `json:"exec_id"`
+	Inputs      json.RawMessage `json:"inputs,omitempty"`
+	FlowName    string          `json:"flow_name"`
+	FlowID      string          `json:"flow_id"`
+	RequestedBy string          `json:"requested_by"`
+	CreatedAt   string          `json:"created_at"`
+	UpdatedAt   string          `json:"updated_at"`
+}
+
 type ApprovalsPaginateResponse struct {
 	Approvals  []ApprovalResp `json:"approvals"`
 	PageCount  int64          `json:"page_count"`

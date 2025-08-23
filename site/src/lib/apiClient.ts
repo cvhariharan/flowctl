@@ -323,6 +323,8 @@ export const apiClient = {
   approvals: {
     list: (namespace: string, params: ApprovalPaginateRequest = {}) =>
       baseFetch<ApprovalsPaginateResponse>(`/api/v1/${namespace}/approvals${buildQueryString(params)}`),
+    get: (namespace: string, approvalId: string) =>
+      baseFetch<ApprovalDetailsResp>(`/api/v1/${namespace}/approvals/${approvalId}`),
     action: (namespace: string, approvalId: string, action: ApprovalActionReq) =>
       baseFetch<ApprovalActionResp>(`/api/v1/${namespace}/approvals/${approvalId}`, {
         method: 'POST',

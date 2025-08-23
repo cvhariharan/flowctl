@@ -43,6 +43,7 @@ type Querier interface {
 	GetApprovalByUUID(ctx context.Context, arg GetApprovalByUUIDParams) (GetApprovalByUUIDRow, error)
 	GetApprovalRequestForActionAndExec(ctx context.Context, arg GetApprovalRequestForActionAndExecParams) (Approval, error)
 	GetApprovalRequestForExec(ctx context.Context, arg GetApprovalRequestForExecParams) (GetApprovalRequestForExecRow, error)
+	GetApprovalWithInputsByUUID(ctx context.Context, arg GetApprovalWithInputsByUUIDParams) (GetApprovalWithInputsByUUIDRow, error)
 	GetApprovalsPaginated(ctx context.Context, arg GetApprovalsPaginatedParams) ([]GetApprovalsPaginatedRow, error)
 	GetCredentialByID(ctx context.Context, arg GetCredentialByIDParams) (GetCredentialByIDRow, error)
 	GetCredentialByUUID(ctx context.Context, arg GetCredentialByUUIDParams) (GetCredentialByUUIDRow, error)

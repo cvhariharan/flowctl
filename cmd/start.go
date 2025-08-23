@@ -221,6 +221,7 @@ func startServer(db *sqlx.DB, co *core.Core, logger *slog.Logger) {
 
 	// Approval routes - operators and admins
 	namespaceGroup.GET("/approvals", h.HandleListApprovals, h.AuthorizeNamespaceAction(models.ResourceApproval, models.RBACActionApprove))
+	namespaceGroup.GET("/approvals/:approvalID", h.HandleGetApproval, h.AuthorizeNamespaceAction(models.ResourceApproval, models.RBACActionView))
 	namespaceGroup.POST("/approvals/:approvalID", h.HandleApprovalAction, h.AuthorizeNamespaceAction(models.ResourceApproval, models.RBACActionApprove))
 
 	// Namespace management - admins only

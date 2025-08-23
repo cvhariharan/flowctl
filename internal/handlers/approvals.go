@@ -7,7 +7,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-
 func (h *Handler) HandleApprovalAction(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
 	if !ok {
@@ -53,6 +52,38 @@ func (h *Handler) HandleApprovalAction(c echo.Context) error {
 		Status:  string(status),
 		Message: message,
 	})
+}
+
+func (h *Handler) HandleGetApproval(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
+	}
+
+	approvalID := c.Param("approvalID")
+	if approvalID == "" {
+		return wrapError(ErrRequiredFieldMissing, "approval ID cannot be empty", nil, nil)
+	}
+
+	approval, err := h.co.GetApprovalWithInputs(c.Request().Context(), approvalID, namespace)
+	if err != nil {
+		return wrapError(ErrOperationFailed, "could not get approval details", err, nil)
+	}
+
+	response := ApprovalDetailsResp{
+		ID:          approval.UUID,
+		ActionID:    approval.ActionID,
+		Status:      string(approval.Status),
+		ExecID:      approval.ExecID,
+		Inputs:      approval.Inputs,
+		FlowName:    approval.FlowName,
+		FlowID:      approval.FlowID,
+		RequestedBy: approval.RequestedBy,
+		CreatedAt:   approval.CreatedAt,
+		UpdatedAt:   approval.UpdatedAt,
+	}
+
+	return c.JSON(http.StatusOK, response)
 }
 
 func (h *Handler) HandleListApprovals(c echo.Context) error {

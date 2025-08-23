@@ -9,9 +9,8 @@
 	import StatCard from '$lib/components/shared/StatCard.svelte';
 	import StatusBadge from '$lib/components/shared/StatusBadge.svelte';
 	import ApprovalIdCell from '$lib/components/approvals/ApprovalIdCell.svelte';
-	import ApprovalActionsCell from '$lib/components/approvals/ApprovalActionsCell.svelte';
 	import StatusFilter from '$lib/components/approvals/StatusFilter.svelte';
-	import { setContext } from 'svelte';
+	import ApprovalDetailsModal from '$lib/components/approvals/ApprovalDetailsModal.svelte';
 	import { apiClient } from '$lib/apiClient';
 	import type { ApprovalResp } from '$lib/types';
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
@@ -28,6 +27,10 @@
 	let searchQuery = $state(data.searchQuery);
 	let statusFilter = $state(data.statusFilter);
 	let loading = $state(false);
+
+	// Modal state
+	let showModal = $state(false);
+	let selectedApprovalId = $state<string | null>(null);
 
 	// Computed statistics
 	let pendingCount = $derived(approvals.filter(approval => approval.status === 'pending').length);
@@ -61,21 +64,16 @@
 			key: 'created_at',
 			header: 'Created',
 			render: (_value: any, approval: ApprovalResp) => formatDate(approval.created_at)
-		},
-		{
-			key: 'actions',
-			header: 'Actions',
-			component: ApprovalActionsCell
 		}
 	];
 
-	// Set context for child components to access approval actions
-	setContext('approvalActions', {
-		handleApprove,
-		handleReject
-	});
 
-	// Functions
+
+	function handleRowClick(row: ApprovalResp) {
+		selectedApprovalId = row.id;
+		showModal = true;
+	}
+
 	async function fetchApprovals(filter: string = '', status: string = '', pageNumber: number = 1) {
 		if (!browser) return;
 		
@@ -211,6 +209,7 @@
 		<Table
 			data={approvals}
 			columns={tableColumns}
+			onRowClick={handleRowClick}
 			{loading}
 			emptyMessage="No approvals found. Approvals will appear here when workflows require approval."
 			emptyIcon='<svg class="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -228,3 +227,14 @@
 		/>
 	{/if}
 </div>
+
+<!-- Approval Details Modal -->
+{#if selectedApprovalId}
+	<ApprovalDetailsModal
+		bind:open={showModal}
+		approvalId={selectedApprovalId}
+		namespace={data.namespace}
+		onApprove={handleApprove}
+		onReject={handleReject}
+	/>
+{/if}

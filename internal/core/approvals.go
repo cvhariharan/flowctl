@@ -343,6 +343,44 @@ func (c *Core) GetApprovalRequest(ctx context.Context, approvalUUID string, name
 	return approval, nil
 }
 
+func (c *Core) GetApprovalWithInputs(ctx context.Context, approvalUUID string, namespaceID string) (models.ApprovalDetails, error) {
+	uid, err := uuid.Parse(approvalUUID)
+	if err != nil {
+		return models.ApprovalDetails{}, fmt.Errorf("invalid approval UUID: %w", err)
+	}
+
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return models.ApprovalDetails{}, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+
+	approval, err := c.store.GetApprovalWithInputsByUUID(ctx, repo.GetApprovalWithInputsByUUIDParams{
+		Uuid:   uid,
+		Uuid_2: namespaceUUID,
+	})
+	if err != nil {
+		return models.ApprovalDetails{}, fmt.Errorf("failed to get approval with inputs: %w", err)
+	}
+
+	// Convert to model
+	details := models.ApprovalDetails{
+		ApprovalRequest: models.ApprovalRequest{
+			UUID:        approval.Uuid.String(),
+			ActionID:    approval.ActionID,
+			Status:      models.ApprovalType(approval.Status),
+			ExecID:      approval.ExecID,
+			RequestedBy: approval.RequestedBy,
+		},
+		Inputs:    approval.ExecInputs,
+		FlowName:  approval.FlowName,
+		FlowID:    approval.FlowSlug,
+		CreatedAt: approval.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: approval.UpdatedAt.Format(time.RFC3339),
+	}
+
+	return details, nil
+}
+
 func (c *Core) GetApprovalsPaginated(ctx context.Context, namespaceID, status, filter string, page, countPerPage int) ([]repo.GetApprovalsPaginatedRow, int64, int64, error) {
 	namespaceUUID, err := uuid.Parse(namespaceID)
 	if err != nil {

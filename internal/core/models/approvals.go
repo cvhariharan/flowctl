@@ -3,6 +3,7 @@ package models
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 )
 
@@ -64,4 +65,13 @@ func (a *ApprovalRequest) UnmarshalBinary(data []byte) error {
 	}
 
 	return nil
+}
+
+type ApprovalDetails struct {
+	ApprovalRequest
+	Inputs    json.RawMessage
+	FlowName      string
+	FlowID      string
+	CreatedAt     string
+	UpdatedAt     string
 }

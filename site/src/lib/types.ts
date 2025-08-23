@@ -211,6 +211,19 @@ export interface ApprovalResp {
   updated_at: string;
 }
 
+export interface ApprovalDetailsResp {
+  id: string;
+  action_id: string;
+  status: string;
+  exec_id: string;
+  inputs?: any;
+  flow_name: string;
+  flow_id: string;
+  requested_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Execution types
 export type ExecutionStatus = 'cancelled' | 'pending' | 'completed' | 'errored' | 'pending_approval' | 'running';
 
