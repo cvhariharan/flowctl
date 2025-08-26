@@ -3,7 +3,7 @@
     import { getContext } from 'svelte';
     
     let { children, data } = $props();
-    let namespace = getContext('namespace') as string;
+    let namespace = getContext('namespace') as string || 'default';
   </script>
   
   <svelte:head>

@@ -14,7 +14,7 @@
 
   let namespaceDropdownOpen = $state(false);
   let namespaces = $state<Namespace[]>([]);
-  let currentNamespace = page.params.namespace;
+  let currentNamespace = $state(page.params.namespace || namespace);
   let currentNamespaceId = $state<string>('');
   let permissions = $state<{
     flows: ResourcePermissions;
@@ -63,6 +63,9 @@
       const currentNs = namespaces.find(ns => ns.name === namespace);
       if (currentNs) {
         currentNamespaceId = currentNs.id;
+      } else if (namespaces.length > 0) {
+        // If namespace not found, use first available namespace
+        currentNamespaceId = namespaces[0].id;
       }
     } catch (error) {
       handleInlineError(error, 'Unable to Load Namespaces');
@@ -100,14 +103,22 @@
 
   const selectNamespace = (selectedNamespace: Namespace) => {
     namespaceDropdownOpen = false;
+    currentNamespace = selectedNamespace.name;
     setContext('namespace', selectedNamespace.name);
     goto(`/view/${selectedNamespace.name}/flows`);
   };
 
+  // Set initial context
+  setContext('namespace', namespace);
+
   onMount(() => {
     fetchNamespaces();
-    setContext('namespace', 'default');
     checkAllPermissions();
+  });
+
+  // Update currentNamespace when namespace prop changes
+  $effect(() => {
+    currentNamespace = page.params.namespace || namespace;
   });
 
   // Re-check permissions when currentUser or namespace changes
