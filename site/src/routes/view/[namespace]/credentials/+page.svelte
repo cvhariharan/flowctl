@@ -38,6 +38,7 @@
 		{
 			key: 'name',
 			header: 'Name',
+			sortable: true,
 			render: (_value: any, credential: CredentialResp) => `
 				<div class="flex items-center">
 					<div class="w-10 h-10 rounded-lg flex items-center justify-center mr-3 ${
@@ -57,6 +58,7 @@
 		{
 			key: 'key_type',
 			header: 'Type',
+			sortable: true,
 			render: (_value: any, credential: CredentialResp) => `
 				<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
 					credential.key_type === 'private_key' 
@@ -68,6 +70,7 @@
 		{
 			key: 'last_accessed',
 			header: 'Last Accessed',
+			sortable: true,
 			render: (_value: any, credential: CredentialResp) => formatDate(credential.last_accessed)
 		}
 	];

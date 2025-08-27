@@ -107,6 +107,7 @@
     {
       key: "name",
       header: "Flow Name",
+      sortable: true,
       render: (value: string, row: FlowListItem) => `
         <div class="flex items-center">
           <div class="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -129,6 +130,7 @@
     {
       key: "schedule",
       header: "Schedule",
+      sortable: true,
       render: (value: string) => {
         if (!value) {
           return `<span class="text-sm text-gray-400 italic">Manual only</span>`;

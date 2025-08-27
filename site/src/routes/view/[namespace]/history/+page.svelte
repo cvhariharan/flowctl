@@ -34,11 +34,13 @@
 		{
 			key: 'status',
 			header: 'Status',
+			sortable: true,
 			component: StatusBadge
 		},
 		{
 			key: 'triggered_by',
 			header: 'Triggered By',
+			sortable: true,
 			render: (_value: any, execution: ExecutionSummary) => `
 				<div class="flex items-center">
 					<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
@@ -53,6 +55,7 @@
 		{
 			key: 'started_at',
 			header: 'Started At',
+			sortable: true,
 			render: (_value: any, execution: ExecutionSummary) => `
 				<div>${formatDateTime(execution.started_at)}</div>
 			`

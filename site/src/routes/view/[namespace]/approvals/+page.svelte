@@ -47,22 +47,26 @@
 		{
 			key: 'status',
 			header: 'Status',
+			sortable: true,
 			component: StatusBadge
 		},
 		{
 			key: 'exec_id',
 			header: 'Execution',
+			sortable: true,
 			render: (_value: any, approval: ApprovalResp) => `
 				<span class="font-mono text-sm text-gray-900">${approval.exec_id.substring(0, 8)}</span>
 			`
 		},
 		{
 			key: 'requested_by',
-			header: 'Requested By'
+			header: 'Requested By',
+			sortable: true
 		},
 		{
 			key: 'created_at',
 			header: 'Created',
+			sortable: true,
 			render: (_value: any, approval: ApprovalResp) => formatDate(approval.created_at)
 		}
 	];

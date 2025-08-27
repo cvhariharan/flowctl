@@ -1,6 +1,8 @@
 <script lang="ts" generics="T">
   import type { TableColumn, TableAction } from '$lib/types';
 
+  type SortDirection = 'asc' | 'desc' | null;
+
   type Props = {
     columns: TableColumn<T>[];
     data: T[];
@@ -24,6 +26,9 @@
     title,
     subtitle
   }: Props = $props();
+
+  let sortKey = $state<string | null>(null);
+  let sortDirection = $state<SortDirection>(null);
 
   const getValue = (row: T, column: TableColumn<T>) => {
     const keys = column.key.split('.');
@@ -60,6 +65,50 @@
     event.stopPropagation();
     action.onClick(row, event);
   };
+
+  const handleSort = (column: TableColumn<T>) => {
+    if (!column.sortable) return;
+
+    if (sortKey === column.key) {
+      // Cycle through: asc -> desc -> null
+      if (sortDirection === 'asc') {
+        sortDirection = 'desc';
+      } else if (sortDirection === 'desc') {
+        sortDirection = null;
+        sortKey = null;
+      } else {
+        sortDirection = 'asc';
+      }
+    } else {
+      sortKey = column.key;
+      sortDirection = 'asc';
+    }
+  };
+
+  const sortedData = $derived.by(() => {
+    if (!sortKey || !sortDirection) return data;
+
+    const column = columns.find(c => c.key === sortKey);
+    if (!column) return data;
+
+    return [...data].sort((a, b) => {
+      const aValue = getValue(a, column);
+      const bValue = getValue(b, column);
+
+      // Handle null/undefined values
+      if (aValue == null && bValue == null) return 0;
+      if (aValue == null) return sortDirection === 'asc' ? 1 : -1;
+      if (bValue == null) return sortDirection === 'asc' ? -1 : 1;
+
+      // Convert to strings for comparison if not already numbers
+      const aCompare = typeof aValue === 'number' ? aValue : String(aValue).toLowerCase();
+      const bCompare = typeof bValue === 'number' ? bValue : String(bValue).toLowerCase();
+
+      if (aCompare < bCompare) return sortDirection === 'asc' ? -1 : 1;
+      if (aCompare > bCompare) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  });
 </script>
 
 <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
@@ -96,9 +145,30 @@
         <tr>
           {#each columns as column}
             <th 
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider {column.width ? column.width : ''}"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider {column.width ? column.width : ''} {column.sortable ? 'cursor-pointer select-none hover:bg-gray-100' : ''}"
+              onclick={() => handleSort(column)}
             >
-              {column.header}
+              <div class="flex items-center space-x-1">
+                <span>{column.header}</span>
+                {#if column.sortable}
+                  <div class="flex flex-col">
+                    <svg 
+                      class="w-3 h-3 {sortKey === column.key && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'}"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                    </svg>
+                    <svg 
+                      class="w-3 h-3 -mt-1 {sortKey === column.key && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'}"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                {/if}
+              </div>
             </th>
           {/each}
           {#if actions.length > 0}
@@ -109,7 +179,7 @@
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
-        {#each data as row}
+        {#each sortedData as row}
           <tr 
             class="hover:bg-gray-50 {onRowClick ? 'cursor-pointer' : ''}" 
             onclick={() => handleRowClick(row)}

@@ -39,6 +39,7 @@
 		{
 			key: 'name',
 			header: 'Node',
+			sortable: true,
 			render: (_value: any, node: NodeResp) => `
 				<div class="flex items-center">
 					<div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
@@ -51,12 +52,13 @@
 				</div>
 			`
 		},
-		{ key: 'hostname', header: 'Hostname' },
-		{ key: 'port', header: 'Port' },
-		{ key: 'username', header: 'Username' },
+		{ key: 'hostname', header: 'Hostname', sortable: true },
+		{ key: 'port', header: 'Port', sortable: true },
+		{ key: 'username', header: 'Username', sortable: true },
 		{
 			key: 'os_family',
 			header: 'OS Family',
+			sortable: true,
 			render: (_value: any, node: NodeResp) => `
 				<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
 					node.os_family === 'linux' 

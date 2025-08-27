@@ -33,21 +33,25 @@ import type { TableAction } from '$lib/types';
 		{
 			key: 'subject_name',
 			header: 'Member',
+			sortable: true,
 			component: MemberCell
 		},
 		{
 			key: 'subject_type',
 			header: 'Type',
+			sortable: true,
 			component: MemberTypeBadge
 		},
 		{
 			key: 'role',
 			header: 'Role',
+			sortable: true,
 			component: MemberRoleBadge
 		},
 		{
 			key: 'created_at',
 			header: 'Added',
+			sortable: true,
 			render: (_value: any, member: NamespaceMemberResp) => formatDate(member.created_at)
 		}
 	];
