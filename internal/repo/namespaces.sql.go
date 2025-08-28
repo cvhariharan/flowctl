@@ -402,7 +402,8 @@ WITH filtered AS (
             JOIN group_memberships gm3 ON g.id = gm3.group_id 
             WHERE gm3.user_id = (SELECT id FROM users WHERE users.uuid = $1)
         )
-    )
+        
+    ) AND lower(n.name) LIKE '%' || lower($4::text) || '%'
 ),
 total AS (
     SELECT COUNT(*) AS total_count FROM filtered
@@ -412,7 +413,7 @@ paged AS (
     LIMIT $2 OFFSET $3
 ),
 page_count AS (
-    SELECT COUNT(*) AS page_count FROM paged
+    SELECT CEIL(total.total_count::numeric / $2::numeric)::bigint AS page_count FROM total
 )
 SELECT
     p.id, p.uuid, p.name, p.created_at, p.updated_at,
@@ -422,9 +423,10 @@ FROM paged p, page_count pc, total t
 `
 
 type ListNamespacesParams struct {
-	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
-	Limit  int32     `db:"limit" json:"limit"`
-	Offset int32     `db:"offset" json:"offset"`
+	Uuid    uuid.UUID `db:"uuid" json:"uuid"`
+	Limit   int32     `db:"limit" json:"limit"`
+	Offset  int32     `db:"offset" json:"offset"`
+	Column4 string    `db:"column_4" json:"column_4"`
 }
 
 type ListNamespacesRow struct {
@@ -438,7 +440,12 @@ type ListNamespacesRow struct {
 }
 
 func (q *Queries) ListNamespaces(ctx context.Context, arg ListNamespacesParams) ([]ListNamespacesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listNamespaces, arg.Uuid, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listNamespaces,
+		arg.Uuid,
+		arg.Limit,
+		arg.Offset,
+		arg.Column4,
+	)
 	if err != nil {
 		return nil, err
 	}

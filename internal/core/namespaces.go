@@ -55,16 +55,17 @@ func (c *Core) GetNamespaceByName(ctx context.Context, name string) (models.Name
 	}, nil
 }
 
-func (c *Core) ListNamespaces(ctx context.Context, userID string, limit, offset int) ([]models.Namespace, int64, int64, error) {
+func (c *Core) ListNamespaces(ctx context.Context, userID string, name string, limit, offset int) ([]models.Namespace, int64, int64, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, -1, -1, fmt.Errorf("invalid user UUID: %w", err)
 	}
 
 	namespaces, err := c.store.ListNamespaces(ctx, repo.ListNamespacesParams{
-		Uuid:   userUUID,
-		Limit:  int32(limit),
-		Offset: int32(offset),
+		Uuid:    userUUID,
+		Limit:   int32(limit),
+		Offset:  int32(offset),
+		Column4: name,
 	})
 	if err != nil {
 		return nil, -1, -1, err

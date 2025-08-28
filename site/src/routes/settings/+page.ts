@@ -1,13 +1,14 @@
 import type { PageLoad } from './$types';
 import { apiClient } from '$lib/apiClient';
 import { DEFAULT_PAGE_SIZE } from '$lib/constants';
-import type { GroupsPaginateResponse, UsersPaginateResponse } from '$lib/types';
+import type { GroupsPaginateResponse, UsersPaginateResponse, NamespacesPaginateResponse } from '$lib/types';
 
 export const ssr = false;
 
 export const load: PageLoad = async () => {
 	let usersResponse: UsersPaginateResponse | null = null;
 	let groupsResponse: GroupsPaginateResponse | null = null;
+	let namespacesResponse: NamespacesPaginateResponse | null = null;
 	
 	try {
 		usersResponse = await apiClient.users.list({
@@ -19,8 +20,13 @@ export const load: PageLoad = async () => {
 			page: 1,
 			count_per_page: DEFAULT_PAGE_SIZE
 		});
+
+		namespacesResponse = await apiClient.namespaces.list({
+			page: 1,
+			count_per_page: DEFAULT_PAGE_SIZE
+		});
 	} catch(error) {
-		console.error("failed to fetch users and groups: ", error);
+		console.error("failed to fetch users, groups, and namespaces: ", error);
 	}
 
 	return {
@@ -29,6 +35,9 @@ export const load: PageLoad = async () => {
 		usersPageCount: usersResponse?.page_count || 1,
 		groups: groupsResponse?.groups || [],
 		groupsTotalCount: groupsResponse?.total_count || 0,
-		groupsPageCount: groupsResponse?.page_count || 1
+		groupsPageCount: groupsResponse?.page_count || 1,
+		namespaces: namespacesResponse?.namespaces || [],
+		namespacesTotalCount: namespacesResponse?.total_count || 0,
+		namespacesPageCount: namespacesResponse?.page_count || 1
 	};
 };

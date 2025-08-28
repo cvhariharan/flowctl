@@ -33,7 +33,7 @@ func (h *Handler) HandleCreateNamespace(c echo.Context) error {
 func (h *Handler) HandleGetNamespace(c echo.Context) error {
 	namespaceID := c.Param("namespaceID")
 	if namespaceID == "" {
-		return wrapError(ErrRequiredFieldMissing, "namespace ID cannot be empty", nil, nil)
+		return wrapError(ErrRequiredFieldMissing, "namespace ID cannot be empty", fmt.Errorf("namespace ID is empty"), nil)
 	}
 
 	namespace, err := h.co.GetNamespaceByID(c.Request().Context(), namespaceID)
@@ -67,7 +67,7 @@ func (h *Handler) HandleListNamespaces(c echo.Context) error {
 		return wrapError(ErrAuthenticationFailed, "could not get user details", err, nil)
 	}
 
-	namespaces, pageCount, totalCount, err := h.co.ListNamespaces(c.Request().Context(), userInfo.ID, req.Count, req.Count*req.Page)
+	namespaces, pageCount, totalCount, err := h.co.ListNamespaces(c.Request().Context(), userInfo.ID, req.Filter, req.Count, req.Count*req.Page)
 	if err != nil {
 		return wrapError(ErrOperationFailed, "could not list namespaces", err, nil)
 	}

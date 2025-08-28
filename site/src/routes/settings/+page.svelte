@@ -5,6 +5,7 @@
 	import Tabs from '$lib/components/shared/Tabs.svelte';
 	import UsersTab from '$lib/components/settings/UsersTab.svelte';
 	import GroupsTab from '$lib/components/settings/GroupsTab.svelte';
+	import NamespacesTab from '$lib/components/settings/NamespacesTab.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -22,6 +23,11 @@
 			id: 'groups',
 			label: 'Groups', 
 			badge: data.groupsTotalCount
+		},
+		{
+			id: 'namespaces',
+			label: 'Namespaces',
+			badge: data.namespacesTotalCount
 		}
 	];
 
@@ -69,6 +75,12 @@
 			groups={data.groups}
 			totalCount={data.groupsTotalCount}
 			pageCount={data.groupsPageCount}
+		/>
+	{:else if activeTab === 'namespaces'}
+		<NamespacesTab
+			namespaces={data.namespaces}
+			totalCount={data.namespacesTotalCount}
+			pageCount={data.namespacesPageCount}
 		/>
 	{/if}
 </div>
