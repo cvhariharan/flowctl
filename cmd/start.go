@@ -173,7 +173,7 @@ func startServer(db *sqlx.DB, co *core.Core, logger *slog.Logger) {
 
 	// Namespace management
 	api.GET("/namespaces", h.HandleListNamespaces)
-	api.GET("/namespaces/:namespaceID", h.HandleGetNamespace, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionView))
+	api.GET("/namespaces/:namespaceID", h.HandleGetNamespace, h.AuthorizeForRole("superuser"))
 	api.POST("/namespaces", h.HandleCreateNamespace, h.AuthorizeForRole("superuser"))
 	api.PUT("/namespaces/:namespaceID", h.HandleUpdateNamespace, h.AuthorizeForRole("superuser"))
 	api.DELETE("/namespaces/:namespaceID", h.HandleDeleteNamespace, h.AuthorizeForRole("superuser"))

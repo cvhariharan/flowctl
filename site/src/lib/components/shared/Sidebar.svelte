@@ -5,7 +5,6 @@
   import { handleInlineError } from '$lib/utils/errorHandling';
   import { currentUser } from '$lib/stores/auth';
   import type { NamespaceResp, Namespace } from '$lib/types';
-  import { goto } from '$app/navigation';
   import { DEFAULT_PAGE_SIZE } from '$lib/constants';
   import { setContext } from 'svelte';
   import { permissionChecker, type ResourcePermissions } from '$lib/utils/permissions';
@@ -113,9 +112,14 @@
 
   const selectNamespace = (selectedNamespace: Namespace) => {
     namespaceDropdownOpen = false;
-    currentNamespace = selectedNamespace.name;
-    setContext('namespace', selectedNamespace.name);
-    goto(`/view/${selectedNamespace.name}/flows`);
+    
+    // Don't navigate if already on the same namespace
+    if (selectedNamespace.name === namespace) {
+      return;
+    }
+    
+    // Force a full page reload by using window.location
+    window.location.href = `/view/${selectedNamespace.name}/flows`;
   };
 
   // Set initial context
@@ -152,8 +156,10 @@
   <!-- Namespace Dropdown -->
   <div class="px-4 mb-4">
     <div class="relative">
-      <label class="block text-xs font-medium text-gray-400 mb-1">Namespace</label>
+      <label for="namespace-dropdown" class="block text-xs font-medium text-gray-400 mb-1">Namespace</label>
       <button 
+        type="button"
+        id="namespace-dropdown"
         onclick={() => namespaceDropdownOpen = !namespaceDropdownOpen}
         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-white bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
       >
@@ -170,6 +176,7 @@
           <div class="py-1">
             {#each namespaces as ns (ns.id)}
               <button 
+                type="button"
                 onclick={() => selectNamespace(ns)}
                 class="w-full text-left px-3 py-2 text-sm text-white hover:bg-slate-600 transition-colors"
                 class:bg-slate-600={ns.name === namespace}

@@ -15,6 +15,11 @@
 	// Tab configuration
 	const tabs = [
 		{
+			id: 'namespaces',
+			label: 'Namespaces',
+			badge: data.namespacesTotalCount
+		},
+		{
 			id: 'users',
 			label: 'Users',
 			badge: data.usersTotalCount
@@ -23,11 +28,6 @@
 			id: 'groups',
 			label: 'Groups', 
 			badge: data.groupsTotalCount
-		},
-		{
-			id: 'namespaces',
-			label: 'Namespaces',
-			badge: data.namespacesTotalCount
 		}
 	];
 
