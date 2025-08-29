@@ -19,6 +19,9 @@ SELECT * FROM group_view WHERE uuid = $1;
 -- name: GetGroupByUUID :one
 SELECT * FROM groups WHERE uuid = $1;
 
+-- name: GetGroupByID :one
+SELECT * FROM groups WHERE id = $1;
+
 -- name: DeleteGroupByUUID :exec
 DELETE FROM groups WHERE uuid = $1;
 

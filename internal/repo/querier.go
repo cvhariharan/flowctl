@@ -57,6 +57,7 @@ type Querier interface {
 	GetFlowFromExecIDWithNamespace(ctx context.Context, arg GetFlowFromExecIDWithNamespaceParams) (Flow, error)
 	GetFlowSecretByUUID(ctx context.Context, arg GetFlowSecretByUUIDParams) (GetFlowSecretByUUIDRow, error)
 	GetFlowsByNamespace(ctx context.Context, argUuid uuid.UUID) ([]GetFlowsByNamespaceRow, error)
+	GetGroupByID(ctx context.Context, id int32) (Group, error)
 	GetGroupByName(ctx context.Context, name string) (Group, error)
 	GetGroupByUUID(ctx context.Context, argUuid uuid.UUID) (Group, error)
 	GetGroupByUUIDWithUsers(ctx context.Context, argUuid uuid.UUID) (GroupView, error)

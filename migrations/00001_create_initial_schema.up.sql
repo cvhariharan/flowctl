@@ -236,18 +236,27 @@ CREATE INDEX idx_nodes_namespace_id ON nodes(namespace_id);
 CREATE TABLE namespace_members (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
-    subject_uuid UUID NOT NULL,
-    subject_type VARCHAR(10) NOT NULL CHECK (subject_type IN ('user', 'group')),
-    namespace_id INT NOT NULL REFERENCES namespaces(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+    namespace_id INTEGER NOT NULL REFERENCES namespaces(id) ON DELETE CASCADE,
     role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'reviewer', 'admin')),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    CONSTRAINT unique_namespace_member UNIQUE(subject_uuid, subject_type, namespace_id)
+    
+    -- Constraint to ensure only one of user_id or group_id is set
+    CONSTRAINT check_single_subject CHECK (
+        (user_id IS NOT NULL AND group_id IS NULL) OR 
+        (user_id IS NULL AND group_id IS NOT NULL)
+    ),
+    
+    CONSTRAINT unique_user_namespace UNIQUE(user_id, namespace_id),
+    CONSTRAINT unique_group_namespace UNIQUE(group_id, namespace_id)
 );
 
 CREATE INDEX idx_namespace_members_namespace ON namespace_members(namespace_id);
 CREATE INDEX idx_namespace_members_uuid ON namespace_members(uuid);
-CREATE INDEX idx_namespace_members_subject ON namespace_members(subject_uuid, subject_type);
+CREATE INDEX idx_namespace_members_user ON namespace_members(user_id) WHERE user_id IS NOT NULL;
+CREATE INDEX idx_namespace_members_group ON namespace_members(group_id) WHERE group_id IS NOT NULL;
 
 CREATE TABLE casbin_rule (
     id SERIAL PRIMARY KEY,

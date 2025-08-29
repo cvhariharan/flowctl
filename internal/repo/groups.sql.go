@@ -119,6 +119,24 @@ func (q *Queries) GetAllGroupsWithUsers(ctx context.Context) ([]GroupView, error
 	return items, nil
 }
 
+const getGroupByID = `-- name: GetGroupByID :one
+SELECT id, uuid, name, description, created_at, updated_at FROM groups WHERE id = $1
+`
+
+func (q *Queries) GetGroupByID(ctx context.Context, id int32) (Group, error) {
+	row := q.db.QueryRowContext(ctx, getGroupByID, id)
+	var i Group
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.Name,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getGroupByName = `-- name: GetGroupByName :one
 SELECT id, uuid, name, description, created_at, updated_at FROM groups WHERE name = $1
 `

@@ -481,13 +481,7 @@ func coreNamespaceMemberToResp(m models.NamespaceMember) NamespaceMemberResp {
 }
 
 func getSubjectName(m models.NamespaceMember) string {
-	if m.UserName != nil {
-		return *m.UserName
-	}
-	if m.GroupName != nil {
-		return *m.GroupName
-	}
-	return ""
+	return m.Name
 }
 
 func coreNamespaceMembersToResp(members []models.NamespaceMember) NamespaceMembersResponse {

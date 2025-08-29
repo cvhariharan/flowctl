@@ -424,14 +424,14 @@ type Namespace struct {
 }
 
 type NamespaceMember struct {
-	ID          int32     `db:"id" json:"id"`
-	Uuid        uuid.UUID `db:"uuid" json:"uuid"`
-	SubjectUuid uuid.UUID `db:"subject_uuid" json:"subject_uuid"`
-	SubjectType string    `db:"subject_type" json:"subject_type"`
-	NamespaceID int32     `db:"namespace_id" json:"namespace_id"`
-	Role        string    `db:"role" json:"role"`
-	CreatedAt   time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
+	ID          int32         `db:"id" json:"id"`
+	Uuid        uuid.UUID     `db:"uuid" json:"uuid"`
+	UserID      sql.NullInt32 `db:"user_id" json:"user_id"`
+	GroupID     sql.NullInt32 `db:"group_id" json:"group_id"`
+	NamespaceID int32         `db:"namespace_id" json:"namespace_id"`
+	Role        string        `db:"role" json:"role"`
+	CreatedAt   time.Time     `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time     `db:"updated_at" json:"updated_at"`
 }
 
 type Node struct {

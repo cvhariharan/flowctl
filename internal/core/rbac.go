@@ -84,9 +84,9 @@ func (c *Core) AssignNamespaceRole(ctx context.Context, subjectID string, subjec
 		}
 
 		_, err = c.store.AssignUserNamespaceRole(ctx, repo.AssignUserNamespaceRoleParams{
-			SubjectUuid: user.Uuid,
-			Uuid:        namespaceUUID,
-			Role:        string(role),
+			Uuid:   user.Uuid,
+			Uuid_2: namespaceUUID,
+			Role:   string(role),
 		})
 		if err != nil {
 			return err
@@ -103,9 +103,9 @@ func (c *Core) AssignNamespaceRole(ctx context.Context, subjectID string, subjec
 		}
 
 		_, err = c.store.AssignGroupNamespaceRole(ctx, repo.AssignGroupNamespaceRoleParams{
-			SubjectUuid: group.Uuid,
-			Uuid:        namespaceUUID,
-			Role:        string(role),
+			Uuid:   group.Uuid,
+			Uuid_2: namespaceUUID,
+			Role:   string(role),
 		})
 		if err != nil {
 			return err
@@ -238,9 +238,24 @@ func (c *Core) RemoveNamespaceMember(ctx context.Context, membershipID, namespac
 		return err
 	}
 
-	// Remove from Casbin policies
-	subject := fmt.Sprintf("%s:%s", m.SubjectType, m.SubjectUuid.String())
-	c.enforcer.RemoveFilteredGroupingPolicy(0, subject, "", namespaceID)
+	// Remove from Casbin policies for the specific subject
+	var subjectID string
+	if m.UserID.Valid {
+		user, err := c.store.GetUserByID(ctx, m.UserID.Int32)
+		if err != nil {
+			return err
+		}
+		subjectID = fmt.Sprintf("user:%s", user.Uuid.String())
+	} else if m.GroupID.Valid {
+		group, err := c.store.GetGroupByID(ctx, m.GroupID.Int32)
+		if err != nil {
+			return err
+		}
+		subjectID = fmt.Sprintf("group:%s", group.Uuid.String())
+	}
+	if subjectID != "" {
+		c.enforcer.RemoveFilteredGroupingPolicy(0, subjectID, "", namespaceID)
+	}
 
 	return c.enforcer.SavePolicy()
 }
@@ -267,22 +282,9 @@ func (c *Core) GetNamespaceMembers(ctx context.Context, namespaceID string) ([]m
 			UpdatedAt:   row.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 		}
 
-		// Convert subject_uuid from interface{} to string
-		if row.SubjectUuid != nil {
-			if uuidVal, ok := row.SubjectUuid.(string); ok {
-				member.SubjectID = uuidVal
-			}
-		}
-
-		if row.SubjectName != nil {
-			if nameVal, ok := row.SubjectName.(string); ok {
-				if row.SubjectType == "user" {
-					member.UserName = &nameVal
-				} else {
-					member.GroupName = &nameVal
-				}
-			}
-		}
+		// Set subject UUID and name directly
+		member.SubjectID = row.SubjectUuid.String()
+		member.Name = row.SubjectName
 
 		result = append(result, member)
 	}
