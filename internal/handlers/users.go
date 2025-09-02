@@ -141,8 +141,9 @@ func (h *Handler) HandleDeleteUser(c echo.Context) error {
 
 func (h *Handler) HandleCreateUser(c echo.Context) error {
 	var req struct {
-		Name     string `json:"name" validate:"required,min=4,max=30,alphanum_whitespace"`
-		Username string `json:"username" validate:"required,email"`
+		Name     string   `json:"name" validate:"required,min=4,max=30,alphanum_whitespace"`
+		Username string   `json:"username" validate:"required,email"`
+		Groups   []string `json:"groups"`
 	}
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
@@ -152,7 +153,7 @@ func (h *Handler) HandleCreateUser(c echo.Context) error {
 		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
-	u, err := h.co.CreateUser(c.Request().Context(), req.Name, req.Username, models.OIDCLoginType, models.StandardUserRole)
+	u, err := h.co.CreateUser(c.Request().Context(), req.Name, req.Username, models.OIDCLoginType, models.StandardUserRole, req.Groups)
 	if err != nil {
 		return wrapError(ErrOperationFailed, "could not create user", err, nil)
 	}

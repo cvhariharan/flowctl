@@ -131,7 +131,7 @@ func (c *Core) DeleteUserByUUID(ctx context.Context, userUUID string) error {
 	return nil
 }
 
-func (c *Core) CreateUser(ctx context.Context, name, username string, loginType models.UserLoginType, userRole models.UserRoleType) (models.User, error) {
+func (c *Core) CreateUser(ctx context.Context, name, username string, loginType models.UserLoginType, userRole models.UserRoleType, groups []string) (models.UserWithGroups, error) {
 	var ltype repo.UserLoginType
 	switch loginType {
 	case models.OIDCLoginType:
@@ -139,7 +139,7 @@ func (c *Core) CreateUser(ctx context.Context, name, username string, loginType 
 	case models.StandardLoginType:
 		ltype = repo.UserLoginTypeStandard
 	default:
-		return models.User{}, fmt.Errorf("unknown login type")
+		return models.UserWithGroups{}, fmt.Errorf("unknown login type")
 	}
 
 	var urole repo.UserRoleType
@@ -149,7 +149,7 @@ func (c *Core) CreateUser(ctx context.Context, name, username string, loginType 
 	case models.StandardUserRole:
 		urole = repo.UserRoleTypeUser
 	default:
-		return models.User{}, fmt.Errorf("unknown role type")
+		return models.UserWithGroups{}, fmt.Errorf("unknown role type")
 	}
 
 	u, err := c.store.CreateUser(ctx, repo.CreateUserParams{
@@ -159,7 +159,14 @@ func (c *Core) CreateUser(ctx context.Context, name, username string, loginType 
 		Role:      urole,
 	})
 	if err != nil {
-		return models.User{}, fmt.Errorf("could not create user %s: %w", username, err)
+		return models.UserWithGroups{}, fmt.Errorf("could not create user %s: %w", username, err)
+	}
+
+	// Add user to specified groups
+	if len(groups) > 0 {
+		if err := c.store.OverwriteGroupsForUserTx(ctx, u.Uuid, groups); err != nil {
+			return models.UserWithGroups{}, fmt.Errorf("could not assign groups to user %s: %w", username, err)
+		}
 	}
 
 	// Automatically assign new user to default namespace with user role
@@ -167,16 +174,22 @@ func (c *Core) CreateUser(ctx context.Context, name, username string, loginType 
 	if userRole != models.SuperuserUserRole {
 		defaultNamespace, err := c.GetNamespaceByName(ctx, "default")
 		if err != nil {
-			return models.User{}, fmt.Errorf("could not get default namespace when creating user %s: %w", username, err)
+			return models.UserWithGroups{}, fmt.Errorf("could not get default namespace when creating user %s: %w", username, err)
 		}
 
 		err = c.AssignNamespaceRole(ctx, u.Uuid.String(), "user", defaultNamespace.ID, models.NamespaceRoleUser)
 		if err != nil {
-			return models.User{}, fmt.Errorf("could not assign user %s to default namespace: %w", username, err)
+			return models.UserWithGroups{}, fmt.Errorf("could not assign user %s to default namespace: %w", username, err)
 		}
 	}
 
-	return c.repoUserToUser(u), nil
+	// Get user with groups to return
+	userWithGroups, err := c.store.GetUserByUUIDWithGroups(ctx, u.Uuid)
+	if err != nil {
+		return models.UserWithGroups{}, fmt.Errorf("could not get created user with groups %s: %w", username, err)
+	}
+
+	return c.repoUserViewToUserWithGroups(userWithGroups)
 }
 
 func (c *Core) UpdateUser(ctx context.Context, userUUID string, name string, username string, groups []string) (models.UserWithGroups, error) {
