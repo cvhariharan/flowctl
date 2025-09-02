@@ -84,6 +84,8 @@
   };
 
   const startStatusPolling = () => {
+    // Always stop any existing polling first
+    stopStatusPolling();
     // Poll every 2 seconds when flow is active
     if (status === 'running' || status === 'awaiting_approval') {
       statusPollingInterval = setInterval(updateExecutionStatus, 2000);
@@ -127,9 +129,7 @@
     if (newStatus === 'completed' || newStatus === 'errored' || newStatus === 'cancelled') {
       stopStatusPolling();
     } else {
-      if (!statusPollingInterval) {
-        startStatusPolling();
-      }
+      startStatusPolling();
     }
   };
 

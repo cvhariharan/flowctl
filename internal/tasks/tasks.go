@@ -140,7 +140,7 @@ func (r *FlowRunner) HandleFlowExecution(ctx context.Context, t *asynq.Task) err
 		flowSecrets, err = r.secretsProvider(ctx, payload.Workflow.Meta.ID, payload.NamespaceID)
 		if err != nil {
 			r.debugLogger.Error("failed to get flow secrets", "error", err)
-			flowSecrets = make(map[string]string) // Continue with empty secrets if there's an error
+			flowSecrets = make(map[string]string)
 		}
 	} else {
 		flowSecrets = make(map[string]string)

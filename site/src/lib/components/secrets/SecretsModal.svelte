@@ -65,7 +65,7 @@
 <!-- Modal overlay -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick={onClose}>
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60" onclick={onClose} role="dialog" aria-modal="true">
 	<!-- Modal content -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
