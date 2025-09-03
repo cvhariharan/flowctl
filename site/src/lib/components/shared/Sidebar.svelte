@@ -4,7 +4,7 @@
   import { apiClient } from '$lib/apiClient';
   import { handleInlineError } from '$lib/utils/errorHandling';
   import { currentUser } from '$lib/stores/auth';
-  import type { NamespaceResp, Namespace } from '$lib/types';
+  import type { Namespace } from '$lib/types';
   import { DEFAULT_PAGE_SIZE } from '$lib/constants';
   import { setContext } from 'svelte';
   import { permissionChecker, type ResourcePermissions } from '$lib/utils/permissions';
@@ -23,8 +23,11 @@
 
   let namespaceDropdownOpen = $state(false);
   let namespaces = $state<Namespace[]>([]);
+  let searchQuery = $state('');
+  let searchResults = $state<Namespace[]>([]);
   let currentNamespace = $state(page.params.namespace || namespace);
   let currentNamespaceId = $state<string>('');
+  let searchLoading = $state(false);
   let permissions = $state<{
     flows: ResourcePermissions;
     nodes: ResourcePermissions;
@@ -63,23 +66,58 @@
     return false;
   };
 
-  const fetchNamespaces = async () => {
+  const fetchNamespaces = async (filter = '') => {
     try {
-      const data = await apiClient.namespaces.list({ count_per_page: DEFAULT_PAGE_SIZE });
-      namespaces = data.namespaces || [];
+      searchLoading = true;
+      const data = await apiClient.namespaces.list({ 
+        count_per_page: DEFAULT_PAGE_SIZE,
+        filter: filter
+      });
+      const results = data.namespaces || [];
       
-      // Set current namespace ID
-      const currentNs = namespaces.find(ns => ns.name === namespace);
-      if (currentNs) {
-        currentNamespaceId = currentNs.id;
-      } else if (namespaces.length > 0) {
-        // If namespace not found, use first available namespace
-        currentNamespaceId = namespaces[0].id;
+      if (filter) {
+        searchResults = results;
+      } else {
+        namespaces = results;
+        searchResults = results;
+        
+        // Set current namespace ID
+        const currentNs = namespaces.find(ns => ns.name === namespace);
+        if (currentNs) {
+          currentNamespaceId = currentNs.id;
+        } else if (namespaces.length > 0) {
+          // If namespace not found, use first available namespace
+          currentNamespaceId = namespaces[0].id;
+        }
       }
     } catch (error) {
       handleInlineError(error, 'Unable to Load Namespaces');
-      namespaces = [];
+      if (filter) {
+        searchResults = [];
+      } else {
+        namespaces = [];
+        searchResults = [];
+      }
+    } finally {
+      searchLoading = false;
     }
+  };
+
+  const handleSearchInput = async () => {
+    if (searchQuery.trim()) {
+      await fetchNamespaces(searchQuery);
+      namespaceDropdownOpen = true;
+    } else {
+      searchResults = namespaces;
+      namespaceDropdownOpen = false;
+    }
+  };
+
+  const handleSearchFocus = () => {
+    if (!searchQuery.trim()) {
+      searchResults = namespaces;
+    }
+    namespaceDropdownOpen = true;
   };
 
   const checkAllPermissions = async () => {
@@ -112,6 +150,7 @@
 
   const selectNamespace = (selectedNamespace: Namespace) => {
     namespaceDropdownOpen = false;
+    searchQuery = '';
     
     // Don't navigate if already on the same namespace
     if (selectedNamespace.name === namespace) {
@@ -121,6 +160,16 @@
     // Force a full page reload by using window.location
     window.location.href = `/view/${selectedNamespace.name}/flows`;
   };
+
+  // Handle escape key and outside clicks
+  function handleOutsideClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.namespace-dropdown')) {
+      namespaceDropdownOpen = false;
+      searchQuery = '';
+      searchResults = namespaces;
+    }
+  }
 
   // Set initial context
   setContext('namespace', namespace);
@@ -143,6 +192,8 @@
   });
 </script>
 
+<svelte:window on:click={handleOutsideClick} />
+
 <!-- Sidebar Navigation -->
 <div class="w-60 bg-slate-800 flex flex-col">
   <!-- Logo -->
@@ -154,18 +205,32 @@
   </div>
 
   <!-- Namespace Dropdown -->
-  <div class="px-4 mb-4">
+  <div class="px-4 mb-4 namespace-dropdown">
     <div class="relative">
-      <label for="namespace-dropdown" class="block text-xs font-medium text-gray-400 mb-1">Namespace</label>
-      <button 
-        type="button"
-        id="namespace-dropdown"
-        onclick={() => namespaceDropdownOpen = !namespaceDropdownOpen}
-        class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-white bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
-      >
-        <span>{currentNamespace || 'Select namespace'}</span>
-        <IconChevronDown class="text-base text-gray-400 transition-transform {namespaceDropdownOpen ? 'rotate-180' : ''}" size={16} />
-      </button>
+      <label for="namespace-search" class="block text-xs font-medium text-gray-400 mb-1">Namespace</label>
+      <div class="relative">
+        <input 
+          type="text"
+          id="namespace-search"
+          bind:value={searchQuery}
+          oninput={handleSearchInput}
+          onfocus={handleSearchFocus}
+          placeholder={currentNamespace || 'Search namespaces...'}
+          class="w-full px-3 py-2 text-sm font-medium text-white bg-slate-700 rounded-lg hover:bg-slate-600 focus:bg-slate-600 transition-colors border-none outline-none pr-8"
+          autocomplete="off"
+        />
+        
+        {#if searchLoading}
+          <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <svg class="animate-spin h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+        {:else}
+          <IconChevronDown class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 transition-transform {namespaceDropdownOpen ? 'rotate-180' : ''}" size={16} />
+        {/if}
+      </div>
       
       <!-- Dropdown Menu -->
       {#if namespaceDropdownOpen}
@@ -174,7 +239,7 @@
           role="menu"
         >
           <div class="py-1">
-            {#each namespaces as ns (ns.id)}
+            {#each searchResults as ns (ns.id)}
               <button 
                 type="button"
                 onclick={() => selectNamespace(ns)}
@@ -184,9 +249,14 @@
                 {ns.name}
               </button>
             {/each}
-            {#if namespaces.length === 0}
-              <div class="px-3 py-2 text-sm text-gray-400">
-                No namespaces available
+            {#if searchResults.length === 0 && !searchLoading}
+              <div class="px-3 py-2 text-sm text-gray-400 text-center">
+                {searchQuery ? 'No namespaces found' : 'No namespaces available'}
+              </div>
+            {/if}
+            {#if searchLoading}
+              <div class="px-3 py-2 text-sm text-gray-400 text-center">
+                Searching...
               </div>
             {/if}
           </div>
