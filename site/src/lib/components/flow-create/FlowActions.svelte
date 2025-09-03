@@ -85,8 +85,22 @@
     action.variables.splice(index, 1);
   }
 
-  function updateArtifacts(action: any) {
-    action.artifacts = action.artifactsText.split(',').map((a: string) => a.trim()).filter((a: string) => a);
+  function addArtifact(action: any) {
+    if (!action.artifacts) {
+      action.artifacts = [];
+    }
+    action.artifacts.push('');
+  }
+
+  function removeArtifact(action: any, index: number) {
+    action.artifacts.splice(index, 1);
+  }
+
+  function updateArtifact(action: any, index: number, value: string) {
+    if (!action.artifacts) {
+      action.artifacts = [];
+    }
+    action.artifacts[index] = value.trim();
   }
 
   function updateConfigValue(action: any, key: string, value: any) {
@@ -434,15 +448,39 @@
                 <p class="mt-1 text-xs text-gray-500">Action runs only if condition is true</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Artifacts</label>
-                <input 
-                  type="text" 
-                  bind:value={action.artifactsText} 
-                  oninput={() => updateArtifacts(action)}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  placeholder="/path/to/file1, /path/to/file2"
-                />
-                <p class="mt-1 text-xs text-gray-500">Comma-separated file paths</p>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="block text-sm font-medium text-gray-700">Artifacts</label>
+                  <button onclick={() => addArtifact(action)} type="button" class="text-xs text-blue-600 hover:text-blue-700">
+                    + Add Artifact
+                  </button>
+                </div>
+                <div class="space-y-2">
+                  {#each action.artifacts || [] as artifact, artifactIndex}
+                    <div class="flex items-center gap-2">
+                      <input 
+                        type="text" 
+                        value={artifact}
+                        oninput={(e) => updateArtifact(action, artifactIndex, e.currentTarget.value)}
+                        placeholder="/path/to/output/file"
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                      />
+                      <button onclick={() => removeArtifact(action, artifactIndex)} type="button" class="text-gray-400 hover:text-red-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  {/each}
+                  {#if !action.artifacts || action.artifacts.length === 0}
+                    <div class="text-center py-4 border-2 border-dashed border-gray-300 rounded-md">
+                      <p class="text-sm text-gray-500 mb-2">No artifacts defined</p>
+                      <button onclick={() => addArtifact(action)} type="button" class="text-sm text-blue-600 hover:text-blue-700">
+                        + Add your first artifact
+                      </button>
+                    </div>
+                  {/if}
+                </div>
+                <p class="mt-1 text-xs text-gray-500">File paths to preserve as execution artifacts</p>
               </div>
             </div>
 

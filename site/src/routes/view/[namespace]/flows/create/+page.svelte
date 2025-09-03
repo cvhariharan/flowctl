@@ -87,7 +87,6 @@
       variables: [],
       approval: false,
       artifacts: [],
-      artifactsText: '',
       condition: '',
       collapsed: false
     });
@@ -126,8 +125,8 @@
             with: action.with || {},
             approval: action.approval || false,
             variables: action.variables?.length ? action.variables.map((v: any) => ({[v.name]: v.value})) : undefined,
-            artifacts: action.artifactsText 
-              ? action.artifactsText.split('\n').filter((a: string) => a.trim())
+            artifacts: action.artifacts && action.artifacts.length > 0
+              ? action.artifacts.filter((a: string) => a.trim())
               : undefined,
             condition: action.condition || undefined,
             on: action.on ? action.on.split(',').map((n: string) => n.trim()).filter((n: string) => n) : undefined
