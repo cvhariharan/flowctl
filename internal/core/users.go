@@ -152,41 +152,32 @@ func (c *Core) CreateUser(ctx context.Context, name, username string, loginType 
 		return models.UserWithGroups{}, fmt.Errorf("unknown role type")
 	}
 
-	u, err := c.store.CreateUser(ctx, repo.CreateUserParams{
+	params := repo.CreateUserTxParams{
 		Name:      name,
 		Username:  username,
 		LoginType: ltype,
 		Role:      urole,
-	})
-	if err != nil {
-		return models.UserWithGroups{}, fmt.Errorf("could not create user %s: %w", username, err)
+		Groups:    groups,
 	}
 
-	// Add user to specified groups
-	if len(groups) > 0 {
-		if err := c.store.OverwriteGroupsForUserTx(ctx, u.Uuid, groups); err != nil {
-			return models.UserWithGroups{}, fmt.Errorf("could not assign groups to user %s: %w", username, err)
-		}
-	}
-
-	// Automatically assign new user to default namespace with user role
-	// Skip for superusers as they have access to all namespaces by default
 	if userRole != models.SuperuserUserRole {
 		defaultNamespace, err := c.GetNamespaceByName(ctx, "default")
 		if err != nil {
 			return models.UserWithGroups{}, fmt.Errorf("could not get default namespace when creating user %s: %w", username, err)
 		}
 
-		err = c.AssignNamespaceRole(ctx, u.Uuid.String(), "user", defaultNamespace.ID, models.NamespaceRoleUser)
+		defaultUUID, err := uuid.Parse(defaultNamespace.ID)
 		if err != nil {
-			return models.UserWithGroups{}, fmt.Errorf("could not assign user %s to default namespace: %w", username, err)
+			return models.UserWithGroups{}, fmt.Errorf("invalid default namespace UUID: %w", err)
 		}
+
+		params.AssignDefaultNamespace = true
+		params.DefaultNamespaceUUID = defaultUUID
 	}
 
-	// Get user with groups to return
-	userWithGroups, err := c.store.GetUserByUUIDWithGroups(ctx, u.Uuid)
+	userWithGroups, err := c.store.CreateUserTx(ctx, params)
 	if err != nil {
-		return models.UserWithGroups{}, fmt.Errorf("could not get created user with groups %s: %w", username, err)
+		return models.UserWithGroups{}, err
 	}
 
 	return c.repoUserViewToUserWithGroups(userWithGroups)
@@ -198,29 +189,18 @@ func (c *Core) UpdateUser(ctx context.Context, userUUID string, name string, use
 		return models.UserWithGroups{}, fmt.Errorf("user ID should be a UUID: %w", err)
 	}
 
-	u, err := c.store.GetUserByUUIDWithGroups(ctx, uid)
-	if err != nil {
-		return models.UserWithGroups{}, fmt.Errorf("could not get user %s: %w", userUUID, err)
-	}
-
-	_, err = c.store.UpdateUserByUUID(ctx, repo.UpdateUserByUUIDParams{
-		Uuid:     uid,
+	// Update user within transaction
+	userWithGroups, err := c.store.UpdateUserTx(ctx, repo.UpdateUserTxParams{
+		UserUUID: uid,
 		Name:     name,
 		Username: username,
+		Groups:   groups,
 	})
 	if err != nil {
-		return models.UserWithGroups{}, fmt.Errorf("could not update name and username for user %s: %w", userUUID, err)
+		return models.UserWithGroups{}, err
 	}
 
-	if err := c.store.OverwriteGroupsForUserTx(ctx, uid, groups); err != nil {
-		return models.UserWithGroups{}, fmt.Errorf("could not overwrite groups for user %s: %w", userUUID, err)
-	}
-
-	u, err = c.store.GetUserByUUIDWithGroups(ctx, uid)
-	if err != nil {
-		return models.UserWithGroups{}, fmt.Errorf("could not get updated user %s: %w", userUUID, err)
-	}
-	return c.repoUserViewToUserWithGroups(u)
+	return c.repoUserViewToUserWithGroups(userWithGroups)
 }
 
 func (c *Core) repoUserViewToUserWithGroups(user repo.UserView) (models.UserWithGroups, error) {

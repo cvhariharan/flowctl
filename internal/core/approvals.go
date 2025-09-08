@@ -82,75 +82,40 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 		return fmt.Errorf("invalid namespace UUID: %w", err)
 	}
 
-	var approval models.ApprovalRequest
-	var execLogID int32
-	switch status {
-	case models.ApprovalStatusApproved:
-		a, err := c.store.ApproveRequestByUUID(ctx, repo.ApproveRequestByUUIDParams{
-			Uuid:      uid,
-			DecidedBy: sql.NullInt32{Int32: user.ID, Valid: true},
-			Uuid_2:    namespaceUUID,
-		})
-		if err != nil {
-			return fmt.Errorf("could not approve request %s: %w", approvalUUID, err)
-		}
-
-		approval = models.ApprovalRequest{
-			UUID:        a.Uuid.String(),
-			Status:      models.ApprovalType(a.Status),
-			ActionID:    a.ActionID,
-			RequestedBy: a.RequestedBy,
-		}
-		execLogID = a.ExecLogID
-	case models.ApprovalStatusRejected:
-		a, err := c.store.RejectRequestByUUID(ctx, repo.RejectRequestByUUIDParams{
-			Uuid:      uid,
-			DecidedBy: sql.NullInt32{Int32: user.ID, Valid: true},
-			Uuid_2:    namespaceUUID,
-		})
-		if err != nil {
-			return fmt.Errorf("could not reject request %s: %w", approvalUUID, err)
-		}
-		approval = models.ApprovalRequest{
-			UUID:        a.Uuid.String(),
-			Status:      models.ApprovalType(a.Status),
-			ActionID:    a.ActionID,
-			RequestedBy: a.RequestedBy,
-		}
-		execLogID = a.ExecLogID
+	var cancellationNote string
+	if status == models.ApprovalStatusRejected {
+		cancellationNote = fmt.Sprintf("Flow execution cancelled due to approval rejection by %s", user.Name)
 	}
 
-	exec, err := c.store.GetExecutionByID(ctx, repo.GetExecutionByIDParams{
-		ID:   execLogID,
-		Uuid: namespaceUUID,
+	// Process approval decision
+	result, err := c.store.ProcessApprovalDecisionTx(ctx, repo.ApprovalDecisionTxParams{
+		ApprovalUUID:     uid,
+		NamespaceUUID:    namespaceUUID,
+		DecidedByUserID:  user.ID,
+		Status:           repo.ApprovalStatus(status),
+		CancellationNote: cancellationNote,
 	})
 	if err != nil {
-		return fmt.Errorf("could not get execution for approval %s: %w", approvalUUID, err)
+		return fmt.Errorf("could not process approval decision for %s: %w", approvalUUID, err)
 	}
-	approval.ExecID = exec.ExecID
 
-	// When approval is rejected, mark execution as cancelled
-	if status == models.ApprovalStatusRejected {
-		_, err := c.store.UpdateExecutionStatus(ctx, repo.UpdateExecutionStatusParams{
-			Status: repo.ExecutionStatusCancelled,
-			Error:  sql.NullString{String: fmt.Sprintf("Flow execution cancelled due to approval rejection by %s", user.Name), Valid: true},
-			ExecID: exec.ExecID,
-			Uuid:   namespaceUUID,
-		})
-		if err != nil {
-			return fmt.Errorf("could not update execution status for rejected approval %s: %w", approvalUUID, err)
-		}
+	approval := models.ApprovalRequest{
+		UUID:        result.Uuid.String(),
+		Status:      models.ApprovalType(result.Status),
+		ActionID:    result.ActionID,
+		ExecID:      result.ExecID,
+		RequestedBy: result.RequestedBy,
 	}
 
 	// Update the cache using approval UUID
-	if err := c.cacheApproval(ctx, execLogID, approval); err != nil {
+	if err := c.cacheApproval(ctx, result.ExecLogID, approval); err != nil {
 		return err
 	}
 
 	// If approved, move to resume queue
 	if status == models.ApprovalStatusApproved {
-		if err := c.ResumeFlowExecution(ctx, exec.ExecID, approval.ActionID, decidedBy, namespaceID); err != nil {
-			return fmt.Errorf("could not resume task %s: %w", exec.ExecID, err)
+		if err := c.ResumeFlowExecution(ctx, result.ExecID, approval.ActionID, decidedBy, namespaceID); err != nil {
+			return fmt.Errorf("could not resume task %s: %w", result.ExecID, err)
 		}
 	}
 

@@ -77,14 +77,8 @@ func (c *Core) AssignNamespaceRole(ctx context.Context, subjectID string, subjec
 		if err != nil {
 			return fmt.Errorf("invalid user UUID: %w", err)
 		}
-
-		user, err := c.store.GetUserByUUID(ctx, userUUID)
-		if err != nil {
-			return err
-		}
-
 		_, err = c.store.AssignUserNamespaceRole(ctx, repo.AssignUserNamespaceRoleParams{
-			Uuid:   user.Uuid,
+			Uuid:   userUUID,
 			Uuid_2: namespaceUUID,
 			Role:   string(role),
 		})
@@ -96,14 +90,8 @@ func (c *Core) AssignNamespaceRole(ctx context.Context, subjectID string, subjec
 		if err != nil {
 			return fmt.Errorf("invalid group UUID: %w", err)
 		}
-
-		group, err := c.store.GetGroupByUUID(ctx, groupUUID)
-		if err != nil {
-			return err
-		}
-
 		_, err = c.store.AssignGroupNamespaceRole(ctx, repo.AssignGroupNamespaceRoleParams{
-			Uuid:   group.Uuid,
+			Uuid:   groupUUID,
 			Uuid_2: namespaceUUID,
 			Role:   string(role),
 		})
