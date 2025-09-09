@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/cvhariharan/flowctl/internal/config"
 	"github.com/cvhariharan/flowctl/internal/core"
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/go-playground/validator/v10"
@@ -37,10 +38,10 @@ type OIDCAuthConfig struct {
 type Handler struct {
 	co         *core.Core
 	validate   *validator.Validate
-	appRoot    string
 	sessMgr    *simplesessions.Manager
 	authconfig OIDCAuthConfig
 	logger     *slog.Logger
+	config     config.Config
 }
 
 func getCookie(name string, r interface{}) (*http.Cookie, error) {
@@ -54,7 +55,7 @@ func setCookie(cookie *http.Cookie, w interface{}) error {
 	return nil
 }
 
-func NewHandler(logger *slog.Logger, db *sql.DB, co *core.Core, authconfig OIDCAuthConfig, appRoot string) (*Handler, error) {
+func NewHandler(logger *slog.Logger, db *sql.DB, co *core.Core, cfg config.Config) (*Handler, error) {
 	validate := validator.New()
 	validate.RegisterValidation("alphanum_underscore", models.AlphanumericUnderscore)
 	validate.RegisterValidation("alphanum_whitespace", models.AlphanumericSpace)
@@ -85,8 +86,12 @@ func NewHandler(logger *slog.Logger, db *sql.DB, co *core.Core, authconfig OIDCA
 		time.Sleep(SessionTimeout / 2)
 	}()
 
-	h := &Handler{co: co, validate: validate, logger: logger, sessMgr: sessMgr, authconfig: authconfig, appRoot: appRoot}
-	if err := h.initOIDC(authconfig); err != nil {
+	h := &Handler{co: co, validate: validate, logger: logger, sessMgr: sessMgr, config: cfg}
+	if err := h.initOIDC(OIDCAuthConfig{
+		Issuer:       cfg.App.OIDC.Issuer,
+		ClientID:     cfg.App.OIDC.ClientID,
+		ClientSecret: cfg.App.OIDC.ClientSecret,
+	}); err != nil {
 		return nil, fmt.Errorf("error initializing oidc config: %w", err)
 	}
 	return h, nil

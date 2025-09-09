@@ -14,13 +14,11 @@ type RequestApprovalParam struct {
 }
 
 type CreateUserTxParams struct {
-	Name                   string
-	Username               string
-	LoginType              UserLoginType
-	Role                   UserRoleType
-	Groups                 []string
-	AssignDefaultNamespace bool
-	DefaultNamespaceUUID   uuid.UUID
+	Name      string
+	Username  string
+	LoginType UserLoginType
+	Role      UserRoleType
+	Groups    []string
 }
 
 type UpdateUserTxParams struct {
@@ -132,17 +130,6 @@ func (p *PostgresStore) CreateUserTx(ctx context.Context, params CreateUserTxPar
 			}); err != nil {
 				return UserView{}, fmt.Errorf("could not add group %s to user %s: %w", group, params.Username, err)
 			}
-		}
-	}
-
-	if params.AssignDefaultNamespace {
-		_, err = q.AssignUserNamespaceRole(ctx, AssignUserNamespaceRoleParams{
-			Uuid:   user.Uuid,
-			Uuid_2: params.DefaultNamespaceUUID,
-			Role:   "user",
-		})
-		if err != nil {
-			return UserView{}, fmt.Errorf("could not assign user %s to default namespace: %w", params.Username, err)
 		}
 	}
 

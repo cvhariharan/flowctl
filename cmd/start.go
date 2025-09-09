@@ -26,7 +26,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/localsecrets"
 )
@@ -36,6 +35,11 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start flowctl server",
 	Run: func(cmd *cobra.Command, args []string) {
+		configPath, _ := cmd.Flags().GetString("config")
+		if err := LoadConfig(configPath); err != nil {
+			log.Fatal(err)
+		}
+
 		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
@@ -64,7 +68,7 @@ func start(isWorker bool) {
 	}))
 	slog.SetDefault(logger)
 
-	dbConnectionString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", viper.GetString("db.user"), viper.GetString("db.password"), viper.GetString("db.host"), viper.GetInt("db.port"), viper.GetString("db.dbname"))
+	dbConnectionString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", appConfig.DB.User, appConfig.DB.Password, appConfig.DB.Host, appConfig.DB.Port, appConfig.DB.DBName)
 	db, err := sqlx.Connect("postgres", dbConnectionString)
 	if err != nil {
 		log.Fatalf("could not connect to database: %v", err)
@@ -75,8 +79,8 @@ func start(isWorker bool) {
 	m, _ := casbin_model.NewModelFromFile("configs/rbac_model.conf")
 	casbinAdapterConfig := &redisadapter.Config{
 		Network:  "tcp",
-		Address:  fmt.Sprintf("%s:%d", viper.GetString("redis.host"), viper.GetInt("redis.port")),
-		Password: viper.GetString("redis.password"),
+		Address:  fmt.Sprintf("%s:%d", appConfig.Redis.Host, appConfig.Redis.Port),
+		Password: appConfig.Redis.Password,
 	}
 	a, err := redisadapter.NewAdapter(casbinAdapterConfig)
 	if err != nil {
@@ -89,13 +93,13 @@ func start(isWorker bool) {
 	}
 
 	redisClient := redis.NewUniversalClient(&redis.UniversalOptions{
-		Addrs:    []string{fmt.Sprintf("%s:%d", viper.GetString("redis.host"), viper.GetInt("redis.port"))},
-		Password: viper.GetString("redis.password"),
+		Addrs:    []string{fmt.Sprintf("%s:%d", appConfig.Redis.Host, appConfig.Redis.Port)},
+		Password: appConfig.Redis.Password,
 	})
 	defer redisClient.Close()
 
 	// Initialize secret keeper
-	keeperURL := viper.GetString("app.keystore.keeper_url")
+	keeperURL := appConfig.App.Keystore.KeeperURL
 	if keeperURL == "" {
 		log.Fatal("app.keystore.keeper_url is not set")
 	}
@@ -111,7 +115,7 @@ func start(isWorker bool) {
 
 	s := repo.NewPostgresStore(db)
 
-	co, err := core.NewCore(viper.GetString("app.flows_directory"), s, asynqClient, redisClient, keeper, enforcer)
+	co, err := core.NewCore(appConfig.App.FlowsDirectory, s, asynqClient, redisClient, keeper, enforcer)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -124,11 +128,7 @@ func start(isWorker bool) {
 }
 
 func startServer(db *sqlx.DB, co *core.Core, logger *slog.Logger) {
-	h, err := handlers.NewHandler(logger, db.DB, co, handlers.OIDCAuthConfig{
-		Issuer:       viper.GetString("app.oidc.issuer"),
-		ClientID:     viper.GetString("app.oidc.client_id"),
-		ClientSecret: viper.GetString("app.oidc.client_secret"),
-	}, viper.GetString("app.root_url"))
+	h, err := handlers.NewHandler(logger, db.DB, co, appConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func startServer(db *sqlx.DB, co *core.Core, logger *slog.Logger) {
 		return c.File("site/build/index.html")
 	})
 
-	rootURL := viper.GetString("app.root_url")
+	rootURL := appConfig.App.RootURL
 	if !strings.Contains(rootURL, "://") {
 		log.Fatal("root_url should contain a scheme")
 	}

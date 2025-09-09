@@ -6,12 +6,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/labstack/echo/v4"
-	"github.com/spf13/viper"
 	"github.com/zerodha/simplesessions/v3"
 	"golang.org/x/oauth2"
 )
@@ -33,7 +33,10 @@ func (h *Handler) initOIDC(authconfig OIDCAuthConfig) error {
 		authconfig.Scopes = []string{oidc.ScopeOpenID, "profile", "email", "groups"}
 	}
 
-	redirectURL := viper.GetString("app.root_url") + RedirectPath
+	redirectURL, err := url.JoinPath(h.config.App.RootURL, RedirectPath)
+	if err != nil {
+		return fmt.Errorf("failed to create redirect URL: %w", err)
+	}
 
 	oauth2Config := &oauth2.Config{
 		ClientID:     authconfig.ClientID,

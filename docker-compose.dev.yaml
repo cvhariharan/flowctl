@@ -5,17 +5,17 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_PASSWORD=autopilot
-      - POSTGRES_USER=autopilot
-      - POSTGRES_DB=autopilot
+      - POSTGRES_PASSWORD=flowctl
+      - POSTGRES_USER=flowctl
+      - POSTGRES_DB=flowctl
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U autopilot"]
+      test: ["CMD-SHELL", "pg_isready -U flowctl"]
       interval: 10s
       timeout: 5s
       retries: 6
     volumes:
       - type: volume
-        source: autopilot-db-data
+        source: flowctl-db-data
         target: /var/lib/postgresql/data
 
   valkey:
@@ -34,5 +34,5 @@ services:
     command: --redis-url=redis://valkey:6379
 
 volumes:
-  autopilot-db-data:
+  flowctl-db-data:
   valkey-data:

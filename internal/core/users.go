@@ -159,6 +159,10 @@ func (c *Core) CreateUser(ctx context.Context, name, username string, loginType 
 		Role:      urole,
 		Groups:    groups,
 	}
+	userWithGroups, err := c.store.CreateUserTx(ctx, params)
+	if err != nil {
+		return models.UserWithGroups{}, err
+	}
 
 	if userRole != models.SuperuserUserRole {
 		defaultNamespace, err := c.GetNamespaceByName(ctx, "default")
@@ -166,18 +170,10 @@ func (c *Core) CreateUser(ctx context.Context, name, username string, loginType 
 			return models.UserWithGroups{}, fmt.Errorf("could not get default namespace when creating user %s: %w", username, err)
 		}
 
-		defaultUUID, err := uuid.Parse(defaultNamespace.ID)
+		err = c.AssignNamespaceRole(ctx, userWithGroups.Uuid.String(), "user", defaultNamespace.ID, models.NamespaceRoleUser)
 		if err != nil {
-			return models.UserWithGroups{}, fmt.Errorf("invalid default namespace UUID: %w", err)
+			return models.UserWithGroups{}, fmt.Errorf("could not assign user %s to default namespace: %w", username, err)
 		}
-
-		params.AssignDefaultNamespace = true
-		params.DefaultNamespaceUUID = defaultUUID
-	}
-
-	userWithGroups, err := c.store.CreateUserTx(ctx, params)
-	if err != nil {
-		return models.UserWithGroups{}, err
 	}
 
 	return c.repoUserViewToUserWithGroups(userWithGroups)

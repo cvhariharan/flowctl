@@ -13,7 +13,6 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,11 +22,11 @@ var installCmd = &cobra.Command{
 	Short: "Perform DB migration",
 	Run: func(cmd *cobra.Command, args []string) {
 		configPath, _ := cmd.Flags().GetString("config")
-		if err := readConfig(configPath); err != nil {
+		if err := LoadConfig(configPath); err != nil {
 			log.Fatal(err)
 		}
 
-		db, err := sqlx.Connect("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", viper.GetString("db.user"), viper.GetString("db.password"), viper.GetString("db.host"), viper.GetInt("db.port"), viper.GetString("db.dbname")))
+		db, err := sqlx.Connect("postgres", fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", appConfig.DB.User, appConfig.DB.Password, appConfig.DB.Host, appConfig.DB.Port, appConfig.DB.DBName))
 		if err != nil {
 			log.Fatalf("could not connect to database: %v", err)
 		}
@@ -48,21 +47,6 @@ func init() {
 	rootCmd.AddCommand(installCmd)
 }
 
-func readConfig(configPath string) error {
-	if configPath != "" {
-		viper.SetConfigFile(configPath)
-	}
-
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Println("config file not found, using default config")
-		} else {
-			return fmt.Errorf("could not read config file: %w", err)
-		}
-	}
-
-	return nil
-}
 
 func initDB(db *sqlx.DB) error {
 	driver, err := postgres.WithInstance(db.DB, &postgres.Config{})
@@ -101,15 +85,15 @@ func initDB(db *sqlx.DB) error {
 }
 
 func initAdmin(store repo.Store) error {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(viper.GetString("app.admin_password")), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(appConfig.App.AdminPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("error hashing admin password: %w", err)
 	}
 
-	_, err = store.GetUserByUsername(context.Background(), viper.GetString("app.admin_username"))
+	_, err = store.GetUserByUsername(context.Background(), appConfig.App.AdminUsername)
 	if err != nil {
 		_, err = store.CreateUser(context.Background(), repo.CreateUserParams{
-			Username:  viper.GetString("app.admin_username"),
+			Username:  appConfig.App.AdminUsername,
 			Password:  sql.NullString{String: string(hashedPassword), Valid: true},
 			LoginType: "standard",
 			Role:      "superuser",

@@ -6,7 +6,6 @@ import (
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/labstack/echo/v4"
-	"github.com/spf13/viper"
 )
 
 func (h *Handler) HandleGetUserProfile(c echo.Context) error {
@@ -127,7 +126,7 @@ func (h *Handler) HandleDeleteUser(c echo.Context) error {
 	}
 
 	// Do not delete admin user
-	if u.Username == viper.GetString("app.admin_username") {
+	if u.Username == h.config.App.AdminUsername {
 		return wrapError(ErrForbidden, "cannot delete admin user", nil, nil)
 	}
 
