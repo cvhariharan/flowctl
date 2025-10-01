@@ -452,6 +452,15 @@ type Node struct {
 	UpdatedAt      time.Time            `db:"updated_at" json:"updated_at"`
 }
 
+type SchedulerTask struct {
+	ID        int32           `db:"id" json:"id"`
+	Uuid      uuid.UUID       `db:"uuid" json:"uuid"`
+	ExecID    string          `db:"exec_id" json:"exec_id"`
+	Payload   json.RawMessage `db:"payload" json:"payload"`
+	Status    string          `db:"status" json:"status"`
+	CreatedAt time.Time       `db:"created_at" json:"created_at"`
+}
+
 type Session struct {
 	ID        string          `db:"id" json:"id"`
 	Data      json.RawMessage `db:"data" json:"data"`

@@ -289,3 +289,17 @@ CREATE TABLE IF NOT EXISTS flow_secrets (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_flow_secrets_uuid ON flow_secrets(uuid);
 CREATE INDEX IF NOT EXISTS idx_flow_secrets_flow_id ON flow_secrets(flow_id);
 CREATE INDEX IF NOT EXISTS idx_flow_secrets_namespace_id ON flow_secrets(namespace_id);
+
+
+CREATE TABLE IF NOT EXISTS scheduler_tasks (
+    id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL DEFAULT uuid_generate_v4(),
+    exec_id VARCHAR(36) NOT NULL,
+    payload JSONB NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_scheduler_tasks_uuid ON scheduler_tasks(uuid);
+CREATE INDEX idx_scheduler_tasks_status ON scheduler_tasks(status);
+CREATE INDEX idx_scheduler_tasks_exec_id ON scheduler_tasks(exec_id);

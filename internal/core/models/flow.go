@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 
+	"github.com/cvhariharan/flowctl/internal/scheduler"
 	"github.com/cvhariharan/flowctl/internal/tasks"
 	"github.com/expr-lang/expr"
 	"github.com/go-playground/validator/v10"
@@ -46,6 +47,30 @@ type Action struct {
 }
 
 func TaskActionToAction(a tasks.Action) Action {
+	var variables []Variable
+	for _, v := range a.Variables {
+		variables = append(variables, Variable(v))
+	}
+
+	var nodeNames []string
+	for _, node := range a.On {
+		nodeNames = append(nodeNames, node.Name)
+	}
+
+	return Action{
+		ID:        a.ID,
+		Name:      a.Name,
+		With:      a.With,
+		On:        nodeNames,
+		Executor:  a.Executor,
+		Approval:  a.Approval,
+		Variables: variables,
+		Artifacts: a.Artifacts,
+		Condition: a.Condition,
+	}
+}
+
+func SchedulerActionToAction(a scheduler.Action) Action {
 	var variables []Variable
 	for _, v := range a.Variables {
 		variables = append(variables, Variable(v))

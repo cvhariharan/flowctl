@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/knadh/koanf/parsers/toml"
@@ -35,17 +36,32 @@ type RedisConfig struct {
 	Password string `koanf:"password"`
 }
 
+type SchedulerConfig struct {
+	WorkerCount int    `koanf:"workers"`
+	Backend     string `koanf:"backend"`
+}
+
+type Logger struct {
+	Backend            string `koanf:"backend"`
+	Directory          string `koanf:"log_directory"`
+	MaxCount           int    `koanf:"max_file_count"`
+	MaxSizeBytes       int64  `koanf:"max_size_bytes"`
+	RetentionTimeHours int    `koanf:"retention_time_hours"`
+}
+
 type AppConfig struct {
-	AdminUsername   string        `koanf:"admin_username"`
-	AdminPassword   string        `koanf:"admin_password"`
-	RootURL         string        `koanf:"root_url"`
-	UseTLS          bool          `koanf:"use_tls"`
-	HTTPTLSCert     string        `koanf:"http_tls_cert"`
-	HTTPTLSKey      string        `koanf:"http_tls_key"`
-	FlowsDirectory  string        `koanf:"flows_directory"`
-	SecureCookieKey string        `koanf:"secure_cookie_key"`
-	Keystore        KeystoreConfig `koanf:"keystore"`
-	OIDC            OIDCConfig    `koanf:"oidc"`
+	AdminUsername   string          `koanf:"admin_username"`
+	AdminPassword   string          `koanf:"admin_password"`
+	RootURL         string          `koanf:"root_url"`
+	UseTLS          bool            `koanf:"use_tls"`
+	HTTPTLSCert     string          `koanf:"http_tls_cert"`
+	HTTPTLSKey      string          `koanf:"http_tls_key"`
+	FlowsDirectory  string          `koanf:"flows_directory"`
+	SecureCookieKey string          `koanf:"secure_cookie_key"`
+	Keystore        KeystoreConfig  `koanf:"keystore"`
+	OIDC            OIDCConfig      `koanf:"oidc"`
+	Scheduler       SchedulerConfig `koanf:"scheduler"`
+	Logger          Logger          `koanf:"logger"`
 }
 
 type KeystoreConfig struct {
@@ -93,7 +109,7 @@ func Load(configPath string) (Config, error) {
 // WriteConfigFile writes the current configuration to a TOML file
 func WriteConfigFile(filename string) error {
 	k := koanf.New(".")
-	
+
 	defaultConfig := getDefaultConfig()
 	if err := k.Load(structs.Provider(defaultConfig, "koanf"), nil); err != nil {
 		return fmt.Errorf("error loading default config: %w", err)
@@ -143,6 +159,14 @@ func getDefaultConfig() Config {
 				ClientID:     "",
 				ClientSecret: "",
 			},
+			Scheduler: SchedulerConfig{
+				WorkerCount: runtime.NumCPU(),
+			},
+			Logger: Logger{
+				Backend:   "file",
+				Directory: "/var/log/flowctl",
+				MaxCount:  5,
+			},
 		},
 	}
 }
@@ -155,4 +179,3 @@ func genKey(bytes int) string {
 	}
 	return base64.URLEncoding.EncodeToString(key)
 }
-

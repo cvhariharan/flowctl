@@ -19,12 +19,15 @@ type Querier interface {
 	ApproveRequestByUUID(ctx context.Context, arg ApproveRequestByUUIDParams) (ApproveRequestByUUIDRow, error)
 	AssignGroupNamespaceRole(ctx context.Context, arg AssignGroupNamespaceRoleParams) (NamespaceMember, error)
 	AssignUserNamespaceRole(ctx context.Context, arg AssignUserNamespaceRoleParams) (NamespaceMember, error)
+	CancelTasksByExecID(ctx context.Context, execID string) error
 	CreateCredential(ctx context.Context, arg CreateCredentialParams) (Credential, error)
 	CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, error)
 	CreateFlowSecret(ctx context.Context, arg CreateFlowSecretParams) (FlowSecret, error)
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (Group, error)
 	CreateNamespace(ctx context.Context, name string) (Namespace, error)
 	CreateNode(ctx context.Context, arg CreateNodeParams) (Node, error)
+	// Immediate task operations
+	CreateSchedulerTask(ctx context.Context, arg CreateSchedulerTaskParams) (SchedulerTask, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteAllFlows(ctx context.Context) error
 	DeleteCredential(ctx context.Context, arg DeleteCredentialParams) error
@@ -69,6 +72,7 @@ type Querier interface {
 	GetNodeByUUID(ctx context.Context, arg GetNodeByUUIDParams) (GetNodeByUUIDRow, error)
 	GetNodeStats(ctx context.Context, argUuid uuid.UUID) (GetNodeStatsRow, error)
 	GetNodesByNames(ctx context.Context, arg GetNodesByNamesParams) ([]GetNodesByNamesRow, error)
+	GetPendingTasks(ctx context.Context, limit int32) ([]SchedulerTask, error)
 	GetScheduledFlows(ctx context.Context) ([]GetScheduledFlowsRow, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
 	GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (User, error)
@@ -99,6 +103,7 @@ type Querier interface {
 	UpdateGroupByUUID(ctx context.Context, arg UpdateGroupByUUIDParams) (Group, error)
 	UpdateNamespace(ctx context.Context, arg UpdateNamespaceParams) (Namespace, error)
 	UpdateNode(ctx context.Context, arg UpdateNodeParams) (Node, error)
+	UpdateTaskStatus(ctx context.Context, arg UpdateTaskStatusParams) error
 	UpdateUserByUUID(ctx context.Context, arg UpdateUserByUUIDParams) (User, error)
 }
 

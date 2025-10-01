@@ -18,11 +18,9 @@ import (
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/handlers"
 	"github.com/cvhariharan/flowctl/internal/repo"
+	"github.com/cvhariharan/flowctl/internal/scheduler"
+	"github.com/cvhariharan/flowctl/internal/scheduler/storage"
 	"github.com/cvhariharan/flowctl/internal/streamlogger"
-	"github.com/cvhariharan/flowctl/internal/tasks"
-	"github.com/cvhariharan/flowctl/internal/tasks/scheduler"
-	"github.com/cvhariharan/flowctl/internal/utils"
-	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
@@ -41,23 +39,19 @@ var startCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		// Create shared FileLogManager instance
-		sharedFileLogManager := streamlogger.NewFileLogManager(streamlogger.FileLogManagerCfg{
-			RetentionTime: 24 * time.Hour,
-			MaxSizeBytes:  10 * 1024 * 1024,
-			MaxCount:      5,
-			LogDir:        "./",
-		})
+		// Initialize shared components once
+		shared := initializeSharedComponents()
+		defer shared.Cleanup()
 
 		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			// start worker
-			start(true, sharedFileLogManager)
+			startWorker(shared.Scheduler, shared.Logger)
 		}()
 		// start server
-		start(false, sharedFileLogManager)
+		startServer(shared.DB, shared.Core, shared.Logger)
 		wg.Wait()
 	},
 }
@@ -66,7 +60,31 @@ func init() {
 	rootCmd.AddCommand(startCmd)
 }
 
-func start(isWorker bool, fileLogManager streamlogger.LogManager) {
+// SharedComponents holds components that are shared between server and worker
+type SharedComponents struct {
+	DB          *sqlx.DB
+	Core        *core.Core
+	Scheduler   *scheduler.Scheduler
+	Logger      *slog.Logger
+	RedisClient redis.UniversalClient
+	Keeper      *secrets.Keeper
+}
+
+// Cleanup cleans up all shared resources
+func (s *SharedComponents) Cleanup() {
+	if s.DB != nil {
+		s.DB.Close()
+	}
+	if s.RedisClient != nil {
+		s.RedisClient.Close()
+	}
+	if s.Keeper != nil {
+		s.Keeper.Close()
+	}
+}
+
+// initializeSharedComponents sets up all shared components (DB, scheduler, core, etc.)
+func initializeSharedComponents() *SharedComponents {
 	loglevel := slog.LevelError
 	if os.Getenv("DEBUG_LOG") == "true" {
 		loglevel = slog.LevelDebug
@@ -77,12 +95,19 @@ func start(isWorker bool, fileLogManager streamlogger.LogManager) {
 	}))
 	slog.SetDefault(logger)
 
+	// Create shared FileLogManager instance
+	fileLogManager := streamlogger.NewFileLogManager(streamlogger.FileLogManagerCfg{
+		RetentionTime: time.Duration(appConfig.App.Logger.RetentionTimeHours) * time.Hour,
+		MaxSizeBytes:  appConfig.App.Logger.MaxSizeBytes * 1024 * 1024,
+		MaxCount:      appConfig.App.Logger.MaxCount,
+		LogDir:        appConfig.App.Logger.Directory,
+	})
+
 	dbConnectionString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", appConfig.DB.User, appConfig.DB.Password, appConfig.DB.Host, appConfig.DB.Port, appConfig.DB.DBName)
 	db, err := sqlx.Connect("postgres", dbConnectionString)
 	if err != nil {
 		log.Fatalf("could not connect to database: %v", err)
 	}
-	defer db.Close()
 
 	// Initialize casbin
 	m, _ := casbin_model.NewModelFromFile("configs/rbac_model.conf")
@@ -105,7 +130,6 @@ func start(isWorker bool, fileLogManager streamlogger.LogManager) {
 		Addrs:    []string{fmt.Sprintf("%s:%d", appConfig.Redis.Host, appConfig.Redis.Port)},
 		Password: appConfig.Redis.Password,
 	})
-	defer redisClient.Close()
 
 	// Initialize secret keeper
 	keeperURL := appConfig.App.Keystore.KeeperURL
@@ -117,23 +141,41 @@ func start(isWorker bool, fileLogManager streamlogger.LogManager) {
 	if err != nil {
 		log.Fatalf("could not open secrets keeper: %v", err)
 	}
-	defer keeper.Close()
-
-	asynqClient := asynq.NewClientFromRedisClient(redisClient)
-	defer asynqClient.Close()
 
 	s := repo.NewPostgresStore(db)
 
-	co, err := core.NewCore(appConfig.App.FlowsDirectory, s, asynqClient, redisClient, keeper, enforcer)
+	// Create job storage backend
+	jobStore := storage.NewPostgresStorage(db)
+
+	// Build scheduler
+	sch, err := scheduler.NewSchedulerBuilder(logger.WithGroup("scheduler")).
+		WithStore(s).
+		WithJobStore(jobStore).
+		WithLogManager(fileLogManager).
+		WithWorkerCount(appConfig.App.Scheduler.WorkerCount).
+		Build()
+
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	co, err := core.NewCore(appConfig.App.FlowsDirectory, s, sch, redisClient, keeper, enforcer)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	co.LogManager = fileLogManager
 
-	if isWorker {
-		startWorker(db, co, redisClient, logger, keeper, enforcer)
-	} else {
-		startServer(db, co, logger)
+	// Set secrets provider after core is created
+	sch.SetSecretsProvider(co.GetDecryptedFlowSecrets)
+
+	return &SharedComponents{
+		DB:          db,
+		Core:        co,
+		Scheduler:   sch,
+		Logger:      logger,
+		RedisClient: redisClient,
+		Keeper:      keeper,
 	}
 }
 
@@ -265,60 +307,13 @@ func startServer(db *sqlx.DB, co *core.Core, logger *slog.Logger) {
 	log.Fatal(e.Start(u.Host))
 }
 
-// startWorker creates a worker that processes jobs from redis.
-// A single worker automatically uses all available CPU cores for concurrency.
-func startWorker(db *sqlx.DB, co *core.Core, redisClient redis.UniversalClient, logger *slog.Logger, keeper *secrets.Keeper, enforcer *casbin.Enforcer) {
-	asynqClient := asynq.NewClientFromRedisClient(redisClient)
-	defer asynqClient.Close()
-
-	asynqSrv := asynq.NewServerFromRedisClient(redisClient, asynq.Config{
-		Concurrency: 0,
-		Queues: map[string]int{
-			"default": 5,
-			"resume":  5,
-		},
-		Logger: &utils.SlogAdapter{Logger: logger.WithGroup("worker")},
-	})
-
-	s := repo.NewPostgresStore(db)
-
-	flowRunner := tasks.NewFlowRunner(redisClient, co.BeforeActionHook, nil, co.GetDecryptedFlowSecrets, co.LogManager, logger)
-
-	st := tasks.NewStatusTracker(s)
-
-	mux := asynq.NewServeMux()
-	mux.HandleFunc(tasks.TypeFlowExecution, st.TrackerMiddleware(flowRunner.HandleFlowExecution))
-
-	// Create PeriodicTaskManager for scheduled flows
-	scheduleProvider := scheduler.NewFlowScheduleProvider(co)
-	preEnqueueFunc := scheduler.NewSchedulePreEnqueueFunc(co)
-
-	periodicTaskManager, err := asynq.NewPeriodicTaskManager(asynq.PeriodicTaskManagerOpts{
-		RedisUniversalClient:       redisClient,
-		PeriodicTaskConfigProvider: scheduleProvider,
-		SyncInterval:               2 * time.Minute, // Check for schedule changes every 2 minutes
-		SchedulerOpts: &asynq.SchedulerOpts{
-			PreEnqueueFunc: preEnqueueFunc,
-		},
-	})
-	if err != nil {
-		logger.Error("Failed to create periodic task manager", "error", err)
+// startWorker creates a worker that processes jobs using the shared scheduler.
+func startWorker(sch scheduler.TaskScheduler, logger *slog.Logger) {
+	logger.Info("Starting scheduler worker")
+	if err := sch.Start(context.Background()); err != nil {
+		logger.Error("Failed to start scheduler", "error", err)
 		log.Fatal(err)
 	}
 
-	// Start periodic task manager in a goroutine
-	go func() {
-		logger.Info("Starting periodic task manager for scheduled flows")
-		if err := periodicTaskManager.Run(); err != nil {
-			logger.Error("Periodic task manager error", "error", err)
-		}
-	}()
-
-	// Ensure periodic task manager is shut down when worker exits
-	defer func() {
-		logger.Info("Shutting down periodic task manager")
-		periodicTaskManager.Shutdown()
-	}()
-
-	log.Fatal(asynqSrv.Run(mux))
+	select {}
 }

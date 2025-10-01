@@ -83,12 +83,21 @@ func (c *Core) streamLogs(ctx context.Context, execID string, namespaceID string
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
 
+		exec, err := c.GetExecutionSummaryByExecID(ctx, execID, namespaceID)
+		if err == nil {
+			if exec.Status == models.ExecutionStatusCompleted ||
+				exec.Status == models.ExecutionStatusErrored ||
+				exec.Status == models.ExecutionStatusCancelled {
+				goto streamLoop
+			}
+		}
+
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-timeout:
-				log.Printf("timeout waiting for logger %s to be created", execID)
+				log.Printf("timeout waiting for logger %s to be created, attempting to read archived logs", execID)
 				return
 			case <-ticker.C:
 				if c.LogManager.LoggerExists(execID) {

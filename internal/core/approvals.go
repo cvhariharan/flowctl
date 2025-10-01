@@ -10,7 +10,7 @@ import (
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/repo"
-	"github.com/cvhariharan/flowctl/internal/tasks"
+	"github.com/cvhariharan/flowctl/internal/scheduler"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -214,7 +214,7 @@ func (c *Core) GetApprovalsRequestsForExec(ctx context.Context, execID string, n
 	return existingReq, nil
 }
 
-func (c *Core) BeforeActionHook(ctx context.Context, execID string, action tasks.Action, namespaceID string) error {
+func (c *Core) BeforeActionHook(ctx context.Context, execID string, action scheduler.Action, namespaceID string) error {
 	// use parent exec ID if available for approval requests
 	eID := execID
 
@@ -257,13 +257,13 @@ func (c *Core) BeforeActionHook(ctx context.Context, execID string, action tasks
 	}
 
 	if a.Status == "" {
-		_, err = c.RequestApproval(ctx, eID, models.TaskActionToAction(action), namespaceID)
+		_, err = c.RequestApproval(ctx, eID, models.SchedulerActionToAction(action), namespaceID)
 		if err != nil {
 			return err
 		}
 	}
 
-	return tasks.ErrPendingApproval
+	return scheduler.ErrPendingApproval
 }
 
 func (c *Core) GetApprovalRequest(ctx context.Context, approvalUUID string, namespaceID string) (models.ApprovalRequest, error) {

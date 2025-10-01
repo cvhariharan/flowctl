@@ -13,13 +13,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/repo"
-	"github.com/cvhariharan/flowctl/internal/tasks"
+	"github.com/cvhariharan/flowctl/internal/scheduler"
 	"github.com/google/uuid"
-	"github.com/hibiken/asynq"
 	"gopkg.in/yaml.v3"
 )
 
@@ -229,11 +227,9 @@ func (c *Core) GetNodesByNames(ctx context.Context, nodeNames []string, namespac
 
 // queueFlow adds a flow to the execution queue. If the actionIndex is not zero, it is moved to a resume queue.
 func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]interface{}, execID string, actionIndex int, userUUID string, namespaceID string) (string, error) {
-	queue := "default"
 	// If execID is empty, it is a new flow execution
 	if execID == "" {
 		execID = uuid.NewString()
-		queue = "resume"
 	}
 
 	userID, err := uuid.Parse(userUUID)
@@ -246,16 +242,21 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 		return "", fmt.Errorf("invalid namespace UUID: %w", err)
 	}
 
-	taskFlow, err := models.ToTaskFlowModel(f, func(nodeNames []string) ([]models.Node, error) {
-		return c.GetNodesByNames(ctx, nodeNames, namespaceUUID)
-	})
+	// Convert to scheduler flow format
+	schedulerFlow, err := c.convertToSchedulerFlow(ctx, f, namespaceUUID)
 	if err != nil {
-		return "", fmt.Errorf("error converting flow to task model: %w", err)
+		return "", fmt.Errorf("error converting flow to scheduler model: %w", err)
 	}
 
-	task, err := tasks.NewFlowExecution(taskFlow, input, actionIndex, execID, namespaceID, tasks.TriggerTypeManual, userUUID)
-	if err != nil {
-		return "", fmt.Errorf("error creating task: %v", err)
+	// Create flow execution payload for scheduler
+	payload := scheduler.FlowExecutionPayload{
+		Workflow:          schedulerFlow,
+		Input:             input,
+		StartingActionIdx: actionIndex,
+		ExecID:            execID,
+		NamespaceID:       namespaceID,
+		TriggerType:       scheduler.TriggerTypeManual,
+		UserUUID:          userUUID,
 	}
 
 	// Create execution log for manual flows before queuing (needed for immediate API calls)
@@ -276,7 +277,8 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 		return "", fmt.Errorf("could not add entry to execution log: %w", err)
 	}
 
-	_, err = c.q.Enqueue(task, asynq.Retention(24*time.Hour), asynq.Queue(queue))
+	// Queue the task using the scheduler
+	_, err = c.scheduler.QueueTask(ctx, payload)
 	if err != nil {
 		return "", err
 	}
@@ -284,14 +286,9 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 	return execID, nil
 }
 
-// CancelFlowExecution sets a cancellation signal for the given execution ID, this is best effort cancellation
+// CancelFlowExecution cancels the given execution using the scheduler
 func (c *Core) CancelFlowExecution(ctx context.Context, execID string) error {
-	key := fmt.Sprintf("%s:%s", tasks.CancellationSignalKey, execID)
-	err := c.redisClient.Set(ctx, key, "1", 24*time.Hour).Err()
-	if err != nil {
-		return fmt.Errorf("failed to set cancellation signal: %w", err)
-	}
-	return nil
+	return c.scheduler.CancelTask(ctx, execID)
 }
 
 func (c *Core) GetExecutionSummaryPaginated(ctx context.Context, f models.Flow, namespaceID string, limit, offset int) ([]models.ExecutionSummary, int64, int64, error) {
@@ -750,4 +747,90 @@ func (c *Core) GetScheduledFlows() []models.Flow {
 	}
 
 	return scheduledFlows
+}
+
+// convertToSchedulerFlow converts a models.Flow to scheduler.Flow
+func (c *Core) convertToSchedulerFlow(ctx context.Context, f models.Flow, namespaceUUID uuid.UUID) (scheduler.Flow, error) {
+	// Convert inputs
+	var inputs []scheduler.Input
+	for _, inp := range f.Inputs {
+		inputs = append(inputs, scheduler.Input{
+			Name:        inp.Name,
+			Type:        scheduler.InputType(inp.Type),
+			Label:       inp.Label,
+			Description: inp.Description,
+			Validation:  inp.Validation,
+			Required:    inp.Required,
+			Default:     inp.Default,
+		})
+	}
+
+	// Convert actions
+	var actions []scheduler.Action
+	for _, act := range f.Actions {
+		// Get nodes for this action
+		nodes, err := c.GetNodesByNames(ctx, act.On, namespaceUUID)
+		if err != nil && len(act.On) > 0 {
+			return scheduler.Flow{}, fmt.Errorf("failed to get nodes for action %s: %w", act.ID, err)
+		}
+
+		// Convert nodes to scheduler format
+		var schedulerNodes []scheduler.Node
+		for _, node := range nodes {
+			schedulerNodes = append(schedulerNodes, scheduler.Node{
+				ID:             node.ID,
+				Name:           node.Name,
+				Hostname:       node.Hostname,
+				Port:           node.Port,
+				Username:       node.Username,
+				OSFamily:       node.OSFamily,
+				ConnectionType: node.ConnectionType,
+				Tags:           node.Tags,
+				Auth: scheduler.NodeAuth{
+					CredentialID: node.Auth.CredentialID,
+					Method:       scheduler.AuthMethod(node.Auth.Method),
+					Key:          node.Auth.Key,
+				},
+			})
+		}
+
+		// Convert variables
+		var variables []scheduler.Variable
+		for _, v := range act.Variables {
+			variables = append(variables, scheduler.Variable(v))
+		}
+
+		actions = append(actions, scheduler.Action{
+			ID:        act.ID,
+			Name:      act.Name,
+			Executor:  act.Executor,
+			With:      act.With,
+			Approval:  act.Approval,
+			Variables: variables,
+			Artifacts: act.Artifacts,
+			Condition: act.Condition,
+			On:        schedulerNodes,
+		})
+	}
+
+	// Convert outputs
+	var outputs []scheduler.Output
+	for _, out := range f.Outputs {
+		outputs = append(outputs, scheduler.Output(out))
+	}
+
+	return scheduler.Flow{
+		Meta: scheduler.Metadata{
+			ID:          f.Meta.ID,
+			DBID:        f.Meta.DBID,
+			Name:        f.Meta.Name,
+			Description: f.Meta.Description,
+			Schedule:    f.Meta.Schedule,
+			SrcDir:      f.Meta.SrcDir,
+			Namespace:   f.Meta.Namespace,
+		},
+		Inputs:  inputs,
+		Actions: actions,
+		Outputs: outputs,
+	}, nil
 }
