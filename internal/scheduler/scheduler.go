@@ -33,7 +33,8 @@ type Scheduler struct {
 	logmanager       streamlogger.LogManager
 	cancelFuncs      map[string]context.CancelFunc
 	scheduledFlows   map[string]repo.GetScheduledFlowsRow // Cache of scheduled flows
-	mu               sync.RWMutex
+	cancelMu         sync.RWMutex                         // Lock for cancelFuncs
+	scheduledMu      sync.RWMutex                         // Lock for scheduledFlows
 	taskTicker       *time.Ticker
 	periodicTicker   *time.Ticker
 	cronSyncTicker   *time.Ticker
@@ -134,23 +135,16 @@ func (b *SchedulerBuilder) Build() (*Scheduler, error) {
 
 // SetSecretsProvider allows updating secrets provider after build
 func (s *Scheduler) SetSecretsProvider(sp SecretsProviderFn) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.secretsProvider = sp
 }
 
 // SetFlowLoader allows updating flow loader after build
 func (s *Scheduler) SetFlowLoader(fl FlowLoaderFn) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.flowLoader = fl
 }
 
 // Start begins the scheduler's task processing loops
 func (s *Scheduler) Start(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if s.stopped {
 		return nil
 	}
@@ -180,9 +174,6 @@ func (s *Scheduler) Start(ctx context.Context) error {
 
 // Stop shuts down the scheduler
 func (s *Scheduler) Stop(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if s.stopped {
 		return nil
 	}
@@ -224,12 +215,12 @@ func (s *Scheduler) QueueTask(ctx context.Context, payload FlowExecutionPayload)
 
 // CancelTask cancels a running or pending execution
 func (s *Scheduler) CancelTask(ctx context.Context, execID string) error {
-	s.mu.Lock()
+	s.cancelMu.Lock()
 	if cancel, exists := s.cancelFuncs[execID]; exists {
 		cancel()
 		delete(s.cancelFuncs, execID)
 	}
-	s.mu.Unlock()
+	s.cancelMu.Unlock()
 	return s.jobStore.CancelByExecID(ctx, execID)
 }
 
@@ -269,9 +260,11 @@ func (s *Scheduler) processPendingTasks(ctx context.Context) error {
 		}
 
 		go func() {
+			s.logger.Debug("starting job execution", "execID", job.ExecID, "jobID", job.ID)
 			if err := s.executeJob(ctx, job); err != nil {
 				s.logger.Error("error executing flow", "execID", job.ExecID, "error", err)
 			}
+			s.logger.Debug("completed job execution", "execID", job.ExecID, "jobID", job.ID)
 		}()
 	}
 
@@ -288,14 +281,14 @@ func (s *Scheduler) executeJob(ctx context.Context, job storage.Job) error {
 	execCtx, cancel := context.WithCancel(ctx)
 
 	// Track cancellation function
-	s.mu.Lock()
+	s.cancelMu.Lock()
 	s.cancelFuncs[job.ExecID] = cancel
-	s.mu.Unlock()
+	s.cancelMu.Unlock()
 
 	defer func() {
-		s.mu.Lock()
+		s.cancelMu.Lock()
 		delete(s.cancelFuncs, job.ExecID)
-		s.mu.Unlock()
+		s.cancelMu.Unlock()
 		// Remove job from queue when done
 		if err := s.jobStore.Delete(ctx, job.ID); err != nil {
 			s.logger.Error("failed to delete job", "jobID", job.ID, "error", err)

@@ -18,8 +18,8 @@ func (s *Scheduler) syncScheduledFlows(ctx context.Context) error {
 		return err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.scheduledMu.Lock()
+	defer s.scheduledMu.Unlock()
 
 	// Clear and rebuild the map
 	s.scheduledFlows = make(map[string]repo.GetScheduledFlowsRow)
@@ -35,12 +35,12 @@ func (s *Scheduler) syncScheduledFlows(ctx context.Context) error {
 
 // checkPeriodicTasks checks for flows with cron schedules that should run now
 func (s *Scheduler) checkPeriodicTasks(ctx context.Context) error {
-	s.mu.RLock()
+	s.scheduledMu.RLock()
 	scheduledFlows := make([]repo.GetScheduledFlowsRow, 0, len(s.scheduledFlows))
 	for _, flow := range s.scheduledFlows {
 		scheduledFlows = append(scheduledFlows, flow)
 	}
-	s.mu.RUnlock()
+	s.scheduledMu.RUnlock()
 
 	now := time.Now()
 
