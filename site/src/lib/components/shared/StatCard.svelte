@@ -13,11 +13,11 @@
 	let { title, value, icon, IconComponent, iconSize = 24, color = 'blue' }: Props = $props();
 
 	const colorClasses = {
-		blue: 'bg-blue-100 text-blue-600',
-		green: 'bg-green-100 text-green-600',
-		purple: 'bg-purple-100 text-purple-600',
-		red: 'bg-red-100 text-red-600',
-		yellow: 'bg-yellow-100 text-yellow-600',
+		blue: 'bg-info-100 text-info-600',
+		green: 'bg-success-100 text-success-600',
+		purple: 'bg-primary-100 text-primary-600',
+		red: 'bg-danger-100 text-danger-600',
+		yellow: 'bg-warning-100 text-warning-600',
 		gray: 'bg-gray-100 text-gray-600'
 	};
 </script>

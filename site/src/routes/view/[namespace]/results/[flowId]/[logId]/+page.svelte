@@ -33,6 +33,7 @@
   let completedActions = $state<number[]>([]);
   let failedActionIndex = $state(-1);
   let logOutput = $state('');
+  let logMessages = $state<Array<{action_id: string; message_type: string; value: string; timestamp: string}>>([]);
   let results = $state<Record<string, any>>({});
   let showApproval = $state(false);
   let approvalID = $state<string | null>(null);
@@ -217,6 +218,12 @@
     switch (msg.message_type) {
       case 'log':
         logOutput += (msg.value || '') + '\n';
+        logMessages.push({
+          action_id: msg.action_id || '',
+          message_type: msg.message_type,
+          value: msg.value || '',
+          timestamp: msg.timestamp || ''
+        });
         break;
       case 'result':
         results = { ...results, ...(msg.results || {}) };
@@ -229,9 +236,9 @@
         if (msg.value && msg.value.includes('cancelled')) {
           status = 'cancelled';
         } else {
-          handleInlineError(new ApiError(500, 'Flow execution failed', { 
-            error: msg.value || "An error occurred.", 
-            code: "OPERATION_FAILED" 
+          handleInlineError(new ApiError(500, 'Flow execution failed', {
+            error: msg.value || "An error occurred.",
+            code: "OPERATION_FAILED"
           }), 'Flow Execution Error');
           status = 'errored';
         }
@@ -248,10 +255,22 @@
       case 'cancelled':
         status = 'cancelled';
         logOutput += (msg.value || 'Flow execution was cancelled') + '\n';
+        logMessages.push({
+          action_id: msg.action_id || '',
+          message_type: msg.message_type,
+          value: msg.value || 'Flow execution was cancelled',
+          timestamp: msg.timestamp || ''
+        });
         stopStatusPolling(); // Flow finished, no need to continue polling
         break;
       default:
         logOutput += (msg.value || '') + '\n';
+        logMessages.push({
+          action_id: msg.action_id || '',
+          message_type: msg.message_type,
+          value: msg.value || '',
+          timestamp: msg.timestamp || ''
+        });
     }
   };
 
@@ -413,8 +432,9 @@
           <!-- Tab Content -->
           <div class="p-6">
             {#if activeTab === 'logs'}
-              <LogsView 
+              <LogsView
                 bind:logs={logOutput}
+                logMessages={logMessages}
                 isRunning={status === 'running'}
                 height="h-96"
                 theme="dark"

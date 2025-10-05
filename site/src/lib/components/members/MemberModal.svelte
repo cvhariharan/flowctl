@@ -4,7 +4,6 @@
   import type { NamespaceMemberReq, NamespaceMemberResp, User, Group } from '$lib/types';
   
   interface Props {
-    show?: boolean;
     isEditMode?: boolean;
     memberData?: NamespaceMemberResp | null;
     onSave: (memberData: NamespaceMemberReq) => void;
@@ -12,7 +11,6 @@
   }
 
   let {
-    show = false,
     isEditMode = false,
     memberData = null,
     onSave,
@@ -30,24 +28,22 @@
   let selectedSubject = $state<User | Group | null>(null);
   let loading = $state(false);
 
-  // Initialize form data when memberData changes or when show changes
+  // Initialize form data when memberData changes
   $effect(() => {
-    if (show) {
-      if (isEditMode && memberData) {
-        // Pre-populate form with existing member data
-        memberForm.subject_type = memberData.subject_type as 'user' | 'group';
-        memberForm.subject_id = memberData.subject_id;
-        memberForm.role = memberData.role as 'user' | 'reviewer' | 'admin';
-        
-        // Create a selectedSubject object for the UserGroupSelector
-        selectedSubject = {
-          id: memberData.subject_id,
-          name: memberData.subject_name,
-          username: memberData.subject_name // For users, this would be the username
-        } as User | Group;
-      } else {
-        resetForm();
-      }
+    if (isEditMode && memberData) {
+      // Pre-populate form with existing member data
+      memberForm.subject_type = memberData.subject_type as 'user' | 'group';
+      memberForm.subject_id = memberData.subject_id;
+      memberForm.role = memberData.role as 'user' | 'reviewer' | 'admin';
+
+      // Create a selectedSubject object for the UserGroupSelector
+      selectedSubject = {
+        id: memberData.subject_id,
+        name: memberData.subject_name,
+        username: memberData.subject_name // For users, this would be the username
+      } as User | Group;
+    } else {
+      resetForm();
     }
   });
 
@@ -105,27 +101,26 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
-{#if show}
-  <!-- Modal Backdrop -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4" on:click={handleClose}>
-    <!-- Modal Content -->
-    <div class="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" on:click|stopPropagation>
+<!-- Modal Backdrop -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4" onclick={handleClose} onkeydown={(e) => e.key === 'Escape' && handleClose()} role="dialog" aria-modal="true" tabindex="-1">
+  <!-- Modal Content -->
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" onclick={(e) => e.stopPropagation()}>
       <div class="p-6">
         <h3 class="font-bold text-lg mb-4 text-gray-900">
           {isEditMode ? 'Edit Member' : 'Add Member'}
         </h3>
         
-        
-        <form on:submit|preventDefault={handleSubmit}>
+
+        <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
           <!-- Subject Type Selection -->
           <div class="mb-4">
             <label class="block mb-1 font-medium text-gray-900">Member Type *</label>
-            <select 
+            <select
               bind:value={memberForm.subject_type}
-              on:change={onSubjectTypeChange}
-              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+              onchange={onSubjectTypeChange}
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5"
               required
               disabled={loading || isEditMode}
             >
@@ -146,12 +141,8 @@
               <!-- Show selected member in edit mode -->
               <div class="p-3 bg-gray-50 rounded-lg border">
                 <div class="flex items-center">
-                  <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3"
-                       class:bg-blue-100={memberData.subject_type === 'user'}
-                       class:bg-purple-100={memberData.subject_type === 'group'}>
-                    <svg class="w-4 h-4"
-                         class:text-blue-600={memberData.subject_type === 'user'}
-                         class:text-purple-600={memberData.subject_type === 'group'}
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 bg-primary-100">
+                    <svg class="w-4 h-4 text-primary-600"
                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       {#if memberData.subject_type === 'user'}
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
@@ -180,9 +171,9 @@
           <!-- Role Selection -->
           <div class="mb-4">
             <label class="block mb-1 font-medium text-gray-900">Role *</label>
-            <select 
+            <select
               bind:value={memberForm.role}
-              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5"
               required
               disabled={loading}
             >
@@ -194,18 +185,18 @@
 
           <!-- Actions -->
           <div class="flex justify-end gap-2 mt-6">
-            <button 
+            <button
               type="button"
-              on:click={handleClose}
+              onclick={handleClose}
               class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
               disabled={loading}
             >
               Cancel
             </button>
-            <button 
+            <button
               type="submit"
               disabled={loading}
-              class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 focus:ring-4 focus:outline-none focus:ring-primary-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {#if loading}
                 <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -219,5 +210,4 @@
         </form>
       </div>
     </div>
-  </div>
-{/if}
+</div>

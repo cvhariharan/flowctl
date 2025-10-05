@@ -9,19 +9,19 @@
   const getStatusClasses = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-success-100 text-success-900';
       case 'approved':
-        return 'bg-green-100 text-green-800';
+        return 'bg-success-100 text-success-900';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-warning-100 text-warning-900';
       case 'running':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary-100 text-info-900';
       case 'cancelled':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-warning-100 text-warning-900';
       case 'errored':
-        return 'bg-red-100 text-red-800';
+        return 'bg-danger-100 text-danger-900';
       case 'rejected':
-        return 'bg-red-100 text-red-800';
+        return 'bg-danger-100 text-danger-900';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -30,19 +30,19 @@
   const getDotClasses = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-400';
+        return 'bg-success-500';
       case 'approved':
-        return 'bg-green-400';
+        return 'bg-success-500';
       case 'pending':
-        return 'bg-yellow-400';
+        return 'bg-warning-500';
       case 'running':
-        return 'bg-blue-400';
+        return 'bg-primary-500';
       case 'cancelled':
-        return 'bg-orange-400';
+        return 'bg-warning-500';
       case 'errored':
-        return 'bg-red-400';
+        return 'bg-danger-500';
       case 'rejected':
-        return 'bg-red-400';
+        return 'bg-danger-500';
       default:
         return 'bg-gray-400';
     }

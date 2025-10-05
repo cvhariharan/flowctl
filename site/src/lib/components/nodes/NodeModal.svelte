@@ -147,7 +147,7 @@
 				<label class="block mb-1 font-medium text-gray-900">Name</label>
 				<input 
 					type="text" 
-					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
+					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5" 
 					bind:value={formData.name}
 					required 
 					disabled={loading}
@@ -159,7 +159,7 @@
 				<label class="block mb-1 font-medium text-gray-900">Hostname</label>
 				<input 
 					type="text" 
-					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
+					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5" 
 					bind:value={formData.hostname}
 					required 
 					disabled={loading}
@@ -171,7 +171,7 @@
 				<label class="block mb-1 font-medium text-gray-900">Port</label>
 				<input 
 					type="number" 
-					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
+					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5" 
 					bind:value={formData.port}
 					min="1" 
 					max="65535" 
@@ -185,7 +185,7 @@
 				<label class="block mb-1 font-medium text-gray-900">Username</label>
 				<input 
 					type="text" 
-					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
+					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5" 
 					bind:value={formData.username}
 					required 
 					disabled={loading}
@@ -196,7 +196,7 @@
 			<div class="mb-4">
 				<label class="block mb-1 font-medium text-gray-900">OS Family</label>
 				<select 
-					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
+					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5" 
 					bind:value={formData.os_family}
 					required
 					disabled={loading}
@@ -211,7 +211,7 @@
 			<div class="mb-4">
 				<label class="block mb-1 font-medium text-gray-900">Connection Type</label>
 				<select 
-					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
+					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5" 
 					bind:value={formData.connection_type}
 					required
 					disabled={loading}
@@ -226,7 +226,7 @@
 			<div class="mb-4">
 				<label class="block mb-1 font-medium text-gray-900">Credential</label>
 				<select 
-					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
+					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5" 
 					bind:value={formData.auth.credential_id}
 					on:change={onCredentialChange}
 					required
@@ -246,7 +246,7 @@
 				<label class="block mb-1 font-medium text-gray-900">Tags (comma-separated)</label>
 				<input 
 					type="text" 
-					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
+					class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5" 
 					bind:value={formData.tagsString}
 					placeholder="production, web, east" 
 					disabled={loading}
@@ -263,9 +263,9 @@
 				>
 					Cancel
 				</button>
-				<button 
-					type="submit" 
-					class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 disabled:opacity-50" 
+				<button
+					type="submit"
+					class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 focus:ring-4 focus:outline-none focus:ring-primary-300 disabled:opacity-50"
 					disabled={loading}
 				>
 					{#if loading}

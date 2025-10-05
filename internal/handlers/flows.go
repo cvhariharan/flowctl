@@ -206,7 +206,7 @@ func (h *Handler) HandleLogStreaming(c echo.Context) error {
 	}
 
 	for msg := range msgCh {
-		if err := h.handleLogStreaming(c, msg, ws); err != nil {
+		if err := h.handleLogStreaming(msg, ws); err != nil {
 			h.logger.Error("websocket error", "error", err)
 			ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, err.Error()))
 			return nil
@@ -216,7 +216,7 @@ func (h *Handler) HandleLogStreaming(c echo.Context) error {
 	return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed"))
 }
 
-func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, ws *websocket.Conn) error {
+func (h *Handler) handleLogStreaming(msg models.StreamMessage, ws *websocket.Conn) error {
 	var buf bytes.Buffer
 	switch msg.MType {
 	case models.ResultMessageType:
@@ -226,18 +226,20 @@ func (h *Handler) handleLogStreaming(c echo.Context, msg models.StreamMessage, w
 		}
 
 		if err := json.NewEncoder(&buf).Encode(FlowLogResp{
-			ActionID: msg.ActionID,
-			MType:    string(msg.MType),
-			Results:  res,
+			ActionID:  msg.ActionID,
+			MType:     string(msg.MType),
+			Results:   res,
+			Timestamp: msg.Timestamp,
 		}); err != nil {
 			return err
 		}
 	default:
 		h.logger.Debug("Default message", "type", msg.MType, "value", string(msg.Val))
 		if err := json.NewEncoder(&buf).Encode(FlowLogResp{
-			ActionID: msg.ActionID,
-			MType:    string(msg.MType),
-			Value:    string(msg.Val),
+			ActionID:  msg.ActionID,
+			MType:     string(msg.MType),
+			Value:     string(msg.Val),
+			Timestamp: msg.Timestamp,
 		}); err != nil {
 			return err
 		}

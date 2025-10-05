@@ -20,7 +20,7 @@
           <tr class="hover:bg-gray-50 transition-colors">
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-mono">{key}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              <code class="px-2 py-1 bg-green-50 text-green-700 rounded">{value}</code>
+              <code class="px-2 py-1 bg-success-50 text-success-700 rounded">{value}</code>
             </td>
           </tr>
         {/each}

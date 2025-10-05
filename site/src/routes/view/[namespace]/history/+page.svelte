@@ -45,9 +45,9 @@
 			sortable: true,
 			render: (_value: any, execution: ExecutionSummary) => `
 				<div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-					execution.trigger_type === 'manual' 
-						? 'bg-blue-100 text-blue-800' 
-						: 'bg-green-100 text-green-800'
+					execution.trigger_type === 'manual'
+						? 'bg-primary-100 text-primary-900'
+						: 'bg-success-100 text-success-900'
 				}">
 					${execution.trigger_type}
 				</div>
@@ -65,8 +65,8 @@
 			sortable: true,
 			render: (_value: any, execution: ExecutionSummary) => `
 				<div class="flex items-center">
-					<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-						<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
+						<svg class="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
 						</svg>
 					</div>
@@ -218,9 +218,9 @@
 <!-- Browse Flows link in empty state -->
 {#if !loading && executions.length === 0}
 	<div class="flex justify-center mt-4">
-		<a 
+		<a
 			href="/view/{data.namespace}/flows"
-			class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+			class="bg-primary-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
 		>
 			Browse Flows
 		</a>

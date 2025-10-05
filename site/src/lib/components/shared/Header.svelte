@@ -1,21 +1,18 @@
 <script lang="ts">
-  import UserDropdown from './UserDropdown.svelte';
   import { goto } from '$app/navigation';
-  
+
   type BreadcrumbItem = {
     label: string;
     url?: string;
   };
-  
-  let { 
-    breadcrumbs = [], 
+
+  let {
+    breadcrumbs = [],
     actions = [],
-    showUserDropdown = true,
     children
-  }: { 
+  }: {
     breadcrumbs?: (string | BreadcrumbItem)[],
     actions?: Array<{ label: string, onClick: () => void, variant?: 'primary' | 'secondary' | 'danger' }>,
-    showUserDropdown?: boolean,
     children?: any
   } = $props();
 
@@ -38,23 +35,27 @@
   <div class="flex items-center justify-between">
     <div class="flex items-center gap-5">
       {#if normalizedBreadcrumbs.length > 0}
-        <div class="flex items-center text-sm text-gray-500">
-          {#each normalizedBreadcrumbs as crumb, index}
-            {#if crumb.url && index < normalizedBreadcrumbs.length - 1}
-              <button 
-                onclick={() => handleBreadcrumbClick(crumb)}
-                class="hover:text-blue-600 hover:underline transition-colors cursor-pointer"
-              >
-                {crumb.label}
-              </button>
-            {:else}
-              <span class={index === normalizedBreadcrumbs.length - 1 ? 'text-gray-900' : ''}>{crumb.label}</span>
-            {/if}
-            {#if index < normalizedBreadcrumbs.length - 1}
-              <span class="mx-2">/</span>
-            {/if}
-          {/each}
-        </div>
+        <nav aria-label="Breadcrumb" class="flex items-center text-sm text-gray-500">
+          <ol class="flex items-center">
+            {#each normalizedBreadcrumbs as crumb, index}
+              <li class="flex items-center">
+                {#if crumb.url && index < normalizedBreadcrumbs.length - 1}
+                  <button
+                    onclick={() => handleBreadcrumbClick(crumb)}
+                    class="hover:text-primary-500 hover:underline transition-colors cursor-pointer"
+                  >
+                    {crumb.label}
+                  </button>
+                {:else}
+                  <span class={index === normalizedBreadcrumbs.length - 1 ? 'text-gray-900' : ''} aria-current={index === normalizedBreadcrumbs.length - 1 ? 'page' : undefined}>{crumb.label}</span>
+                {/if}
+                {#if index < normalizedBreadcrumbs.length - 1}
+                  <span class="mx-2" aria-hidden="true">/</span>
+                {/if}
+              </li>
+            {/each}
+          </ol>
+        </nav>
       {/if}
     </div>
     
@@ -64,17 +65,13 @@
       {/if}
       
       {#each actions as action}
-        <button 
+        <button
           onclick={action.onClick}
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-md transition-colors {action.variant === 'primary' ? 'bg-blue-600 text-white hover:bg-blue-700' : action.variant === 'danger' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-md transition-colors {action.variant === 'primary' ? 'bg-primary-500 text-white hover:bg-primary-600' : action.variant === 'danger' ? 'bg-danger-500 text-white hover:bg-danger-600' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}"
         >
           {action.label}
         </button>
       {/each}
-      
-      {#if showUserDropdown}
-        <UserDropdown />
-      {/if}
     </div>
   </div>
 </header>

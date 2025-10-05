@@ -44,7 +44,7 @@
 			header: 'Name',
 			render: (_value: any, user: User) => {
 				const firstLetter = user.name.charAt(0).toUpperCase();
-				const colors = ['bg-red-100 text-red-600', 'bg-blue-100 text-blue-600', 'bg-green-100 text-green-600', 'bg-yellow-100 text-yellow-600', 'bg-purple-100 text-purple-600', 'bg-pink-100 text-pink-600', 'bg-indigo-100 text-indigo-600'];
+				const colors = ['bg-danger-100 text-danger-600', 'bg-primary-100 text-primary-600', 'bg-success-100 text-success-600', 'bg-warning-100 text-warning-600', 'bg-primary-100 text-primary-600', 'bg-pink-100 text-pink-600', 'bg-indigo-100 text-indigo-600'];
 				const colorIndex = user.name.charCodeAt(0) % colors.length;
 				const colorClass = colors[colorIndex];
 				
@@ -74,7 +74,7 @@
 				
 				// Show first 3 groups
 				userGroups.slice(0, 3).forEach((group: any) => {
-					html += `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">${group.name}</span>`;
+					html += `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">${group.name}</span>`;
 				});
 				
 				// Show +N more if there are more than 3
@@ -92,12 +92,12 @@
 		{
 			label: 'Edit',
 			onClick: (user: User) => handleEdit(user.id),
-			className: 'text-blue-600 hover:text-blue-800'
+			className: 'text-primary-600 hover:text-primary-800'
 		},
 		{
 			label: 'Delete',
 			onClick: (user: User) => handleDelete(user.id, user.name),
-			className: 'text-red-600 hover:text-red-800'
+			className: 'text-danger-600 hover:text-danger-800'
 		}
 	];
 
@@ -216,7 +216,7 @@
 	<!-- Add User Button -->
 	<button
 		onclick={handleAdd}
-		class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center"
+		class="bg-primary-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors flex items-center"
 	>
 		<IconPlus class="mr-2" size={16} />
 		Add User

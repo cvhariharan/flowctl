@@ -63,7 +63,7 @@ import type { TableAction } from '$lib/types';
 			actionsList.push({
 				label: 'Edit',
 				onClick: (member: NamespaceMemberResp) => handleEdit(member),
-				className: 'text-blue-600 hover:text-blue-800'
+				className: 'text-primary-600 hover:text-primary-800'
 			});
 		}
 
@@ -71,7 +71,7 @@ import type { TableAction } from '$lib/types';
 			actionsList.push({
 				label: 'Remove',
 				onClick: (member: NamespaceMemberResp) => handleDelete(member.id, member.subject_name),
-				className: 'text-red-600 hover:text-red-800'
+				className: 'text-danger-600 hover:text-danger-800'
 			});
 		}
 
@@ -214,7 +214,6 @@ import type { TableAction } from '$lib/types';
 <!-- Member Modal (Add/Edit) -->
 {#if showMemberModal}
 	<MemberModal
-		show={showMemberModal}
 		{isEditMode}
 		memberData={selectedMember}
 		onSave={handleMemberSave}

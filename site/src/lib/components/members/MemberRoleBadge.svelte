@@ -6,9 +6,9 @@
       case 'user':
         return 'bg-gray-100 text-gray-800';
       case 'reviewer':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-warning-100 text-warning-900';
       case 'admin':
-        return 'bg-red-100 text-red-800';
+        return 'bg-danger-100 text-danger-900';
       default:
         return 'bg-gray-100 text-gray-800';
     }

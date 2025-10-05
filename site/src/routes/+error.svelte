@@ -20,8 +20,8 @@
     if (status === 401) {
       return {
         IconComponent: IconLock,
-        iconColor: 'text-yellow-600',
-        bgColor: 'bg-yellow-100',
+        iconColor: 'text-warning-600',
+        bgColor: 'bg-warning-100',
         title: 'Authentication Required',
         message: error?.message || 'Please log in to access this resource',
         showLoginButton: true
@@ -31,8 +31,8 @@
     if (status === 403) {
       return {
         IconComponent: IconShieldX,
-        iconColor: 'text-red-600',
-        bgColor: 'bg-red-100',
+        iconColor: 'text-danger-600',
+        bgColor: 'bg-danger-100',
         title: 'Access Denied',
         message: error?.message || 'You do not have permission to access this resource',
         showLoginButton: false
@@ -53,8 +53,8 @@
     // Default error
     return {
       IconComponent: IconAlertTriangle,
-      iconColor: 'text-red-600',
-      bgColor: 'bg-red-100',
+      iconColor: 'text-danger-600',
+      bgColor: 'bg-danger-100',
       title: 'Something went wrong',
       message: error?.message || 'An unexpected error occurred',
       showLoginButton: false
@@ -109,9 +109,9 @@
     <!-- Action Buttons -->
     <div class="flex flex-col sm:flex-row gap-3 justify-center">
       {#if errorDetails.showLoginButton}
-        <button 
+        <button
           onclick={handleLogin}
-          class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 text-white rounded-md hover:bg-primary-600 transition-colors font-medium"
         >
           <IconLogin size={18} />
           Log In

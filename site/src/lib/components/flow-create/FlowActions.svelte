@@ -128,20 +128,20 @@
   function dragOver(event: DragEvent) {
     event.preventDefault();
     if (event.currentTarget instanceof HTMLElement) {
-      event.currentTarget.classList.add('bg-blue-50', 'border-blue-300');
+      event.currentTarget.classList.add('bg-primary-50', 'border-primary-300');
     }
   }
 
   function dragLeave(event: DragEvent) {
     if (event.currentTarget instanceof HTMLElement) {
-      event.currentTarget.classList.remove('bg-blue-50', 'border-blue-300');
+      event.currentTarget.classList.remove('bg-primary-50', 'border-primary-300');
     }
   }
 
   function drop(event: DragEvent, dropIndex: number) {
     event.preventDefault();
     if (event.currentTarget instanceof HTMLElement) {
-      event.currentTarget.classList.remove('bg-blue-50', 'border-blue-300');
+      event.currentTarget.classList.remove('bg-primary-50', 'border-primary-300');
     }
     if (draggedIndex !== null && draggedIndex !== dropIndex) {
       const dragged = actions.splice(draggedIndex, 1)[0];
@@ -151,18 +151,13 @@
 </script>
 
 <!-- Flow Actions Section -->
-<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-  <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-between">
-    <span class="flex items-center gap-2">
-      <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-      Flow Actions
-    </span>
-    <button onclick={addAction} class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+<div>
+  <div class="flex items-center justify-between mb-6">
+    <h3 class="text-base font-medium text-gray-900">Flow Actions</h3>
+    <button onclick={addAction} class="text-sm text-primary-600 hover:text-primary-700 font-medium">
       + Add Action
     </button>
-  </h2>
+  </div>
 
   <div class="space-y-4">
     {#each actions as action, index (action.tempId)}
@@ -198,13 +193,13 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            <button onclick={() => duplicateAction(index)} class="text-gray-400 hover:text-blue-600">
+            <button onclick={() => duplicateAction(index)} class="text-gray-400 hover:text-primary-600">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
             </button>
-            <button onclick={() => removeAction(index)} class="text-gray-400 hover:text-red-600">
+            <button onclick={() => removeAction(index)} class="text-gray-400 hover:text-danger-600">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -224,7 +219,7 @@
                   type="text" 
                   value={action.name}
                   oninput={(e) => updateActionName(action, e.currentTarget.value)}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                   placeholder="Action Display Name"
                 />
               </div>
@@ -236,7 +231,7 @@
                 <select 
                   bind:value={action.executor} 
                   onchange={() => onExecutorChange(action)}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                 >
                   <option value="">Select Executor</option>
                   {#each availableExecutors as executor}
@@ -249,7 +244,7 @@
                 <input 
                   type="text" 
                   bind:value={action.on}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                   placeholder="local,prod-worker-01"
                 />
                 <p class="mt-1 text-xs text-gray-500">Comma-separated node names</p>
@@ -286,7 +281,7 @@
                               id="config-{action.tempId}-{key}"
                               bind:checked={action.with[key]}
                               onchange={(e) => updateConfigValue(action, key, e.currentTarget.checked)}
-                              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-0.5"
+                              class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mt-0.5"
                             />
                             <div class="ml-2">
                               <label for="config-{action.tempId}-{key}" class="text-sm text-gray-700">
@@ -308,7 +303,7 @@
                               id="config-{action.tempId}-{key}"
                               bind:value={action.with[key]}
                               onchange={(e) => updateConfigValue(action, key, e.currentTarget.value)}
-                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                             >
                               <option value="">Select...</option>
                               {#each property.enum as option}
@@ -334,7 +329,7 @@
                               min={property.minimum}
                               max={property.maximum}
                               placeholder={placeholder}
-                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                             />
                             {#if description}
                               <p class="mt-1 text-xs text-gray-500">{description}</p>
@@ -368,7 +363,7 @@
                               oninput={(e) => updateConfigValue(action, key, e.currentTarget.value)}
                               placeholder={placeholder || (property.type === 'object' ? 'JSON object' : property.type === 'array' ? 'Array values' : 'Multi-line text')}
                               rows="4"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono"
                             ></textarea>
                             {#if description}
                               <p class="mt-1 text-xs text-gray-500">{description}</p>
@@ -389,7 +384,7 @@
                               bind:value={action.with[key]}
                               oninput={(e) => updateConfigValue(action, key, e.currentTarget.value)}
                               placeholder={placeholder}
-                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                             />
                             {#if description}
                               <p class="mt-1 text-xs text-gray-500">{description}</p>
@@ -407,7 +402,7 @@
             <div>
               <div class="flex items-center justify-between mb-2">
                 <label class="block text-sm font-medium text-gray-700">Environment Variables</label>
-                <button onclick={() => addVariable(action)} type="button" class="text-xs text-blue-600 hover:text-blue-700">
+                <button onclick={() => addVariable(action)} type="button" class="text-xs text-primary-600 hover:text-primary-700">
                   + Add Variable
                 </button>
               </div>
@@ -418,15 +413,15 @@
                       type="text" 
                       bind:value={variable.name} 
                       placeholder="VAR_NAME"
-                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono"
                     />
                     <span class="text-gray-500">=</span>
                     <input 
                       type="text" 
                       bind:value={variable.value}
-                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono"
                     />
-                    <button onclick={() => removeVariable(action, varIndex)} type="button" class="text-gray-400 hover:text-red-600">
+                    <button onclick={() => removeVariable(action, varIndex)} type="button" class="text-gray-400 hover:text-danger-600">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -443,14 +438,14 @@
                 <input 
                   type="text" 
                   bind:value={action.condition}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono"
                 />
                 <p class="mt-1 text-xs text-gray-500">Action runs only if condition is true</p>
               </div>
               <div>
                 <div class="flex items-center justify-between mb-2">
                   <label class="block text-sm font-medium text-gray-700">Artifacts</label>
-                  <button onclick={() => addArtifact(action)} type="button" class="text-xs text-blue-600 hover:text-blue-700">
+                  <button onclick={() => addArtifact(action)} type="button" class="text-xs text-primary-600 hover:text-primary-700">
                     + Add Artifact
                   </button>
                 </div>
@@ -462,9 +457,9 @@
                         value={artifact}
                         oninput={(e) => updateArtifact(action, artifactIndex, e.currentTarget.value)}
                         placeholder="/path/to/output/file"
-                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono"
                       />
-                      <button onclick={() => removeArtifact(action, artifactIndex)} type="button" class="text-gray-400 hover:text-red-600">
+                      <button onclick={() => removeArtifact(action, artifactIndex)} type="button" class="text-gray-400 hover:text-danger-600">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -474,7 +469,7 @@
                   {#if !action.artifacts || action.artifacts.length === 0}
                     <div class="text-center py-4 border-2 border-dashed border-gray-300 rounded-md">
                       <p class="text-sm text-gray-500 mb-2">No artifacts defined</p>
-                      <button onclick={() => addArtifact(action)} type="button" class="text-sm text-blue-600 hover:text-blue-700">
+                      <button onclick={() => addArtifact(action)} type="button" class="text-sm text-primary-600 hover:text-primary-700">
                         + Add your first artifact
                       </button>
                     </div>
@@ -488,7 +483,7 @@
               <input 
                 type="checkbox" 
                 bind:checked={action.approval}
-                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
               />
               <label class="ml-2 block text-sm text-gray-700">Require approval before execution</label>
             </div>
@@ -503,7 +498,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
         <p>No actions defined yet</p>
-        <button onclick={addAction} class="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
+        <button onclick={addAction} class="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium">
           Add your first action
         </button>
       </div>

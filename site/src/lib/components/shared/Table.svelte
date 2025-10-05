@@ -124,8 +124,8 @@
   {/if}
 
   {#if loading}
-    <div class="flex items-center justify-center h-64">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    <div class="flex items-center justify-center h-64" role="status" aria-live="polite">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" aria-hidden="true"></div>
       <span class="ml-3 text-gray-600">Loading...</span>
     </div>
   {:else if data.length === 0}
@@ -144,23 +144,25 @@
       <thead class="bg-gray-50">
         <tr>
           {#each columns as column}
-            <th 
+            <th
+              scope="col"
               class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider {column.width ? column.width : ''} {column.sortable ? 'cursor-pointer select-none hover:bg-gray-100' : ''}"
               onclick={() => handleSort(column)}
+              aria-sort={sortKey === column.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
             >
               <div class="flex items-center space-x-1">
                 <span>{column.header}</span>
                 {#if column.sortable}
-                  <div class="flex flex-col">
-                    <svg 
-                      class="w-3 h-3 {sortKey === column.key && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'}"
+                  <div class="flex flex-col" aria-hidden="true">
+                    <svg
+                      class="w-3 h-3 {sortKey === column.key && sortDirection === 'asc' ? 'text-primary-500' : 'text-gray-400'}"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
                       <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
                     </svg>
-                    <svg 
-                      class="w-3 h-3 -mt-1 {sortKey === column.key && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'}"
+                    <svg
+                      class="w-3 h-3 -mt-1 {sortKey === column.key && sortDirection === 'desc' ? 'text-primary-500' : 'text-gray-400'}"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -172,7 +174,7 @@
             </th>
           {/each}
           {#if actions.length > 0}
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
               Actions
             </th>
           {/if}
@@ -197,9 +199,10 @@
             {#if actions.length > 0}
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium w-32">
                 {#each actions as action}
-                  <button 
+                  <button
                     onclick={(e) => handleActionClick(action, row, e)}
-                    class="{action.className || 'text-blue-600 hover:text-blue-800'} mr-3"
+                    class="{action.className || 'text-primary-500 hover:text-primary-900'} mr-3"
+                    aria-label={action.label}
                   >
                     {action.label}
                   </button>

@@ -37,16 +37,16 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 </svelte:head>
 
-<div class="min-h-screen flex items-center justify-center bg-slate-50">
-  <div class="w-full max-w-md">
+<main class="min-h-screen flex items-center justify-center bg-slate-50">
+  <section class="w-full max-w-md">
     <Logo />
-    <LoginCard 
-      onSubmit={submit} 
-      {loading} 
+    <LoginCard
+      onSubmit={submit}
+      {loading}
       {error}
-      bind:username 
-      bind:password 
+      bind:username
+      bind:password
     />
     <Footer />
-  </div>
-</div>
+  </section>
+</main>

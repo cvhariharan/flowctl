@@ -2,16 +2,12 @@
   import { currentUser } from '$lib/stores/auth';
   import { apiClient } from '$lib/apiClient';
   import { handleInlineError } from '$lib/utils/errorHandling';
+  import { IconChevronDown } from '@tabler/icons-svelte';
 
   let userSettingsOpen = $state(false);
 
-  const getInitials = (name: string): string => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
+  const getUserInitials = (username: string): string => {
+    return username.charAt(0).toUpperCase();
   };
 
   const logout = async () => {
@@ -24,52 +20,56 @@
       window.location.href = '/login';
     }
   };
+
+  // Handle outside clicks
+  function handleOutsideClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.user-dropdown-container')) {
+      userSettingsOpen = false;
+    }
+  }
 </script>
 
+<svelte:window on:click={handleOutsideClick} />
+
 <!-- User Menu -->
-<div class="relative">
-  <button 
-    class="flex items-center space-x-3 cursor-pointer bg-transparent border-none p-0 m-0 text-left" 
+<div class="relative user-dropdown-container">
+  <button
+    type="button"
     onclick={() => userSettingsOpen = !userSettingsOpen}
+    class="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
     aria-label="User menu toggle"
   >
-    <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-      <span class="text-white text-sm font-medium">
-        {$currentUser ? getInitials($currentUser.name) : 'U'}
+    <div class="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0">
+      <span class="text-white font-semibold text-sm">
+        {$currentUser ? getUserInitials($currentUser.username) : 'U'}
       </span>
     </div>
-    <span class="text-gray-700 text-sm font-medium">
-      {$currentUser ? $currentUser.name : 'Loading...'}
-    </span>
-    <svg 
-      class="w-4 h-4 text-gray-500 transition-transform" 
-      class:rotate-180={userSettingsOpen}
-      fill="none" 
-      stroke="currentColor" 
-      viewBox="0 0 24 24"
-    >
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-    </svg>
+    <div class="ml-3 flex-1 text-left">
+      <div class="text-sm font-medium text-gray-900">{$currentUser?.username || 'Loading...'}</div>
+      <div class="text-xs text-gray-500 capitalize">{$currentUser?.role || ''}</div>
+    </div>
+    <IconChevronDown
+      class="text-gray-500 transition-transform flex-shrink-0 {userSettingsOpen ? 'rotate-180' : ''}"
+      size={16}
+    />
   </button>
-  
+
   <!-- Dropdown Menu -->
   {#if userSettingsOpen}
-    <div 
-      class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
+    <div
+      class="absolute bottom-full left-0 w-full mb-1 bg-white rounded-lg shadow-lg border border-gray-200"
       role="menu"
+      aria-label="User menu"
     >
       <div class="py-1">
-        <div class="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
-          <div class="font-medium">{$currentUser?.name || ''}</div>
-          <div class="text-gray-500">{$currentUser?.username || ''}</div>
-          <div class="text-xs text-gray-400">{$currentUser?.role || ''}</div>
-        </div>
-        <div class="border-t border-gray-100"></div>
-        <button 
+        <button
+          type="button"
           onclick={logout}
-          class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+          class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+          role="menuitem"
         >
-          Sign out
+          Logout
         </button>
       </div>
     </div>

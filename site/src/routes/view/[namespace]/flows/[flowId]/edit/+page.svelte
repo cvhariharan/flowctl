@@ -7,7 +7,7 @@
   import FlowInputs from '$lib/components/flow-create/FlowInputs.svelte';
   import FlowActions from '$lib/components/flow-create/FlowActions.svelte';
   import ValidationModal from '$lib/components/flow-create/ValidationModal.svelte';
-  import Stepper from '$lib/components/shared/Stepper.svelte';
+  import Tabs from '$lib/components/shared/Tabs.svelte';
   import SecretsTab from '$lib/components/secrets/SecretsTab.svelte';
   import type { PageData } from './$types';
   import type { FlowUpdateReq, FlowInputReq, FlowActionReq } from '$lib/types.js';
@@ -46,14 +46,14 @@
   // Executor configs for actions
   let executorConfigs = $state({} as Record<string, any>);
 
-  // Stepper state
-  let currentStep = $state('metadata');
+  // Tab state
+  let activeTab = $state('metadata');
 
-  const steps = [
-    { id: 'metadata', label: 'Metadata', description: 'Basic flow information' },
-    { id: 'inputs', label: 'Inputs', description: 'User input parameters' },
-    { id: 'actions', label: 'Actions', description: 'Workflow execution steps' },
-    { id: 'secrets', label: 'Secrets', description: 'Encrypted values' } // Always enabled in edit mode
+  const tabs = [
+    { id: 'metadata', label: 'Metadata' },
+    { id: 'inputs', label: 'Inputs' },
+    { id: 'actions', label: 'Actions' },
+    { id: 'secrets', label: 'Secrets' } // Always enabled in edit mode
   ];
 
   onMount(async () => {
@@ -217,23 +217,20 @@
 <div class="flex h-screen bg-gray-50">
   <!-- Main Content -->
   <div class="flex-1 flex flex-col overflow-hidden">
-    <Header 
+    <Header
       breadcrumbs={[
         { label: namespace, url: `/view/${namespace}/flows` },
         { label: 'Flows', url: `/view/${namespace}/flows` },
         { label: flow.metadata.name || 'Loading...', url: `/view/${namespace}/flows/${flowId}` },
         { label: 'Edit' }
       ]}
-      actions={[
-        { label: 'Cancel', onClick: () => goto(`/view/${namespace}/flows/${flowId}`), variant: 'secondary' }
-      ]}
     />
 
     <!-- Page Content -->
-    <div class="flex-1 overflow-y-auto">
-      <div class="max-w-6xl mx-auto p-6">
+    <div class="flex-1 overflow-y-auto bg-gray-50">
+      <div class="max-w-6xl mx-auto px-6 py-8">
         {#if loading}
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+          <div class="bg-white rounded-lg shadow border border-gray-200 p-8">
             <div class="animate-pulse">
               <div class="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
               <div class="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
@@ -241,50 +238,61 @@
             </div>
           </div>
         {:else}
-          <!-- Stepper Navigation -->
-          <Stepper bind:currentStep {steps} />
+          <!-- Page Title -->
+          <div class="mb-8">
+            <h1 class="text-2xl font-bold text-gray-900">Edit Flow</h1>
+            <p class="mt-1 text-sm text-gray-600">Update workflow configuration for {flow.metadata.name}</p>
+          </div>
 
-          <!-- Step Content -->
-          {#if currentStep === 'metadata'}
-            <FlowMetadata bind:metadata={flow.metadata} inputs={flow.inputs} readonly={true} />
-          {:else if currentStep === 'inputs'}
-            <FlowInputs bind:inputs={flow.inputs} {addInput} />
-          {:else if currentStep === 'actions'}
-            <FlowActions 
-              bind:actions={flow.actions} 
-              {addAction} 
-              {availableExecutors}
-              bind:executorConfigs={executorConfigs}
-            />
-          {:else if currentStep === 'secrets'}
-            <SecretsTab 
-              {namespace} 
-              {flowId}
-            />
-          {/if}
-          
-          <!-- Submit Button at Bottom (only show on non-secrets steps) -->
-          {#if currentStep !== 'secrets'}
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
-              <div class="flex justify-end space-x-3">
-                <button 
+          <!-- Main Card -->
+          <div class="bg-white rounded-lg shadow border border-gray-200">
+            <!-- Tab Navigation -->
+            <div class="border-b border-gray-200">
+              <Tabs bind:activeTab {tabs} />
+            </div>
+
+            <!-- Tab Content -->
+            <div class="p-6">
+              {#if activeTab === 'metadata'}
+                <FlowMetadata bind:metadata={flow.metadata} inputs={flow.inputs} readonly={true} />
+              {:else if activeTab === 'inputs'}
+                <FlowInputs bind:inputs={flow.inputs} {addInput} />
+              {:else if activeTab === 'actions'}
+                <FlowActions
+                  bind:actions={flow.actions}
+                  {addAction}
+                  {availableExecutors}
+                  bind:executorConfigs={executorConfigs}
+                />
+              {:else if activeTab === 'secrets'}
+                <SecretsTab
+                  {namespace}
+                  {flowId}
+                />
+              {/if}
+            </div>
+
+            <!-- Action Buttons (only show on non-secrets tabs) -->
+            {#if activeTab !== 'secrets'}
+              <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+                <button
                   type="button"
                   onclick={() => goto(`/view/${namespace}/flows/${flowId}`)}
-                  class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-400"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="button"
                   onclick={updateFlow}
                   disabled={saving}
-                  class="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-6 py-2 text-sm font-medium text-white bg-primary-500 border border-transparent rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-400 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? 'Updating...' : 'Update Flow'}
                 </button>
               </div>
-            </div>
-          {/if}
+            {/if}
+          </div>
         {/if}
       </div>
     </div>

@@ -42,9 +42,9 @@
     
     switch (status) {
       case 'completed':
-        return 'bg-blue-600 text-white border-blue-600';
+        return 'bg-primary-500 text-white border-primary-500';
       case 'current':
-        return 'bg-blue-600 text-white border-blue-600';
+        return 'bg-primary-500 text-white border-primary-500';
       case 'disabled':
         return 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed';
       default: // upcoming
@@ -54,9 +54,9 @@
 
   const getConnectorClasses = (index: number) => {
     const currentIndex = getCurrentStepIndex();
-    
+
     if (index < currentIndex) {
-      return 'bg-blue-600';
+      return 'bg-primary-500';
     }
     return 'bg-gray-300';
   };
@@ -141,7 +141,7 @@
             type="button"
             onclick={() => handleStepClick(step, index)}
             disabled={!clickable}
-            class="group flex items-center w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg p-2 {clickable ? 'hover:bg-gray-50' : ''}"
+            class="group flex items-center w-full focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg p-2 {clickable ? 'hover:bg-gray-50' : ''}"
             aria-current={status === 'current' ? 'step' : undefined}
           >
             <!-- Step number/icon -->
@@ -184,7 +184,7 @@
       type="button"
       onclick={goPrevious}
       disabled={!canGoPrevious()}
-      class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+      class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -200,7 +200,7 @@
       type="button"
       onclick={goNext}
       disabled={!canGoNext()}
-      class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+      class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-500 border border-transparent rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       Next
       <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -42,13 +42,13 @@
 
     switch (status) {
       case 'failed':
-        return `${baseClasses} ${sizeClasses[size]} bg-red-50 border-red-500`;
+        return `${baseClasses} ${sizeClasses[size]} bg-danger-50 border-danger-500`;
       case 'completed':
-        return `${baseClasses} ${sizeClasses[size]} bg-green-50 border-green-500`;
+        return `${baseClasses} ${sizeClasses[size]} bg-success-50 border-success-500`;
       case 'running':
-        return `${baseClasses} ${sizeClasses[size]} bg-blue-50 border-blue-500`;
+        return `${baseClasses} ${sizeClasses[size]} bg-primary-50 border-primary-500`;
       case 'awaiting_approval':
-        return `${baseClasses} ${sizeClasses[size]} bg-yellow-50 border-yellow-500`;
+        return `${baseClasses} ${sizeClasses[size]} bg-warning-50 border-warning-500`;
       case 'cancelled':
         return `${baseClasses} ${sizeClasses[size]} bg-gray-100 border-gray-400`;
       default:
@@ -57,7 +57,7 @@
   };
 
   const getIconClasses = (status: StepStatus) => {
-    const baseClasses = 'rounded-full flex items-center justify-center text-white';
+    const baseClasses = 'rounded-full flex items-center justify-center';
     const sizeClasses = {
       sm: 'w-5 h-5 text-xs',
       md: 'w-6 h-6 text-sm',
@@ -66,17 +66,17 @@
 
     switch (status) {
       case 'failed':
-        return `${baseClasses} ${sizeClasses[size]} bg-red-500`;
+        return `${baseClasses} ${sizeClasses[size]} bg-danger-500 text-danger-900`;
       case 'completed':
-        return `${baseClasses} ${sizeClasses[size]} bg-green-500`;
+        return `${baseClasses} ${sizeClasses[size]} bg-success-500 text-success-900`;
       case 'running':
-        return `${baseClasses} ${sizeClasses[size]} bg-blue-500 animate-pulse`;
+        return `${baseClasses} ${sizeClasses[size]} bg-primary-500 text-primary-900 animate-pulse`;
       case 'awaiting_approval':
-        return `${baseClasses} ${sizeClasses[size]} bg-yellow-500`;
+        return `${baseClasses} ${sizeClasses[size]} bg-warning-500 text-primary-900`;
       case 'cancelled':
-        return `${baseClasses} ${sizeClasses[size]} bg-gray-500`;
+        return `${baseClasses} ${sizeClasses[size]} bg-gray-500 text-gray-900`;
       default:
-        return `${baseClasses} ${sizeClasses[size]} bg-gray-400`;
+        return `${baseClasses} ${sizeClasses[size]} bg-gray-400 text-gray-900`;
     }
   };
 
@@ -124,7 +124,7 @@
     const sizeClasses = orientation === 'horizontal' ? 'w-4' : 'h-4';
     
     const colorClasses = currentStatus === 'completed' 
-      ? 'bg-green-500' 
+      ? 'bg-success-500' 
       : 'bg-gray-300';
 
     return `${baseClasses} ${sizeClasses} ${colorClasses}`;

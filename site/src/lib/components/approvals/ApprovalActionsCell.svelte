@@ -19,15 +19,15 @@
 
 <div class="flex space-x-2">
   {#if row.status === 'pending'}
-    <button 
+    <button
       onclick={() => handleApprove(row.id)}
-      class="text-green-600 hover:text-green-800"
+      class="text-success-600 hover:text-success-800"
     >
       Approve
     </button>
-    <button 
+    <button
       onclick={() => handleReject(row.id)}
-      class="text-red-600 hover:text-red-800"
+      class="text-danger-600 hover:text-danger-800"
     >
       Reject
     </button>

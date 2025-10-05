@@ -43,8 +43,8 @@
 			sortable: true,
 			render: (_value: any, node: NodeResp) => `
 				<div class="flex items-center">
-					<div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-						<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center mr-3">
+						<svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2 4h.01M17 16h.01"></path>
 						</svg>
 					</div>
@@ -64,9 +64,9 @@
 			sortable: true,
 			render: (_value: any, node: NodeResp) => `
 				<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-					node.os_family === 'linux' 
-						? 'bg-green-100 text-green-800' 
-						: 'bg-blue-100 text-blue-800'
+					node.os_family === 'linux'
+						? 'bg-success-100 text-success-800'
+						: 'bg-primary-100 text-primary-800'
 				}">${node.os_family}</span>
 			`
 		},
@@ -87,12 +87,12 @@
 		{
 			label: 'Edit',
 			onClick: (node: NodeResp) => handleEdit(node.id),
-			className: 'text-blue-600 hover:text-blue-800'
+			className: 'text-primary-600 hover:text-primary-800'
 		},
 		{
 			label: 'Delete',
 			onClick: (node: NodeResp) => handleDelete(node.id),
-			className: 'text-red-600 hover:text-red-800'
+			className: 'text-danger-600 hover:text-danger-800'
 		}
 	];
 
@@ -266,7 +266,7 @@
 			value={stats.ssh_hosts}
 			IconComponent={IconServer}
 		iconSize={24}
-			color="purple"
+			color="blue"
 		/>
 	</div>
 

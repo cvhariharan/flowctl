@@ -110,8 +110,8 @@
       sortable: true,
       render: (value: string, row: FlowListItem) => `
         <div class="flex items-center">
-          <div class="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center">
-            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex-shrink-0 h-8 w-8 bg-primary-100 rounded-lg flex items-center justify-center">
+            <svg class="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
             </svg>
           </div>
@@ -164,7 +164,7 @@
       actionsList.push({
         label: "Edit",
         onClick: (row: FlowListItem) => goToEditFlow(row.slug),
-        className: "text-blue-600 hover:text-blue-700 transition-colors cursor-pointer",
+        className: "text-primary-600 hover:text-primary-700 transition-colors cursor-pointer",
       });
     }
 
@@ -172,7 +172,7 @@
       actionsList.push({
         label: "Delete",
         onClick: (row: FlowListItem) => handleDeleteFlow(row),
-        className: "text-red-600 hover:text-red-700 transition-colors cursor-pointer",
+        className: "text-danger-600 hover:text-danger-700 transition-colors cursor-pointer",
       });
     }
 
@@ -205,7 +205,7 @@
       <PageHeader title="Flows" subtitle="Manage and run your workflows" />
       {#if permissions.canCreate}
         <button
-          class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-500 border border-transparent rounded-md shadow-sm hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-400"
           onclick={() => goto(`/view/${page.params.namespace}/flows/create`)}
         >
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

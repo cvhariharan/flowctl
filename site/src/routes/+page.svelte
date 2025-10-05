@@ -30,7 +30,7 @@
 
 <div class="min-h-screen flex items-center justify-center bg-gray-50">
   <div class="text-center">
-    <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-lg bg-blue-500">
+    <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-lg bg-primary-500">
       <span class="text-2xl font-bold text-white">F</span>
     </div>
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Flowctl</h1>

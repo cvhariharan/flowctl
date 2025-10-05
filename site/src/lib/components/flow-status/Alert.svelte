@@ -28,44 +28,44 @@
 
   const getAlertClasses = (alertType: AlertType) => {
     const baseClasses = 'rounded-lg border p-6';
-    
+
     switch (alertType) {
       case 'success':
-        return `${baseClasses} bg-green-50 border-green-200`;
+        return `${baseClasses} bg-success-50 border-success-100`;
       case 'warning':
-        return `${baseClasses} bg-yellow-50 border-yellow-200`;
+        return `${baseClasses} bg-warning-50 border-warning-100`;
       case 'error':
-        return `${baseClasses} bg-red-50 border-red-200`;
+        return `${baseClasses} bg-danger-50 border-danger-100`;
       default:
-        return `${baseClasses} bg-blue-50 border-blue-200`;
+        return `${baseClasses} bg-info-50 border-info-100`;
     }
   };
 
   const getIconClasses = (alertType: AlertType) => {
     const baseClasses = 'h-5 w-5';
-    
+
     switch (alertType) {
       case 'success':
-        return `${baseClasses} text-green-400`;
+        return `${baseClasses} text-success-500`;
       case 'warning':
-        return `${baseClasses} text-yellow-400`;
+        return `${baseClasses} text-warning-500`;
       case 'error':
-        return `${baseClasses} text-red-400`;
+        return `${baseClasses} text-danger-500`;
       default:
-        return `${baseClasses} text-blue-400`;
+        return `${baseClasses} text-info-500`;
     }
   };
 
   const getTextClasses = (alertType: AlertType) => {
     switch (alertType) {
       case 'success':
-        return { title: 'text-green-800', message: 'text-green-700' };
+        return { title: 'text-success-900', message: 'text-success-800' };
       case 'warning':
-        return { title: 'text-yellow-800', message: 'text-yellow-700' };
+        return { title: 'text-warning-900', message: 'text-warning-800' };
       case 'error':
-        return { title: 'text-red-800', message: 'text-red-700' };
+        return { title: 'text-danger-900', message: 'text-danger-800' };
       default:
-        return { title: 'text-blue-800', message: 'text-blue-700' };
+        return { title: 'text-info-900', message: 'text-info-800' };
     }
   };
 
@@ -84,28 +84,28 @@
 
   const getButtonClasses = (alertType: AlertType, primary: boolean = false) => {
     const baseClasses = 'inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors';
-    
+
     if (primary) {
       switch (alertType) {
         case 'success':
-          return `${baseClasses} bg-green-600 text-white hover:bg-green-700`;
+          return `${baseClasses} bg-success-500 text-white hover:bg-success-600`;
         case 'warning':
-          return `${baseClasses} bg-yellow-600 text-white hover:bg-yellow-700`;
+          return `${baseClasses} bg-warning-500 text-white hover:bg-warning-600`;
         case 'error':
-          return `${baseClasses} bg-red-600 text-white hover:bg-red-700`;
+          return `${baseClasses} bg-danger-500 text-white hover:bg-danger-600`;
         default:
-          return `${baseClasses} bg-blue-600 text-white hover:bg-blue-700`;
+          return `${baseClasses} bg-info-500 text-white hover:bg-info-600`;
       }
     } else {
       switch (alertType) {
         case 'success':
-          return `${baseClasses} bg-green-100 text-green-800 hover:bg-green-200`;
+          return `${baseClasses} bg-success-100 text-success-900 hover:bg-success-200`;
         case 'warning':
-          return `${baseClasses} bg-yellow-100 text-yellow-800 hover:bg-yellow-200`;
+          return `${baseClasses} bg-warning-100 text-warning-900 hover:bg-warning-200`;
         case 'error':
-          return `${baseClasses} bg-red-100 text-red-800 hover:bg-red-200`;
+          return `${baseClasses} bg-danger-100 text-danger-900 hover:bg-danger-200`;
         default:
-          return `${baseClasses} bg-blue-100 text-blue-800 hover:bg-blue-200`;
+          return `${baseClasses} bg-info-100 text-info-900 hover:bg-info-200`;
       }
     }
   };

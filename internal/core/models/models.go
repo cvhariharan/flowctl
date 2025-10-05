@@ -27,9 +27,10 @@ const (
 )
 
 type StreamMessage struct {
-	ActionID string      `json:"action_id"`
-	MType    MessageType `json:"message_type"`
-	Val      []byte      `json:"value"`
+	ActionID  string      `json:"action_id"`
+	MType     MessageType `json:"message_type"`
+	Val       []byte      `json:"value"`
+	Timestamp string      `json:"timestamp"`
 }
 
 func (s StreamMessage) MarshalBinary() ([]byte, error) {
@@ -42,6 +43,9 @@ func (s StreamMessage) MarshalBinary() ([]byte, error) {
 		return nil, err
 	}
 	if err := gob.NewEncoder(&buf).Encode(s.Val); err != nil {
+		return nil, err
+	}
+	if err := gob.NewEncoder(&buf).Encode(s.Timestamp); err != nil {
 		return nil, err
 	}
 
@@ -58,6 +62,9 @@ func (s *StreamMessage) UnmarshalBinary(data []byte) error {
 		return err
 	}
 	if err := gob.NewDecoder(buf).Decode(&s.Val); err != nil {
+		return err
+	}
+	if err := gob.NewDecoder(buf).Decode(&s.Timestamp); err != nil {
 		return err
 	}
 

@@ -119,8 +119,8 @@
 			<!-- Modal header -->
 			<div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
 				<div class="flex items-center space-x-3">
-					<div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-						<svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<div class="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
+						<svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
 						</svg>
 					</div>
@@ -141,14 +141,14 @@
 			<div class="px-6 py-4 overflow-y-auto max-h-[calc(90vh-140px)]">
 				{#if loading}
 					<div class="flex items-center justify-center py-8">
-						<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+						<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
 					</div>
 				{:else if error}
 					<div class="text-center py-8">
-						<div class="text-red-600 mb-2">{error}</div>
+						<div class="text-danger-600 mb-2">{error}</div>
 						<button
 							onclick={fetchApprovalDetails}
-							class="text-blue-600 hover:text-blue-800 underline"
+							class="text-primary-600 hover:text-primary-800 underline"
 						>
 							Try again
 						</button>
@@ -201,10 +201,10 @@
 								<button
 									onclick={handleReject}
 									disabled={actionLoading}
-									class="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100 focus:ring-4 focus:ring-red-300 disabled:opacity-50"
+									class="px-4 py-2 text-sm font-medium text-danger-700 bg-danger-50 border border-danger-300 rounded-lg hover:bg-danger-100 focus:ring-4 focus:ring-danger-300 disabled:opacity-50"
 								>
 									{#if actionLoading}
-										<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-red-700 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+										<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-danger-700 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
 											<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 											<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
 										</svg>
@@ -214,7 +214,7 @@
 								<button
 									onclick={handleApprove}
 									disabled={actionLoading}
-									class="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300 disabled:opacity-50"
+									class="px-4 py-2 text-sm font-medium text-white bg-success-600 border border-transparent rounded-lg hover:bg-success-700 focus:ring-4 focus:ring-success-300 disabled:opacity-50"
 								>
 									{#if actionLoading}
 										<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

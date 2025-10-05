@@ -101,10 +101,11 @@ type FlowInputValidationError struct {
 }
 
 type FlowLogResp struct {
-	ActionID string            `json:"action_id"`
-	MType    string            `json:"message_type"`
-	Value    string            `json:"value"`
-	Results  map[string]string `json:"results,omitempty"`
+	ActionID  string            `json:"action_id"`
+	MType     string            `json:"message_type"`
+	Value     string            `json:"value"`
+	Timestamp string            `json:"timestamp"`
+	Results   map[string]string `json:"results,omitempty"`
 }
 
 type PaginateRequest struct {

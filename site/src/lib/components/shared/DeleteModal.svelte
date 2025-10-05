@@ -55,8 +55,8 @@
 		role="document"
 	>
 		<div class="flex items-center mb-4">
-			<div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-4">
-				<IconAlertTriangle class="text-2xl text-red-600" size={24} />
+			<div class="w-12 h-12 bg-danger-100 rounded-lg flex items-center justify-center mr-4">
+				<IconAlertTriangle class="text-2xl text-danger-600" size={24} />
 			</div>
 			<div>
 				<h3 class="text-lg font-semibold text-gray-900">
@@ -88,7 +88,7 @@
 			<button
 				onclick={handleConfirm}
 				disabled={deleting}
-				class="px-5 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+				class="px-5 py-2.5 text-sm font-medium text-white bg-danger-500 rounded-lg hover:bg-danger-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
 			>
 				{#if deleting}
 					<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

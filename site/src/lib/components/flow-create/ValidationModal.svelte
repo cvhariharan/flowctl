@@ -21,15 +21,15 @@
     <div class="bg-white rounded-xl p-6 max-w-2xl w-full mx-4">
       <div class="flex items-center mb-4">
         <div 
-          class="w-12 h-12 rounded-full flex items-center justify-center mr-4 {validationResult.success ? 'bg-green-100' : 'bg-red-100'}"
+          class="w-12 h-12 rounded-full flex items-center justify-center mr-4 {validationResult.success ? 'bg-success-100' : 'bg-danger-100'}"
         >
           {#if validationResult.success}
-            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           {:else}
-            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6 text-danger-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -49,7 +49,7 @@
         <div class="space-y-2 mb-4">
           {#each validationResult.errors as error}
             <div class="flex items-start gap-2 text-sm">
-              <svg class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4 text-danger-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>

@@ -91,7 +91,7 @@
 					<label class="block mb-1 font-medium text-gray-900">Credential Name *</label>
 					<input 
 						type="text" 
-						class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
+						class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5" 
 						bind:value={formData.name}
 						placeholder="my-ssh-key"
 						required 
@@ -103,7 +103,7 @@
 				<div>
 					<label class="block mb-1 font-medium text-gray-900">Type *</label>
 					<select 
-						class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
+						class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5" 
 						bind:value={formData.key_type}
 						required
 						disabled={loading}
@@ -135,7 +135,7 @@
 					<label class="block mb-1 font-medium text-gray-900">Password *</label>
 					<input 
 						type="password" 
-						class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+						class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5"
 						bind:value={formData.key_data}
 						placeholder="Enter password"
 						required
@@ -154,9 +154,9 @@
 				>
 					Cancel
 				</button>
-				<button 
-					type="submit" 
-					class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 disabled:opacity-50" 
+				<button
+					type="submit"
+					class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 focus:ring-4 focus:outline-none focus:ring-primary-300 disabled:opacity-50"
 					disabled={loading}
 				>
 					{#if loading}

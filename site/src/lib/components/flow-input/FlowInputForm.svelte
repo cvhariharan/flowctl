@@ -56,8 +56,8 @@
 
   <form onsubmit={submit} class="p-6 space-y-6">
     {#if errors.general}
-      <div class="p-3 rounded-md bg-red-50 border border-red-200">
-        <div class="text-sm text-red-700">{errors.general}</div>
+      <div class="p-3 rounded-md bg-danger-50 border border-danger-200">
+        <div class="text-sm text-danger-700">{errors.general}</div>
       </div>
     {/if}
 
@@ -71,7 +71,7 @@
         </label>
 
         {#if errors[input.name]}
-          <p class="text-sm text-red-600 mb-2">{errors[input.name]}</p>
+          <p class="text-sm text-danger-600 mb-2">{errors[input.name]}</p>
         {/if}
 
         {#if input.type === 'string' || input.type === 'number'}
@@ -81,7 +81,7 @@
             name={input.name}
             placeholder={input.description || ''}
             required={input.required}
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
         {:else if input.type === 'checkbox'}
           <div class="flex items-center">
@@ -90,7 +90,7 @@
               id={input.name}
               name={input.name}
               value="true"
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
             />
           </div>
         {:else if input.type === 'select' && input.options}
@@ -98,7 +98,7 @@
             id={input.name}
             name={input.name}
             required={input.required}
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           >
             <option value="">Select an option</option>
             {#each input.options as option}
@@ -112,7 +112,7 @@
               id={input.name}
               name={input.name}
               required={input.required}
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
             />
           </div>
         {:else}
@@ -123,7 +123,7 @@
             name={input.name}
             placeholder={input.description || ''}
             required={input.required}
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
         {/if}
 
@@ -144,7 +144,7 @@
       <button
         type="submit"
         disabled={loading}
-        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 transition-colors disabled:opacity-50"
       >
         {#if loading}
           <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

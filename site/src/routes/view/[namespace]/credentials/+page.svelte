@@ -43,12 +43,12 @@
 			render: (_value: any, credential: CredentialResp) => `
 				<div class="flex items-center">
 					<div class="w-10 h-10 rounded-lg flex items-center justify-center mr-3 ${
-						credential.key_type === 'private_key' ? 'bg-green-100' : 'bg-yellow-100'
+						credential.key_type === 'private_key' ? 'bg-success-100' : 'bg-warning-100'
 					}">
 						${
-							credential.key_type === 'private_key' 
-								? '<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>'
-								: '<svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>'
+							credential.key_type === 'private_key'
+								? '<svg class="w-5 h-5 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>'
+								: '<svg class="w-5 h-5 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>'
 						}
 					</div>
 					<div>
@@ -64,9 +64,9 @@
 			sortable: true,
 			render: (_value: any, credential: CredentialResp) => `
 				<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-					credential.key_type === 'private_key' 
-						? 'bg-green-100 text-green-800' 
-						: 'bg-yellow-100 text-yellow-800'
+					credential.key_type === 'private_key'
+						? 'bg-success-100 text-success-800'
+						: 'bg-warning-100 text-warning-800'
 				}">${credential.key_type === 'private_key' ? 'SSH Key' : 'Password'}</span>
 			`
 		},
@@ -85,7 +85,7 @@
 			actionsList.push({
 				label: 'Edit',
 				onClick: (credential: CredentialResp) => handleEdit(credential.id),
-				className: 'text-blue-600 hover:text-blue-800'
+				className: 'text-primary-600 hover:text-primary-800'
 			});
 		}
 		
@@ -93,7 +93,7 @@
 			actionsList.push({
 				label: 'Delete',
 				onClick: (credential: CredentialResp) => handleDelete(credential.id),
-				className: 'text-red-600 hover:text-red-800'
+				className: 'text-danger-600 hover:text-danger-800'
 			});
 		}
 		

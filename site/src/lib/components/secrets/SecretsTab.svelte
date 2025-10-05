@@ -113,7 +113,7 @@
 		{#if flowId && !disabled}
 			<button
 				onclick={openCreateModal}
-				class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+				class="px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
 			>
 				Add Secret
 			</button>
@@ -145,7 +145,7 @@
 				<div class="mt-6">
 					<button
 						onclick={openCreateModal}
-						class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+						class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-500 hover:bg-primary-600"
 					>
 						Add Secret
 					</button>
@@ -184,7 +184,7 @@
 							<button
 								onclick={() => openEditModal(secret)}
 								disabled={disabled}
-								class="text-blue-600 hover:text-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+								class="text-primary-600 hover:text-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
 								title="Edit secret"
 							>
 								<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -194,7 +194,7 @@
 							<button
 								onclick={() => openDeleteModal(secret)}
 								disabled={disabled}
-								class="text-red-600 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+								class="text-danger-600 hover:text-danger-500 disabled:opacity-50 disabled:cursor-not-allowed"
 								title="Delete secret"
 							>
 								<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

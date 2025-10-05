@@ -87,7 +87,7 @@
 						bind:value={formData.key}
 						required
 						disabled={loading}
-						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
 						placeholder="SECRET_KEY"
 					/>
 				</div>
@@ -103,7 +103,7 @@
 						bind:value={formData.value}
 						required
 						disabled={loading}
-						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
 						placeholder="Enter secret value"
 					/>
 				</div>
@@ -118,7 +118,7 @@
 						bind:value={formData.description}
 						disabled={loading}
 						rows="3"
-						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
 						placeholder="Optional description"
 					></textarea>
 				</div>
@@ -136,7 +136,7 @@
 					<button
 						type="submit"
 						disabled={loading || !formData.key || !formData.value}
-						class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+						class="px-4 py-2 bg-primary-500 text-white rounded hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
 					>
 						{loading ? 'Saving...' : isEditMode ? 'Update' : 'Create'}
 					</button>

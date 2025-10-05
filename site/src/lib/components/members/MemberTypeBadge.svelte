@@ -4,6 +4,6 @@
   const isUser = value === 'user';
 </script>
 
-<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {isUser ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {isUser ? 'bg-info-100 text-info-900' : 'bg-primary-100 text-primary-900'}">
   {isUser ? 'User' : 'Group'}
 </span>

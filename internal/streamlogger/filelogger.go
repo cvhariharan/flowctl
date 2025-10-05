@@ -249,7 +249,10 @@ func (f *FileLogManager) followActiveFile(ctx context.Context, filePath string, 
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-syncCh:
-			// logger is closed
+			// logger is closed, drain remaining lines
+			for line := range t.Lines {
+				logCh <- line.Text
+			}
 			return nil
 		case line := <-t.Lines:
 			logCh <- line.Text
@@ -409,8 +412,10 @@ func (fl *FileLogger) rotateFile() error {
 
 func (fl *FileLogger) Close() error {
 	fl.runOnce.Do(func() {
-		close(fl.syncCh)
 		fl.flushTicker.Stop()
+		// Flush any pending data to file
+		fl.filesync()
+		close(fl.syncCh)
 	})
 	f := fl.currentFile.Load()
 	return f.Close()
@@ -434,6 +439,7 @@ func (fl *FileLogger) Write(p []byte) (int, error) {
 func (fl *FileLogger) Checkpoint(id string, val interface{}, mtype MessageType) error {
 	var sm StreamMessage
 	sm.ActionID = id
+	sm.Timestamp = time.Now().Format(time.RFC3339)
 	switch mtype {
 	case ErrMessageType:
 		e, ok := val.(string)
@@ -443,6 +449,7 @@ func (fl *FileLogger) Checkpoint(id string, val interface{}, mtype MessageType) 
 		sm.MType = ErrMessageType
 		sm.Val = []byte(e)
 	case ResultMessageType:
+		log.Printf("DEBUG____LOG result %+v", val)
 		r, ok := val.(map[string]string)
 		if !ok {
 			return fmt.Errorf("expected map[string]string type got %T in stream checkpoint", val)
@@ -494,26 +501,30 @@ func (fl *FileLogger) sync() error {
 		case <-fl.syncCh:
 			return nil
 		case <-fl.flushTicker.C:
-			// Check if rotation is needed before acquiring any locks
-			if fl.maxSize > 0 && fl.writtenCount > fl.maxSize {
-				if err := fl.rotateFile(); err != nil {
-					return err
-				}
-				fl.writtenCount = 0
-			}
-
-			// Now copy buffer contents to file
-			fl.bufferMut.Lock()
-			n, err := io.Copy(fl.currentFile.Load(), fl.buffer)
-			fl.writtenCount += n
-			fl.buffer.Reset()
-			if err != nil {
-				fl.bufferMut.Unlock()
-				return err
-			}
-			fl.bufferMut.Unlock()
-
-			fl.currentFile.Load().Sync()
+			fl.filesync()
 		}
 	}
+}
+
+func (fl *FileLogger) filesync() error {
+	// Check if rotation is needed before acquiring any locks
+	if fl.maxSize > 0 && fl.writtenCount > fl.maxSize {
+		if err := fl.rotateFile(); err != nil {
+			return err
+		}
+		fl.writtenCount = 0
+	}
+
+	// Now copy buffer contents to file
+	fl.bufferMut.Lock()
+	n, err := io.Copy(fl.currentFile.Load(), fl.buffer)
+	fl.writtenCount += n
+	fl.buffer.Reset()
+	if err != nil {
+		fl.bufferMut.Unlock()
+		return err
+	}
+	fl.bufferMut.Unlock()
+
+	return fl.currentFile.Load().Sync()
 }

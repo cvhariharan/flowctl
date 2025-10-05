@@ -105,7 +105,7 @@
       oninput={handleInput}
       onfocus={handleFocus}
       {placeholder}
-      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10"
+      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 pr-10"
       autocomplete="off"
       {disabled}
     />
@@ -136,8 +136,8 @@
                 onkeydown={(e) => e.key === 'Enter' && selectGroup(group)}
               >
                 <div class="flex items-center">
-                  <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 bg-purple-100">
-                    <IconUsersGroup class="text-purple-600" size={16} />
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 bg-primary-50">
+                    <IconUsersGroup class="text-primary-500" size={16} />
                   </div>
                   <div>
                     <div class="text-sm font-medium text-gray-900">{group.name}</div>
@@ -160,13 +160,13 @@
   {#if selectedGroups.length > 0}
     <div class="mt-2 flex flex-wrap gap-1">
       {#each selectedGroups as group (group.id)}
-        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-900">
           {group.name}
           {#if !disabled}
             <button
               type="button"
               onclick={() => removeGroup(group.id)}
-              class="ml-1 text-blue-600 hover:text-blue-800"
+              class="ml-1 text-primary-500 hover:text-primary-900"
               aria-label="Remove {group.name}"
             >
               <IconX size={12} />

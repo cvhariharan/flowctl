@@ -28,26 +28,20 @@
 </script>
 
 <!-- Flow Inputs Section -->
-<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-  <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-between">
-    <span class="flex items-center gap-2">
-      <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-      </svg>
-      Flow Inputs
-    </span>
-    <button onclick={addInput} class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+<div>
+  <div class="flex items-center justify-between mb-6">
+    <h3 class="text-base font-medium text-gray-900">Flow Inputs</h3>
+    <button onclick={addInput} class="text-sm text-primary-600 hover:text-primary-700 font-medium">
       + Add Input
     </button>
-  </h2>
+  </div>
 
   <div class="space-y-4">
     {#each inputs as input, index (index)}
       <div class="border border-gray-200 rounded-lg p-4 relative">
         <button 
           onclick={() => removeInput(index)}
-          class="absolute top-4 right-4 text-gray-400 hover:text-red-600"
+          class="absolute top-4 right-4 text-gray-400 hover:text-danger-600"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -61,7 +55,7 @@
               type="text" 
               bind:value={input.name}
               oninput={(e) => input.name = sanitizeName(e.currentTarget.value)}
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
               placeholder="input_name"
             />
           </div>
@@ -70,7 +64,7 @@
             <select 
               bind:value={input.type} 
               onchange={() => onInputTypeChange(input)}
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
             >
               <option value="string">String</option>
               <option value="number">Number</option>
@@ -86,7 +80,7 @@
             <input 
               type="text" 
               bind:value={input.label}
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
               placeholder="Display Label"
             />
           </div>
@@ -95,7 +89,7 @@
             <input 
               type="text" 
               bind:value={input.description}
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
               placeholder="Help text for this input"
             />
           </div>
@@ -104,7 +98,7 @@
             <input 
               type="text" 
               bind:value={input.default}
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
               placeholder="Default value"
             />
           </div>
@@ -121,7 +115,7 @@
             <input 
               type="checkbox" 
               bind:checked={input.required}
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
             />
             <label class="ml-2 block text-sm text-gray-700">Required</label>
           </div>
@@ -134,7 +128,7 @@
             <textarea 
               bind:value={input.optionsText} 
               oninput={() => updateOptions(input)}
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono h-20"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono h-20"
               placeholder="option1&#10;option2&#10;option3"
             ></textarea>
           </div>
@@ -149,7 +143,7 @@
             d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
         <p>No inputs defined yet</p>
-        <button onclick={addInput} class="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
+        <button onclick={addInput} class="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium">
           Add your first input
         </button>
       </div>

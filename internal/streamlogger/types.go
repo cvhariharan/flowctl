@@ -40,9 +40,10 @@ const (
 )
 
 type StreamMessage struct {
-	ActionID string      `json:"action_id"`
-	MType    MessageType `json:"message_type"`
-	Val      []byte      `json:"-"`
+	ActionID  string      `json:"action_id"`
+	MType     MessageType `json:"message_type"`
+	Val       []byte      `json:"-"`
+	Timestamp string      `json:"timestamp"`
 }
 
 func (s StreamMessage) MarshalJSON() ([]byte, error) {

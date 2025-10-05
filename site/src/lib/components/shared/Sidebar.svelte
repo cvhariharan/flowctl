@@ -18,6 +18,7 @@
     IconClock,
     IconSettings
   } from '@tabler/icons-svelte';
+  import UserDropdown from './UserDropdown.svelte';
 
   let { namespace }: {namespace: string} = $props();
 
@@ -195,28 +196,28 @@
 <svelte:window on:click={handleOutsideClick} />
 
 <!-- Sidebar Navigation -->
-<div class="w-60 bg-slate-800 flex flex-col">
+<nav class="w-60 bg-white border-r border-gray-200 flex flex-col" aria-label="Main navigation">
   <!-- Logo -->
   <div class="flex items-center px-6 py-6">
-    <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+    <div class="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center" aria-hidden="true">
       <span class="text-white font-bold text-lg">F</span>
     </div>
-    <span class="ml-3 text-white font-semibold text-xl">Flowctl</span>
+    <span class="ml-3 text-gray-900 font-semibold text-xl">Flowctl</span>
   </div>
 
   <!-- Namespace Dropdown -->
   <div class="px-4 mb-4 namespace-dropdown">
     <div class="relative">
-      <label for="namespace-search" class="block text-xs font-medium text-gray-400 mb-1">Namespace</label>
+      <label for="namespace-search" class="block text-xs font-medium text-gray-500 mb-1 uppercase">Namespace</label>
       <div class="relative">
-        <input 
+        <input
           type="text"
           id="namespace-search"
           bind:value={searchQuery}
           oninput={handleSearchInput}
           onfocus={handleSearchFocus}
           placeholder={currentNamespace || 'Search namespaces...'}
-          class="w-full px-3 py-2 text-sm font-medium text-white bg-slate-700 rounded-lg hover:bg-slate-600 focus:bg-slate-600 transition-colors border-none outline-none pr-8"
+          class="w-full px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:border-gray-400 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors outline-none pr-8"
           autocomplete="off"
         />
         
@@ -228,34 +229,38 @@
             </svg>
           </div>
         {:else}
-          <IconChevronDown class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 transition-transform {namespaceDropdownOpen ? 'rotate-180' : ''}" size={16} />
+          <IconChevronDown class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 transition-transform {namespaceDropdownOpen ? 'rotate-180' : ''}" size={16} />
         {/if}
       </div>
-      
+
       <!-- Dropdown Menu -->
       {#if namespaceDropdownOpen}
-        <div 
-          class="absolute z-50 w-full mt-1 bg-slate-700 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 max-h-48 overflow-y-auto"
-          role="menu"
+        <div
+          class="absolute z-50 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-48 overflow-y-auto"
+          role="listbox"
+          aria-label="Namespace selection"
         >
           <div class="py-1">
             {#each searchResults as ns (ns.id)}
-              <button 
+              <button
                 type="button"
+                role="option"
+                aria-selected={ns.name === namespace}
                 onclick={() => selectNamespace(ns)}
-                class="w-full text-left px-3 py-2 text-sm text-white hover:bg-slate-600 transition-colors"
-                class:bg-slate-600={ns.name === namespace}
+                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                class:bg-primary-50={ns.name === namespace}
+                class:text-primary-600={ns.name === namespace}
               >
                 {ns.name}
               </button>
             {/each}
             {#if searchResults.length === 0 && !searchLoading}
-              <div class="px-3 py-2 text-sm text-gray-400 text-center">
+              <div class="px-3 py-2 text-sm text-gray-500 text-center">
                 {searchQuery ? 'No namespaces found' : 'No namespaces available'}
               </div>
             {/if}
             {#if searchLoading}
-              <div class="px-3 py-2 text-sm text-gray-400 text-center">
+              <div class="px-3 py-2 text-sm text-gray-500 text-center">
                 Searching...
               </div>
             {/if}
@@ -266,105 +271,126 @@
   </div>
 
   <!-- Navigation -->
-  <nav class="flex-1 px-4 space-y-1">
+  <ul class="flex-1 px-4 space-y-1" role="list">
     {#if permissions.flows.canRead}
-      <a 
-        href="/view/{namespace}/flows" 
-        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-        class:bg-blue-600={isActiveLink('flows')}
-        class:text-white={isActiveLink('flows')}
-        class:text-gray-300={!isActiveLink('flows')}
-        class:hover:bg-slate-700={!isActiveLink('flows')}
-        class:hover:text-white={!isActiveLink('flows')}
-      >
-        <IconGridDots class="text-xl mr-3 flex-shrink-0" size={20} />
-        Flows
-      </a>
+      <li>
+        <a
+          href="/view/{namespace}/flows"
+          class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+          class:bg-primary-50={isActiveLink('flows')}
+          class:text-primary-600={isActiveLink('flows')}
+          class:text-gray-700={!isActiveLink('flows')}
+          class:hover:bg-gray-100={!isActiveLink('flows')}
+          aria-current={isActiveLink('flows') ? 'page' : undefined}
+        >
+          <IconGridDots class="text-xl mr-3 flex-shrink-0" size={20} aria-hidden="true" />
+          Flows
+        </a>
+      </li>
     {/if}
     {#if permissions.nodes.canRead}
-      <a 
-        href="/view/{namespace}/nodes" 
-        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-        class:bg-blue-600={isActiveLink('nodes')}
-        class:text-white={isActiveLink('nodes')}
-        class:text-gray-300={!isActiveLink('nodes')}
-        class:hover:bg-slate-700={!isActiveLink('nodes')}
-        class:hover:text-white={!isActiveLink('nodes')}
-      >
-        <IconServer class="text-xl mr-3 flex-shrink-0" size={20} />
-        Nodes
-      </a>
+      <li>
+        <a
+          href="/view/{namespace}/nodes"
+          class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+          class:bg-primary-50={isActiveLink('nodes')}
+          class:text-primary-600={isActiveLink('nodes')}
+          class:text-gray-700={!isActiveLink('nodes')}
+          class:hover:bg-gray-100={!isActiveLink('nodes')}
+          aria-current={isActiveLink('nodes') ? 'page' : undefined}
+        >
+          <IconServer class="text-xl mr-3 flex-shrink-0" size={20} aria-hidden="true" />
+          Nodes
+        </a>
+      </li>
     {/if}
     {#if permissions.credentials.canRead}
-      <a 
-        href="/view/{namespace}/credentials" 
-        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-        class:bg-blue-600={isActiveLink('credentials')}
-        class:text-white={isActiveLink('credentials')}
-        class:text-gray-300={!isActiveLink('credentials')}
-        class:hover:bg-slate-700={!isActiveLink('credentials')}
-        class:hover:text-white={!isActiveLink('credentials')}
-      >
-        <IconKey class="text-xl mr-3 flex-shrink-0" size={20} />
-        Credentials
-      </a>
+      <li>
+        <a
+          href="/view/{namespace}/credentials"
+          class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+          class:bg-primary-50={isActiveLink('credentials')}
+          class:text-primary-600={isActiveLink('credentials')}
+          class:text-gray-700={!isActiveLink('credentials')}
+          class:hover:bg-gray-100={!isActiveLink('credentials')}
+          aria-current={isActiveLink('credentials') ? 'page' : undefined}
+        >
+          <IconKey class="text-xl mr-3 flex-shrink-0" size={20} aria-hidden="true" />
+          Credentials
+        </a>
+      </li>
     {/if}
     {#if permissions.members.canRead}
-      <a 
-        href="/view/{namespace}/members" 
-        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-        class:bg-blue-600={isActiveLink('members')}
-        class:text-white={isActiveLink('members')}
-        class:text-gray-300={!isActiveLink('members')}
-        class:hover:bg-slate-700={!isActiveLink('members')}
-        class:hover:text-white={!isActiveLink('members')}
-      >
-        <IconUsers class="text-xl mr-3 flex-shrink-0" size={20} />
-        Members
-      </a>
+      <li>
+        <a
+          href="/view/{namespace}/members"
+          class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+          class:bg-primary-50={isActiveLink('members')}
+          class:text-primary-600={isActiveLink('members')}
+          class:text-gray-700={!isActiveLink('members')}
+          class:hover:bg-gray-100={!isActiveLink('members')}
+          aria-current={isActiveLink('members') ? 'page' : undefined}
+        >
+          <IconUsers class="text-xl mr-3 flex-shrink-0" size={20} aria-hidden="true" />
+          Members
+        </a>
+      </li>
     {/if}
     {#if permissions.approvals.canRead}
-      <a 
-        href="/view/{namespace}/approvals" 
-        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-        class:bg-blue-600={isActiveLink('approvals')}
-        class:text-white={isActiveLink('approvals')}
-        class:text-gray-300={!isActiveLink('approvals')}
-        class:hover:bg-slate-700={!isActiveLink('approvals')}
-        class:hover:text-white={!isActiveLink('approvals')}
-      >
-        <IconCircleCheck class="text-xl mr-3 flex-shrink-0" size={20} />
-        Approvals
-      </a>
+      <li>
+        <a
+          href="/view/{namespace}/approvals"
+          class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+          class:bg-primary-50={isActiveLink('approvals')}
+          class:text-primary-600={isActiveLink('approvals')}
+          class:text-gray-700={!isActiveLink('approvals')}
+          class:hover:bg-gray-100={!isActiveLink('approvals')}
+          aria-current={isActiveLink('approvals') ? 'page' : undefined}
+        >
+          <IconCircleCheck class="text-xl mr-3 flex-shrink-0" size={20} aria-hidden="true" />
+          Approvals
+        </a>
+      </li>
     {/if}
     {#if permissions.history.canRead}
-      <a 
-        href="/view/{namespace}/history" 
-        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-        class:bg-blue-600={isActiveLink('history')}
-        class:text-white={isActiveLink('history')}
-        class:text-gray-300={!isActiveLink('history')}
-        class:hover:bg-slate-700={!isActiveLink('history')}
-        class:hover:text-white={!isActiveLink('history')}
-      >
-        <IconClock class="text-xl mr-3 flex-shrink-0" size={20} />
-        History
-      </a>
+      <li>
+        <a
+          href="/view/{namespace}/history"
+          class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+          class:bg-primary-50={isActiveLink('history')}
+          class:text-primary-600={isActiveLink('history')}
+          class:text-gray-700={!isActiveLink('history')}
+          class:hover:bg-gray-100={!isActiveLink('history')}
+          aria-current={isActiveLink('history') ? 'page' : undefined}
+        >
+          <IconClock class="text-xl mr-3 flex-shrink-0" size={20} aria-hidden="true" />
+          History
+        </a>
+      </li>
     {/if}
     <!-- Settings (only show for superusers) -->
     {#if $currentUser && $currentUser.role === 'superuser'}
-      <a 
-        href="/settings" 
-        class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
-        class:bg-blue-600={isActiveLink('settings')}
-        class:text-white={isActiveLink('settings')}
-        class:text-gray-300={!isActiveLink('settings')}
-        class:hover:bg-slate-700={!isActiveLink('settings')}
-        class:hover:text-white={!isActiveLink('settings')}
-      >
-        <IconSettings class="text-xl mr-3 flex-shrink-0" size={20} />
-        Settings
-      </a>
+      <li>
+        <a
+          href="/settings"
+          class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
+          class:bg-primary-50={isActiveLink('settings')}
+          class:text-primary-600={isActiveLink('settings')}
+          class:text-gray-700={!isActiveLink('settings')}
+          class:hover:bg-gray-100={!isActiveLink('settings')}
+          aria-current={isActiveLink('settings') ? 'page' : undefined}
+        >
+          <IconSettings class="text-xl mr-3 flex-shrink-0" size={20} aria-hidden="true" />
+          Settings
+        </a>
+      </li>
     {/if}
-  </nav>
-</div>
+  </ul>
+
+  <!-- User Profile Section -->
+  {#if $currentUser}
+    <div class="px-4 py-4 border-t border-gray-200">
+      <UserDropdown />
+    </div>
+  {/if}
+</nav>
