@@ -26,8 +26,8 @@ func (c *Core) InitializeRBACPolicies() error {
 
 	// Reviewer role policies (inherits from user) - for all namespaces
 	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceFlow), string(models.RBACActionView))
-	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceApproval), "*")
-	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceExecution), string(models.RBACActionView))
+	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceApproval), string(models.RBACActionView))
+	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceApproval), string(models.RBACActionApprove))
 	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceExecution), string(models.RBACActionView))
 
 	// Admin role policies - for all namespaces
@@ -38,10 +38,8 @@ func (c *Core) InitializeRBACPolicies() error {
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNode), string(models.RBACActionCreate))
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNode), string(models.RBACActionUpdate))
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNode), string(models.RBACActionDelete))
-	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceApproval), string(models.RBACActionView))
-	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceApproval), string(models.RBACActionCreate))
-	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceApproval), string(models.RBACActionUpdate))
-	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceApproval), string(models.RBACActionDelete))
+	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceApproval), string(models.RBACActionView))
+	c.enforcer.AddPolicy("role:reviewer", "*", string(models.ResourceApproval), string(models.RBACActionApprove))
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceCredential), string(models.RBACActionView))
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceCredential), string(models.RBACActionCreate))
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceCredential), string(models.RBACActionUpdate))
