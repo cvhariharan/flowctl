@@ -148,13 +148,12 @@
 			await fetchNamespaces(searchQuery, currentPage);
 		} catch (error) {
 			handleInlineError(error, isEditMode ? 'Unable to Update Namespace' : 'Unable to Create Namespace');
-			throw error;
 		}
 	}
 
 	async function handleDeleteConfirm() {
 		if (!deleteData) return;
-		
+
 		try {
 			await apiClient.namespaces.delete(deleteData.id);
 			showSuccess('Namespace Deleted', `Namespace "${deleteData.name}" has been deleted successfully`);
@@ -162,7 +161,6 @@
 			await fetchNamespaces(searchQuery, currentPage);
 		} catch (error) {
 			handleInlineError(error, 'Unable to Delete Namespace');
-			throw error;
 		}
 	}
 

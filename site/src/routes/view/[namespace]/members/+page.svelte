@@ -108,7 +108,6 @@ import type { TableAction } from '$lib/types';
 			await fetchMembers();
 		} catch (error) {
 			handleInlineError(error, isEditMode ? 'Unable to Update Member Role' : 'Unable to Add Member');
-			throw error; // Re-throw so modal can handle it
 		}
 	}
 
@@ -140,7 +139,6 @@ import type { TableAction } from '$lib/types';
 			showSuccess('Member Removed', 'Member removed successfully');
 		} catch (error) {
 			handleInlineError(error, 'Unable to Remove Member');
-			throw error;
 		}
 	}
 

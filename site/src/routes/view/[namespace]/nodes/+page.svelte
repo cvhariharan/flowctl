@@ -176,7 +176,6 @@
 			await Promise.all([fetchNodes(), fetchStats()]);
 		} catch (error) {
 			handleInlineError(error, 'Unable to Delete Node');
-			throw error;
 		}
 	}
 
@@ -199,7 +198,6 @@
 			await Promise.all([fetchNodes(), fetchStats()]);
 		} catch (error) {
 			handleInlineError(error, 'Unable to Save Node');
-			throw error;
 		}
 	}
 

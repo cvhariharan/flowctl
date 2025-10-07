@@ -72,11 +72,11 @@
 				await apiClient.flowSecrets.create(namespace, flowId, secretData);
 				showSuccess('Secret created successfully');
 			}
-			
+
 			showModal = false;
 			await loadSecrets();
 		} catch (error) {
-			throw error; // Let the modal handle the error
+			handleInlineError(error, isEditMode ? 'Unable to Update Secret' : 'Unable to Create Secret');
 		}
 	}
 

@@ -210,13 +210,12 @@
 			await fetchUsers(searchQuery, currentPage);
 		} catch (error) {
 			handleInlineError(error, isEditMode ? 'Unable to Update User' : 'Unable to Create User');
-			throw error;
 		}
 	}
 
 	async function handleDeleteConfirm() {
 		if (!deleteData) return;
-		
+
 		try {
 			await apiClient.users.delete(deleteData.id);
 			showSuccess('User Deleted', `User "${deleteData.name}" has been deleted successfully`);
@@ -224,7 +223,6 @@
 			await fetchUsers(searchQuery, currentPage);
 		} catch (error) {
 			handleInlineError(error, 'Unable to Delete User');
-			throw error;
 		}
 	}
 

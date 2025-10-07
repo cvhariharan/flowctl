@@ -15,14 +15,6 @@ function createNotificationStore() {
   const store = {
     subscribe,
     add: (notification: Omit<Notification, 'id'>) => {
-      console.log('NOTIFICATION DEBUG: Adding notification', { 
-        type: notification.type, 
-        title: notification.title, 
-        message: notification.message,
-        timestamp: Date.now(),
-        stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
-      });
-      
       const id = crypto.randomUUID();
       const newNotification: Notification = {
         id,
@@ -57,7 +49,7 @@ function createNotificationStore() {
       return store.add({ type: 'success', title, message, ...options });
     },
     error: (title: string, message: string, options?: Partial<Notification>) => {
-      return store.add({ type: 'error', title, message, duration: 0, ...options });
+      return store.add({ type: 'error', title, message, ...options, duration: options?.duration ?? 0 });
     },
     warning: (title: string, message: string, options?: Partial<Notification>) => {
       return store.add({ type: 'warning', title, message, ...options });

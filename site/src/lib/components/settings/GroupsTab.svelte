@@ -156,13 +156,12 @@
 			await fetchGroups(searchQuery, currentPage);
 		} catch (error) {
 			handleInlineError(error, isEditMode ? 'Unable to Update Group' : 'Unable to Create Group');
-			throw error;
 		}
 	}
 
 	async function handleDeleteConfirm() {
 		if (!deleteData) return;
-		
+
 		try {
 			await apiClient.groups.delete(deleteData.id);
 			showSuccess('Group Deleted', `Group "${deleteData.name}" has been deleted successfully`);
@@ -170,7 +169,6 @@
 			await fetchGroups(searchQuery, currentPage);
 		} catch (error) {
 			handleInlineError(error, 'Unable to Delete Group');
-			throw error;
 		}
 	}
 

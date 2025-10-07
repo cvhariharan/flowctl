@@ -175,7 +175,6 @@
 			await fetchCredentials();
 		} catch (error) {
 			handleInlineError(error, 'Unable to Delete Credential');
-			throw error;
 		}
 	}
 
@@ -198,7 +197,6 @@
 			await fetchCredentials();
 		} catch (error) {
 			handleInlineError(error, isEditMode ? 'Unable to Update Credential' : 'Unable to Create Credential');
-			throw error;
 		}
 	}
 
