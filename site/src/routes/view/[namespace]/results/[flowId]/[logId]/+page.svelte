@@ -171,10 +171,10 @@
   };
 
   const reconstructProgress = (currentActionId: string, executionStatus: string) => {
-    let currentActionIndex = actions.findIndex(action => action.id === currentActionId);
-    if (currentActionIndex === -1) return;
+    let actionIndex = actions.findIndex(action => action.id === currentActionId);
+    if (actionIndex === -1) return;
 
-    for (let i = 0; i < currentActionIndex; i++) {
+    for (let i = 0; i < actionIndex; i++) {
       if (!completedActions.includes(i)) {
         completedActions.push(i);
       }
@@ -188,16 +188,16 @@
       }
       currentActionIndex = -1;
     } else if (executionStatus === 'errored') {
-      failedActionIndex = currentActionIndex;
+      failedActionIndex = actionIndex;
       currentActionIndex = -1;
     } else if (executionStatus === 'cancelled') {
-      failedActionIndex = currentActionIndex;
+      failedActionIndex = actionIndex;
       currentActionIndex = -1;
       status = 'cancelled';
     } else if (executionStatus === 'running' || executionStatus === 'pending') {
-      currentActionIndex = currentActionIndex;
+      currentActionIndex = actionIndex;
     } else if (executionStatus === 'pending_approval') {
-      currentActionIndex = currentActionIndex;
+      currentActionIndex = actionIndex;
       status = 'awaiting_approval';
     }
   };
