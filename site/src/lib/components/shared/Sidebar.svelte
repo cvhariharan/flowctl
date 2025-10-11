@@ -22,6 +22,7 @@
     IconChevronsRight
   } from '@tabler/icons-svelte';
   import UserDropdown from './UserDropdown.svelte';
+  import Logo from './Logo.svelte';
 
   let { namespace }: {namespace: string} = $props();
 
@@ -217,12 +218,11 @@
 <!-- Sidebar Navigation -->
 <nav class="relative bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out {isCollapsed ? 'w-20' : 'w-60'}" aria-label="Main navigation">
   <!-- Logo -->
-  <div class="flex items-center px-6 py-6 {isCollapsed ? 'justify-center' : ''}">
-    <div class="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center" aria-hidden="true">
-      <span class="text-white font-bold text-lg">F</span>
-    </div>
-    {#if !isCollapsed}
-      <span class="ml-3 text-gray-900 font-semibold text-xl">Flowctl</span>
+  <div class="px-6 py-6">
+    {#if isCollapsed}
+      <Logo logoHeight="h-10" typographyHeight="h-0" gap="gap-0" align="center" />
+    {:else}
+      <Logo logoHeight="h-12" typographyHeight="h-10" gap="gap-3" align="center" />
     {/if}
   </div>
 

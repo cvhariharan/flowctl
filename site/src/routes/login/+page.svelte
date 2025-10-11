@@ -2,7 +2,7 @@
   import { apiClient } from '$lib/apiClient';
   import { goto, invalidateAll } from '$app/navigation';
   import { handleInlineError } from '$lib/utils/errorHandling';
-  import Logo from '$lib/components/login/Logo.svelte';
+  import Logo from '$lib/components/shared/Logo.svelte';
   import LoginCard from '$lib/components/login/LoginCard.svelte';
   import Footer from '$lib/components/login/Footer.svelte';
 
@@ -39,7 +39,9 @@
 
 <main class="min-h-screen flex items-center justify-center bg-slate-50">
   <section class="w-full max-w-md">
-    <Logo />
+    <div class="mb-8">
+      <Logo logoHeight="h-28" typographyHeight="h-24" gap="gap-4" align="center" />
+    </div>
     <LoginCard
       onSubmit={submit}
       {loading}
