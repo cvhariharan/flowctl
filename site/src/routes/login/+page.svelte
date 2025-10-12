@@ -37,10 +37,10 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 </svelte:head>
 
-<main class="min-h-screen flex items-center justify-center bg-slate-50">
+<main class="min-h-screen flex items-center justify-center bg-slate-50 px-4">
   <section class="w-full max-w-md">
-    <div class="mb-8">
-      <Logo logoHeight="h-28" typographyHeight="h-24" gap="gap-4" align="center" />
+    <div class="mb-8 flex justify-center p-4">
+      <Logo height="h-14" />
     </div>
     <LoginCard
       onSubmit={submit}

@@ -52,7 +52,7 @@
 
   const isActiveLink = (section: string): boolean => {
     const currentPath = page.url.pathname;
-    
+
     if (section === 'flows') {
       return currentPath.includes('/flows');
     } else if (section === 'nodes') {
@@ -68,25 +68,25 @@
     } else if (section === 'settings') {
       return currentPath.includes('/settings');
     }
-    
+
     return false;
   };
 
   const fetchNamespaces = async (filter = '') => {
     try {
       searchLoading = true;
-      const data = await apiClient.namespaces.list({ 
+      const data = await apiClient.namespaces.list({
         count_per_page: DEFAULT_PAGE_SIZE,
         filter: filter
       });
       const results = data.namespaces || [];
-      
+
       if (filter) {
         searchResults = results;
       } else {
         namespaces = results;
         searchResults = results;
-        
+
         // Set current namespace ID
         const currentNs = namespaces.find(ns => ns.name === namespace);
         if (currentNs) {
@@ -128,24 +128,24 @@
 
   const checkAllPermissions = async () => {
     if (!$currentUser || !currentNamespaceId) return;
-    
+
     const resourceMappings = {
       flows: 'flow',
-      nodes: 'node', 
+      nodes: 'node',
       credentials: 'credential',
       members: 'member',
       approvals: 'approval',
       history: 'execution'
     };
-    
+
     try {
       const permissionPromises = Object.entries(resourceMappings).map(async ([frontendKey, backendResource]) => {
         const perms = await permissionChecker($currentUser, backendResource, currentNamespaceId, ['view']);
         return { frontendKey, perms };
       });
-      
+
       const results = await Promise.all(permissionPromises);
-      
+
       results.forEach(({ frontendKey, perms }) => {
         permissions[frontendKey as keyof typeof permissions] = perms;
       });
@@ -218,11 +218,11 @@
 <!-- Sidebar Navigation -->
 <nav class="relative bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out {isCollapsed ? 'w-20' : 'w-60'}" aria-label="Main navigation">
   <!-- Logo -->
-  <div class="px-6 py-6">
+  <div class="px-6 py-6 flex justify-center">
     {#if isCollapsed}
-      <Logo logoHeight="h-10" typographyHeight="h-0" gap="gap-0" align="center" />
+      <Logo height="h-6" iconOnly={true} />
     {:else}
-      <Logo logoHeight="h-12" typographyHeight="h-10" gap="gap-3" align="center" />
+      <Logo height="h-8" />
     {/if}
   </div>
 
