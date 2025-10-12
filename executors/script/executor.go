@@ -18,7 +18,7 @@ import (
 )
 
 type ScriptWithConfig struct {
-	Script      string `yaml:"script" json:"script" jsonschema:"title=script"`
+	Script      string `yaml:"script" json:"script" jsonschema:"title=script" jsonschema_extras:"widget=codeeditor"`
 	Interpreter string `yaml:"interpreter" json:"interpreter" jsonschema:"title=interpreter"`
 }
 
