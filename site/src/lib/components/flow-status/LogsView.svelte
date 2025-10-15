@@ -18,6 +18,7 @@
     showLineNumbers?: boolean;
     theme?: 'dark' | 'light';
     fontSize?: 'xs' | 'sm' | 'base';
+    filterByActionId?: string;
   };
 
   let {
@@ -29,7 +30,8 @@
     autoScroll = true,
     showLineNumbers = false,
     theme = 'dark',
-    fontSize = 'sm'
+    fontSize = 'sm',
+    filterByActionId
   }: Props = $props();
 
   let showTimestamp = $state(false);
@@ -97,10 +99,17 @@
     return parts.join(' ');
   };
 
+  const filteredLogMessages = $derived(() => {
+    if (!logMessages || logMessages.length === 0) return [];
+    if (!filterByActionId) return logMessages;
+    return logMessages.filter(msg => msg.action_id === filterByActionId);
+  });
+
   const processedLogs = $derived(() => {
     // If we have structured log messages, use them
     if (logMessages && logMessages.length > 0) {
-      const formatted = logMessages.map(msg => formatLogMessage(msg)).join('');
+      const messagesToUse = filterByActionId ? filteredLogMessages() : logMessages;
+      const formatted = messagesToUse.map(msg => formatLogMessage(msg)).join('');
       return formatLogsWithLineNumbers(formatted);
     }
     // Otherwise fall back to raw logs
@@ -124,10 +133,10 @@
   });
 </script>
 
-<div class="space-y-3">
+<div class="flex flex-col space-y-3 h-full">
   <!-- Controls -->
   {#if logMessages && logMessages.length > 0}
-    <div class="flex gap-4 text-sm">
+    <div class="flex gap-4 text-sm flex-shrink-0">
       <label class="flex items-center gap-2 cursor-pointer">
         <input
           type="checkbox"
@@ -140,15 +149,23 @@
   {/if}
 
   <!-- Log Terminal -->
-  <div class={getContainerClasses()} bind:this={logContainer}>
-    <div class="whitespace-pre-wrap break-words">
-      {processedLogs()}
-      {#if isRunning && showCursor}
-        <div class="inline-block">
-          <span class={cursorClasses.cursor}>█</span>
-          <span class="animate-pulse {cursorClasses.blink}">_</span>
-        </div>
-      {/if}
+  <div class="flex-1 min-h-0">
+    <div class={getContainerClasses()} bind:this={logContainer}>
+    {#if filterByActionId && filteredLogMessages().length === 0}
+      <div class="flex items-center justify-center h-full text-gray-500 text-sm">
+        No logs available for this action
+      </div>
+    {:else}
+      <div class="whitespace-pre-wrap break-words">
+        {processedLogs()}
+        {#if isRunning && showCursor}
+          <div class="inline-block">
+            <span class={cursorClasses.cursor}>█</span>
+            <span class="animate-pulse {cursorClasses.blink}">_</span>
+          </div>
+        {/if}
+      </div>
+    {/if}
     </div>
   </div>
 </div>

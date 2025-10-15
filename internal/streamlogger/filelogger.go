@@ -430,7 +430,7 @@ func (fl *FileLogger) SetActionID(id string) {
 }
 
 func (fl *FileLogger) Write(p []byte) (int, error) {
-	if err := fl.Checkpoint("", p, LogMessageType); err != nil {
+	if err := fl.Checkpoint(fl.ActionID, p, LogMessageType); err != nil {
 		return 0, err
 	}
 	return len(p), nil

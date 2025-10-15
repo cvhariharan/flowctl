@@ -4,8 +4,7 @@
   import Header from '$lib/components/shared/Header.svelte';
   import StatusBadge from '$lib/components/shared/StatusBadge.svelte';
   import Alert from '$lib/components/flow-status/Alert.svelte';
-  import Tabs from '$lib/components/shared/Tabs.svelte';
-  import PipelineProgress from '$lib/components/flow-status/PipelineProgress.svelte';
+  import ActionsList from '$lib/components/flow-status/ActionsList.svelte';
   import LogsView from '$lib/components/flow-status/LogsView.svelte';
   import FlowInfoCard from '$lib/components/flow-status/FlowInfoCard.svelte';
   import ExecutionOutputTable from '$lib/components/flow-status/ExecutionOutputTable.svelte';
@@ -37,7 +36,7 @@
   let results = $state<Record<string, any>>({});
   let showApproval = $state(false);
   let approvalID = $state<string | null>(null);
-  let activeTab = $state('logs');
+  let selectedActionId = $state<string>('');
   let startTime = $state('');
   let flowName = $state('');
 
@@ -55,24 +54,14 @@
   let logId = $derived(data.logId);
   let actions = $derived(data.flowMeta?.actions || []);
 
-  // Transform actions into pipeline steps
-  let pipelineSteps = $derived(
+  // Transform actions into list items with status
+  let actionsList = $derived(
     actions.map((action, index) => ({
       id: action.id,
-      name: action.name || `Step ${index + 1}`,
+      name: action.name || `Action ${index + 1}`,
       status: getActionStatus(index)
     }))
   );
-
-  // Tab configuration
-  let tabs = $derived([
-    { id: 'logs', label: 'Real-time Logs' },
-    { 
-      id: 'output', 
-      label: 'Execution Output',
-      badge: Object.keys(results).length > 0 ? Object.keys(results).length : undefined
-    }
-  ]);
 
   const updateExecutionStatus = async () => {
     try {
@@ -321,6 +310,10 @@
     showApproval = false;
   };
 
+  const handleActionSelect = (actionId: string) => {
+    selectedActionId = actionId;
+  };
+
   const stopFlow = async () => {
     try {
       await apiClient.executions.cancel(namespace, logId);
@@ -351,8 +344,24 @@
       startTime = new Date().toLocaleString();
     }
 
+    // Set default selected action (first action or current running action)
+    if (actions.length > 0) {
+      if (currentActionIndex !== -1 && actions[currentActionIndex]) {
+        selectedActionId = actions[currentActionIndex].id;
+      } else {
+        selectedActionId = actions[0].id;
+      }
+    }
+
     connectWebSocket();
     startStatusPolling(); // Start polling for status updates
+  });
+
+  // Auto-select running action when it changes
+  $effect(() => {
+    if (currentActionIndex !== -1 && actions[currentActionIndex]) {
+      selectedActionId = actions[currentActionIndex].id;
+    }
   });
 
   onDestroy(() => {
@@ -408,47 +417,65 @@
         <!-- Flow Input -->
         {#if data.executionSummary?.input}
           <div class="mb-6">
-            <JsonDisplay 
-              data={data.executionSummary.input} 
+            <JsonDisplay
+              data={data.executionSummary.input}
               title="Inputs"
             />
           </div>
         {/if}
 
-        <!-- Pipeline Progress -->
-        <div class="mb-6">
-          <PipelineProgress 
-            steps={pipelineSteps} 
-            title="Pipeline Progress"
-            orientation="horizontal"
-            size="md"
-          />
-        </div>
+        <!-- Split Panel Layout: Actions List and Logs -->
+        <div class="mb-6 grid grid-cols-12 gap-6 h-[650px]">
+          <!-- Left Panel: Actions List -->
+          <div class="col-span-12 md:col-span-4 lg:col-span-3 h-full">
+            <ActionsList
+              actions={actionsList}
+              bind:selectedActionId
+              onActionSelect={handleActionSelect}
+            />
+          </div>
 
-        <!-- Tabs Content -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <Tabs {tabs} bind:activeTab />
-
-          <!-- Tab Content -->
-          <div class="p-6">
-            {#if activeTab === 'logs'}
-              <LogsView
-                bind:logs={logOutput}
-                logMessages={logMessages}
-                isRunning={status === 'running'}
-                height="h-96"
-                theme="dark"
-                autoScroll={true}
-                showCursor={true}
-              />
-            {:else if activeTab === 'output'}
-              <ExecutionOutputTable {results} />
-              {#if Object.keys(results).length === 0}
-                <EmptyState message="No output variables yet" />
-              {/if}
-            {/if}
+          <!-- Right Panel: Terminal / Logs -->
+          <div class="col-span-12 md:col-span-8 lg:col-span-9 h-full">
+            <div class="bg-white rounded-lg shadow border border-gray-200 h-full flex flex-col overflow-hidden">
+              <div class="px-6 py-5 border-b border-gray-200">
+                <h2 class="text-base font-semibold text-gray-900">
+                  {#if selectedActionId}
+                    {actionsList.find(a => a.id === selectedActionId)?.name || 'Action Logs'}
+                  {:else}
+                    Action Logs
+                  {/if}
+                </h2>
+              </div>
+              <div class="flex-1 overflow-hidden p-6">
+                <div class="h-full">
+                  <LogsView
+                    bind:logs={logOutput}
+                    logMessages={logMessages}
+                    isRunning={status === 'running'}
+                    height="h-full"
+                    theme="dark"
+                    autoScroll={true}
+                    showCursor={true}
+                    filterByActionId={selectedActionId}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- Execution Output -->
+        {#if Object.keys(results).length > 0}
+          <div class="mb-6 bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-200">
+              <h2 class="text-base font-semibold text-gray-900">Execution Output</h2>
+            </div>
+            <div class="p-6">
+              <ExecutionOutputTable {results} />
+            </div>
+          </div>
+        {/if}
 
         <!-- Alerts -->
         {#if showApproval}

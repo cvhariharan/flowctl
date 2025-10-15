@@ -123,6 +123,8 @@ func (s *Scheduler) executeFlow(ctx context.Context, payload FlowExecutionPayloa
 
 // runAction executes a single action - adapted from FlowRunner.runAction
 func (s *Scheduler) runAction(ctx context.Context, action Action, srcdir string, input map[string]interface{}, streamLogger streamlogger.Logger, artifactDir string, secrets map[string]string, outputs map[string]interface{}) (map[string]string, error) {
+	streamLogger.SetActionID(action.ID)
+
 	// pattern to extract interpolated variables
 	pattern := `{{\s*([^}]+)\s*}}`
 	re := regexp.MustCompile(pattern)
