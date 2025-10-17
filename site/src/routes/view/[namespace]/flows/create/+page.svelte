@@ -121,7 +121,7 @@
             executor: action.executor as 'script' | 'docker',
             with: action.with || {},
             approval: action.approval || false,
-            variables: action.variables?.length ? action.variables.map((v: any) => ({[v.name]: v.value})) : undefined,
+            variables: action.variables?.filter((v: any) => v.name && v.name.trim()).map((v: any) => ({[v.name]: v.value})),
             artifacts: action.artifacts && action.artifacts.length > 0
               ? action.artifacts.filter((a: string) => a.trim())
               : undefined,
