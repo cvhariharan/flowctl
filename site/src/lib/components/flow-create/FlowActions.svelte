@@ -3,13 +3,17 @@
   import { handleInlineError } from '$lib/utils/errorHandling';
   import { createSlug } from '$lib/utils';
   import CodeEditor from '$lib/components/shared/CodeEditor.svelte';
+  import NodeSelector from '$lib/components/shared/NodeSelector.svelte';
+  import type { NodeResp } from '$lib/types';
 
   let {
+    namespace,
     actions = $bindable(),
     addAction,
     availableExecutors,
     executorConfigs = $bindable()
   }: {
+    namespace: string;
     actions: any[];
     addAction: () => void;
     availableExecutors: Array<{name: string, display_name: string}>;
@@ -228,8 +232,8 @@
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Executor *</label>
-                <select 
-                  bind:value={action.executor} 
+                <select
+                  bind:value={action.executor}
                   onchange={() => onExecutorChange(action)}
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                 >
@@ -241,13 +245,11 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Run On</label>
-                <input 
-                  type="text" 
-                  bind:value={action.on}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-                  placeholder="local,prod-worker-01"
+                <NodeSelector
+                  {namespace}
+                  bind:selectedNodes={action.selectedNodes}
+                  placeholder="Search nodes..."
                 />
-                <p class="mt-1 text-xs text-gray-500">Comma-separated node names</p>
               </div>
             </div>
 

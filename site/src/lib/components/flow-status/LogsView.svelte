@@ -201,10 +201,10 @@
                                     class="text-gray-500"
                                     >[{logMsg.timestamp}]</span
                                 >
-                            {/if}<span class="font-semibold {logMsg.nodeColor}"
+                            {/if}{#if logMsg.nodeId}<span class="font-semibold {logMsg.nodeColor}"
                                 >[{logMsg.nodeId}]</span
                             >
-                            {logMsg.value}{/each}
+                            {/if}{logMsg.value}{/each}
                     {:else}
                         {processedRawLogs()}
                     {/if}

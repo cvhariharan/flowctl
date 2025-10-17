@@ -80,7 +80,7 @@
       name: '',
       executor: '',
       with: {},
-      on: '',
+      selectedNodes: [],
       variables: [],
       approval: false,
       artifacts: [],
@@ -126,7 +126,7 @@
               ? action.artifacts.filter((a: string) => a.trim())
               : undefined,
             condition: action.condition || undefined,
-            on: action.on ? action.on.split(',').map((n: string) => n.trim()).filter((n: string) => n) : undefined
+            on: action.selectedNodes?.length ? action.selectedNodes : undefined
           }))
       };
 
@@ -186,6 +186,7 @@
               <FlowInputs bind:inputs={flow.inputs} {addInput} />
             {:else if activeTab === 'actions'}
               <FlowActions
+                {namespace}
                 bind:actions={flow.actions}
                 {addAction}
                 {availableExecutors}
