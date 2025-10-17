@@ -553,10 +553,11 @@ func (c *Core) UpdateFlow(ctx context.Context, f models.Flow, namespaceID string
 		return fmt.Errorf("flow file does not exist at %s: %w", flowFilePath, err)
 	}
 
-	// Always write as YAML for now (reading supports both YAML and HUML)
-	flowData, err := models.MarshalFlow(f, models.FlowFormatYAML)
+	// Detect the format of the existing file and use the same format
+	format := detectFlowFormat(flowFilePath)
+	flowData, err := models.MarshalFlow(f, format)
 	if err != nil {
-		return fmt.Errorf("could not marshal flow to YAML: %w", err)
+		return fmt.Errorf("could not marshal flow to %s: %w", format, err)
 	}
 
 	if err := os.WriteFile(flowFilePath, flowData, 0644); err != nil {
