@@ -101,7 +101,6 @@ func initializeSharedComponents() *SharedComponents {
 	fileLogManager := streamlogger.NewFileLogManager(streamlogger.FileLogManagerCfg{
 		RetentionTime: time.Duration(appConfig.App.Logger.RetentionTimeHours) * time.Hour,
 		MaxSizeBytes:  appConfig.App.Logger.MaxSizeBytes * 1024 * 1024,
-		MaxCount:      appConfig.App.Logger.MaxCount,
 		LogDir:        appConfig.App.Logger.Directory,
 	})
 
@@ -116,7 +115,6 @@ func initializeSharedComponents() *SharedComponents {
 	if err != nil {
 		log.Fatalf("could not read rbac_model.conf from embedded FS: %v", err)
 	}
-
 	m, err := casbin_model.NewModelFromString(string(modelContent))
 	if err != nil {
 		log.Fatalf("could not create casbin model: %v", err)
@@ -129,7 +127,6 @@ func initializeSharedComponents() *SharedComponents {
 		log.Fatalf("could not initialize casbin enforcer: %v", err)
 	}
 
-	// Initialize secret keeper
 	keeperURL := appConfig.App.Keystore.KeeperURL
 	if keeperURL == "" {
 		log.Fatal("app.keystore.keeper_url is not set")
@@ -142,7 +139,6 @@ func initializeSharedComponents() *SharedComponents {
 
 	s := repo.NewPostgresStore(db)
 
-	// Create job storage backend
 	jobStore := storage.NewPostgresStorage(db)
 
 	// Build scheduler

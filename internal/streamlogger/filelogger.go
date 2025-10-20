@@ -40,21 +40,34 @@ func extractFileIndex(filename string) int {
 }
 
 type FileLogManagerCfg struct {
+	// RetentionTime is used to determine files that are old enough to be deleted.
+	// If the file modification is older than RetentionTime, it will be deleted.
 	RetentionTime time.Duration
-	MaxSizeBytes  int64
-	MaxCount      int
-	ScanInterval  time.Duration
-	LogDir        string
+
+	// MaxSizeBytes is used by the FileLogger to rotate files.
+	// If the written bytes exceed this value, a new file will be created
+	MaxSizeBytes int64
+
+	// ScanInterval is the interval with which the FileLogManager scans the log directory to determine
+	// files that should be deleted
+	ScanInterval time.Duration
+
+	// LogDir stores the log files created by the FileLogger
+	LogDir string
 }
 
 type FileLogManager struct {
 	cfg FileLogManagerCfg
 	// loggers is used to track active loggers, this is used for file deletion checks
-	loggers    map[string]Logger
-	loggerMut  sync.RWMutex
+	loggers map[string]Logger
+	// loggerMut is used in conjunction with loggers map
+	loggerMut sync.RWMutex
+	// scanTicker uses the ScanInterval from the cfg and is used to run periodic scans
 	scanTicker *time.Ticker
 }
 
+// NewFileLogManager creates a log manager that uses files as the storage backend.
+// FileLogManager supports retention time to clean up old log files
 func NewFileLogManager(cfg FileLogManagerCfg) LogManager {
 	if cfg.ScanInterval == 0 {
 		cfg.ScanInterval = 1 * time.Hour
@@ -71,6 +84,8 @@ func NewFileLogManager(cfg FileLogManagerCfg) LogManager {
 	}
 }
 
+// NewLogger creates a new FileLogger.
+// This is used by the task handler to create a new logger for each flow execution.
 func (f *FileLogManager) NewLogger(id string) (Logger, error) {
 	fl, err := newFileLogger(id, f.cfg.LogDir, FileSyncInterval, f.cfg.MaxSizeBytes)
 	if err != nil {
@@ -137,7 +152,8 @@ func (f *FileLogManager) StreamLogs(ctx context.Context, execID string) (<-chan 
 	return logCh, nil
 }
 
-// streamAllLogs streams log lines from all log files for the given exec ID
+// streamAllLogs streams log lines from all log files for the given exec ID.
+// This is used for executions that are not currently running.
 func (f *FileLogManager) streamAllLogs(ctx context.Context, execID string, logCh chan<- string) error {
 	entries, err := os.ReadDir(f.cfg.LogDir)
 	if err != nil {
@@ -184,6 +200,7 @@ func (f *FileLogManager) streamAllLogs(ctx context.Context, execID string, logCh
 }
 
 // streamRealtimeLogs streams all archived logs plus active logs from the current file
+// This is used for currently running executions.
 func (f *FileLogManager) streamRealtimeLogs(ctx context.Context, execID string, fl *FileLogger, logCh chan<- string) error {
 	// First stream all archived logs
 	nextIndex := fl.nextFileIndex.Load()
@@ -260,6 +277,8 @@ func (f *FileLogManager) followActiveFile(ctx context.Context, filePath string, 
 	}
 }
 
+// Run starts the scan loop.
+// This is a blocking call and should be run from a goroutine.
 func (f *FileLogManager) Run(ctx context.Context, l *slog.Logger) error {
 	for {
 		select {
@@ -292,7 +311,6 @@ func (f *FileLogManager) run(ctx context.Context, l *slog.Logger) error {
 			continue
 		}
 
-		// Get file info to check modification time
 		info, err := entry.Info()
 		if err != nil {
 			l.Warn("failed to get file info", "file", entry.Name(), "error", err)
@@ -354,19 +372,30 @@ func (f *FileLogManager) deleteFiles(ctx context.Context, files []string, l *slo
 	}
 }
 
+// FileLogger implements io.Writer and is meant to be used for a single execution
 type FileLogger struct {
-	ExecID        string
-	ActionID      string
-	buffer        *bytes.Buffer
-	bufferMut     sync.RWMutex
-	logDirPath    string
-	flushTicker   *time.Ticker
-	syncCh        chan struct{}
-	runOnce       sync.Once
-	writtenCount  atomic.Int64
-	maxSize       int64
+	// ExecID is the execution ID of the associated flow
+	ExecID string
+	// ActionID is used to track the current action, this is a global value and cannot be used concurrently
+	ActionID string
+	// buffer stores the messages from executions
+	buffer    *bytes.Buffer
+	bufferMut sync.RWMutex
+	// logDirPath is the directory where all log files will be stored
+	logDirPath string
+	// flushTicker is used to periodically write values from buffer to file
+	flushTicker *time.Ticker
+	// syncCh is used to track if the logger is closed
+	syncCh  chan struct{}
+	runOnce sync.Once
+	// writtenCount is used to track the written bytes by this logger
+	writtenCount atomic.Int64
+	// maxSize is the max file size in bytes before it is rotated
+	maxSize int64
+	// nextFileIndex is the file index for the next file after rotation
 	nextFileIndex atomic.Int32
-	currentFile   atomic.Pointer[os.File]
+	// currentFile is the current open log file
+	currentFile atomic.Pointer[os.File]
 }
 
 func newFileLogger(execID string, logDirPath string, syncInterval time.Duration, maxSize int64) (Logger, error) {
@@ -397,7 +426,7 @@ func (fl *FileLogger) IsClosed() bool {
 	}
 }
 
-// rotateFile creates a new file with the current index and swaps the current file pointer
+// rotateFile creates a new file with the next file index and swaps the current file pointer
 func (fl *FileLogger) rotateFile() error {
 	f, err := os.OpenFile(filepath.Join(fl.logDirPath, fmt.Sprintf("%s.%d", fl.ExecID, fl.nextFileIndex.Load())), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -410,6 +439,7 @@ func (fl *FileLogger) rotateFile() error {
 	return nil
 }
 
+// Close flushes the buffer and closes the logger and file
 func (fl *FileLogger) Close() error {
 	fl.runOnce.Do(func() {
 		fl.flushTicker.Stop()
@@ -421,10 +451,12 @@ func (fl *FileLogger) Close() error {
 	return f.Close()
 }
 
+// GetID returns the exec ID
 func (fl *FileLogger) GetID() string {
 	return fl.ExecID
 }
 
+// SetActionID sets the action ID, this is a global value and should not be used concurrently
 func (fl *FileLogger) SetActionID(id string) {
 	fl.ActionID = id
 }
@@ -436,6 +468,7 @@ func (fl *FileLogger) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// Checkpoint can be used to set checkpoints for an action on a node like resuls, logs, errors etc.
 func (fl *FileLogger) Checkpoint(id string, nodeID string, val interface{}, mtype MessageType) error {
 	var sm StreamMessage
 	sm.ActionID = fl.ActionID
@@ -498,6 +531,7 @@ func (fl *FileLogger) Checkpoint(id string, nodeID string, val interface{}, mtyp
 	return err
 }
 
+// sync uses the flushticker to sync buffer with file
 func (fl *FileLogger) sync() error {
 	for {
 		select {
@@ -509,6 +543,7 @@ func (fl *FileLogger) sync() error {
 	}
 }
 
+// filesync copies the contents from buffer to the current logger file
 func (fl *FileLogger) filesync() error {
 	// Check if rotation is needed before acquiring any locks
 	if fl.maxSize > 0 && fl.writtenCount.Load() > fl.maxSize {

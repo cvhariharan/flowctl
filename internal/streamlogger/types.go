@@ -78,16 +78,14 @@ func (s *StreamMessage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// NodeContextLogger wraps a Logger to provide node-scoped context for concurrent execution.
-// It implements the decorator pattern, allowing any Logger implementation to be enhanced
-// with node context without modification to the underlying logger or handler code.
+// NodeContextLogger wraps a Logger to provide node context for concurrent execution
 type NodeContextLogger struct {
 	logger   Logger
 	actionID string
 	nodeID   string
 }
 
-// NewNodeContextLogger creates a new node-scoped logger wrapper.
+// NewNodeContextLogger creates a new NodeContextLogger.
 func NewNodeContextLogger(logger Logger, actionID, nodeID string) *NodeContextLogger {
 	return &NodeContextLogger{
 		logger:   logger,

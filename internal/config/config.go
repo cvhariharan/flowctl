@@ -39,7 +39,6 @@ type SchedulerConfig struct {
 type Logger struct {
 	Backend            string `koanf:"backend"`
 	Directory          string `koanf:"log_directory"`
-	MaxCount           int    `koanf:"max_file_count"`
 	MaxSizeBytes       int64  `koanf:"max_size_bytes"`
 	RetentionTimeHours int    `koanf:"retention_time_hours"`
 }
@@ -156,7 +155,6 @@ func getDefaultConfig() Config {
 			Logger: Logger{
 				Backend:   "file",
 				Directory: "/var/log/flowctl",
-				MaxCount:  5,
 			},
 		},
 	}
