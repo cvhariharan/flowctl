@@ -3,7 +3,7 @@ title: Access Control
 description: Understanding roles, permissions, and namespaces in flowctl
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside } from "@astrojs/starlight/components";
 
 ## Overview
 
@@ -23,7 +23,9 @@ Flowctl has two levels of user roles:
    - **Admin**: Full control over namespace resources
 
 <Aside type="note">
-The global "superuser" role automatically grants admin access to all namespaces. All other users must be explicitly assigned to namespaces with specific roles.
+  The global "superuser" role automatically grants admin access to all
+  namespaces. All other users must be explicitly assigned to namespaces with
+  specific roles.
 </Aside>
 
 ## Namespaces
@@ -54,15 +56,16 @@ When you first install flowctl, a `default` namespace is automatically created. 
 The **User** role is the most restrictive namespace role, suitable for team members who need to run flows but not modify them.
 
 **Permissions:**
-- ✅ View flows
-- ✅ Execute flows
-- ✅ View executions
-- ✅ View namespace information
-- ✅ View namespace members
-- ❌ Create, update, or delete flows
-- ❌ Approve flow actions
-- ❌ Manage nodes, credentials, or secrets
-- ❌ Manage namespace members
+
+- ✓ View flows
+- ✓ Execute flows
+- ✓ View executions
+- ✓ View namespace information
+- ✓ View namespace members
+- ✗ Create, update, or delete flows
+- ✗ Approve flow actions
+- ✗ Manage nodes, credentials, or secrets
+- ✗ Manage namespace members
 
 **Use case:** Developers or operators who need to trigger existing flows but shouldn't modify anything.
 
@@ -71,12 +74,13 @@ The **User** role is the most restrictive namespace role, suitable for team memb
 The **Reviewer** role inherits all User permissions and adds approval capabilities, suitable for team leads.
 
 **Permissions:**
-- ✅ All User role permissions
-- ✅ View approval requests
-- ✅ Approve or reject flow actions
-- ❌ Create, update, or delete flows
-- ❌ Manage nodes, credentials, or secrets
-- ❌ Manage namespace members
+
+- ✓ All User role permissions
+- ✓ View approval requests
+- ✓ Approve or reject flow actions
+- ✗ Create, update, or delete flows
+- ✗ Manage nodes, credentials, or secrets
+- ✗ Manage namespace members
 
 **Use case:** Team leads who need to approve production deployments or critical operations.
 
@@ -85,57 +89,59 @@ The **Reviewer** role inherits all User permissions and adds approval capabiliti
 The **Admin** role has full control over all resources within a namespace.
 
 **Permissions:**
-- ✅ All Reviewer role permissions
-- ✅ Create, update, and delete flows
-- ✅ View, create, update, and delete nodes
-- ✅ View, create, update, and delete credentials
-- ✅ View, create, update, and delete secrets
-- ✅ Add and remove namespace members
-- ✅ Update member roles
+
+- ✓ All Reviewer role permissions
+- ✓ Create, update, and delete flows
+- ✓ View, create, update, and delete nodes
+- ✓ View, create, update, and delete credentials
+- ✓ View, create, update, and delete secrets
+- ✓ Add and remove namespace members
+- ✓ Update member roles
 
 **Use case:** Administrators who manage the namespace for their team.
 
 <Aside type="caution">
-Admin users can manage all resources within their namespace, including sensitive credentials and secrets. Grant this role carefully.
+  Admin users can manage all resources within their namespace, including
+  sensitive credentials and secrets. Grant this role carefully.
 </Aside>
 
 ## Permission Matrix
 
 Here's a complete breakdown of what each namespace role can do:
 
-| Resource | User | Reviewer | Admin |
-|----------|------|----------|-------|
-| **Flows** |
-| View | ✅ | ✅ | ✅ |
-| Create | ❌ | ❌ | ✅ |
-| Update | ❌ | ❌ | ✅ |
-| Delete | ❌ | ❌ | ✅ |
-| Execute | ✅ | ✅ | ✅ |
-| **Executions** |
-| View | ✅ | ✅ | ✅ |
-| **Approvals** |
-| View | ❌ | ✅ | ✅ |
-| Approve/Reject | ❌ | ✅ | ✅ |
-| **Nodes** |
-| View | ❌ | ❌ | ✅ |
-| Create | ❌ | ❌ | ✅ |
-| Update | ❌ | ❌ | ✅ |
-| Delete | ❌ | ❌ | ✅ |
+| Resource        | User | Reviewer | Admin |
+| --------------- | ---- | -------- | ----- |
+| **Flows**       |
+| View            | ✓    | ✓        | ✓     |
+| Create          | ✗    | ✗        | ✓     |
+| Update          | ✗    | ✗        | ✓     |
+| Delete          | ✗    | ✗        | ✓     |
+| Execute         | ✓    | ✓        | ✓     |
+| **Executions**  |
+| View            | ✓    | ✓        | ✓     |
+| **Approvals**   |
+| View            | ✗    | ✓        | ✓     |
+| Approve/Reject  | ✗    | ✓        | ✓     |
+| **Nodes**       |
+| View            | ✗    | ✗        | ✓     |
+| Create          | ✗    | ✗        | ✓     |
+| Update          | ✗    | ✗        | ✓     |
+| Delete          | ✗    | ✗        | ✓     |
 | **Credentials** |
-| View | ❌ | ❌ | ✅ |
-| Create | ❌ | ❌ | ✅ |
-| Update | ❌ | ❌ | ✅ |
-| Delete | ❌ | ❌ | ✅ |
-| **Secrets** |
-| View | ❌ | ❌ | ✅ |
-| Create | ❌ | ❌ | ✅ |
-| Update | ❌ | ❌ | ✅ |
-| Delete | ❌ | ❌ | ✅ |
-| **Members** |
-| View | ✅ | ✅ | ✅ |
-| Add | ❌ | ❌ | ✅ |
-| Update Role | ❌ | ❌ | ✅ |
-| Remove | ❌ | ❌ | ✅ |
+| View            | ✗    | ✗        | ✓     |
+| Create          | ✗    | ✗        | ✓     |
+| Update          | ✗    | ✗        | ✓     |
+| Delete          | ✗    | ✗        | ✓     |
+| **Secrets**     |
+| View            | ✗    | ✗        | ✓     |
+| Create          | ✗    | ✗        | ✓     |
+| Update          | ✗    | ✗        | ✓     |
+| Delete          | ✗    | ✗        | ✓     |
+| **Members**     |
+| View            | ✓    | ✓        | ✓     |
+| Add             | ✗    | ✗        | ✓     |
+| Update Role     | ✗    | ✗        | ✓     |
+| Remove          | ✗    | ✗        | ✓     |
 
 ## Managing Namespace Members
 
@@ -170,7 +176,8 @@ To remove a member from a namespace:
 4. Confirm the action
 
 <Aside>
-Removing a member from a namespace immediately revokes all their permissions within that namespace. They can no longer view or interact with any resources.
+  Removing a member from a namespace immediately revokes all their permissions
+  within that namespace. They can no longer view or interact with any resources.
 </Aside>
 
 ## Groups
@@ -184,6 +191,7 @@ Flowctl supports groups for easier permission management. Instead of assigning r
 When a user is added to a group, they automatically inherit all namespace access that the group has.
 
 **Benefits:**
+
 - Simplified management for teams
 - Easier onboarding/offboarding
 - Consistent permissions across team members
@@ -202,7 +210,8 @@ The initial admin user configured in `config.toml` can authenticate using userna
 ```
 
 <Aside type="caution">
-Only the admin user can use username/password authentication. All other users must use OIDC.
+  Only the admin user can use username/password authentication. All other users
+  must use OIDC.
 </Aside>
 
 ### OIDC Authentication

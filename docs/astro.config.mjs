@@ -21,16 +21,15 @@ export default defineConfig({
             { label: "Getting Started", slug: "general/getting-started" },
             { label: "Flows", slug: "general/flows" },
             { label: "Nodes", slug: "general/nodes-and-executors" },
-            { label: "Execution", slug: "general/execution" },
             { label: "Access Control", slug: "general/access-control" },
           ],
         },
         {
           label: "Advanced",
           autogenerate: {
-            directory: "advanced"
-          }
-        }
+            directory: "advanced",
+          },
+        },
       ],
     }),
   ],
