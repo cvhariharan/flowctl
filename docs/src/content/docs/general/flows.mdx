@@ -1,0 +1,620 @@
+---
+title: Flows
+description: Learn how to create and configure workflows in flowctl
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
+
+## What are Flows?
+
+Flows are the core automation units in flowctl. A flow is a sequence of actions that execute in order, with support for inputs, variables, approvals, and outputs. Flows are defined using YAML files and can run locally or on remote nodes.
+
+## Flow Structure
+
+Every flow consists of four main sections:
+
+1. **Metadata** - Flow identification and configuration
+2. **Inputs** - Parameters that users provide when triggering the flow
+3. **Actions** - The actual tasks to execute
+4. **Outputs** - Results and data to return after execution
+
+## Basic Flow Example
+
+Here's a simple flow that greets a user:
+
+```yaml
+metadata:
+  id: hello_world
+  name: Hello World
+  description: A simple greeting flow
+
+inputs:
+  - name: username
+    type: string
+    label: Username
+    description: Your name
+    required: true
+    validation: len(username) > 0
+
+actions:
+  - id: greet
+    name: Greet User
+    executor: docker
+    variables:
+      - username: "{{ input.username }}"
+    with:
+      image: docker.io/alpine
+      script: |
+        echo "Hello, $username!"
+        echo "message=Welcome!" >> $OUTPUT
+
+outputs:
+  - greeting: "{{ actions.greet.output.message }}"
+```
+
+## Metadata
+
+The metadata section defines the flow's identity and behavior:
+
+```yaml
+metadata:
+  id: my_flow              # Unique identifier (alphanumeric + underscore)
+  name: My Flow            # Human-readable name
+  description: Flow description
+  namespace: default       # Namespace for organization
+  schedules:               # Optional: cron schedules
+    - "0 0 * * *"         # Daily at midnight
+    - "*/5 * * * *"       # Every 5 minutes
+```
+
+### Scheduling Flows
+
+Flows can be scheduled using cron expressions.
+
+
+```yaml
+inputs:
+  - name: environment
+    type: string
+    default: "production"  # Required for scheduled flows
+
+metadata:
+  schedules:
+    - "0 2 * * *"  # Run daily at 2 AM
+```
+<Aside>Only flows where all inputs have default values can be scheduled.</Aside>
+
+## Inputs
+
+Inputs define parameters that users provide when triggering a flow. Flowctl supports multiple input types with validation.
+
+### Input Types
+
+<Tabs>
+<TabItem label="String">
+```yaml
+inputs:
+  - name: namespace
+    type: string
+    label: Namespace
+    description: Target namespace
+    required: true
+    default: "default"
+    validation: len(namespace) > 3
+```
+</TabItem>
+
+<TabItem label="Number">
+```yaml
+inputs:
+  - name: count
+    type: number
+    label: Retry Count
+    description: Number of retries
+    required: true
+    validation: count > 0 && count < 10
+```
+</TabItem>
+
+<TabItem label="Select">
+```yaml
+inputs:
+  - name: environment
+    type: select
+    label: Environment
+    description: Deployment environment
+    options:
+      - development
+      - staging
+      - production
+    required: true
+```
+</TabItem>
+
+<TabItem label="Checkbox">
+```yaml
+inputs:
+  - name: enable_debug
+    type: checkbox
+    label: Enable Debug Mode
+    description: Enable verbose logging
+    default: false
+```
+</TabItem>
+
+<TabItem label="Password">
+```yaml
+inputs:
+  - name: api_token
+    type: password
+    label: API Token
+    description: Authentication token
+    required: true
+```
+</TabItem>
+</Tabs>
+
+### Input Validation
+
+Use the `validation` field with expressions to validate input values:
+
+```yaml
+inputs:
+  - name: email
+    type: string
+    validation: matches(email, "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")
+
+  - name: port
+    type: number
+    validation: port >= 1024 && port <= 65535
+
+  - name: username
+    type: string
+    validation: len(username) >= 3 && len(username) <= 20
+```
+
+## Actions
+
+Actions are the executable steps in a flow. Each action runs sequentially unless it fails.
+
+### Action Structure
+
+```yaml
+actions:
+  - id: action_id          # Unique action identifier
+    name: Action Name      # Display name
+    executor: docker       # Executor type: docker or script
+    on:                    # Optional: remote nodes to run on
+      - NodeName1
+      - NodeName2
+    variables:             # Variables available to the script
+      - var_name: "{{ expression }}"
+    with:                  # Executor-specific configuration
+      image: alpine
+      script: |
+        echo "Script here"
+    approval: false        # Require manual approval
+    condition: ""          # Conditional execution
+    artifacts:             # Files to preserve
+      - /path/to/file
+```
+
+### Executors
+
+Flowctl supports two executor types:
+
+#### Docker Executor
+
+Runs scripts in Docker containers:
+
+```yaml
+- id: build
+  name: Build Application
+  executor: docker
+  variables:
+    - environment: "{{ input.env }}"
+  with:
+    image: docker.io/node:18
+    script: |
+      npm install
+      npm run build
+      echo "BUILD_ID=$(date +%s)" >> $OUTPUT
+```
+
+#### Script Executor
+
+Executes scripts directly on the target system (local or remote):
+
+```yaml
+- id: deploy
+  name: Deploy to Server
+  executor: script
+  on:
+    - ProductionServer
+  variables:
+    - app_name: "{{ input.app_name }}"
+  with:
+    script: |
+      cd /opt/$app_name
+      git pull
+      systemctl restart $app_name
+```
+
+### Variables
+
+Variables are defined per-action and can reference inputs, secrets, or previous action outputs:
+
+```yaml
+variables:
+  # From inputs
+  - username: "{{ input.username }}"
+
+  # From secrets
+  - api_key: "{{ secrets.API_KEY }}"
+
+  # From previous action outputs
+  - build_id: "{{ actions.build.output.BUILD_ID }}"
+
+  # Using expressions
+  - uppercase_name: "{{ upper(input.name) }}"
+  - sum: "{{ input.num1 + input.num2 }}"
+  - is_prod: "{{ input.env == 'production' }}"
+```
+
+Variables are available as environment variables in your scripts.
+
+### Flow Secrets
+
+Flow secrets allow you to securely store sensitive information like API tokens, passwords, and credentials that your flow needs to access. Secrets are encrypted at rest and never displayed after creation.
+
+#### Managing Secrets
+
+Secrets are managed per-flow through the flowctl UI:
+
+1. Navigate to your flow's configuration
+2. Go to the "Secrets" tab
+3. Add, edit, or delete secrets as needed
+
+Each secret has:
+- **Key**: The name used to reference the secret (e.g., `API_TOKEN`, `DB_PASSWORD`)
+- **Value**: The sensitive data (encrypted and never displayed after creation)
+- **Description**: Optional note about what the secret is for
+
+<Aside type="caution">
+Secret values cannot be viewed after creation. When editing a secret, you must provide a new value.
+</Aside>
+
+#### Using Secrets in Flows
+
+Access secrets in your flow using the `secrets` context within variables:
+
+```yaml
+actions:
+  - id: deploy
+    name: Deploy Application
+    executor: docker
+    variables:
+      - db_password: "{{ secrets.DB_PASSWORD }}"
+      - api_token: "{{ secrets.API_TOKEN }}"
+    with:
+      image: alpine
+      script: |
+        # Secrets are available as environment variables
+        echo "Connecting to database..."
+        mysql -u admin -p"$db_password" -e "SELECT 1"
+```
+
+#### Best Practices
+
+1. **Use descriptive keys**: Name secrets clearly (e.g., `PROD_DB_PASSWORD` vs `password`)
+2. **Add descriptions**: Document what each secret is for and where it's used
+3. **Rotate regularly**: Update secrets periodically for security
+4. **Flow-specific secrets**: Each flow has its own secrets - they're not shared across flows
+5. **Never log secrets**: Avoid echoing or logging secret values in your scripts
+6. **Save flow first**: You must save your flow before you can add secrets to it
+
+#### Example
+
+```yaml
+metadata:
+  id: database_backup
+  name: Database Backup
+  description: Backup production database
+
+actions:
+  - id: backup
+    name: Backup Database
+    executor: docker
+    variables:
+      - db_host: "{{ secrets.DB_HOST }}"
+      - db_user: "{{ secrets.DB_USER }}"
+      - db_password: "{{ secrets.DB_PASSWORD }}"
+      - s3_bucket: "{{ secrets.S3_BUCKET }}"
+      - aws_key: "{{ secrets.AWS_ACCESS_KEY }}"
+      - aws_secret: "{{ secrets.AWS_SECRET_KEY }}"
+    with:
+      image: mysql:8
+      script: |
+        # Create backup
+        mysqldump -h "$db_host" -u "$db_user" -p"$db_password" mydb > backup.sql
+
+        # Upload to S3
+        export AWS_ACCESS_KEY_ID="$aws_key"
+        export AWS_SECRET_ACCESS_KEY="$aws_secret"
+        aws s3 cp backup.sql "s3://$s3_bucket/backups/$(date +%Y%m%d).sql"
+```
+
+### Approvals
+
+Require manual approval before an action executes:
+
+```yaml
+- id: deploy_production
+  name: Deploy to Production
+  executor: docker
+  approval: true  # Flow pauses here for approval
+  with:
+    image: alpine
+    script: |
+      echo "Deploying to production..."
+```
+
+When a flow reaches an approval action, it pauses and waits for a user to approve or reject it through the UI.
+
+### Conditional Execution
+
+Skip actions based on conditions:
+
+```yaml
+- id: notify_failure
+  name: Send Failure Notification
+  executor: docker
+  condition: "actions.deploy.status == 'failed'"
+  with:
+    image: alpine
+    script: |
+      echo "Deployment failed!"
+```
+
+### Artifacts
+
+Preserve files generated during action execution:
+
+```yaml
+- id: generate_report
+  name: Generate Report
+  executor: docker
+  with:
+    image: alpine
+    script: |
+      mkdir /reports
+      echo "Report content" > /reports/report.txt
+  artifacts:
+    - /reports/report.txt
+```
+
+Artifacts from remote nodes are automatically transferred and made available to subsequent actions at `/<NodeName>/path/to/artifact`.
+
+**Example: Using artifacts across nodes**
+
+```yaml
+actions:
+  - id: create_on_remote
+    name: Create File on Remote
+    executor: docker
+    on:
+      - RemoteNode
+    with:
+      image: alpine
+      script: |
+        echo "Hello from remote" > /tmp/message.txt
+    artifacts:
+      - /tmp/message.txt
+
+  - id: use_on_local
+    name: Use File Locally
+    executor: docker
+    with:
+      image: alpine
+      script: |
+        # Access artifact from RemoteNode
+        cat /RemoteNode/tmp/message.txt
+```
+
+### Remote Execution
+
+Execute actions on remote nodes using the `on` field:
+
+```yaml
+- id: remote_task
+  name: Run on Remote Server
+  executor: script
+  on:
+    - WebServer1
+    - WebServer2
+  with:
+    script: |
+      hostname
+      uptime
+```
+
+The action runs on all specified nodes in parallel.
+
+## Outputs
+
+Define outputs to return data from the flow:
+
+```yaml
+outputs:
+  - status: "{{ actions.deploy.status }}"
+  - build_number: "{{ actions.build.output.BUILD_ID }}"
+  - success: true
+```
+
+Actions can write output variables using the `$OUTPUT` file:
+
+```yaml
+script: |
+  echo "KEY=value" >> $OUTPUT
+  echo "RESULT=success" >> $OUTPUT
+```
+
+Access these in outputs or subsequent actions:
+```yaml
+outputs:
+  - key_value: "{{ actions.action_id.output.KEY }}"
+```
+
+## Expression Language
+
+Flowctl uses an expression language for dynamic values. Expressions are written inside `{{ }}`.
+
+### Available Functions
+
+```yaml
+# String functions
+"{{ upper(input.name) }}"           # Convert to uppercase
+"{{ lower(input.name) }}"           # Convert to lowercase
+"{{ len(input.text) }}"             # String length
+"{{ matches(email, pattern) }}"     # Regex match
+
+# Arithmetic
+"{{ input.num1 + input.num2 }}"     # Addition
+"{{ input.num1 * 2 }}"              # Multiplication
+
+# Comparisons
+"{{ input.count > 10 }}"            # Greater than
+"{{ input.env == 'prod' }}"         # Equality
+"{{ input.value >= 5 && input.value <= 10 }}"  # Logical AND
+
+# Accessing data
+"{{ input.field_name }}"            # User inputs
+"{{ secrets.SECRET_NAME }}"         # Secrets
+"{{ actions.action_id.output.KEY }}"  # Action outputs
+"{{ actions.action_id.status }}"    # Action status
+```
+
+### Contexts
+
+- **`input`** - User-provided input values
+- **`secrets`** - Secrets from the keystore
+- **`actions`** - Previous action results and outputs
+
+## Complete Example
+
+Here's a comprehensive flow demonstrating multiple features:
+
+```yaml
+metadata:
+  id: deploy_application
+  name: Deploy Application
+  description: Build and deploy application with approval
+
+inputs:
+  - name: environment
+    type: select
+    label: Environment
+    description: Target environment
+    options:
+      - development
+      - staging
+      - production
+    required: true
+
+  - name: version
+    type: string
+    label: Version
+    description: Application version
+    validation: matches(version, "^v[0-9]+\\.[0-9]+\\.[0-9]+$")
+    required: true
+
+  - name: skip_tests
+    type: checkbox
+    label: Skip Tests
+    description: Skip test execution
+    default: false
+
+actions:
+  - id: run_tests
+    name: Run Tests
+    executor: docker
+    condition: "!input.skip_tests"
+    variables:
+      - version: "{{ input.version }}"
+    with:
+      image: node:18
+      script: |
+        npm install
+        npm test
+        echo "TESTS_PASSED=true" >> $OUTPUT
+
+  - id: build
+    name: Build Application
+    executor: docker
+    variables:
+      - version: "{{ input.version }}"
+      - env: "{{ input.environment }}"
+    with:
+      image: node:18
+      script: |
+        npm run build
+        echo "BUILD_ID=$(date +%s)" >> $OUTPUT
+        echo "BUILD_SUCCESS=true" >> $OUTPUT
+    artifacts:
+      - /app/dist
+
+  - id: deploy
+    name: Deploy
+    executor: script
+    on:
+      - AppServer
+    approval: "{{ input.environment == 'production' }}"
+    variables:
+      - version: "{{ input.version }}"
+      - env: "{{ input.environment }}"
+      - build_id: "{{ actions.build.output.BUILD_ID }}"
+    with:
+      script: |
+        echo "Deploying version $version (build $build_id) to $env"
+        # Deployment commands here
+        echo "DEPLOYMENT_URL=https://$env.example.com" >> $OUTPUT
+
+  - id: verify
+    name: Verify Deployment
+    executor: docker
+    variables:
+      - url: "{{ actions.deploy.output.DEPLOYMENT_URL }}"
+    with:
+      image: curlimages/curl
+      script: |
+        curl -f $url/health || exit 1
+        echo "HEALTH_CHECK=passed" >> $OUTPUT
+
+outputs:
+  - environment: "{{ input.environment }}"
+  - version: "{{ input.version }}"
+  - build_id: "{{ actions.build.output.BUILD_ID }}"
+  - deployment_url: "{{ actions.deploy.output.DEPLOYMENT_URL }}"
+  - status: "success"
+```
+
+## Best Practices
+
+1. **Use meaningful IDs**: Action and flow IDs should be descriptive and use underscores
+2. **Validate inputs**: Always validate user inputs to prevent errors
+3. **Handle errors**: Use `set -e` in bash scripts to fail fast on errors
+4. **Use secrets**: Never hardcode sensitive data - use the secrets management
+5. **Add approvals**: Require approval for destructive or production operations
+6. **Document flows**: Use clear names and descriptions
+7. **Test locally first**: Test flows locally before deploying to production nodes
+8. **Use artifacts wisely**: Only preserve necessary files to save space
+9. **Leverage conditions**: Skip unnecessary actions based on previous results
+10. **Output relevant data**: Return useful information for debugging and monitoring
+
+## Next Steps
+
+- Learn about [Executors](/executors) and their capabilities
+- Configure [Remote Nodes](/nodes) for distributed execution
+- Set up [Secrets Management](/secrets) for secure credential handling
+- Explore [Scheduling](/scheduling) for automated flow execution

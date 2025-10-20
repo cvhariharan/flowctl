@@ -1,0 +1,508 @@
+---
+title: Nodes and Executors
+description: Learn about remote nodes and execution environments in flowctl
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Overview
+
+Flowctl allows you to execute workflows both locally and on remote nodes. This distributed execution model enables you to run tasks where they need to run - whether on your local server, cloud instances, or edge devices.
+
+## Executors
+
+Executors define how your actions run. Flowctl provides two built-in executors:
+
+### Docker Executor
+
+The Docker executor runs your scripts inside Docker containers, providing isolated and reproducible environments.
+
+**Use Cases:**
+- Consistent execution environments across different machines
+- Dependency isolation
+- Running tasks that require specific runtime versions
+- Multi-language workflows (Node.js, Python, Go, etc.)
+
+**Configuration:**
+
+```yaml
+- id: build_app
+  name: Build Application
+  executor: docker
+  variables:
+    - version: "{{ input.version }}"
+  with:
+    image: docker.io/node:18
+    script: |
+      npm install
+      npm run build
+      echo "BUILD_ID=$(date +%s)" >> $OUTPUT
+```
+
+**Key Features:**
+- **Image**: Any Docker image from Docker Hub or private registries
+- **Script**: Bash script to execute inside the container
+- **Isolation**: Each action runs in a fresh container
+- **Automatic cleanup**: Containers are removed after execution
+
+<Aside type="tip">
+Use official images from Docker Hub for best compatibility (e.g., `node:18`, `python:3.11`, `alpine`).
+</Aside>
+
+### Script Executor
+
+The Script executor runs shell scripts directly on the host system (local or remote).
+
+**Use Cases:**
+- System administration tasks
+- Direct file system access
+- Running existing shell scripts
+- Low-overhead operations
+
+**Configuration:**
+
+```yaml
+- id: deploy
+  name: Deploy Application
+  executor: script
+  variables:
+    - app_name: "{{ input.app_name }}"
+  with:
+    script: |
+      cd /opt/$app_name
+      git pull origin main
+      systemctl restart $app_name
+      echo "DEPLOYED_AT=$(date -Iseconds)" >> $OUTPUT
+    interpreter: /bin/bash  # Optional, defaults to /bin/bash
+```
+
+**Key Features:**
+- **Script**: Shell commands to execute
+- **Interpreter**: Custom interpreter (defaults to `/bin/bash`)
+- **Direct access**: Runs directly on the host system
+- **System integration**: Access to systemd, cron, and other system services
+
+<Aside type="caution">
+Script executor actions run with the permissions of the flowctl process. Ensure proper security measures are in place.
+</Aside>
+
+### Choosing an Executor
+
+| Feature | Docker | Script |
+|---------|--------|--------|
+| Isolation | ✓ Isolated containers | ✗ Direct host access |
+| Dependencies | ✓ Built into image | ✗ Must be pre-installed |
+| Portability | ✓ Highly portable | ~ Environment-dependent |
+| Performance | ~ Container overhead | ✓ Direct execution |
+| System access | ~ Limited | ✓ Full access |
+| Multi-language | ✓ Any language | ~ Shell only |
+
+**General Guidelines:**
+- Use **Docker** for: Application builds, tests, deployments with dependencies, multi-language tasks
+- Use **Script** for: System operations, file management, service restarts, direct hardware access
+
+## Remote Nodes
+
+Remote nodes enable distributed workflow execution across multiple machines.
+
+### What are Remote Nodes?
+
+A remote node is any server or machine that flowctl can connect to via SSH. Once configured, you can execute actions on these nodes as if they were local.
+
+**Common Node Types:**
+- Production servers
+- Build servers
+- Database servers
+- Edge devices
+- Cloud instances (AWS, GCP, Azure)
+- On-premise infrastructure
+
+### Setting Up Remote Nodes
+
+#### Step 1: Create a Credential
+
+Before adding a node, create SSH credentials:
+
+1. Navigate to **Settings** > **Credentials**
+2. Click **Add Credential**
+3. Provide:
+   - **Name**: Descriptive name (e.g., "Production Server SSH Key")
+   - **Type**: `private_key` or `password`
+   - **Key Data**: SSH private key or password
+
+<Aside>
+For best security, use SSH key-based authentication with private keys.
+</Aside>
+
+#### Step 2: Add a Node
+
+1. Navigate to **Nodes**
+2. Click **Add Node**
+3. Configure the node:
+
+```yaml
+Name: WebServer1
+Hostname: 192.168.1.100
+Port: 22
+Username: deploy
+OS Family: linux
+Connection Type: ssh
+Credential: [Select your credential]
+Tags: [production, webserver]  # Optional
+```
+
+**Fields:**
+- **Name**: Unique identifier used in flow definitions
+- **Hostname**: IP address or domain name
+- **Port**: SSH port (default: 22)
+- **Username**: SSH user account
+- **OS Family**: Operating system type (linux, darwin, windows)
+- **Connection Type**: `ssh` or `qssh` (QUIC-based SSH)
+- **Credential**: SSH authentication credential
+- **Tags**: Optional labels for organization
+
+#### Step 3: Test Connectivity
+
+After adding a node, flowctl verifies SSH connectivity. Ensure:
+- The node is accessible from the flowctl server
+- Firewall rules allow SSH connections
+- SSH keys/passwords are correct
+- The user has necessary permissions
+
+### Using Remote Nodes in Flows
+
+Execute actions on remote nodes using the `on` field:
+
+```yaml
+actions:
+  - id: remote_deploy
+    name: Deploy to Production
+    executor: script
+    on:
+      - WebServer1
+      - WebServer2
+    variables:
+      - version: "{{ input.version }}"
+    with:
+      script: |
+        cd /var/www/app
+        git fetch --all
+        git checkout $version
+        sudo systemctl restart app
+```
+
+**Key Points:**
+- Actions run on **all specified nodes in parallel**
+- Each node receives the same inputs and variables
+- Outputs are collected from all nodes
+- If any node fails, the entire action fails
+
+### Multi-Node Execution
+
+When specifying multiple nodes, actions execute in parallel across all nodes:
+
+```yaml
+- id: health_check
+  name: Check Server Health
+  executor: script
+  on:
+    - WebServer1
+    - WebServer2
+    - WebServer3
+  with:
+    script: |
+      echo "Checking health on $(hostname)"
+      df -h
+      free -m
+      uptime
+```
+
+**Output per node:**
+Each node's output is captured separately and available in the execution logs.
+
+### Docker on Remote Nodes
+
+The Docker executor works seamlessly on remote nodes:
+
+```yaml
+- id: remote_docker_build
+  name: Build on Remote Node
+  executor: docker
+  on:
+    - BuildServer
+  with:
+    image: docker.io/node:18
+    script: |
+      npm install
+      npm run build
+```
+
+**Requirements:**
+- Docker must be installed on the remote node
+- The SSH user must have Docker permissions (member of `docker` group)
+- The Docker daemon must be running
+
+<Aside type="tip">
+Add your SSH user to the docker group: `sudo usermod -aG docker username`
+</Aside>
+
+## Artifacts and Remote Execution
+
+Artifacts work transparently across local and remote execution.
+
+### Remote Artifacts
+
+When an action runs on a remote node and declares artifacts, flowctl automatically transfers them back:
+
+```yaml
+- id: create_remote_artifact
+  name: Create Report on Remote
+  executor: docker
+  on:
+    - ReportServer
+  with:
+    image: alpine
+    script: |
+      echo "Report generated on $(date)" > /tmp/report.txt
+      echo "Node: $(hostname)" >> /tmp/report.txt
+  artifacts:
+    - /tmp/report.txt
+
+- id: use_artifact_locally
+  name: Process Report Locally
+  executor: docker
+  with:
+    image: alpine
+    script: |
+      # Artifact is available at /ReportServer/tmp/report.txt
+      cat /ReportServer/tmp/report.txt
+      echo "Report processed"
+```
+
+**Artifact Path Structure:**
+- **Local artifacts**: Available at their original path (e.g., `/tmp/file.txt`)
+- **Remote artifacts**: Available at `/<NodeName>/<original-path>` (e.g., `/ReportServer/tmp/report.txt`)
+
+### Multi-Node Artifacts
+
+When running on multiple nodes, each node's artifacts are available separately:
+
+```yaml
+- id: collect_logs
+  name: Collect Logs from All Servers
+  executor: script
+  on:
+    - WebServer1
+    - WebServer2
+    - WebServer3
+  with:
+    script: cp /var/log/app.log /tmp/app.log
+  artifacts:
+    - /tmp/app.log
+
+- id: aggregate_logs
+  name: Aggregate All Logs
+  executor: docker
+  with:
+    image: alpine
+    script: |
+      cat /WebServer1/tmp/app.log > /tmp/all_logs.txt
+      cat /WebServer2/tmp/app.log >> /tmp/all_logs.txt
+      cat /WebServer3/tmp/app.log >> /tmp/all_logs.txt
+      echo "Total lines: $(wc -l < /tmp/all_logs.txt)"
+```
+
+## Connection Types
+
+### SSH (Standard)
+
+The default and most widely supported connection method.
+
+**Features:**
+- Industry-standard protocol
+- Widely supported
+- Firewall-friendly (single port)
+- Authentication via keys or passwords
+
+**Configuration:**
+```yaml
+Connection Type: ssh
+Port: 22
+```
+
+### QSSH (QUIC-based SSH)
+
+An alternative connection method using QUIC protocol for improved performance.
+
+**Features:**
+- Better performance over high-latency networks
+- Connection migration (survives IP changes)
+- Improved multiplexing
+- UDP-based (requires UDP port access)
+
+**Configuration:**
+```yaml
+Connection Type: qssh
+Port: 443  # Or any UDP port
+```
+
+<Aside type="note">
+QSSH requires the QUIC protocol to be enabled and accessible on both sides.
+</Aside>
+
+## Best Practices
+
+### Security
+
+1. **Use SSH keys** instead of passwords for authentication
+2. **Limit permissions**: Create dedicated service accounts with minimal required permissions
+3. **Network isolation**: Use firewalls and VPNs to restrict access to nodes
+4. **Rotate credentials** regularly through the Credentials manager
+5. **Audit access**: Review node access logs periodically
+
+### Performance
+
+1. **Minimize remote execution**: Run tasks locally when possible to reduce network overhead
+2. **Batch operations**: Group related operations in a single action
+3. **Use local artifacts**: Declare only necessary artifacts to minimize transfer time
+4. **Connection reuse**: SSH connections are pooled and reused for efficiency
+
+### Organization
+
+1. **Use descriptive names**: Name nodes clearly (e.g., `prod-web-01`, `staging-db`)
+2. **Tag nodes**: Use tags to organize nodes by environment, role, or location
+3. **Document nodes**: Add descriptions in your configuration management
+4. **Consistent naming**: Follow a naming convention across all nodes
+
+### Reliability
+
+1. **Test connectivity**: Verify node access before deploying production flows
+2. **Handle failures**: Use conditionals to handle node-specific failures gracefully
+3. **Monitor nodes**: Track node health and connectivity status
+4. **Fallback strategies**: Design flows to handle node unavailability
+
+## Troubleshooting
+
+### Common Issues
+
+**Connection Refused:**
+- Verify SSH service is running: `systemctl status sshd`
+- Check firewall rules: `sudo ufw status`
+- Confirm hostname/IP is correct
+
+**Permission Denied:**
+- Verify SSH key is correct
+- Check file permissions: SSH keys should be `600`
+- Ensure user exists on the remote system
+- Check `/var/log/auth.log` on the remote node
+
+**Docker Not Found (Remote):**
+- Install Docker on the remote node
+- Add user to docker group: `sudo usermod -aG docker username`
+- Restart SSH session for group changes to take effect
+
+**Artifacts Not Transferring:**
+- Verify artifact paths exist before declaration
+- Check disk space on both nodes
+- Ensure paths are absolute, not relative
+
+**Timeout Errors:**
+- Increase timeout in flow configuration
+- Check network latency
+- Verify node isn't overloaded (CPU/memory)
+
+## Example: Multi-Tier Deployment
+
+Here's a complete example demonstrating remote execution across multiple nodes:
+
+```yaml
+metadata:
+  id: multi_tier_deploy
+  name: Multi-Tier Application Deployment
+  description: Deploy application across database, API, and web tiers
+
+inputs:
+  - name: version
+    type: string
+    label: Version Tag
+    required: true
+    validation: matches(version, "^v[0-9]+\\.[0-9]+\\.[0-9]+$")
+
+actions:
+  # Step 1: Update database schema
+  - id: update_database
+    name: Update Database Schema
+    executor: script
+    on:
+      - DatabaseServer
+    variables:
+      - version: "{{ input.version }}"
+    with:
+      script: |
+        cd /opt/migrations
+        ./run-migrations.sh $version
+        echo "DB_VERSION=$version" >> $OUTPUT
+
+  # Step 2: Deploy API servers (parallel)
+  - id: deploy_api
+    name: Deploy API Servers
+    executor: docker
+    on:
+      - APIServer1
+      - APIServer2
+    variables:
+      - version: "{{ input.version }}"
+    with:
+      image: docker.io/myapp/api:latest
+      script: |
+        docker pull myapp/api:$version
+        docker stop api-container || true
+        docker rm api-container || true
+        docker run -d --name api-container myapp/api:$version
+        echo "API_DEPLOYED=true" >> $OUTPUT
+
+  # Step 3: Deploy web servers (parallel)
+  - id: deploy_web
+    name: Deploy Web Servers
+    executor: script
+    on:
+      - WebServer1
+      - WebServer2
+      - WebServer3
+    variables:
+      - version: "{{ input.version }}"
+    with:
+      script: |
+        cd /var/www/app
+        git fetch --all
+        git checkout $version
+        npm install --production
+        pm2 restart app
+        echo "WEB_DEPLOYED=true" >> $OUTPUT
+
+  # Step 4: Health check all services
+  - id: health_check
+    name: Health Check All Services
+    executor: script
+    on:
+      - APIServer1
+      - APIServer2
+      - WebServer1
+      - WebServer2
+      - WebServer3
+    with:
+      script: |
+        curl -f http://localhost/health || exit 1
+        echo "HEALTH_STATUS=ok" >> $OUTPUT
+
+outputs:
+  - version: "{{ input.version }}"
+  - db_version: "{{ actions.update_database.output.DB_VERSION }}"
+  - deployment_status: "success"
+```
+
+## Next Steps
+
+- Learn about [Flow Secrets](/general/flows#flow-secrets) for secure credential management
+- Explore [Task Execution](/general/execution) to understand the execution lifecycle
+- Review [Access Control](/general/access-control) for multi-user environments

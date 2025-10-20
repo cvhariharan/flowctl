@@ -1,0 +1,61 @@
+---
+title: flowctl
+description: Self-service workflow automation platform for teams
+template: splash
+hero:
+  title: flowctl
+  tagline: Self-service workflow automation platform for teams
+  image:
+    file: ../../../public/logo.svg
+    alt: flowctl main page
+  actions:
+    - text: Get Started
+      link: general/getting-started
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/cvhariharan/flowctl
+      icon: external
+      variant: minimal
+head:
+  - tag: title
+    content: flowctl Documentation
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+## Built for Modern Teams
+
+Everything you need to automate workflows efficiently and securely
+
+## Features
+
+<CardGrid stagger>
+  <Card title="Workflows" icon="seti:pipeline">
+    Define complex workflows using simple configuration. Create reusable flows
+    with inputs, actions, and approvals.
+  </Card>
+  <Card title="SSO" icon="rocket">
+    Use OIDC to securely authenticate users.
+  </Card>
+  <Card title="Approvals" icon="approve-check">
+    Add approval gates to sensitive operations. Control who can approve
+    workflows with flexible policies.
+  </Card>
+  <Card title="Teams" icon="seti:folder">
+    Organize workflows by teams or projects with isolated namespaces. Built-in
+    RBAC for secure collaboration.
+  </Card>
+  <Card title="Remote Execution" icon="laptop">
+    Execute workflows on remote nodes. Use the flowctl SDK to create custom
+    executors.
+  </Card>
+  <Card title="Secure Secrets" icon="seti:lock">
+    Store SSH keys, passwords, and secrets securely. Encrypted storage with
+    fine-grained access controls.
+  </Card>
+  <Card title="Real-time Logs" icon="document">
+    Track workflow executions with streaming logs. Monitor status, performance,
+    and troubleshoot issues.
+  </Card>
+</CardGrid>

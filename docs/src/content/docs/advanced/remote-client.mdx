@@ -1,0 +1,299 @@
+---
+title: Remote Client System
+description: Understanding flowctl's remote client architecture
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Overview
+
+The remote client system enables flowctl to communicate with remote nodes using different protocols. It provides a pluggable architecture where protocols like SSH and QSSH can be swapped without changing executor code.
+
+## Architecture
+
+```
+┌─────────────┐
+│  Executors  │
+│ (Docker,    │
+│  Script)    │
+└──────┬──────┘
+       │
+       ▼
+┌──────────────────┐
+│ Remote Client    │
+│   Registry       │
+└──────┬───────────┘
+       │
+   ┌───┴───┐
+   ▼       ▼
+┌─────┐ ┌──────┐
+│ SSH │ │ QSSH │
+└─────┘ └──────┘
+```
+
+## Remote Client Interface
+
+All remote clients implement this interface:
+
+```go
+type RemoteClient interface {
+    // Execute a command on the remote machine
+    RunCommand(ctx context.Context, command string,
+               stdout, stderr io.Writer) error
+
+    // Download a file from remote to local
+    Download(ctx context.Context, remotePath, localPath string) error
+
+    // Upload a file from local to remote
+    Upload(ctx context.Context, localPath, remotePath string) error
+
+    // Open a connection to a network address on remote
+    Dial(network, address string) (net.Conn, error)
+
+    // Close the connection
+    Close() error
+}
+```
+
+## Built-in Clients
+
+### SSH Client
+
+Standard SSH over TCP.
+
+**Location:** `/app/remote/ssh/client.go`
+
+**Features:**
+- SSH public key or password authentication
+- SFTP for file transfers
+- Port forwarding for Docker socket access
+
+**Usage:**
+```yaml
+Connection Type: ssh
+Port: 22
+```
+
+### QSSH Client
+
+SSH over QUIC protocol.
+
+**Location:** `/app/remote/qssh/client.go`
+
+**Features:**
+- SSH tunneled over QUIC (UDP)
+- Better performance on unreliable networks
+- Same authentication as SSH
+
+**Usage:**
+```yaml
+Connection Type: qssh
+Port: 443
+```
+
+See [QSSH documentation](/advanced/qssh) for details.
+
+## How It Works
+
+### Registration
+
+Clients register themselves at initialization:
+
+```go
+func init() {
+    remoteclient.Register("ssh", NewRemoteClient)
+}
+```
+
+### Client Selection
+
+Executors get clients from the registry:
+
+```go
+clientType := node.ConnectionType  // "ssh" or "qssh"
+if clientType == "" {
+    clientType = "ssh"  // default
+}
+
+client, err := remoteclient.GetClient(clientType, node)
+```
+
+### Executor Integration
+
+Executors use remote clients for remote operations:
+
+```go
+if node.Hostname != "" {
+    // Remote execution
+    remoteClient, err := remoteclient.GetClient(clientType, node)
+    executor.remoteClient = remoteClient
+}
+```
+
+## Operations
+
+### Command Execution
+
+```go
+var stdout, stderr bytes.Buffer
+err := client.RunCommand(ctx, "ls -la", &stdout, &stderr)
+```
+
+### File Upload
+
+```go
+err := client.Upload(ctx, "/local/file.txt", "/remote/file.txt")
+```
+
+### File Download
+
+```go
+err := client.Download(ctx, "/remote/file.txt", "/local/file.txt")
+```
+
+### Port Forwarding
+
+Used by Docker executor to access remote Docker socket:
+
+```go
+conn, err := client.Dial("unix", "/var/run/docker.sock")
+```
+
+## Local vs Remote Execution
+
+Executors adapt based on whether a remote client is present:
+
+```go
+// Creating a file
+if e.remoteClient == nil {
+    // Local: use filesystem
+    return os.Create(path)
+} else {
+    // Remote: use remote client
+    cmd := fmt.Sprintf("touch %s", path)
+    return e.remoteClient.RunCommand(ctx, cmd, io.Discard, io.Discard)
+}
+```
+
+## Context Handling
+
+All operations support context cancellation:
+
+```go
+// Create result channel
+resultCh := make(chan error, 1)
+
+// Run in goroutine
+go func() {
+    err := session.Run(command)
+    resultCh <- err
+}()
+
+// Wait for completion or cancellation
+select {
+case <-ctx.Done():
+    session.Close()
+    return ctx.Err()
+case err := <-resultCh:
+    return err
+}
+```
+
+## Authentication
+
+Both SSH and QSSH support:
+
+**Private Key:**
+```go
+case "private_key":
+    signer, err := ssh.ParsePrivateKey([]byte(node.Auth.Key))
+    authMethod = ssh.PublicKeys(signer)
+```
+
+**Password:**
+```go
+case "password":
+    authMethod = ssh.Password(node.Auth.Key)
+```
+
+## File Transfers
+
+Use SFTP protocol over SSH/QSSH:
+
+```go
+// Create SFTP client
+sftpClient, err := sftp.NewClient(sshClient)
+
+// Upload
+localFile, _ := os.Open(localPath)
+remoteFile, _ := sftpClient.Create(remotePath)
+io.Copy(remoteFile, localFile)
+
+// Download
+remoteFile, _ := sftpClient.Open(remotePath)
+localFile, _ := os.Create(localPath)
+io.Copy(localFile, remoteFile)
+```
+
+## Adding a Custom Client
+
+1. **Create client package** in `/app/remote/yourprotocol/`
+
+2. **Implement RemoteClient interface**
+
+3. **Register in init():**
+```go
+func init() {
+    remoteclient.Register("yourprotocol", NewYourClient)
+}
+```
+
+4. **Import in main:**
+```go
+import _ "github.com/cvhariharan/flowctl/remote/yourprotocol"
+```
+
+5. **Use in node configuration:**
+```yaml
+Connection Type: yourprotocol
+```
+
+## Best Practices
+
+**Context Handling**
+- Always respect context cancellation
+- Clean up resources on cancellation
+
+**Error Messages**
+- Include hostname and port in errors
+- Wrap errors with context
+
+**Resource Cleanup**
+- Implement proper Close() method
+- Use defer to ensure cleanup
+
+**File Operations**
+- Create directories if needed
+- Handle permissions correctly
+
+## Troubleshooting
+
+**"remote client for protocol 'X' is not registered"**
+- Protocol package not imported in main
+
+**Connection failures**
+- Verify node hostname and port
+- Check firewall rules (TCP for SSH, UDP for QSSH)
+- Validate credentials
+
+**File transfer issues**
+- Verify paths exist or can be created
+- Check filesystem permissions
+- Ensure sufficient disk space
+
+## Resources
+
+- **Interface:** `/app/sdk/remoteclient/remote_client.go`
+- **Registry:** `/app/sdk/remoteclient/registry.go`
+- **SSH Client:** `/app/remote/ssh/client.go`
+- **QSSH Client:** `/app/remote/qssh/client.go`
