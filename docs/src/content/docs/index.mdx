@@ -2,33 +2,65 @@
 title: flowctl
 description: Self-service workflow automation platform for teams
 template: splash
-hero:
-  title: flowctl
-  tagline: Self-service workflow automation platform for teams
-  image:
-    file: ../../../public/logo.svg
-    alt: flowctl main page
-  actions:
-    - text: Get Started
-      link: general/getting-started
-      icon: right-arrow
-      variant: primary
-    - text: View on GitHub
-      link: https://github.com/cvhariharan/flowctl
-      icon: external
-      variant: minimal
 head:
   - tag: title
     content: flowctl Documentation
 ---
 
 import { Card, CardGrid } from "@astrojs/starlight/components";
+import { LinkButton } from "@astrojs/starlight/components";
+import CustomHero from "../../components/CustomHero.astro";
+import ScreenshotsCarousel from "../../components/ScreenshotsCarousel.astro";
 
-## Built for Modern Teams
+<CustomHero
+  logo="/logo.svg"
+  title="flowctl"
+  tagline="Self-service workflow automation platform for teams"
+/>
 
-Everything you need to automate workflows efficiently and securely
+<div
+  class="sl-flex"
+  style="justify-content: center; gap: 1rem; margin: 2rem 0;"
+>
+  <LinkButton href="/general/getting-started">Get Started</LinkButton>
+  <LinkButton href="https://github.com/cvhariharan/flowctl" variant="secondary">
+    View on GitHub
+  </LinkButton>
+</div>
 
-## Features
+<div class="section-header">
+  <h2>Built for Modern Teams</h2>
+  <p>Everything you need to automate workflows efficiently and securely</p>
+</div>
+
+<ScreenshotsCarousel
+  screenshots={[
+    {
+      src: "/screenshots/screenshot1.png",
+      alt: "flowctl flows list",
+      caption: "Modern dashboard for workflow management",
+    },
+    {
+      src: "/screenshots/screenshot2.png",
+      alt: "flowctl run flow",
+      caption: "Trigger flows with custom inputs",
+    },
+    {
+      src: "/screenshots/screenshot3.png",
+      alt: "flowctl execution logs",
+      caption: "Real-time execution logs",
+    },
+    {
+      src: "/screenshots/screenshot4.png",
+      alt: "flowctl execution results",
+      caption: "Real-time execution results",
+    },
+  ]}
+/>
+
+<div class="section-header">
+  <h2>Features</h2>
+</div>
 
 <CardGrid stagger>
   <Card title="Workflows" icon="seti:pipeline">
@@ -59,3 +91,74 @@ Everything you need to automate workflows efficiently and securely
     and troubleshoot issues.
   </Card>
 </CardGrid>
+
+<style>{`
+  /* Hide all default Starlight headers and hero sections */
+  .page-title,
+  .content-panel > header,
+  main > header,
+  .hero:not(.custom-hero),
+  .sl-hero,
+  main h1:not(.hero-title),
+  .sl-markdown-content > h1:first-of-type:not(.hero-title),
+  #_top + h1,
+  main > .sl-container > h1 {
+    display: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Remove borders/lines only from header elements */
+  main > header::after,
+  main > header::before,
+  main > .sl-container > h1::after,
+  .page-title::after,
+  .sl-markdown-content::before {
+    border-top: none !important;
+    border-bottom: none !important;
+  }
+
+  /* Remove top border/line from custom hero and its parent */
+  .custom-hero,
+  .custom-hero::before {
+    border-top: none !important;
+    margin-top: 0 !important;
+  }
+
+  /* Ensure custom hero is centered and spans full width */
+  .custom-hero {
+    display: flex !important;
+    width: 100vw !important;
+    margin-left: calc(-50vw + 50%) !important;
+    margin-right: calc(-50vw + 50%) !important;
+    max-width: 100vw !important;
+  }
+
+  /* Ensure custom hero title is visible */
+  .hero-title {
+    display: block !important;
+  }
+
+  .custom-hero .hero-title {
+    display: block !important;
+  }
+
+  /* Center section headers and their descriptions */
+  .section-header {
+    text-align: center;
+    margin: 3rem auto 2rem;
+  }
+
+  .section-header h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
+  }
+
+  .section-header p {
+    font-size: 1.2rem;
+    color: var(--sl-color-gray-2);
+    margin: 0;
+  }
+`}</style>
