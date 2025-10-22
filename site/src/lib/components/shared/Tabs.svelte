@@ -87,7 +87,7 @@
       type="button"
       onclick={() => handleTabClick(tab)}
       disabled={tab.disabled}
-      class={getTabClasses(tab, isActive)}
+      class="{getTabClasses(tab, isActive)} cursor-pointer"
       aria-current={isActive ? 'page' : undefined}
     >
       <span class="whitespace-nowrap">

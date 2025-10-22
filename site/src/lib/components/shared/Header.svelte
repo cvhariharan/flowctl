@@ -67,7 +67,7 @@
       {#each actions as action}
         <button
           onclick={action.onClick}
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-md transition-colors {action.variant === 'primary' ? 'bg-primary-500 text-white hover:bg-primary-600' : action.variant === 'danger' ? 'bg-danger-500 text-white hover:bg-danger-600' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-md transition-colors cursor-pointer {action.variant === 'primary' ? 'bg-primary-500 text-white hover:bg-primary-600' : action.variant === 'danger' ? 'bg-danger-500 text-white hover:bg-danger-600' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}"
         >
           {action.label}
         </button>

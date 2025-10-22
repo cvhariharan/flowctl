@@ -124,7 +124,7 @@
           <button
             type="button"
             onclick={() => handleActionClick(action.id)}
-            class="w-full text-left p-4 rounded-lg border transition-all duration-200 {getStatusClasses(action.status)}"
+            class="w-full text-left p-4 rounded-lg border transition-all duration-200 cursor-pointer {getStatusClasses(action.status)}"
             class:border-gray-100={selectedActionId !== action.id}
             class:border-2={selectedActionId !== action.id}
           >

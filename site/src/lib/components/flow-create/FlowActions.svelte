@@ -173,7 +173,7 @@
         <h3 class="text-base font-medium text-gray-900">Flow Actions</h3>
         <button
             onclick={addAction}
-            class="text-sm text-primary-600 hover:text-primary-700 font-medium"
+            class="text-sm text-primary-600 hover:text-primary-700 font-medium cursor-pointer"
         >
             + Add Action
         </button>
@@ -221,7 +221,7 @@
                         <button
                             onclick={() =>
                                 (action.collapsed = !action.collapsed)}
-                            class="text-gray-400 hover:text-gray-600"
+                            class="text-gray-400 hover:text-gray-600 cursor-pointer"
                         >
                             <svg
                                 class="w-5 h-5 transform transition-transform {action.collapsed
@@ -241,7 +241,7 @@
                         </button>
                         <button
                             onclick={() => duplicateAction(index)}
-                            class="text-gray-400 hover:text-primary-600"
+                            class="text-gray-400 hover:text-primary-600 cursor-pointer"
                         >
                             <svg
                                 class="w-5 h-5"
@@ -259,7 +259,7 @@
                         </button>
                         <button
                             onclick={() => removeAction(index)}
-                            class="text-gray-400 hover:text-danger-600"
+                            class="text-gray-400 hover:text-danger-600 cursor-pointer"
                         >
                             <svg
                                 class="w-5 h-5"
@@ -667,7 +667,7 @@
                                 <button
                                     onclick={() => addVariable(action)}
                                     type="button"
-                                    class="text-xs text-primary-600 hover:text-primary-700"
+                                    class="text-xs text-primary-600 hover:text-primary-700 cursor-pointer"
                                 >
                                     + Add Variable
                                 </button>
@@ -707,7 +707,7 @@
                                                         varIndex,
                                                     )}
                                                 type="button"
-                                                class="text-gray-400 hover:text-danger-600"
+                                                class="text-gray-400 hover:text-danger-600 cursor-pointer"
                                             >
                                                 <svg
                                                     class="w-4 h-4"
@@ -744,7 +744,7 @@
                                     <button
                                         onclick={() => addArtifact(action)}
                                         type="button"
-                                        class="text-xs text-primary-600 hover:text-primary-700"
+                                        class="text-xs text-primary-600 hover:text-primary-700 cursor-pointer"
                                     >
                                         + Add Artifact
                                     </button>
@@ -776,7 +776,7 @@
                                                             artifactIndex,
                                                         )}
                                                     type="button"
-                                                    class="text-gray-400 hover:text-danger-600"
+                                                    class="text-gray-400 hover:text-danger-600 cursor-pointer"
                                                 >
                                                     <svg
                                                         class="w-4 h-4"
@@ -840,7 +840,7 @@
                 <p>No actions defined yet</p>
                 <button
                     onclick={addAction}
-                    class="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                    class="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium cursor-pointer"
                 >
                     Add your first action
                 </button>

@@ -273,7 +273,7 @@
                                         onclick={(e) =>
                                             handleActionClick(action, row, e)}
                                         class="{action.className ||
-                                            'text-primary-500 hover:text-primary-900'} mr-3"
+                                            'text-primary-500 hover:text-primary-900'} mr-3 cursor-pointer"
                                         aria-label={action.label}
                                     >
                                         {action.label}

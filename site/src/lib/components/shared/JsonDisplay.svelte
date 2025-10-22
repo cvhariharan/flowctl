@@ -32,7 +32,7 @@
 {#if hasData}
   <div class="bg-white rounded-lg border border-gray-300">
     <button
-      class="w-full flex items-center justify-between px-6 py-3 hover:bg-gray-50 transition-colors duration-200 border-b border-gray-300"
+      class="w-full flex items-center justify-between px-6 py-3 hover:bg-gray-50 transition-colors duration-200 border-b border-gray-300 cursor-pointer"
       onclick={toggleExpanded}
       type="button"
     >

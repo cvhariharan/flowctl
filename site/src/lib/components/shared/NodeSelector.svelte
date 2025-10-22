@@ -169,7 +169,7 @@
             <button
               type="button"
               onclick={() => removeNode(nodeName)}
-              class="ml-1 text-primary-500 hover:text-primary-900"
+              class="ml-1 text-primary-500 hover:text-primary-900 cursor-pointer"
               aria-label="Remove {nodeName}"
             >
               <IconX size={12} />

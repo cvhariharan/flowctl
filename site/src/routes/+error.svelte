@@ -111,16 +111,16 @@
       {#if errorDetails.showLoginButton}
         <button
           onclick={handleLogin}
-          class="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 text-white rounded-md hover:bg-primary-600 transition-colors font-medium"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 text-white rounded-md hover:bg-primary-600 transition-colors font-medium cursor-pointer"
         >
           <IconLogin size={18} />
           Log In
         </button>
       {/if}
       
-      <button 
+      <button
         onclick={handleGoHome}
-        class="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors font-medium"
+        class="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors font-medium cursor-pointer"
       >
         <IconHome size={18} />
         {$isAuthenticated ? 'Dashboard' : 'Home'}

@@ -39,7 +39,7 @@
   <button
     type="button"
     onclick={() => userSettingsOpen = !userSettingsOpen}
-    class="w-full flex items-center text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors {isCollapsed ? 'justify-center p-2' : 'px-3 py-2'}"
+    class="w-full flex items-center text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer {isCollapsed ? 'justify-center p-2' : 'px-3 py-2'}"
     aria-label="User menu toggle"
     title={isCollapsed ? $currentUser?.name || 'User menu' : ''}
   >
@@ -71,7 +71,7 @@
         <button
           type="button"
           onclick={logout}
-          class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+          class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
           role="menuitem"
         >
           Logout

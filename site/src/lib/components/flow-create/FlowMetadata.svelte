@@ -97,7 +97,7 @@
         <button
           type="button"
           onclick={addSchedule}
-          class="text-xs text-primary-600 hover:text-primary-700 font-medium"
+          class="text-xs text-primary-600 hover:text-primary-700 font-medium cursor-pointer"
         >
           + Add Schedule
         </button>
@@ -124,7 +124,7 @@
             <button
               type="button"
               onclick={() => removeSchedule(index)}
-              class="mt-2 text-gray-400 hover:text-danger-600"
+              class="mt-2 text-gray-400 hover:text-danger-600 cursor-pointer"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -142,7 +142,7 @@
             <button
               type="button"
               onclick={addSchedule}
-              class="text-sm text-primary-600 hover:text-primary-700 font-medium"
+              class="text-sm text-primary-600 hover:text-primary-700 font-medium cursor-pointer"
             >
               Add your first schedule
             </button>

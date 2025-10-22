@@ -128,7 +128,7 @@
 				</div>
 				<button
 					onclick={closeModal}
-					class="text-gray-400 hover:text-gray-600 transition-colors"
+					class="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
 					aria-label="Close modal"
 				>
 					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,7 +148,7 @@
 						<div class="text-danger-600 mb-2">{error}</div>
 						<button
 							onclick={fetchApprovalDetails}
-							class="text-primary-600 hover:text-primary-800 underline"
+							class="text-primary-600 hover:text-primary-800 underline cursor-pointer"
 						>
 							Try again
 						</button>
@@ -201,7 +201,7 @@
 								<button
 									onclick={handleReject}
 									disabled={actionLoading}
-									class="px-4 py-2 text-sm font-medium text-danger-700 bg-danger-50 border border-danger-300 rounded-lg hover:bg-danger-100 focus:ring-4 focus:ring-danger-300 disabled:opacity-50"
+									class="px-4 py-2 text-sm font-medium text-danger-700 bg-danger-50 border border-danger-300 rounded-lg hover:bg-danger-100 focus:ring-4 focus:ring-danger-300 disabled:opacity-50 cursor-pointer"
 								>
 									{#if actionLoading}
 										<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-danger-700 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -214,7 +214,7 @@
 								<button
 									onclick={handleApprove}
 									disabled={actionLoading}
-									class="px-4 py-2 text-sm font-medium text-white bg-success-600 border border-transparent rounded-lg hover:bg-success-700 focus:ring-4 focus:ring-success-300 disabled:opacity-50"
+									class="px-4 py-2 text-sm font-medium text-white bg-success-600 border border-transparent rounded-lg hover:bg-success-700 focus:ring-4 focus:ring-success-300 disabled:opacity-50 cursor-pointer"
 								>
 									{#if actionLoading}
 										<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

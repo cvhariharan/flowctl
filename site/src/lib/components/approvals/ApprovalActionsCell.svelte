@@ -21,13 +21,13 @@
   {#if row.status === 'pending'}
     <button
       onclick={() => handleApprove(row.id)}
-      class="text-success-600 hover:text-success-800"
+      class="text-success-600 hover:text-success-800 cursor-pointer"
     >
       Approve
     </button>
     <button
       onclick={() => handleReject(row.id)}
-      class="text-danger-600 hover:text-danger-800"
+      class="text-danger-600 hover:text-danger-800 cursor-pointer"
     >
       Reject
     </button>

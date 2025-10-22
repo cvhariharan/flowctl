@@ -54,29 +54,29 @@
 {#if totalPages > 1}
   <div class="flex justify-center mt-8">
     <nav class="flex items-center space-x-2">
-      <button 
+      <button
         onclick={() => handlePageChange(currentPage - 1)}
         disabled={isPreviousDisabled}
-        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         Previous
       </button>
 
       {#each visiblePages as page}
-        <button 
+        <button
           onclick={() => handlePageChange(page)}
           disabled={disabled || loading}
-          class="px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:cursor-not-allowed
+          class="px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:cursor-not-allowed cursor-pointer
                  {page === currentPage ? 'bg-primary-500 text-white' : 'bg-white text-gray-700'}"
         >
           {page}
         </button>
       {/each}
 
-      <button 
+      <button
         onclick={() => handlePageChange(currentPage + 1)}
         disabled={isNextDisabled}
-        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         Next
       </button>

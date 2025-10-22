@@ -31,7 +31,7 @@
 <div>
   <div class="flex items-center justify-between mb-6">
     <h3 class="text-base font-medium text-gray-900">Flow Inputs</h3>
-    <button onclick={addInput} class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+    <button onclick={addInput} class="text-sm text-primary-600 hover:text-primary-700 font-medium cursor-pointer">
       + Add Input
     </button>
   </div>
@@ -39,9 +39,9 @@
   <div class="space-y-4">
     {#each inputs as input, index (index)}
       <div class="border border-gray-200 rounded-lg p-4 relative">
-        <button 
+        <button
           onclick={() => removeInput(index)}
-          class="absolute top-4 right-4 text-gray-400 hover:text-danger-600"
+          class="absolute top-4 right-4 text-gray-400 hover:text-danger-600 cursor-pointer"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -143,7 +143,7 @@
             d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
         <p>No inputs defined yet</p>
-        <button onclick={addInput} class="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium">
+        <button onclick={addInput} class="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium cursor-pointer">
           Add your first input
         </button>
       </div>

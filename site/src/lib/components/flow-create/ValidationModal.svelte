@@ -60,9 +60,9 @@
       {/if}
 
       <div class="flex justify-end">
-        <button 
+        <button
           onclick={close}
-          class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+          class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors cursor-pointer"
         >
           Close
         </button>

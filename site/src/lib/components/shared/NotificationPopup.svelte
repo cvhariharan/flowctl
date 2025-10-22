@@ -85,7 +85,7 @@
         {#if notification.dismissible}
           <button
             onclick={() => handleDismiss(notification.id)}
-            class="ml-auto -mx-1.5 -my-1.5 rounded-lg focus:ring-2 p-1.5 inline-flex h-8 w-8 {styles.buttonColor}"
+            class="ml-auto -mx-1.5 -my-1.5 rounded-lg focus:ring-2 p-1.5 inline-flex h-8 w-8 cursor-pointer {styles.buttonColor}"
             aria-label="Dismiss notification"
           >
             <span class="sr-only">Dismiss</span>

@@ -269,7 +269,7 @@
                   role="option"
                   aria-selected={ns.name === namespace}
                   onclick={() => selectNamespace(ns)}
-                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
                   class:bg-primary-50={ns.name === namespace}
                   class:text-primary-600={ns.name === namespace}
                 >
@@ -436,7 +436,7 @@
     <button
       type="button"
       onclick={toggleCollapse}
-      class="w-full flex items-center justify-center p-2 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+      class="w-full flex items-center justify-center p-2 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
       aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
     >

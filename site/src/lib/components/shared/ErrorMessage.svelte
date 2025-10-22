@@ -24,7 +24,7 @@
     {#if dismissible && onDismiss}
       <button
         onclick={onDismiss}
-        class="ml-auto -mx-1.5 -my-1.5 bg-danger-50 text-danger-500 rounded-lg focus:ring-2 focus:ring-danger-600 p-1.5 hover:bg-danger-100 inline-flex h-8 w-8"
+        class="ml-auto -mx-1.5 -my-1.5 bg-danger-50 text-danger-500 rounded-lg focus:ring-2 focus:ring-danger-600 p-1.5 hover:bg-danger-100 inline-flex h-8 w-8 cursor-pointer"
       >
         <span class="sr-only">Dismiss</span>
         <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
