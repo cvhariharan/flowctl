@@ -302,12 +302,16 @@ func (h *Handler) HandleGetFlow(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	flowID := c.Param("flowID")
-	if flowID == "" {
-		return wrapError(ErrRequiredFieldMissing, "flow ID cannot be empty", nil, nil)
+	var req FlowGetReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
-	flow, err := h.co.GetFlowByID(flowID, namespace)
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	flow, err := h.co.GetFlowByID(req.FlowID, namespace)
 	if err != nil {
 		return wrapError(ErrResourceNotFound, "flow not found", err, nil)
 	}
@@ -321,12 +325,16 @@ func (h *Handler) HandleGetExecutionSummary(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	execID := c.Param("execID")
-	if execID == "" {
-		return wrapError(ErrRequiredFieldMissing, "execution ID cannot be empty", nil, nil)
+	var req ExecutionGetReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
-	execSummary, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), execID, namespace)
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	execSummary, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), req.ExecID, namespace)
 	if err != nil {
 		return wrapError(ErrResourceNotFound, "execution not found", err, nil)
 	}
@@ -431,12 +439,16 @@ func (h *Handler) HandleGetFlowInputs(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	flowID := c.Param("flowID")
-	if flowID == "" {
-		return wrapError(ErrRequiredFieldMissing, "flow ID cannot be empty", nil, nil)
+	var req FlowGetReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
-	flow, err := h.co.GetFlowByID(flowID, namespace)
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	flow, err := h.co.GetFlowByID(req.FlowID, namespace)
 	if err != nil {
 		return wrapError(ErrResourceNotFound, "flow not found", err, nil)
 	}
@@ -453,12 +465,16 @@ func (h *Handler) HandleGetFlowMeta(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	flowID := c.Param("flowID")
-	if flowID == "" {
-		return wrapError(ErrRequiredFieldMissing, "flow ID cannot be empty", nil, nil)
+	var req FlowGetReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
-	flow, err := h.co.GetFlowByID(flowID, namespace)
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	flow, err := h.co.GetFlowByID(req.FlowID, namespace)
 	if err != nil {
 		return wrapError(ErrResourceNotFound, "flow not found", err, nil)
 	}
@@ -481,6 +497,10 @@ func (h *Handler) HandleCreateFlow(c echo.Context) error {
 	var req FlowCreateReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "invalid request", err, nil)
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
 	flow := models.Flow{

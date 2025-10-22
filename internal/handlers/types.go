@@ -128,7 +128,12 @@ type GroupsPaginateResponse struct {
 }
 
 type ApprovalActionReq struct {
-	Action string `json:"action"`
+	ApprovalID string `param:"approvalID" validate:"required,uuid4"`
+	Action     string `json:"action" validate:"oneof=approve reject"`
+}
+
+type ApprovalGetReq struct {
+	ApprovalID string `param:"approvalID" validate:"required,uuid4"`
 }
 
 type ApprovalActionResp struct {
@@ -180,10 +185,10 @@ type NodeAuth struct {
 }
 
 type NodeReq struct {
-	Name           string   `json:"name" validate:"required,min=3,max=255"`
-	Hostname       string   `json:"hostname" validate:"required"`
+	Name           string   `json:"name" validate:"required,min=3,max=50"`
+	Hostname       string   `json:"hostname" validate:"required,ip"`
 	Port           int      `json:"port" validate:"required,min=1,max=65535"`
-	Username       string   `json:"username" validate:"required,min=1,max=255"`
+	Username       string   `json:"username" validate:"required,min=1,max=50"`
 	OSFamily       string   `json:"os_family" validate:"required,oneof=linux windows"`
 	ConnectionType string   `json:"connection_type" validate:"required,oneof=ssh qssh"`
 	Tags           []string `json:"tags"`
@@ -241,9 +246,18 @@ func coreNodeArrayToNodeRespArray(nodes []*models.Node) []NodeResp {
 
 // Credential related types
 type CredentialReq struct {
-	Name    string `json:"name" validate:"required,min=3,max=255"`
+	Name    string `json:"name" validate:"required,min=3,max=255,alphanum_whitespace"`
 	KeyType string `json:"key_type" validate:"required,oneof=private_key password"`
 	KeyData string `json:"key_data" validate:"required"`
+}
+
+type CredentialGetReq struct {
+	CredID string `param:"credID" validate:"required,uuid4"`
+}
+
+type CredentialUpdateReq struct {
+	CredentialGetReq
+	CredentialReq
 }
 
 type CredentialResp struct {
@@ -278,7 +292,7 @@ func coreCredentialArrayToCredentialRespArray(creds []*models.Credential) []Cred
 
 // Namespace related types
 type NamespaceReq struct {
-	Name string `json:"name" validate:"required,min=1,max=150"`
+	Name string `json:"name" validate:"required,min=3,max=150,alphanum_underscore"`
 }
 
 type NamespaceResp struct {
@@ -414,6 +428,17 @@ type ExecutionsPaginateResponse struct {
 	TotalCount int64              `json:"total_count"`
 }
 
+type UserReq struct {
+	Name     string   `json:"name" validate:"required,min=3,max=50,alphanum_whitespace"`
+	Username string   `json:"username" validate:"required,email"`
+	Groups   []string `json:"groups"`
+}
+
+type GroupReq struct {
+	Name        string `json:"name" validate:"required,alphanum_underscore,min=3,max=50"`
+	Description string `json:"description" validate:"max=255"`
+}
+
 func coreFlowToFlow(flow models.Flow) FlowListItem {
 	return FlowListItem{
 		ID:          flow.Meta.ID,
@@ -544,15 +569,15 @@ type FlowCreateReq struct {
 }
 
 type FlowMetaReq struct {
-	Name        string   `json:"name" validate:"required"`
-	Description string   `json:"description"`
-	Schedules   []string `json:"schedules"`
+	Name        string   `json:"name" validate:"required,min=3,max=150,alphanum_whitespace"`
+	Description string   `json:"description" validate:"max=255"`
+	Schedules   []string `json:"schedules" validate:"omitempty,dive,cron"`
 }
 
 type FlowInputReq struct {
-	Name        string   `json:"name" validate:"required"`
+	Name        string   `json:"name" validate:"required,alphanum_underscore,min=3,max=150"`
 	Type        string   `json:"type" validate:"required,oneof=string number password file datetime checkbox select"`
-	Label       string   `json:"label"`
+	Label       string   `json:"label" validate:"ascii"`
 	Description string   `json:"description"`
 	Validation  string   `json:"validation"`
 	Required    bool     `json:"required"`
@@ -561,7 +586,7 @@ type FlowInputReq struct {
 }
 
 type FlowActionReq struct {
-	Name      string           `json:"name" validate:"required"`
+	Name      string           `json:"name" validate:"required,alphanum_underscore,min=3,max=150"`
 	Executor  string           `json:"executor" validate:"required,oneof=script docker"`
 	With      map[string]any   `json:"with" validate:"required"`
 	Approval  bool             `json:"approval"`
@@ -575,8 +600,16 @@ type FlowCreateResp struct {
 	ID string `json:"id"`
 }
 
+type FlowGetReq struct {
+	FlowID string `param:"flowID" validate:"required"`
+}
+
+type ExecutionGetReq struct {
+	ExecID string `param:"execID" validate:"required,uuid4"`
+}
+
 type FlowUpdateReq struct {
-	Schedules []string        `json:"schedules"`
+	Schedules []string        `json:"schedules" validate:"omitempty,dive,cron"`
 	Inputs    []FlowInputReq  `json:"inputs" validate:"required,dive"`
 	Actions   []FlowActionReq `json:"actions" validate:"required,dive"`
 }
@@ -665,9 +698,10 @@ func convertFlowActionsToActionsReq(actions []models.Action) []FlowActionReq {
 }
 
 type FlowSecretReq struct {
-	Key         string `json:"key" validate:"required,min=1,max=255"`
-	Value       string `json:"value" validate:"required"`
-	Description string `json:"description"`
+	FlowID      string `param:"flowID" validate:"required,uuid4"`
+	Key         string `json:"key" validate:"required,min=3,max=150,alphanum_underscore"`
+	Value       string `json:"value" validate:"required,max=255"`
+	Description string `json:"description" validate:"max=255"`
 }
 
 type FlowSecretResp struct {
@@ -676,6 +710,19 @@ type FlowSecretResp struct {
 	Description string `json:"description"`
 	CreatedAt   string `json:"created_at"`
 	UpdatedAt   string `json:"updated_at"`
+}
+
+type FlowSecretGetReq struct {
+	SecretID string `param:"secretID" validate:"required,uuid4"`
+}
+
+type FlowSecretUpdateReq struct {
+	FlowSecretGetReq
+	FlowSecretReq
+}
+
+type FlowSecretsListReq struct {
+	FlowID string `param:"flowID" validate:"required,uuid4"`
 }
 
 func coreFlowSecretToFlowSecretResp(secret models.FlowSecret) FlowSecretResp {

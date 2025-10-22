@@ -14,11 +14,6 @@ func (h *Handler) HandleCreateFlowSecret(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	flowID := c.Param("flowID")
-	if flowID == "" {
-		return wrapError(ErrRequiredFieldMissing, "flow ID cannot be empty", nil, nil)
-	}
-
 	var req FlowSecretReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
@@ -34,7 +29,7 @@ func (h *Handler) HandleCreateFlowSecret(c echo.Context) error {
 		Description: req.Description,
 	}
 
-	created, err := h.co.CreateFlowSecret(c.Request().Context(), flowID, secret, namespace)
+	created, err := h.co.CreateFlowSecret(c.Request().Context(), req.FlowID, secret, namespace)
 	if err != nil {
 		return wrapError(ErrOperationFailed, "could not create flow secret", err, nil)
 	}
@@ -48,12 +43,16 @@ func (h *Handler) HandleGetFlowSecret(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	secretID := c.Param("secretID")
-	if secretID == "" {
-		return wrapError(ErrRequiredFieldMissing, "secret ID cannot be empty", nil, nil)
+	var req FlowSecretGetReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
-	secret, err := h.co.GetFlowSecretByID(c.Request().Context(), secretID, namespace)
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	secret, err := h.co.GetFlowSecretByID(c.Request().Context(), req.SecretID, namespace)
 	if err != nil {
 		return wrapError(ErrResourceNotFound, "secret not found", err, nil)
 	}
@@ -67,12 +66,16 @@ func (h *Handler) HandleListFlowSecrets(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	flowID := c.Param("flowID")
-	if flowID == "" {
-		return wrapError(ErrRequiredFieldMissing, "flow ID cannot be empty", nil, nil)
+	var req FlowSecretsListReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
-	secrets, err := h.co.ListFlowSecrets(c.Request().Context(), flowID, namespace)
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	secrets, err := h.co.ListFlowSecrets(c.Request().Context(), req.FlowID, namespace)
 	if err != nil {
 		return wrapError(ErrOperationFailed, "could not list flow secrets", err, nil)
 	}
@@ -91,12 +94,7 @@ func (h *Handler) HandleUpdateFlowSecret(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	secretID := c.Param("secretID")
-	if secretID == "" {
-		return wrapError(ErrRequiredFieldMissing, "secret ID cannot be empty", nil, nil)
-	}
-
-	var req FlowSecretReq
+	var req FlowSecretUpdateReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
@@ -111,7 +109,7 @@ func (h *Handler) HandleUpdateFlowSecret(c echo.Context) error {
 		Description: req.Description,
 	}
 
-	updated, err := h.co.UpdateFlowSecret(c.Request().Context(), secretID, secret, namespace)
+	updated, err := h.co.UpdateFlowSecret(c.Request().Context(), req.SecretID, secret, namespace)
 	if err != nil {
 		return wrapError(ErrOperationFailed, "could not update flow secret", err, nil)
 	}
@@ -125,12 +123,16 @@ func (h *Handler) HandleDeleteFlowSecret(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	secretID := c.Param("secretID")
-	if secretID == "" {
-		return wrapError(ErrRequiredFieldMissing, "secret ID cannot be empty", nil, nil)
+	var req FlowSecretGetReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
-	err := h.co.DeleteFlowSecret(c.Request().Context(), secretID, namespace)
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	err := h.co.DeleteFlowSecret(c.Request().Context(), req.SecretID, namespace)
 	if err != nil {
 		return wrapError(ErrOperationFailed, "could not delete flow secret", err, nil)
 	}

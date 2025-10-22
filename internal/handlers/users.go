@@ -45,11 +45,7 @@ func (h *Handler) HandleUpdateUser(c echo.Context) error {
 		return wrapError(ErrResourceNotFound, "user not found", err, nil)
 	}
 
-	var req struct {
-		Name     string   `json:"name" validate:"required,min=4,max=30,alphanum_whitespace"`
-		Username string   `json:"username" validate:"required,email"`
-		Groups   []string `json:"groups"`
-	}
+	var req UserReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
@@ -129,11 +125,7 @@ func (h *Handler) HandleDeleteUser(c echo.Context) error {
 }
 
 func (h *Handler) HandleCreateUser(c echo.Context) error {
-	var req struct {
-		Name     string   `json:"name" validate:"required,min=4,max=30,alphanum_whitespace"`
-		Username string   `json:"username" validate:"required,email"`
-		Groups   []string `json:"groups"`
-	}
+	var req UserReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}

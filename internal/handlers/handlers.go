@@ -136,7 +136,11 @@ func formatValidationErrors(err error) string {
 
 	var errMsgs []string
 	for _, e := range validationErrors {
-		errMsgs = append(errMsgs, fmt.Sprintf("%s: %s", e.Field(), e.Tag()))
+		m := fmt.Sprintf("%s: %s", e.Field(), e.Tag())
+		if e.Param() != "" {
+			m = fmt.Sprintf("%s=%s", m, e.Param())
+		}
+		errMsgs = append(errMsgs, m)
 	}
 
 	return strings.Join(errMsgs, "; ")

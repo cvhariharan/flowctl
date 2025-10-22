@@ -25,10 +25,7 @@ func (h *Handler) HandleGetGroup(c echo.Context) error {
 }
 
 func (h *Handler) HandleCreateGroup(c echo.Context) error {
-	var req struct {
-		Name        string `form:"name" validate:"required,alphanum_underscore,min=4,max=30"`
-		Description string `form:"description" validate:"max=150"`
-	}
+	var req GroupReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
@@ -54,10 +51,7 @@ func (h *Handler) HandleUpdateGroup(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "group id cannot be empty", nil, nil)
 	}
 
-	var req struct {
-		Name        string `form:"name" validate:"required,alphanum_underscore,min=4,max=30"`
-		Description string `form:"description" validate:"max=150"`
-	}
+	var req GroupReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}

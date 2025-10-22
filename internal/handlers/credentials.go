@@ -43,12 +43,16 @@ func (h *Handler) HandleGetCredential(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	credID := c.Param("credID")
-	if credID == "" {
-		return wrapError(ErrRequiredFieldMissing, "credential ID cannot be empty", nil, nil)
+	var req CredentialGetReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
-	cred, err := h.co.GetCredentialByID(c.Request().Context(), credID, namespace)
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	cred, err := h.co.GetCredentialByID(c.Request().Context(), req.CredID, namespace)
 	if err != nil {
 		return wrapError(ErrResourceNotFound, "credential not found", err, nil)
 	}
@@ -97,12 +101,7 @@ func (h *Handler) HandleUpdateCredential(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	credID := c.Param("credID")
-	if credID == "" {
-		return wrapError(ErrRequiredFieldMissing, "credential ID cannot be empty", nil, nil)
-	}
-
-	var req CredentialReq
+	var req CredentialUpdateReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
@@ -117,7 +116,7 @@ func (h *Handler) HandleUpdateCredential(c echo.Context) error {
 		KeyData: req.KeyData,
 	}
 
-	updated, err := h.co.UpdateCredential(c.Request().Context(), credID, cred, namespace)
+	updated, err := h.co.UpdateCredential(c.Request().Context(), req.CredID, cred, namespace)
 	if err != nil {
 		return wrapError(ErrOperationFailed, "could not update credential", err, nil)
 	}
@@ -131,12 +130,16 @@ func (h *Handler) HandleDeleteCredential(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	credID := c.Param("credID")
-	if credID == "" {
-		return wrapError(ErrRequiredFieldMissing, "credential ID cannot be empty", nil, nil)
+	var req CredentialGetReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
-	err := h.co.DeleteCredential(c.Request().Context(), credID, namespace)
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	err := h.co.DeleteCredential(c.Request().Context(), req.CredID, namespace)
 	if err != nil {
 		return wrapError(ErrOperationFailed, "could not delete credential", err, nil)
 	}

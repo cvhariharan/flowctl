@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
@@ -13,18 +14,13 @@ func (h *Handler) HandleApprovalAction(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	approvalID := c.Param("approvalID")
-	if approvalID == "" {
-		return wrapError(ErrRequiredFieldMissing, "approval ID cannot be empty", nil, nil)
-	}
-
 	var req ApprovalActionReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "invalid request", err, nil)
 	}
 
-	if req.Action != "approve" && req.Action != "reject" {
-		return wrapError(ErrInvalidInput, "invalid action, must be approve or reject", nil, nil)
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
 	user, err := h.getUserInfo(c)
@@ -42,13 +38,13 @@ func (h *Handler) HandleApprovalAction(c echo.Context) error {
 		message = "The request has been rejected."
 	}
 
-	err = h.co.ApproveOrRejectAction(c.Request().Context(), approvalID, user.ID, status, namespace)
+	err = h.co.ApproveOrRejectAction(c.Request().Context(), req.ApprovalID, user.ID, status, namespace)
 	if err != nil {
 		return wrapError(ErrOperationFailed, "could not process approval action", err, nil)
 	}
 
 	return c.JSON(http.StatusOK, ApprovalActionResp{
-		ID:      approvalID,
+		ID:      req.ApprovalID,
 		Status:  string(status),
 		Message: message,
 	})
@@ -60,12 +56,16 @@ func (h *Handler) HandleGetApproval(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	approvalID := c.Param("approvalID")
-	if approvalID == "" {
-		return wrapError(ErrRequiredFieldMissing, "approval ID cannot be empty", nil, nil)
+	var req ApprovalGetReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(ErrInvalidInput, "invalid request", err, nil)
 	}
 
-	approval, err := h.co.GetApprovalWithInputs(c.Request().Context(), approvalID, namespace)
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	approval, err := h.co.GetApprovalWithInputs(c.Request().Context(), req.ApprovalID, namespace)
 	if err != nil {
 		return wrapError(ErrOperationFailed, "could not get approval details", err, nil)
 	}
