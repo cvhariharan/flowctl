@@ -65,7 +65,8 @@
     };
 
     const getContainerClasses = () => {
-        const baseClasses = "rounded-lg p-4 overflow-y-auto font-mono";
+        const baseClasses =
+            "rounded-lg p-4 overflow-y-scroll font-mono min-h-128 max-h-128";
         const themeClasses =
             theme === "dark"
                 ? "bg-gray-900 text-gray-300"
@@ -76,7 +77,7 @@
             base: "text-base",
         };
 
-        return `${baseClasses} ${themeClasses} ${fontClasses[fontSize]} ${height}`;
+        return `${baseClasses} ${themeClasses} ${fontClasses[fontSize]}`;
     };
 
     const getCursorClasses = () => {
@@ -118,15 +119,18 @@
     };
 
     const formatLogMessage = (msg: LogMessage) => {
-        return {
+        const lines = msg.value
+            .split("\n")
+            .filter((line) => line.trim() !== "");
+        return lines.map((line) => ({
             timestamp:
                 showTimestamp && msg.timestamp
                     ? formatTimestamp(msg.timestamp)
                     : null,
             nodeId: msg.node_id,
             nodeColor: getNodeColor(msg.node_id),
-            value: msg.value,
-        };
+            value: line,
+        }));
     };
 
     const filteredLogMessages = $derived(() => {
@@ -144,7 +148,7 @@
         const messagesToUse = filterByActionId
             ? filteredLogMessages()
             : logMessages;
-        return messagesToUse.map((msg) => formatLogMessage(msg));
+        return messagesToUse.flatMap((msg) => formatLogMessage(msg));
     });
 
     const processedRawLogs = $derived(() => {
@@ -170,7 +174,7 @@
     });
 </script>
 
-<div class="flex flex-col space-y-3 h-full">
+<div class="flex flex-col space-y-3">
     <!-- Controls -->
     {#if logMessages && logMessages.length > 0}
         <div class="flex gap-4 text-sm flex-shrink-0">
@@ -186,38 +190,38 @@
     {/if}
 
     <!-- Log Terminal -->
-    <div class="flex-1 min-h-0">
-        <div class={getContainerClasses()} bind:this={logContainer}>
-            {#if filterByActionId && filteredLogMessages().length === 0}
-                <div
-                    class="flex items-center justify-center h-full text-gray-500 text-sm"
-                >
-                    No logs available for this action
-                </div>
-            {:else}
-                <div class="whitespace-pre-wrap break-words">
-                    {#if hasStructuredLogs()}
-                        {#each formattedStructuredLogs() as logMsg}{#if logMsg.timestamp}<span
-                                    class="text-gray-500"
-                                    >[{logMsg.timestamp}]</span
-                                >
-                            {/if}{#if logMsg.nodeId}<span class="font-semibold {logMsg.nodeColor}"
+    <div class={getContainerClasses()} bind:this={logContainer}>
+        {#if filterByActionId && filteredLogMessages().length === 0}
+            <div
+                class="flex items-center justify-center h-full text-gray-500 text-sm"
+            >
+                No logs available for this action
+            </div>
+        {:else}
+            <div class="whitespace-pre-wrap break-words">
+                {#if hasStructuredLogs()}
+                    {#each formattedStructuredLogs() as logMsg}
+                        {#if logMsg.timestamp}<span class="text-gray-500"
+                                >[{logMsg.timestamp}]</span
+                            >
+                        {/if}{#if logMsg.nodeId}<span
+                                class="font-semibold {logMsg.nodeColor}"
                                 >[{logMsg.nodeId}]</span
                             >
-                            {/if}{logMsg.value}{/each}
-                    {:else}
-                        {processedRawLogs()}
-                    {/if}
-                    {#if isRunning && showCursor}
-                        <div class="inline-block">
-                            <span class={cursorClasses.cursor}>█</span>
-                            <span class="animate-pulse {cursorClasses.blink}"
-                                >_</span
-                            >
-                        </div>
-                    {/if}
-                </div>
-            {/if}
-        </div>
+                        {/if}{logMsg.value}<br />
+                    {/each}
+                {:else}
+                    {processedRawLogs()}
+                {/if}
+                {#if isRunning && showCursor}
+                    <div class="inline-block">
+                        <span class={cursorClasses.cursor}>█</span>
+                        <span class="animate-pulse {cursorClasses.blink}"
+                            >_</span
+                        >
+                    </div>
+                {/if}
+            </div>
+        {/if}
     </div>
 </div>

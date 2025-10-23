@@ -587,26 +587,6 @@
                         </div>
                     </div>
                 {/if}
-
-                <!-- Alerts -->
-                {#if showApproval}
-                    <div class="mt-6">
-                        <Alert
-                            type="warning"
-                            title="Approval Required"
-                            message="This flow requires manual approval to continue execution."
-                            dismissible={true}
-                            onDismiss={dismissApproval}
-                            actions={[
-                                {
-                                    label: "Review Request",
-                                    href: `/view/${namespace}/approvals/${approvalID}`,
-                                    primary: true,
-                                },
-                            ]}
-                        />
-                    </div>
-                {/if}
             </div>
         </div>
     </main>
