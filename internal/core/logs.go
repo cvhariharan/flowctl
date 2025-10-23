@@ -165,33 +165,38 @@ func (c *Core) checkApprovalRequests(ctx context.Context, execID string, namespa
 		return nil, nil
 	}
 
-	go func(f models.Flow, ch chan models.StreamMessage) {
+	go func(ctx context.Context, f models.Flow, ch chan models.StreamMessage) {
 		defer close(ch)
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
 		for {
+			a, err := c.GetApprovalsRequestsForExec(ctx, execID, namespaceID)
+			if err != nil && !errors.Is(err, ErrNil) {
+				log.Println(err)
+				ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte(err.Error())}
+				return
+			}
+
+			switch a.Status {
+			case "pending":
+				ch <- models.StreamMessage{MType: models.ApprovalMessageType, Val: []byte(a.UUID)}
+				return
+			case "rejected":
+				ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte("approval request has been rejected")}
+				return
+			}
+			log.Printf("approval request: %v", a)
+
+			// Wait for 5 seconds
 			select {
 			case <-ctx.Done():
+				log.Println("approval context done")
 				return
-			default:
-				a, err := c.GetApprovalsRequestsForExec(ctx, execID, namespaceID)
-				if err != nil && !errors.Is(err, ErrNil) {
-					log.Println(err)
-					ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte(err.Error())}
-					return
-				}
-
-				switch a.Status {
-				case "pending":
-					ch <- models.StreamMessage{MType: models.ApprovalMessageType, Val: []byte(a.UUID)}
-					return
-				case "rejected":
-					ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte("approval request has been rejected")}
-					return
-				}
-				log.Printf("approval request: %v", a)
+			case <-ticker.C:
 			}
-			time.Sleep(5 * time.Second)
 		}
-	}(f, ch)
+	}(ctx, f, ch)
 
 	return ch, nil
 }
