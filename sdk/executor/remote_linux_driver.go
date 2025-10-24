@@ -1,0 +1,97 @@
+package executor
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net"
+	"os"
+	"path"
+	"path/filepath"
+
+	"github.com/cvhariharan/flowctl/sdk/remoteclient"
+	"github.com/rs/xid"
+)
+
+type RemoteLinuxDriver struct {
+	client           remoteclient.RemoteClient
+	workingDirectory string
+}
+
+func NewRemoteLinux(client remoteclient.RemoteClient) (NodeDriver, error) {
+	r := &RemoteLinuxDriver{
+		client: client,
+	}
+	wd := r.Join(r.TempDir(), fmt.Sprintf("flows-%s", xid.New().String()))
+	if err := r.CreateDir(context.Background(), wd); err != nil {
+		return nil, err
+	}
+	r.workingDirectory = wd
+	return r, nil
+}
+
+func (d *RemoteLinuxDriver) GetWorkingDirectory() string {
+	return d.workingDirectory
+}
+
+func (d *RemoteLinuxDriver) Upload(ctx context.Context, localPath, remotePath string) error {
+	if err := d.CreateDir(ctx, filepath.Dir(remotePath)); err != nil {
+		return fmt.Errorf("failed to create destination directory: %w", err)
+	}
+
+	return d.client.Upload(ctx, localPath, remotePath)
+}
+
+func (d *RemoteLinuxDriver) Download(ctx context.Context, remotePath, localPath string) error {
+	return d.client.Download(ctx, remotePath, localPath)
+}
+
+func (d *RemoteLinuxDriver) CreateDir(ctx context.Context, dirPath string) error {
+	cmd := fmt.Sprintf("mkdir -p %s", dirPath)
+	return d.client.RunCommand(ctx, cmd, io.Discard, io.Discard)
+}
+
+func (d *RemoteLinuxDriver) CreateFile(ctx context.Context, filePath string) error {
+	cmd := fmt.Sprintf("touch %s", filePath)
+	return d.client.RunCommand(ctx, cmd, io.Discard, io.Discard)
+}
+
+func (d *RemoteLinuxDriver) Remove(ctx context.Context, filePath string) error {
+	cmd := fmt.Sprintf("rm -rf %s", filePath)
+	return d.client.RunCommand(ctx, cmd, io.Discard, io.Discard)
+}
+
+func (d *RemoteLinuxDriver) SetPermissions(ctx context.Context, filePath string, perms os.FileMode) error {
+	cmd := fmt.Sprintf("chmod %o %s", perms, filePath)
+	return d.client.RunCommand(ctx, cmd, io.Discard, io.Discard)
+}
+
+func (d *RemoteLinuxDriver) Exec(ctx context.Context, command string, workingDir string, stdout, stderr io.Writer) error {
+	var fullCommand string
+	if workingDir != "" {
+		fullCommand = fmt.Sprintf("cd %s && %s", workingDir, command)
+	} else {
+		fullCommand = command
+	}
+	return d.client.RunCommand(ctx, fullCommand, stdout, stderr)
+}
+
+func (d *RemoteLinuxDriver) Dial(network, address string) (net.Conn, error) {
+	return d.client.Dial(network, address)
+}
+
+func (d *RemoteLinuxDriver) IsRemote() bool {
+	return true
+}
+
+func (d *RemoteLinuxDriver) TempDir() string {
+	return "/tmp"
+}
+
+func (d *RemoteLinuxDriver) Join(parts ...string) string {
+	return path.Join(parts...)
+}
+
+func (d *RemoteLinuxDriver) Close() error {
+	return d.client.Close()
+}

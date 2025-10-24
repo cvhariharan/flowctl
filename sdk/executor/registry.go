@@ -7,7 +7,7 @@ import (
 )
 
 // NewExecutorFunc defines the signature for a function that can create an executor.
-type NewExecutorFunc func(name string, node Node) (Executor, error)
+type NewExecutorFunc func(name string, driver NodeDriver) (Executor, error)
 
 var (
 	registry       = make(map[string]NewExecutorFunc)

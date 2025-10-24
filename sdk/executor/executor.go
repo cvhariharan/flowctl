@@ -11,6 +11,7 @@ type Node struct {
 	Username       string
 	Auth           NodeAuth
 	ConnectionType string
+	OSFamily       string
 }
 
 type NodeAuth struct {
@@ -29,7 +30,4 @@ type ExecutionContext struct {
 
 type Executor interface {
 	Execute(ctx context.Context, execCtx ExecutionContext) (outputs map[string]string, err error)
-	PushFile(ctx context.Context, localFilePath string, remoteFilePath string) error
-	PullFile(ctx context.Context, remoteFilePath string, localFilePath string) error
-	Close() error
 }

@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cvhariharan/flowctl/sdk/executor"
 	"github.com/cvhariharan/flowctl/sdk/remoteclient"
 	"github.com/cvhariharan/qssh"
 	"github.com/pkg/sftp"
@@ -24,25 +23,25 @@ func init() {
 	remoteclient.Register("qssh", NewRemoteClient)
 }
 
-func NewRemoteClient(node executor.Node) (remoteclient.RemoteClient, error) {
+func NewRemoteClient(config remoteclient.NodeConfig) (remoteclient.RemoteClient, error) {
 	var qconfig qssh.Config
 
-	switch node.Auth.Method {
+	switch config.Auth.Method {
 	case "private_key":
-		privateKey, err := ssh.ParsePrivateKey([]byte(node.Auth.Key))
+		privateKey, err := ssh.ParsePrivateKey([]byte(config.Auth.Key))
 		if err != nil {
-			return nil, fmt.Errorf("could not parse private key for node %s: %w", node.Hostname, err)
+			return nil, fmt.Errorf("could not parse private key for node %s: %w", config.Hostname, err)
 		}
-		qconfig = qssh.KeyConfig(node.Username, privateKey)
+		qconfig = qssh.KeyConfig(config.Username, privateKey)
 	case "password":
-		qconfig = qssh.PasswordConfig(node.Username, node.Auth.Key)
+		qconfig = qssh.PasswordConfig(config.Username, config.Auth.Key)
 	default:
-		return nil, fmt.Errorf("unsupported auth method: %s", node.Auth.Method)
+		return nil, fmt.Errorf("unsupported auth method: %s", config.Auth.Method)
 	}
 
-	client, conn, err := qssh.Dial(fmt.Sprintf("%s:%d", node.Hostname, node.Port), qconfig)
+	client, conn, err := qssh.Dial(fmt.Sprintf("%s:%d", config.Hostname, config.Port), qconfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to dial %s:%s: %w", node.Hostname, node.Port, err)
+		return nil, fmt.Errorf("failed to dial %s:%d: %w", config.Hostname, config.Port, err)
 	}
 	return &qsshClient{
 		sshClient: client,

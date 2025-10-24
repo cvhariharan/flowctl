@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/cvhariharan/flowctl/sdk/executor"
-	"github.com/cvhariharan/flowctl/sdk/remoteclient"
 	"github.com/hashicorp/go-envparse"
 	"github.com/invopop/jsonschema"
 	"github.com/rs/xid"
@@ -18,15 +15,16 @@ import (
 )
 
 type ScriptWithConfig struct {
-	Script      string `yaml:"script" json:"script" jsonschema:"title=script" jsonschema_extras:"widget=codeeditor"`
-	Interpreter string `yaml:"interpreter" json:"interpreter" jsonschema:"title=interpreter"`
+	Script string `yaml:"script" json:"script" jsonschema:"title=script" jsonschema_extras:"widget=codeeditor"`
+	// Interpreter string `yaml:"interpreter" json:"interpreter" jsonschema:"title=interpreter"`
 }
 
 type ScriptExecutor struct {
-	name         string
-	remoteClient remoteclient.RemoteClient
-	stdout       io.Writer
-	stderr       io.Writer
+	name             string
+	stdout           io.Writer
+	stderr           io.Writer
+	workingDirectory string
+	driver           executor.NodeDriver
 }
 
 func init() {
@@ -38,24 +36,13 @@ func GetSchema() interface{} {
 	return jsonschema.Reflect(&ScriptWithConfig{})
 }
 
-func NewScriptExecutor(name string, node executor.Node) (executor.Executor, error) {
+func NewScriptExecutor(name string, driver executor.NodeDriver) (executor.Executor, error) {
 	jobName := fmt.Sprintf("script-%s-%s", name, xid.New().String())
 
 	executor := &ScriptExecutor{
-		name: jobName,
-	}
-
-	// Initialize remote client if this is for remote execution
-	if node.Hostname != "" {
-		clientType := "ssh"
-		if node.ConnectionType != "" {
-			clientType = node.ConnectionType
-		}
-		remoteClient, err := remoteclient.GetClient(clientType, node)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create remote client for node %s: %w", node.Hostname, err)
-		}
-		executor.remoteClient = remoteClient
+		name:             jobName,
+		workingDirectory: driver.GetWorkingDirectory(),
+		driver:           driver,
 	}
 
 	return executor, nil
@@ -68,16 +55,19 @@ func (s *ScriptExecutor) Execute(ctx context.Context, execCtx executor.Execution
 	}
 
 	// Set default interpreter
-	if config.Interpreter == "" {
-		config.Interpreter = "/bin/bash"
-	}
+	// if config.Interpreter == "" {
+	// 	config.Interpreter = "/bin/bash"
+	// }
 
 	s.stdout = execCtx.Stdout
 	s.stderr = execCtx.Stderr
 
-	// Create output file for capturing environment variables
-	tempFile := fmt.Sprintf("/tmp/script-executor-output-%s", xid.New().String())
-	if err := s.createFileOrDirectory(ctx, tempFile, false); err != nil {
+	if err := s.driver.CreateDir(ctx, s.workingDirectory); err != nil {
+		return nil, fmt.Errorf("failed to create working directory: %w", err)
+	}
+
+	tempFile := s.driver.Join(s.driver.TempDir(), fmt.Sprintf("script-executor-output-%s", xid.New().String()))
+	if err := s.driver.CreateFile(ctx, tempFile); err != nil {
 		return nil, fmt.Errorf("failed to create temp file for output: %w", err)
 	}
 
@@ -106,69 +96,41 @@ func (s *ScriptExecutor) Execute(ctx context.Context, execCtx executor.Execution
 func (s *ScriptExecutor) prepareEnvironment(inputs map[string]interface{}, outputFile string) []string {
 	var env []string
 
-	// Add input variables
 	for k, v := range inputs {
 		env = append(env, fmt.Sprintf("%s=%s", k, fmt.Sprint(v)))
 	}
 
-	// Add output file location
 	env = append(env, fmt.Sprintf("FC_OUTPUT=%s", outputFile))
-	env = append(env, fmt.Sprintf("FC_ARTIFACTS_DIR=%s", os.TempDir()))
 
 	return env
 }
 
 func (s *ScriptExecutor) runScript(ctx context.Context, config ScriptWithConfig, env []string) error {
-	if s.remoteClient != nil {
-		return s.runRemoteScript(ctx, config, env)
-	}
-	return s.runLocalScript(ctx, config, env)
-}
+	scriptContent := s.buildScript(config, env)
 
-func (s *ScriptExecutor) runLocalScript(ctx context.Context, config ScriptWithConfig, env []string) error {
-	cmd := exec.CommandContext(ctx, config.Interpreter, "-c", config.Script)
-	cmd.Env = env
-	cmd.Stdout = s.stdout
-	cmd.Stderr = s.stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("script execution failed: %w", err)
-	}
-
-	return nil
-}
-
-func (s *ScriptExecutor) runRemoteScript(ctx context.Context, config ScriptWithConfig, env []string) error {
-	// Create a script file with the environment and script content
-	scriptContent := s.buildRemoteScript(config, env)
-
-	// Upload the script to the remote machine
-	scriptFile := fmt.Sprintf("/tmp/script-%s.sh", xid.New().String())
 	localScriptFile := fmt.Sprintf("/tmp/local-script-%s.sh", xid.New().String())
-
-	// Write script to local temp file
 	if err := os.WriteFile(localScriptFile, []byte(scriptContent), 0755); err != nil {
 		return fmt.Errorf("failed to write local script file: %w", err)
 	}
 	defer os.Remove(localScriptFile)
 
-	// Upload script to remote
-	if err := s.remoteClient.Upload(ctx, localScriptFile, scriptFile); err != nil {
-		return fmt.Errorf("failed to upload script to remote: %w", err)
+	remoteScriptFile := s.driver.Join(s.driver.TempDir(), fmt.Sprintf("script-%s.sh", xid.New().String()))
+	if err := s.driver.Upload(ctx, localScriptFile, remoteScriptFile); err != nil {
+		return fmt.Errorf("failed to upload script: %w", err)
+	}
+	defer s.driver.Remove(ctx, remoteScriptFile)
+
+	if err := s.driver.SetPermissions(ctx, remoteScriptFile, 0755); err != nil {
+		return fmt.Errorf("failed to set executable permissions: %w", err)
 	}
 
-	// Execute the script on remote
-	defer func() {
-		// Delete the script file after execution
-		s.remoteClient.RunCommand(ctx, fmt.Sprintf("rm -f %s", scriptFile), io.Discard, io.Discard)
-	}()
-	return s.remoteClient.RunCommand(ctx, fmt.Sprintf("chmod +x %s && %s", scriptFile, scriptFile), s.stdout, s.stderr)
+	return s.driver.Exec(ctx, remoteScriptFile, s.workingDirectory, s.stdout, s.stderr)
 }
 
-func (s *ScriptExecutor) buildRemoteScript(config ScriptWithConfig, env []string) string {
+func (s *ScriptExecutor) buildScript(config ScriptWithConfig, env []string) string {
 	var script strings.Builder
 
-	script.WriteString("#!" + config.Interpreter + "\n")
+	// script.WriteString("#!" + config.Interpreter + "\n")
 	script.WriteString("set -e\n\n")
 
 	// Export environment variables
@@ -186,115 +148,20 @@ func (s *ScriptExecutor) buildRemoteScript(config ScriptWithConfig, env []string
 }
 
 func (s *ScriptExecutor) readTempFileContents(ctx context.Context, tempFile string) (io.Reader, error) {
-	readFile := func(filePath string) (io.Reader, error) {
-		content, err := os.ReadFile(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read temp file %s: %w", filePath, err)
-		}
-		return strings.NewReader(string(content)), nil
-	}
-
-	if s.remoteClient != nil {
-		// For remote execution, download the file using the remote client
-		localTempFile, err := os.CreateTemp("/tmp", "script-executor-output-*")
-		if err != nil {
-			return nil, fmt.Errorf("failed to create local temp file: %w", err)
-		}
-		defer os.Remove(localTempFile.Name())
-		defer localTempFile.Close()
-
-		if err := s.remoteClient.Download(ctx, tempFile, localTempFile.Name()); err != nil {
-			return nil, fmt.Errorf("failed to download temp file from remote: %w", err)
-		}
-
-		return readFile(localTempFile.Name())
-	} else {
-		// For local execution, read the file directly
-		return readFile(tempFile)
-	}
-}
-
-func (s *ScriptExecutor) createFileOrDirectory(ctx context.Context, name string, dir bool) error {
-	if s.remoteClient == nil {
-		if dir {
-			return os.MkdirAll(name, 0755)
-		}
-		_, err := os.Create(name)
-		return err
-	}
-
-	// Remote execution
-	var cmd string
-	if dir {
-		cmd = fmt.Sprintf("mkdir -p %s && chmod 755 %s", name, name)
-	} else {
-		cmd = fmt.Sprintf("touch %s && chmod 755 %s", name, name)
-	}
-	return s.remoteClient.RunCommand(ctx, cmd, io.Discard, io.Discard)
-}
-
-func (s *ScriptExecutor) PushFile(ctx context.Context, localFilePath string, remoteFilePath string) error {
-	if err := s.createFileOrDirectory(ctx, filepath.Dir(remoteFilePath), true); err != nil {
-		return fmt.Errorf("failed to create directory for %s: %w", remoteFilePath, err)
-	}
-
-	if s.remoteClient == nil {
-		// Local execution: copy file directly
-		srcFile, err := os.Open(filepath.Clean(localFilePath))
-		if err != nil {
-			return fmt.Errorf("failed to open local file %s: %w", localFilePath, err)
-		}
-		defer srcFile.Close()
-
-		destFile, err := os.Create(filepath.Clean(remoteFilePath))
-		if err != nil {
-			return fmt.Errorf("failed to create destination file %s: %w", remoteFilePath, err)
-		}
-		defer destFile.Close()
-
-		if _, err := io.Copy(destFile, srcFile); err != nil {
-			return fmt.Errorf("failed to copy file from %s to %s: %w", localFilePath, remoteFilePath, err)
-		}
-		return nil
-	}
-
-	// Remote execution: upload file to remote machine
-	if err := s.remoteClient.Upload(ctx, localFilePath, remoteFilePath); err != nil {
-		return fmt.Errorf("failed to upload file %s to remote path %s: %w", localFilePath, remoteFilePath, err)
-	}
-	return nil
-}
-
-func (s *ScriptExecutor) PullFile(ctx context.Context, remoteFilePath string, localFilePath string) error {
-	destFile, err := os.Create(filepath.Clean(localFilePath))
+	localTempFile, err := os.CreateTemp("/tmp", "script-executor-output-*")
 	if err != nil {
-		return fmt.Errorf("failed to create local file %s: %w", localFilePath, err)
+		return nil, fmt.Errorf("failed to create local temp file: %w", err)
 	}
-	defer destFile.Close()
+	defer os.Remove(localTempFile.Name())
+	defer localTempFile.Close()
 
-	if s.remoteClient == nil {
-		srcFile, err := os.Open(filepath.Clean(remoteFilePath))
-		if err != nil {
-			return fmt.Errorf("failed to open source file: %w", err)
-		}
-		defer srcFile.Close()
-
-		if _, err := io.Copy(destFile, srcFile); err != nil {
-			return fmt.Errorf("failed to copy file from %s to %s: %w", srcFile.Name(), localFilePath, err)
-		}
-		return nil
+	if err := s.driver.Download(ctx, tempFile, localTempFile.Name()); err != nil {
+		return nil, fmt.Errorf("failed to download temp file: %w", err)
 	}
 
-	// Download the file from the remote machine to the local path
-	if err := s.remoteClient.Download(ctx, remoteFilePath, localFilePath); err != nil {
-		return fmt.Errorf("failed to download file from remote path %s to local path %s: %w", remoteFilePath, localFilePath, err)
+	content, err := os.ReadFile(localTempFile.Name())
+	if err != nil {
+		return nil, fmt.Errorf("failed to read temp file %s: %w", localTempFile.Name(), err)
 	}
-	return nil
-}
-
-func (s *ScriptExecutor) Close() error {
-	if s.remoteClient != nil {
-		return s.remoteClient.Close()
-	}
-	return nil
+	return strings.NewReader(string(content)), nil
 }

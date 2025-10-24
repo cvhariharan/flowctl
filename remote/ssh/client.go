@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cvhariharan/flowctl/sdk/executor"
 	"github.com/cvhariharan/flowctl/sdk/remoteclient"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -25,31 +24,31 @@ func init() {
 
 // NewRemoteClient creates a new client for interacting with a remote node based on the
 // provided node configuration.
-func NewRemoteClient(node executor.Node) (remoteclient.RemoteClient, error) {
+func NewRemoteClient(config remoteclient.NodeConfig) (remoteclient.RemoteClient, error) {
 	var authMethod ssh.AuthMethod
 	var err error
 
-	switch node.Auth.Method {
+	switch config.Auth.Method {
 	case "private_key":
-		signer, err := ssh.ParsePrivateKey([]byte(node.Auth.Key))
+		signer, err := ssh.ParsePrivateKey([]byte(config.Auth.Key))
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse private key: %w", err)
 		}
 		authMethod = ssh.PublicKeys(signer)
 	case "password":
-		authMethod = ssh.Password(node.Auth.Key)
+		authMethod = ssh.Password(config.Auth.Key)
 	default:
-		return nil, fmt.Errorf("unsupported auth method: %s", node.Auth.Method)
+		return nil, fmt.Errorf("unsupported auth method: %s", config.Auth.Method)
 	}
 
-	config := &ssh.ClientConfig{
-		User:            node.Username,
+	sshConfig := &ssh.ClientConfig{
+		User:            config.Username,
 		Auth:            []ssh.AuthMethod{authMethod},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	addr := fmt.Sprintf("%s:%d", node.Hostname, node.Port)
-	client, err := ssh.Dial("tcp", addr, config)
+	addr := fmt.Sprintf("%s:%d", config.Hostname, config.Port)
+	client, err := ssh.Dial("tcp", addr, sshConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ssh client: %w", err)
 	}

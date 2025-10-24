@@ -2,8 +2,6 @@ github.com/bahlo/generic-list-go v0.2.0 h1:5sz/EEAK+ls5wF+NeqDpk5+iNdMDXrh3z3nPn
 github.com/buger/jsonparser v1.1.1 h1:2PnMjfWD7wBILjqQbt530v576A/cAbQvEW9gGIpYMUs=
 github.com/cvhariharan/flowctl/sdk/executor v0.0.0-20250728145512-aa56676fc961 h1:W+GTmSKcg57k+WgksCP6S4K7LJN3m5/CvNcns+khwyQ=
 github.com/cvhariharan/flowctl/sdk/executor v0.0.0-20250728145512-aa56676fc961/go.mod h1:YCqeQSuKkvNkj5LOkjuzqM0n3GaS+mMCyEpV4hcMaQI=
-github.com/cvhariharan/flowctl/sdk/remoteclient v0.0.0-20250728145512-aa56676fc961 h1:ofbcNiehEVe2GFIJ4E8GMwYkf+xWXOMpdH/S5oU1i6Q=
-github.com/cvhariharan/flowctl/sdk/remoteclient v0.0.0-20250728145512-aa56676fc961/go.mod h1:qQAkxk1C2YrRJrpQojLfqks9Lcoa4+0x/UpfvRxqhbk=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/hashicorp/go-envparse v0.1.0 h1:bE++6bhIsNCPLvgDZkYqo3nA+/PFI51pkrHdmPSDFPY=
 github.com/hashicorp/go-envparse v0.1.0/go.mod h1:OHheN1GoygLlAkTlXLXvAdnXdZxy8JUweQ1rAXx1xnc=

@@ -3,12 +3,24 @@ package remoteclient
 import (
 	"fmt"
 	"sync"
-
-	"github.com/cvhariharan/flowctl/sdk/executor"
 )
 
+// NodeConfig contains the configuration needed to connect to a remote node
+type NodeConfig struct {
+	Hostname string
+	Port     int
+	Username string
+	Auth     NodeAuth
+}
+
+// NodeAuth contains authentication information for a node
+type NodeAuth struct {
+	Method string
+	Key    string
+}
+
 // NewRemoteClientFunc defines the signature for creating a new RemoteClient.
-type NewRemoteClientFunc func(node executor.Node) (RemoteClient, error)
+type NewRemoteClientFunc func(config NodeConfig) (RemoteClient, error)
 
 var (
 	registry = make(map[string]NewRemoteClientFunc)
@@ -26,12 +38,12 @@ func Register(protocolName string, factory NewRemoteClientFunc) {
 }
 
 // GetClient is called by executors to get a client for a specific protocol.
-func GetClient(protocolName string, node executor.Node) (RemoteClient, error) {
+func GetClient(protocolName string, config NodeConfig) (RemoteClient, error) {
 	mu.RLock()
 	defer mu.RUnlock()
 	factory, ok := registry[protocolName]
 	if !ok {
 		return nil, fmt.Errorf("remote client for protocol '%s' is not registered", protocolName)
 	}
-	return factory(node)
+	return factory(config)
 }

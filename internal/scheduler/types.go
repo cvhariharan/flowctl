@@ -55,6 +55,11 @@ const (
 	AuthMethodPassword   AuthMethod = "password"
 )
 
+type ExecResults struct {
+	result map[string]string
+	err    error
+}
+
 type Node struct {
 	ID             string
 	Name           string
