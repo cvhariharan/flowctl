@@ -24,11 +24,12 @@ func (h *Handler) HandleCreateNode(c echo.Context) error {
 	}
 
 	node := &models.Node{
-		Name:           req.Name,
-		Hostname:       req.Hostname,
-		Port:           req.Port,
-		Username:       req.Username,
-		OSFamily:       req.OSFamily,
+		Name:     req.Name,
+		Hostname: req.Hostname,
+		Port:     req.Port,
+		Username: req.Username,
+		// Only linux is supported right now
+		OSFamily:       "linux",
 		ConnectionType: req.ConnectionType,
 		Tags:           req.Tags,
 		Auth: models.NodeAuth{
@@ -120,11 +121,12 @@ func (h *Handler) HandleUpdateNode(c echo.Context) error {
 	}
 
 	node := &models.Node{
-		Name:           req.Name,
-		Hostname:       req.Hostname,
-		Port:           req.Port,
-		Username:       req.Username,
-		OSFamily:       req.OSFamily,
+		Name:     req.Name,
+		Hostname: req.Hostname,
+		Port:     req.Port,
+		Username: req.Username,
+		// Only linux is supported right now
+		OSFamily:       "linux",
 		ConnectionType: req.ConnectionType,
 		Tags:           req.Tags,
 		Auth: models.NodeAuth{

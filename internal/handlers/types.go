@@ -189,10 +189,10 @@ type NodeReq struct {
 	Hostname       string   `json:"hostname" validate:"required,ip"`
 	Port           int      `json:"port" validate:"required,min=1,max=65535"`
 	Username       string   `json:"username" validate:"required,min=1,max=50"`
-	OSFamily       string   `json:"os_family" validate:"required,oneof=linux windows"`
 	ConnectionType string   `json:"connection_type" validate:"required,oneof=ssh qssh"`
 	Tags           []string `json:"tags"`
 	Auth           NodeAuth `json:"auth" validate:"required"`
+	// OSFamily       string   `json:"os_family" validate:"required,oneof=linux windows"`
 }
 
 type NodeResp struct {

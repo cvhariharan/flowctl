@@ -118,7 +118,6 @@ export interface NodeReq {
   hostname: string;
   port: number;
   username: string;
-  os_family: "linux" | "windows";
   connection_type: "ssh" | "qssh";
   tags: string[];
   auth: NodeAuth;
