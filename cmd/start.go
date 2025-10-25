@@ -12,7 +12,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/casbin/casbin/v2"
 	casbin_model "github.com/casbin/casbin/v2/model"
@@ -99,7 +98,7 @@ func initializeSharedComponents() *SharedComponents {
 
 	// Create shared FileLogManager instance
 	fileLogManager := streamlogger.NewFileLogManager(streamlogger.FileLogManagerCfg{
-		RetentionTime: time.Duration(appConfig.App.Logger.RetentionTimeHours) * time.Hour,
+		RetentionTime: appConfig.App.Logger.RetentionTime,
 		MaxSizeBytes:  appConfig.App.Logger.MaxSizeBytes * 1024 * 1024,
 		LogDir:        appConfig.App.Logger.Directory,
 		ScanInterval:  appConfig.App.Logger.ScanInterval,

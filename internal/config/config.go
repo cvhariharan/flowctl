@@ -37,11 +37,11 @@ type SchedulerConfig struct {
 }
 
 type Logger struct {
-	Backend            string        `koanf:"backend"`
-	Directory          string        `koanf:"log_directory"`
-	MaxSizeBytes       int64         `koanf:"max_size_bytes"`
-	RetentionTimeHours int           `koanf:"retention_time_hours"`
-	ScanInterval       time.Duration `koanf:"scan_interval"`
+	Backend       string        `koanf:"backend"`
+	Directory     string        `koanf:"log_directory"`
+	MaxSizeBytes  int64         `koanf:"max_size_bytes"`
+	RetentionTime time.Duration `koanf:"retention_time"`
+	ScanInterval  time.Duration `koanf:"scan_interval"`
 }
 
 type AppConfig struct {
@@ -88,8 +88,8 @@ func Load(configPath string) (Config, error) {
 	}
 
 	if err := k.Load(env.Provider("FLOWCTL_", ".", func(s string) string {
-		return strings.Replace(strings.ToLower(
-			strings.TrimPrefix(s, "FLOWCTL_")), "_", ".", -1)
+		return strings.ReplaceAll(strings.ToLower(
+			strings.TrimPrefix(s, "FLOWCTL_")), "_", ".")
 	}), nil); err != nil {
 		return Config{}, fmt.Errorf("error loading environment variables: %w", err)
 	}
@@ -154,8 +154,10 @@ func getDefaultConfig() Config {
 				CronSyncInterval: 5 * time.Minute,
 			},
 			Logger: Logger{
-				Backend:   "file",
-				Directory: "/var/log/flowctl",
+				Backend:       "file",
+				Directory:     "/var/log/flowctl",
+				RetentionTime: 0,
+				ScanInterval:  1 * time.Hour,
 			},
 		},
 	}
