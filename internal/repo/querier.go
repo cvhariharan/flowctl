@@ -106,6 +106,7 @@ type Querier interface {
 	UpdateNode(ctx context.Context, arg UpdateNodeParams) (Node, error)
 	UpdateTaskStatus(ctx context.Context, arg UpdateTaskStatusParams) error
 	UpdateUserByUUID(ctx context.Context, arg UpdateUserByUUIDParams) (User, error)
+	UpdateUserPasswordByUsername(ctx context.Context, arg UpdateUserPasswordByUsernameParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)

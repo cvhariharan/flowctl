@@ -59,6 +59,9 @@ FROM paged p, page_count pc, total t;
 -- name: UpdateUserByUUID :one
 UPDATE users SET name = $1, username = $2 WHERE uuid = $3 RETURNING *;
 
+-- name: UpdateUserPasswordByUsername :one
+UPDATE users SET password = $2 WHERE username = $1 RETURNING *;
+
 -- name: AddGroupToUserByUUID :exec
 WITH
 user_lookup AS (

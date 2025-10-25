@@ -107,15 +107,17 @@ func initAdmin(store repo.Store) error {
 	if err != nil {
 		_, err = store.CreateUser(context.Background(), repo.CreateUserParams{
 			Username:  appConfig.App.AdminUsername,
-			Password:  sql.NullString{String: string(hashedPassword), Valid: true},
+			Password:  sql.NullString{String: string(hashedPassword), Valid: len(hashedPassword) > 0},
 			LoginType: "standard",
 			Role:      "superuser",
 			Name:      "admin",
 		})
-		if err != nil {
-			return err
-		}
+		return err
 	}
-
-	return nil
+	// If the user already exists, reset the password
+	_, err = store.UpdateUserPasswordByUsername(context.Background(), repo.UpdateUserPasswordByUsernameParams{
+		Username: appConfig.App.AdminUsername,
+		Password: sql.NullString{String: string(hashedPassword), Valid: len(hashedPassword) > 0},
+	})
+	return err
 }

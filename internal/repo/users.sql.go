@@ -394,3 +394,29 @@ func (q *Queries) UpdateUserByUUID(ctx context.Context, arg UpdateUserByUUIDPara
 	)
 	return i, err
 }
+
+const updateUserPasswordByUsername = `-- name: UpdateUserPasswordByUsername :one
+UPDATE users SET password = $2 WHERE username = $1 RETURNING id, uuid, name, username, password, login_type, role, created_at, updated_at
+`
+
+type UpdateUserPasswordByUsernameParams struct {
+	Username string         `db:"username" json:"username"`
+	Password sql.NullString `db:"password" json:"password"`
+}
+
+func (q *Queries) UpdateUserPasswordByUsername(ctx context.Context, arg UpdateUserPasswordByUsernameParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserPasswordByUsername, arg.Username, arg.Password)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.Name,
+		&i.Username,
+		&i.Password,
+		&i.LoginType,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
