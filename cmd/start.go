@@ -102,7 +102,9 @@ func initializeSharedComponents() *SharedComponents {
 		RetentionTime: time.Duration(appConfig.App.Logger.RetentionTimeHours) * time.Hour,
 		MaxSizeBytes:  appConfig.App.Logger.MaxSizeBytes * 1024 * 1024,
 		LogDir:        appConfig.App.Logger.Directory,
+		ScanInterval:  appConfig.App.Logger.ScanInterval,
 	})
+	go fileLogManager.Run(context.Background(), logger.WithGroup("file_log_manager"))
 
 	dbConnectionString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", appConfig.DB.User, appConfig.DB.Password, appConfig.DB.Host, appConfig.DB.Port, appConfig.DB.DBName)
 	db, err := sqlx.Connect("postgres", dbConnectionString)

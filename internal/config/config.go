@@ -37,10 +37,11 @@ type SchedulerConfig struct {
 }
 
 type Logger struct {
-	Backend            string `koanf:"backend"`
-	Directory          string `koanf:"log_directory"`
-	MaxSizeBytes       int64  `koanf:"max_size_bytes"`
-	RetentionTimeHours int    `koanf:"retention_time_hours"`
+	Backend            string        `koanf:"backend"`
+	Directory          string        `koanf:"log_directory"`
+	MaxSizeBytes       int64         `koanf:"max_size_bytes"`
+	RetentionTimeHours int           `koanf:"retention_time_hours"`
+	ScanInterval       time.Duration `koanf:"scan_interval"`
 }
 
 type AppConfig struct {
