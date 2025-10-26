@@ -37,7 +37,7 @@
         id="username"
         name="username"
         required
-        class="w-full px-3 py-2 text-sm rounded-md border bg-white border-slate-200 text-slate-900 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
+        class="w-full px-3 py-2 text-sm rounded-md border bg-white border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
         placeholder="Enter your username"
       />
     </div>
@@ -53,7 +53,7 @@
         id="password"
         name="password"
         required
-        class="w-full px-3 py-2 text-sm rounded-md border bg-white border-slate-200 text-slate-900 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
+        class="w-full px-3 py-2 text-sm rounded-md border bg-white border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
         placeholder="Enter your password"
       />
     </div>

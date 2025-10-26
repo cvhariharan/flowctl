@@ -104,10 +104,10 @@
           </div>
           <div class="col-span-2">
             <label class="block text-sm font-medium text-gray-700 mb-1">Validation</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               bind:value={input.validation}
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono"
               placeholder="len(input_name) > 3"
             />
           </div>

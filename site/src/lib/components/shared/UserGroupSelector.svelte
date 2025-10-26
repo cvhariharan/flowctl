@@ -83,13 +83,13 @@
 
 <div class="user-group-selector">
   <div class="relative">
-    <input 
+    <input
       type="text"
       bind:value={searchQuery}
       on:input={searchSubjects}
       on:focus={() => showDropdown = searchResults.length > 0}
       {placeholder}
-      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 pr-10"
+      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent block w-full p-2.5 pr-10"
       autocomplete="off"
       {disabled}
     />

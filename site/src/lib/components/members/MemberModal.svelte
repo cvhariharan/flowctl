@@ -120,7 +120,7 @@
             <select
               bind:value={memberForm.subject_type}
               onchange={onSubjectTypeChange}
-              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5"
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent block w-full p-2.5"
               required
               disabled={loading || isEditMode}
             >
@@ -173,7 +173,7 @@
             <label class="block mb-1 font-medium text-gray-900">Role *</label>
             <select
               bind:value={memberForm.role}
-              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5"
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent block w-full p-2.5"
               required
               disabled={loading}
             >
