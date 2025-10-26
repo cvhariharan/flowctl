@@ -285,11 +285,13 @@ SELECT
     el.input as exec_inputs,
     f.name as flow_name,
     f.slug as flow_slug,
-    u.name as requested_by
+    u.name as requested_by,
+    us.name as decided_by_name
 FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
 JOIN flows f ON el.flow_id = f.id
 JOIN users u ON el.triggered_by = u.id
+LEFT JOIN users us ON a.decided_by = us.id
 WHERE a.uuid = $1 AND f.namespace_id = (SELECT id FROM namespace_lookup)
 `
 
@@ -299,20 +301,21 @@ type GetApprovalWithInputsByUUIDParams struct {
 }
 
 type GetApprovalWithInputsByUUIDRow struct {
-	ID          int32           `db:"id" json:"id"`
-	Uuid        uuid.UUID       `db:"uuid" json:"uuid"`
-	ExecLogID   int32           `db:"exec_log_id" json:"exec_log_id"`
-	ActionID    string          `db:"action_id" json:"action_id"`
-	Status      ApprovalStatus  `db:"status" json:"status"`
-	DecidedBy   sql.NullInt32   `db:"decided_by" json:"decided_by"`
-	NamespaceID int32           `db:"namespace_id" json:"namespace_id"`
-	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
-	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
-	ExecID      string          `db:"exec_id" json:"exec_id"`
-	ExecInputs  json.RawMessage `db:"exec_inputs" json:"exec_inputs"`
-	FlowName    string          `db:"flow_name" json:"flow_name"`
-	FlowSlug    string          `db:"flow_slug" json:"flow_slug"`
-	RequestedBy string          `db:"requested_by" json:"requested_by"`
+	ID            int32           `db:"id" json:"id"`
+	Uuid          uuid.UUID       `db:"uuid" json:"uuid"`
+	ExecLogID     int32           `db:"exec_log_id" json:"exec_log_id"`
+	ActionID      string          `db:"action_id" json:"action_id"`
+	Status        ApprovalStatus  `db:"status" json:"status"`
+	DecidedBy     sql.NullInt32   `db:"decided_by" json:"decided_by"`
+	NamespaceID   int32           `db:"namespace_id" json:"namespace_id"`
+	CreatedAt     time.Time       `db:"created_at" json:"created_at"`
+	UpdatedAt     time.Time       `db:"updated_at" json:"updated_at"`
+	ExecID        string          `db:"exec_id" json:"exec_id"`
+	ExecInputs    json.RawMessage `db:"exec_inputs" json:"exec_inputs"`
+	FlowName      string          `db:"flow_name" json:"flow_name"`
+	FlowSlug      string          `db:"flow_slug" json:"flow_slug"`
+	RequestedBy   string          `db:"requested_by" json:"requested_by"`
+	DecidedByName sql.NullString  `db:"decided_by_name" json:"decided_by_name"`
 }
 
 func (q *Queries) GetApprovalWithInputsByUUID(ctx context.Context, arg GetApprovalWithInputsByUUIDParams) (GetApprovalWithInputsByUUIDRow, error) {
@@ -333,6 +336,7 @@ func (q *Queries) GetApprovalWithInputsByUUID(ctx context.Context, arg GetApprov
 		&i.FlowName,
 		&i.FlowSlug,
 		&i.RequestedBy,
+		&i.DecidedByName,
 	)
 	return i, err
 }

@@ -144,7 +144,6 @@ func (c *Core) GetApprovalsRequestsForExec(ctx context.Context, execID string, n
 	return existingReq, nil
 }
 
-
 func (c *Core) GetApprovalRequest(ctx context.Context, approvalUUID string, namespaceID string) (models.ApprovalRequest, error) {
 	uid, err := uuid.Parse(approvalUUID)
 	if err != nil {
@@ -216,6 +215,7 @@ func (c *Core) GetApprovalWithInputs(ctx context.Context, approvalUUID string, n
 			ExecID:      approval.ExecID,
 			RequestedBy: approval.RequestedBy,
 		},
+		DecidedBy: approval.DecidedByName.String,
 		Inputs:    approval.ExecInputs,
 		FlowName:  approval.FlowName,
 		FlowID:    approval.FlowSlug,

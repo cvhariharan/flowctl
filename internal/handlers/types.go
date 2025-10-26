@@ -167,6 +167,7 @@ type ApprovalDetailsResp struct {
 	Inputs      json.RawMessage `json:"inputs,omitempty"`
 	FlowName    string          `json:"flow_name"`
 	FlowID      string          `json:"flow_id"`
+	DecidedBy   string          `json:"approved_by"`
 	RequestedBy string          `json:"requested_by"`
 	CreatedAt   string          `json:"created_at"`
 	UpdatedAt   string          `json:"updated_at"`

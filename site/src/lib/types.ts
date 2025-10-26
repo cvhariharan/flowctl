@@ -227,6 +227,7 @@ export interface ApprovalDetailsResp {
   flow_name: string;
   flow_id: string;
   requested_by: string;
+  approved_by?: string;
   created_at: string;
   updated_at: string;
 }

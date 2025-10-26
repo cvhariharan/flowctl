@@ -93,11 +93,13 @@ SELECT
     el.input as exec_inputs,
     f.name as flow_name,
     f.slug as flow_slug,
-    u.name as requested_by
+    u.name as requested_by,
+    us.name as decided_by_name
 FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
 JOIN flows f ON el.flow_id = f.id
 JOIN users u ON el.triggered_by = u.id
+LEFT JOIN users us ON a.decided_by = us.id
 WHERE a.uuid = $1 AND f.namespace_id = (SELECT id FROM namespace_lookup);
 
 -- name: GetApprovalRequestForActionAndExec :one

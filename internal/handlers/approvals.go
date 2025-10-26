@@ -76,6 +76,7 @@ func (h *Handler) HandleGetApproval(c echo.Context) error {
 		Status:      string(approval.Status),
 		ExecID:      approval.ExecID,
 		Inputs:      approval.Inputs,
+		DecidedBy:   approval.DecidedBy,
 		FlowName:    approval.FlowName,
 		FlowID:      approval.FlowID,
 		RequestedBy: approval.RequestedBy,
