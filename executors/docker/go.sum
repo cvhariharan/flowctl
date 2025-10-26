@@ -14,8 +14,10 @@ github.com/containerd/errdefs/pkg v0.3.0 h1:9IKJ06FvyNlexW690DXuQNx2KA2cUJXx151X
 github.com/containerd/errdefs/pkg v0.3.0/go.mod h1:NJw6s9HwNuRhnjJhM7pylWwMyAkmCQvQ4GpJHEqRLVk=
 github.com/containerd/log v0.1.0 h1:TCJt7ioM2cr/tfR8GPbGf9/VRAX8D2B4PjzCpfX540I=
 github.com/containerd/log v0.1.0/go.mod h1:VRRf09a7mHDIRezVKTRCrOq78v577GXq3bSa3EhrzVo=
-github.com/cvhariharan/flowctl/sdk/executor v0.0.0-20250728145512-aa56676fc961 h1:W+GTmSKcg57k+WgksCP6S4K7LJN3m5/CvNcns+khwyQ=
-github.com/cvhariharan/flowctl/sdk/executor v0.0.0-20250728145512-aa56676fc961/go.mod h1:YCqeQSuKkvNkj5LOkjuzqM0n3GaS+mMCyEpV4hcMaQI=
+github.com/cvhariharan/flowctl/sdk/executor v0.0.0-20251024120944-b9b77518a391 h1:eGy+3D67AipxodJg7AWDHQB1Vz9PotPHNSbz996EctY=
+github.com/cvhariharan/flowctl/sdk/executor v0.0.0-20251024120944-b9b77518a391/go.mod h1:ucS/MvVEa3MQqXFN4ddAd9Fl3+mzugbEHFNQ3FwCMT8=
+github.com/cvhariharan/flowctl/sdk/remoteclient v0.0.0-20251024120944-b9b77518a391 h1:tK9Fai3rgMJ7nmxxch42ccUbc8kzFN5L3yXJMUy2HwI=
+github.com/cvhariharan/flowctl/sdk/remoteclient v0.0.0-20251024120944-b9b77518a391/go.mod h1:qQAkxk1C2YrRJrpQojLfqks9Lcoa4+0x/UpfvRxqhbk=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/distribution/reference v0.6.0 h1:0IXCQ5g4/QMHHkarYzh5l+u8T3t73zM5QvfrDyIgxBk=
@@ -126,6 +128,7 @@ golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5h
 golang.org/x/sys v0.0.0-20190412213103-97732733099d/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.36.0 h1:KVRy2GtZBrk1cBYA7MKu5bEZFxQk4NIDV6RLVcC8o0k=
+golang.org/x/sys v0.36.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.3/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
 golang.org/x/text v0.27.0 h1:4fGWRpyh641NLlecmyl4LOe6yDdfaYNrGb2zdfo4JV4=

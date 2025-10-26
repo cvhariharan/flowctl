@@ -3,7 +3,7 @@ module github.com/cvhariharan/flowctl/executors/script
 go 1.24.5
 
 require (
-	github.com/cvhariharan/flowctl/sdk/executor v0.0.0-20250728145512-aa56676fc961
+	github.com/cvhariharan/flowctl/sdk/executor v0.0.0-20251024120944-b9b77518a391
 	github.com/hashicorp/go-envparse v0.1.0
 	github.com/invopop/jsonschema v0.13.0
 	github.com/rs/xid v1.6.0
@@ -13,6 +13,7 @@ require (
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
+	github.com/cvhariharan/flowctl/sdk/remoteclient v0.0.0-20251024120944-b9b77518a391 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
