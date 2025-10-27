@@ -699,7 +699,7 @@ func convertFlowActionsToActionsReq(actions []models.Action) []FlowActionReq {
 }
 
 type FlowSecretReq struct {
-	FlowID      string `param:"flowID" validate:"required,uuid4"`
+	FlowID      string `param:"flowID" validate:"required"`
 	Key         string `json:"key" validate:"required,min=3,max=150,alphanum_underscore"`
 	Value       string `json:"value" validate:"required,max=255"`
 	Description string `json:"description" validate:"max=255"`
@@ -714,7 +714,7 @@ type FlowSecretResp struct {
 }
 
 type FlowSecretGetReq struct {
-	SecretID string `param:"secretID" validate:"required,uuid4"`
+	SecretID string `param:"secretID" validate:"required"`
 }
 
 type FlowSecretUpdateReq struct {
@@ -723,7 +723,7 @@ type FlowSecretUpdateReq struct {
 }
 
 type FlowSecretsListReq struct {
-	FlowID string `param:"flowID" validate:"required,uuid4"`
+	FlowID string `param:"flowID" validate:"required"`
 }
 
 func coreFlowSecretToFlowSecretResp(secret models.FlowSecret) FlowSecretResp {
