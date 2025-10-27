@@ -16,6 +16,7 @@
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
 	import Header from '$lib/components/shared/Header.svelte';
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
+	import { formatDateTime } from '$lib/utils';
 
 	let { data }: { data: PageData } = $props();
 
@@ -67,7 +68,7 @@
 			key: 'created_at',
 			header: 'Created',
 			sortable: true,
-			render: (_value: any, approval: ApprovalResp) => formatDate(approval.created_at)
+			render: (_value: any, approval: ApprovalResp) => formatDateTime(approval.created_at, 'Never')
 		}
 	];
 
@@ -137,19 +138,6 @@
 		}
 	}
 
-	function formatDate(dateString: string): string {
-		if (!dateString) return 'Never';
-		const date = new Date(dateString);
-		const now = new Date();
-		const diffMs = now.getTime() - date.getTime();
-		const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-		const diffDays = Math.floor(diffHours / 24);
-
-		if (diffHours < 1) return 'Less than 1 hour ago';
-		if (diffHours < 24) return `${diffHours} hours ago`;
-		if (diffDays < 7) return `${diffDays} days ago`;
-		return date.toLocaleDateString();
-	}
 
 
 </script>

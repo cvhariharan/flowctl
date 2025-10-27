@@ -15,6 +15,7 @@
 	import Header from '$lib/components/shared/Header.svelte';
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 	import { IconPlus } from '@tabler/icons-svelte';
+	import { formatDateTime } from '$lib/utils';
 
 	let { data }: { data: PageData } = $props();
 
@@ -74,7 +75,10 @@
 			key: 'last_accessed',
 			header: 'Last Accessed',
 			sortable: true,
-			render: (_value: any, credential: CredentialResp) => formatDate(credential.last_accessed)
+			render: (_value: any, credential: CredentialResp) => {
+				if (!credential.last_accessed || credential.last_accessed === '0001-01-01T00:00:00Z') return 'Never';
+				return formatDateTime(credential.last_accessed);
+			}
 		}
 	];
 
@@ -208,11 +212,6 @@
 	}
 
 
-	function formatDate(dateString: string | null): string {
-		if (!dateString || dateString === '0001-01-01T00:00:00Z') return 'Never';
-		const date = new Date(dateString);
-		return date.toLocaleString();
-	}
 </script>
 
 <svelte:head>

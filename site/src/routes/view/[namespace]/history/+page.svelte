@@ -13,6 +13,7 @@
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
 	import Header from '$lib/components/shared/Header.svelte';
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
+	import { formatDateTime } from '$lib/utils';
 
 	let { data }: { data: PageData } = $props();
 
@@ -135,11 +136,6 @@
 		}
 	}
 
-	function formatDateTime(dateString: string): string {
-		if (!dateString) return 'Unknown';
-		const date = new Date(dateString);
-		return date.toLocaleString();
-	}
 
 	function formatDuration(startedAt: string, completedAt: string): string {
 		if (!startedAt) return 'Unknown';

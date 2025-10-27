@@ -4,6 +4,7 @@
     import JsonDisplay from "$lib/components/shared/JsonDisplay.svelte";
     import { handleInlineError } from "$lib/utils/errorHandling";
     import { autofocus } from "$lib/utils/autofocus";
+    import { formatDateTime } from "$lib/utils";
 
     let {
         open = $bindable(),
@@ -90,19 +91,6 @@
         }
     }
 
-    function formatDate(dateString: string): string {
-        if (!dateString) return "Never";
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffHours < 1) return "Less than 1 hour ago";
-        if (diffHours < 24) return `${diffHours} hours ago`;
-        if (diffDays < 7) return `${diffDays} days ago`;
-        return date.toLocaleDateString();
-    }
 </script>
 
 {#if open}
@@ -252,7 +240,7 @@
                                         >Created</span
                                     >
                                     <span class="text-sm text-gray-900"
-                                        >{formatDate(approval.created_at)}</span
+                                        >{formatDateTime(approval.created_at, "Never")}</span
                                     >
                                 </div>
                             </div>

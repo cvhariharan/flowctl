@@ -15,6 +15,7 @@
   import type { TableColumn } from '$lib/types';
   import { DEFAULT_PAGE_SIZE } from '$lib/constants';
   import { permissionChecker } from '$lib/utils/permissions';
+  import { formatDateTime } from '$lib/utils';
 
   let { data }: { data: PageData } = $props();
   
@@ -79,11 +80,6 @@
     viewExecution(execution.id);
   };
 
-  const formatDateTime = (dateString: string) => {
-    if (!dateString) return 'Unknown';
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
 
   const formatDuration = (startedAt: string, completedAt?: string) => {
     if (!startedAt) return 'Unknown';

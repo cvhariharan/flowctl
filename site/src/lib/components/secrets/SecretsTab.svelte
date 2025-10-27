@@ -4,6 +4,7 @@
 	import type { FlowSecretReq, FlowSecretResp } from '$lib/types';
 	import SecretsModal from './SecretsModal.svelte';
 	import DeleteModal from '../shared/DeleteModal.svelte';
+	import { formatDateTime } from '$lib/utils';
 
 	interface Props {
 		namespace: string;
@@ -93,9 +94,6 @@
 		}
 	}
 
-	function formatDate(dateString: string): string {
-		return new Date(dateString).toLocaleString();
-	}
 </script>
 
 <div class="space-y-4">
@@ -174,7 +172,7 @@
 										</p>
 									{/if}
 									<p class="text-xs text-gray-400">
-										Created: {formatDate(secret.created_at)}
+										Created: {formatDateTime(secret.created_at)}
 									</p>
 								</div>
 							</div>

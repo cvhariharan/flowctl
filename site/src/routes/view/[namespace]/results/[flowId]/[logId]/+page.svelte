@@ -19,6 +19,7 @@
         showSuccess,
         showWarning,
     } from "$lib/utils/errorHandling";
+    import { formatDateTime } from "$lib/utils";
 
     let {
         data,
@@ -424,16 +425,14 @@
     onMount(() => {
         if (data.executionSummary) {
             updateStatusFromSummary(data.executionSummary);
-            startTime = new Date(
-                data.executionSummary.started_at,
-            ).toLocaleString();
+            startTime = formatDateTime(data.executionSummary.started_at);
             flowName =
                 data.executionSummary.flow_name ||
                 data.flowMeta?.meta?.name ||
                 "";
         } else {
             flowName = data.flowMeta?.meta?.name || "";
-            startTime = new Date().toLocaleString();
+            startTime = formatDateTime(new Date().toISOString());
         }
 
         // Set default selected action (first action or current running action)

@@ -45,7 +45,7 @@ export function isValidCronExpression(cronExpr: string): boolean {
 function isValidCronPart(part: string, min: number, max: number): boolean {
   // Allow wildcards
   if (part === '*') return true;
-  
+
   // Allow step values like */5
   if (part.includes('*/')) {
     const [base, step] = part.split('/');
@@ -53,16 +53,16 @@ function isValidCronPart(part: string, min: number, max: number): boolean {
     const stepNum = parseInt(step);
     return !isNaN(stepNum) && stepNum > 0 && stepNum <= max;
   }
-  
+
   // Allow ranges like 1-5
   if (part.includes('-')) {
     const [start, end] = part.split('-');
     const startNum = parseInt(start);
     const endNum = parseInt(end);
-    return !isNaN(startNum) && !isNaN(endNum) && 
+    return !isNaN(startNum) && !isNaN(endNum) &&
            startNum >= min && endNum <= max && startNum <= endNum;
   }
-  
+
   // Allow lists like 1,3,5
   if (part.includes(',')) {
     const values = part.split(',');
@@ -71,8 +71,60 @@ function isValidCronPart(part: string, min: number, max: number): boolean {
       return !isNaN(num) && num >= min && num <= max;
     });
   }
-  
+
   // Single number
   const num = parseInt(part);
   return !isNaN(num) && num >= min && num <= max;
+}
+
+/**
+ * Formats a date string to the system's default locale format (date and time)
+ * @param dateString - ISO date string or any valid date string
+ * @param fallback - Optional fallback string if date is invalid (default: 'Unknown')
+ * @returns Formatted date and time string using system locale
+ */
+export function formatDateTime(dateString: string | null | undefined, fallback: string = 'Unknown'): string {
+  if (!dateString) return fallback;
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return fallback;
+    return date.toLocaleString();
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Formats a date string to the system's default locale format (date only)
+ * @param dateString - ISO date string or any valid date string
+ * @param fallback - Optional fallback string if date is invalid (default: 'Unknown')
+ * @returns Formatted date string using system locale
+ */
+export function formatDate(dateString: string | null | undefined, fallback: string = 'Unknown'): string {
+  if (!dateString) return fallback;
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return fallback;
+    return date.toLocaleDateString();
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Formats a date string to the system's default locale format (time only)
+ * @param dateString - ISO date string or any valid date string
+ * @param fallback - Optional fallback string if date is invalid (default: 'Unknown')
+ * @param hour12 - Whether to use 12-hour format (default: false for 24-hour)
+ * @returns Formatted time string using system locale
+ */
+export function formatTime(dateString: string | null | undefined, fallback: string = 'Unknown', hour12: boolean = false): string {
+  if (!dateString) return fallback;
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return fallback;
+    return date.toLocaleTimeString(undefined, { hour12 });
+  } catch {
+    return fallback;
+  }
 }

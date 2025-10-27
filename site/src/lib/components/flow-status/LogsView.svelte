@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
+    import { formatTime } from "$lib/utils";
 
     type LogMessage = {
         action_id: string;
@@ -109,14 +110,6 @@
             .join("");
     };
 
-    const formatTimestamp = (timestamp: string) => {
-        try {
-            const date = new Date(timestamp);
-            return date.toLocaleTimeString("en-US", { hour12: false });
-        } catch {
-            return timestamp;
-        }
-    };
 
     const formatLogMessage = (msg: LogMessage) => {
         const lines = msg.value
@@ -125,7 +118,7 @@
         return lines.map((line) => ({
             timestamp:
                 showTimestamp && msg.timestamp
-                    ? formatTimestamp(msg.timestamp)
+                    ? formatTime(msg.timestamp)
                     : null,
             nodeId: msg.node_id,
             nodeColor: getNodeColor(msg.node_id),

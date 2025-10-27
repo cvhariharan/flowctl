@@ -13,7 +13,8 @@
 	import type { NamespaceMemberResp, NamespaceMemberReq } from '$lib/types';
 	import Header from '$lib/components/shared/Header.svelte';
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
-import type { TableAction } from '$lib/types';
+	import type { TableAction } from '$lib/types';
+	import { formatDateTime } from '$lib/utils';
 
 	let { data }: { data: PageData } = $props();
 
@@ -52,7 +53,7 @@ import type { TableAction } from '$lib/types';
 			key: 'created_at',
 			header: 'Added',
 			sortable: true,
-			render: (_value: any, member: NamespaceMemberResp) => formatDate(member.created_at)
+			render: (_value: any, member: NamespaceMemberResp) => formatDateTime(member.created_at)
 		}
 	];
 
@@ -154,18 +155,6 @@ import type { TableAction } from '$lib/types';
 		deleteMemberName = '';
 	}
 
-	function formatDate(dateString: string): string {
-		if (!dateString) return 'Unknown';
-		const date = new Date(dateString);
-		const now = new Date();
-		const diffMs = now.getTime() - date.getTime();
-		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-		if (diffDays === 0) return 'Today';
-		if (diffDays === 1) return 'Yesterday';
-		if (diffDays < 7) return `${diffDays} days ago`;
-		return date.toLocaleDateString();
-	}
 
 </script>
 
