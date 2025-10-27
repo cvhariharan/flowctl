@@ -15,8 +15,8 @@ import (
 )
 
 type ScriptWithConfig struct {
-	Script string `yaml:"script" json:"script" jsonschema:"title=script" jsonschema_extras:"widget=codeeditor"`
-	// Interpreter string `yaml:"interpreter" json:"interpreter" jsonschema:"title=interpreter"`
+	Script      string `yaml:"script" json:"script" jsonschema:"title=script" jsonschema_extras:"widget=codeeditor"`
+	Interpreter string `yaml:"interpreter,omitempty" json:"interpreter,omitempty" jsonschema:"title=interpreter,description=Shell interpreter to use (default: /bin/bash)"`
 }
 
 type ScriptExecutor struct {
@@ -55,9 +55,9 @@ func (s *ScriptExecutor) Execute(ctx context.Context, execCtx executor.Execution
 	}
 
 	// Set default interpreter
-	// if config.Interpreter == "" {
-	// 	config.Interpreter = "/bin/bash"
-	// }
+	if config.Interpreter == "" {
+		config.Interpreter = "/bin/bash"
+	}
 
 	s.stdout = execCtx.Stdout
 	s.stderr = execCtx.Stderr
@@ -106,10 +106,8 @@ func (s *ScriptExecutor) prepareEnvironment(inputs map[string]interface{}, outpu
 }
 
 func (s *ScriptExecutor) runScript(ctx context.Context, config ScriptWithConfig, env []string) error {
-	scriptContent := s.buildScript(config, env)
-
 	localScriptFile := fmt.Sprintf("/tmp/local-script-%s.sh", xid.New().String())
-	if err := os.WriteFile(localScriptFile, []byte(scriptContent), 0755); err != nil {
+	if err := os.WriteFile(localScriptFile, []byte(config.Script), 0755); err != nil {
 		return fmt.Errorf("failed to write local script file: %w", err)
 	}
 	defer os.Remove(localScriptFile)
@@ -124,27 +122,8 @@ func (s *ScriptExecutor) runScript(ctx context.Context, config ScriptWithConfig,
 		return fmt.Errorf("failed to set executable permissions: %w", err)
 	}
 
-	return s.driver.Exec(ctx, remoteScriptFile, s.workingDirectory, s.stdout, s.stderr)
-}
-
-func (s *ScriptExecutor) buildScript(config ScriptWithConfig, env []string) string {
-	var script strings.Builder
-
-	// script.WriteString("#!" + config.Interpreter + "\n")
-	script.WriteString("set -e\n\n")
-
-	// Export environment variables
-	for _, envVar := range env {
-		if strings.Contains(envVar, "=") {
-			script.WriteString("export " + envVar + "\n")
-		}
-	}
-
-	script.WriteString("\n")
-	script.WriteString(config.Script)
-	script.WriteString("\n")
-
-	return script.String()
+	command := fmt.Sprintf("%s %s", config.Interpreter, remoteScriptFile)
+	return s.driver.Exec(ctx, command, s.workingDirectory, env, s.stdout, s.stderr)
 }
 
 func (s *ScriptExecutor) readTempFileContents(ctx context.Context, tempFile string) (io.Reader, error) {

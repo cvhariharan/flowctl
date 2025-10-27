@@ -19,7 +19,7 @@ type NodeDriver interface {
 	GetWorkingDirectory() string
 	Remove(ctx context.Context, path string) error
 	SetPermissions(ctx context.Context, path string, perms os.FileMode) error
-	Exec(ctx context.Context, command string, workingDir string, stdout, stderr io.Writer) error
+	Exec(ctx context.Context, command string, workingDir string, env []string, stdout, stderr io.Writer) error
 	Dial(network, address string) (net.Conn, error)
 	IsRemote() bool
 	TempDir() string

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/cvhariharan/flowctl/sdk/remoteclient"
 	"github.com/rs/xid"
@@ -66,13 +67,25 @@ func (d *RemoteLinuxDriver) SetPermissions(ctx context.Context, filePath string,
 	return d.client.RunCommand(ctx, cmd, io.Discard, io.Discard)
 }
 
-func (d *RemoteLinuxDriver) Exec(ctx context.Context, command string, workingDir string, stdout, stderr io.Writer) error {
-	var fullCommand string
-	if workingDir != "" {
-		fullCommand = fmt.Sprintf("cd %s && %s", workingDir, command)
-	} else {
-		fullCommand = command
+func (d *RemoteLinuxDriver) Exec(ctx context.Context, command string, workingDir string, env []string, stdout, stderr io.Writer) error {
+	var parts []string
+
+	// Add environment variable exports
+	for _, envVar := range env {
+		parts = append(parts, fmt.Sprintf("export %s", envVar))
 	}
+
+	// Add working directory change if needed
+	if workingDir != "" {
+		parts = append(parts, fmt.Sprintf("cd %s", workingDir))
+	}
+
+	// Add the actual command
+	parts = append(parts, command)
+
+	// Join with &&
+	fullCommand := strings.Join(parts, " && ")
+
 	return d.client.RunCommand(ctx, fullCommand, stdout, stderr)
 }
 
