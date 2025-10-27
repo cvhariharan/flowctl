@@ -1,9 +1,8 @@
 package handlers
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
@@ -14,17 +13,10 @@ const (
 	TimeFormat = "2006-01-02T15:04:05Z"
 )
 
-// GenerateSlug creates a universally unique slug from the provided string
+// GenerateSlug creates a slug from the provided string
 // The slug uses only alphabets, numbers, and underscores
 func GenerateSlug(input string) string {
-	baseSlug := strings.ReplaceAll(slug.Make(input), "-", "_")
-
-	// Generate 4 random hex characters for uniqueness
-	bytes := make([]byte, 2)
-	rand.Read(bytes)
-	suffix := hex.EncodeToString(bytes)
-
-	return baseSlug + "_" + suffix
+	return strings.ReplaceAll(slug.Make(input), "-", "_")
 }
 
 type AuthReq struct {
@@ -587,7 +579,7 @@ type FlowInputReq struct {
 }
 
 type FlowActionReq struct {
-	Name      string           `json:"name" validate:"required,alphanum_underscore,min=3,max=150"`
+	Name      string           `json:"name" validate:"required,alphanum,min=3,max=150"`
 	Executor  string           `json:"executor" validate:"required,oneof=script docker"`
 	With      map[string]any   `json:"with" validate:"required"`
 	Approval  bool             `json:"approval"`
@@ -643,7 +635,7 @@ func convertFlowActionsReqToActions(actionsReq []FlowActionReq) []models.Action 
 		}
 
 		actions[i] = models.Action{
-			ID:        GenerateSlug(action.Name),
+			ID:        fmt.Sprintf("%s_%03d", GenerateSlug(action.Name), i),
 			Name:      action.Name,
 			Executor:  action.Executor,
 			With:      action.With,

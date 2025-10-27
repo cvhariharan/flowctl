@@ -219,7 +219,7 @@
                                 <div>
                                     <span
                                         class="block text-sm font-medium text-gray-700 mb-1"
-                                        >Approved By</span
+                                        >Reviewer</span
                                     >
                                     <span class="text-sm text-gray-900"
                                         >{approval.approved_by || "N/A"}</span
@@ -254,9 +254,7 @@
                                 >
                                     Execution Inputs
                                 </h4>
-                                <div class="border border-gray-200 rounded-lg">
-                                    <JsonDisplay data={approval.inputs} />
-                                </div>
+                                <JsonDisplay data={approval.inputs} />
                             </div>
                         {/if}
 
@@ -268,11 +266,11 @@
                                 <button
                                     onclick={handleReject}
                                     disabled={actionLoading}
-                                    class="px-4 py-2 text-sm font-medium text-danger-700 bg-danger-50 border border-danger-300 rounded-lg hover:bg-danger-100 focus:ring-4 focus:ring-danger-300 disabled:opacity-50 cursor-pointer"
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-transparent rounded-lg hover:bg-gray-200 focus:outline-none focus:border-transparent disabled:opacity-50 cursor-pointer"
                                 >
                                     {#if actionLoading}
                                         <svg
-                                            class="animate-spin -ml-1 mr-2 h-4 w-4 text-danger-700 inline"
+                                            class="animate-spin -ml-1 mr-2 h-4 w-4 text-danger-900 inline"
                                             xmlns="http://www.w3.org/2000/svg"
                                             fill="none"
                                             viewBox="0 0 24 24"
@@ -297,11 +295,11 @@
                                 <button
                                     onclick={handleApprove}
                                     disabled={actionLoading}
-                                    class="px-4 py-2 text-sm font-medium text-white bg-success-600 border border-transparent rounded-lg hover:bg-success-700 focus:ring-4 focus:ring-success-300 disabled:opacity-50 cursor-pointer"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-primary-500 border border-transparent rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 cursor-pointer"
                                 >
                                     {#if actionLoading}
                                         <svg
-                                            class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline"
+                                            class="animate-spin -ml-1 mr-2 h-4 w-4 text-success-900 inline"
                                             xmlns="http://www.w3.org/2000/svg"
                                             fill="none"
                                             viewBox="0 0 24 24"

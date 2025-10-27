@@ -516,7 +516,7 @@ func (h *Handler) HandleCreateFlow(c echo.Context) error {
 	}
 
 	if err := flow.Validate(); err != nil {
-		return wrapError(ErrValidationFailed, "flow validation error", err, nil)
+		return wrapError(ErrValidationFailed, err.Error(), err, nil)
 	}
 
 	if err := h.co.CreateFlow(c.Request().Context(), flow, namespaceID); err != nil {
@@ -556,7 +556,7 @@ func (h *Handler) HandleUpdateFlow(c echo.Context) error {
 	}
 
 	if err := flow.Validate(); err != nil {
-		return wrapError(ErrValidationFailed, "flow validation error", err, nil)
+		return wrapError(ErrValidationFailed, err.Error(), err, nil)
 	}
 
 	if err := h.co.UpdateFlow(c.Request().Context(), flow, namespaceID); err != nil {
