@@ -41,34 +41,47 @@
 	// Table configuration
 	let tableColumns = [
 		{
+			key: 'flow_name',
+			header: 'Flow Name',
+			sortable: true,
+			render: (_value: any, approval: ApprovalResp) => `
+				<div class="text-sm font-medium text-gray-900">${approval.flow_name}</div>
+			`
+		},
+		{
 			key: 'id',
 			header: 'Approval',
 			component: ApprovalIdCell
 		},
 		{
-			key: 'status',
-			header: 'Status',
+			key: 'created_at',
+			header: 'Created',
 			sortable: true,
-			component: StatusBadge
+			render: (_value: any, approval: ApprovalResp) => `
+			    <div class="text-sm text-gray-600">${formatDateTime(approval.created_at)}</div>
+			`
+		},
+		{
+			key: 'requested_by',
+			header: 'Requested By',
+			sortable: true,
+			render: (_value: any, approval: ApprovalResp) => `
+				<div class="text-sm font-medium text-gray-900">${approval.requested_by}</div>
+			`
 		},
 		{
 			key: 'exec_id',
 			header: 'Execution',
 			sortable: true,
 			render: (_value: any, approval: ApprovalResp) => `
-				<span class="font-mono text-sm text-gray-900">${approval.exec_id.substring(0, 8)}</span>
+				<span class="font-mono text-sm text-gray-600">${approval.exec_id.substring(0, 8)}</span>
 			`
 		},
 		{
-			key: 'requested_by',
-			header: 'Requested By',
-			sortable: true
-		},
-		{
-			key: 'created_at',
-			header: 'Created',
+			key: 'status',
+			header: 'Status',
 			sortable: true,
-			render: (_value: any, approval: ApprovalResp) => formatDateTime(approval.created_at, 'Never')
+			component: StatusBadge
 		}
 	];
 

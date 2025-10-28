@@ -211,6 +211,7 @@ export interface ApprovalActionResp {
 export interface ApprovalResp {
   id: string;
   action_id: string;
+  flow_name: string;
   status: string;
   exec_id: string;
   requested_by: string;

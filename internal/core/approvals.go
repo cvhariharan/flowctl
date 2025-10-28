@@ -226,7 +226,7 @@ func (c *Core) GetApprovalWithInputs(ctx context.Context, approvalUUID string, n
 	return details, nil
 }
 
-func (c *Core) GetApprovalsPaginated(ctx context.Context, namespaceID, status, filter string, page, countPerPage int) ([]repo.GetApprovalsPaginatedRow, int64, int64, error) {
+func (c *Core) GetApprovalsPaginated(ctx context.Context, namespaceID, status, filter string, page, countPerPage int) ([]models.ApprovalPaginationDetails, int64, int64, error) {
 	namespaceUUID, err := uuid.Parse(namespaceID)
 	if err != nil {
 		return nil, -1, -1, fmt.Errorf("invalid namespace UUID: %w", err)
@@ -245,9 +245,24 @@ func (c *Core) GetApprovalsPaginated(ctx context.Context, namespaceID, status, f
 		return nil, -1, -1, fmt.Errorf("failed to get paginated approvals: %w", err)
 	}
 
-	if len(approvals) == 0 {
-		return approvals, 0, 0, nil
+	var details []models.ApprovalPaginationDetails
+	var pageCount, totalCount int64
+	for _, approval := range approvals {
+		details = append(details, models.ApprovalPaginationDetails{
+			ApprovalRequest: models.ApprovalRequest{
+				UUID: approval.Uuid.String(),
+				ActionID: approval.ActionID,
+				ExecID: approval.ExecID,
+				Status: models.ApprovalType(approval.Status),
+				RequestedBy: approval.RequestedBy,
+			},
+			FlowName: approval.FlowName,
+			CreatedAt: approval.CreatedAt.Format(TimeFormat),
+			UpdatedAt: approval.UpdatedAt.Format(TimeFormat),
+		})
+		pageCount = approval.PageCount
+		totalCount = approval.TotalCount
 	}
 
-	return approvals, approvals[0].PageCount, approvals[0].TotalCount, nil
+	return details, pageCount, totalCount, nil
 }

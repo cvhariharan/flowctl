@@ -76,3 +76,10 @@ type ApprovalDetails struct {
 	CreatedAt string
 	UpdatedAt string
 }
+
+type ApprovalPaginationDetails struct {
+	ApprovalRequest
+	FlowName string
+	CreatedAt string
+	UpdatedAt string
+}

@@ -349,7 +349,8 @@ filtered AS (
     SELECT
         a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
         el.exec_id,
-        u.name as requested_by
+        u.name as requested_by,
+        f.name as flow_name
     FROM approvals a
     JOIN execution_log el ON a.exec_log_id = el.id
     JOIN flows f ON el.flow_id = f.id
@@ -368,7 +369,7 @@ total AS (
     FROM filtered
 ),
 paged AS (
-    SELECT id, uuid, exec_log_id, action_id, status, decided_by, namespace_id, created_at, updated_at, exec_id, requested_by
+    SELECT id, uuid, exec_log_id, action_id, status, decided_by, namespace_id, created_at, updated_at, exec_id, requested_by, flow_name
     FROM filtered
     ORDER BY created_at DESC
     LIMIT $4 OFFSET $5
@@ -378,7 +379,7 @@ page_count AS (
     FROM total
 )
 SELECT
-    p.id, p.uuid, p.exec_log_id, p.action_id, p.status, p.decided_by, p.namespace_id, p.created_at, p.updated_at, p.exec_id, p.requested_by,
+    p.id, p.uuid, p.exec_log_id, p.action_id, p.status, p.decided_by, p.namespace_id, p.created_at, p.updated_at, p.exec_id, p.requested_by, p.flow_name,
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
@@ -404,6 +405,7 @@ type GetApprovalsPaginatedRow struct {
 	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
 	ExecID      string         `db:"exec_id" json:"exec_id"`
 	RequestedBy string         `db:"requested_by" json:"requested_by"`
+	FlowName    string         `db:"flow_name" json:"flow_name"`
 	PageCount   int64          `db:"page_count" json:"page_count"`
 	TotalCount  int64          `db:"total_count" json:"total_count"`
 }
@@ -435,6 +437,7 @@ func (q *Queries) GetApprovalsPaginated(ctx context.Context, arg GetApprovalsPag
 			&i.UpdatedAt,
 			&i.ExecID,
 			&i.RequestedBy,
+			&i.FlowName,
 			&i.PageCount,
 			&i.TotalCount,
 		); err != nil {

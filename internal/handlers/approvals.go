@@ -122,13 +122,14 @@ func (h *Handler) HandleListApprovals(c echo.Context) error {
 	approvalResponses := make([]ApprovalResp, len(approvals))
 	for i, approval := range approvals {
 		approvalResponses[i] = ApprovalResp{
-			ID:          approval.Uuid.String(),
+			ID:          approval.UUID,
 			ActionID:    approval.ActionID,
+			FlowName: 	 approval.FlowName,
 			Status:      string(approval.Status),
 			ExecID:      approval.ExecID,
 			RequestedBy: approval.RequestedBy,
-			CreatedAt:   approval.CreatedAt.Format(TimeFormat),
-			UpdatedAt:   approval.UpdatedAt.Format(TimeFormat),
+			CreatedAt:   approval.CreatedAt,
+			UpdatedAt:   approval.UpdatedAt,
 		}
 	}
 

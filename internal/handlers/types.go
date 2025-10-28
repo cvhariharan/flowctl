@@ -144,6 +144,7 @@ type ApprovalPaginateRequest struct {
 type ApprovalResp struct {
 	ID          string `json:"id"`
 	ActionID    string `json:"action_id"`
+	FlowName    string `json:"flow_name"`
 	Status      string `json:"status"`
 	ExecID      string `json:"exec_id"`
 	RequestedBy string `json:"requested_by"`

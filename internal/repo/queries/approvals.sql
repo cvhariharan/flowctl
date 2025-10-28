@@ -142,7 +142,8 @@ filtered AS (
     SELECT
         a.*,
         el.exec_id,
-        u.name as requested_by
+        u.name as requested_by,
+        f.name as flow_name
     FROM approvals a
     JOIN execution_log el ON a.exec_log_id = el.id
     JOIN flows f ON el.flow_id = f.id
