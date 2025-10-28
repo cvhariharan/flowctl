@@ -265,13 +265,15 @@
     aria-label="Main navigation"
 >
     <!-- Logo -->
-    <div class="px-6 py-6 flex justify-center">
-        {#if isCollapsed}
-            <Logo height="h-6" iconOnly={true} />
-        {:else}
-            <Logo height="h-8" />
-        {/if}
-    </div>
+    <a href="/">
+        <div class="px-6 py-6 flex justify-center">
+            {#if isCollapsed}
+                <Logo height="h-6" iconOnly={true} />
+            {:else}
+                <Logo height="h-8" />
+            {/if}
+        </div>
+    </a>
 
     <!-- Namespace Dropdown -->
     {#if !isCollapsed}

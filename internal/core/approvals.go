@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
@@ -115,6 +114,8 @@ func (c *Core) RequestApproval(ctx context.Context, execID string, action models
 	return areq.Uuid.String(), nil
 }
 
+// GetApprovalsRequestsForExec returns approval requests for a given execution
+//
 func (c *Core) GetApprovalsRequestsForExec(ctx context.Context, execID string, namespaceID string) (models.ApprovalRequest, error) {
 	namespaceUUID, err := uuid.Parse(namespaceID)
 	if err != nil {
@@ -144,6 +145,7 @@ func (c *Core) GetApprovalsRequestsForExec(ctx context.Context, execID string, n
 	return existingReq, nil
 }
 
+// GetApprovalRequest returns an approval request using the approval UUID and namespace UUID
 func (c *Core) GetApprovalRequest(ctx context.Context, approvalUUID string, namespaceID string) (models.ApprovalRequest, error) {
 	uid, err := uuid.Parse(approvalUUID)
 	if err != nil {
@@ -182,11 +184,10 @@ func (c *Core) GetApprovalRequest(ctx context.Context, approvalUUID string, name
 		RequestedBy: areq.RequestedBy,
 	}
 
-	log.Printf("Approval request: %+v\n", approval)
-
 	return approval, nil
 }
 
+// GetApprovalWithInputs returns an approval request with additional info like flow name and id and inputs for the execution
 func (c *Core) GetApprovalWithInputs(ctx context.Context, approvalUUID string, namespaceID string) (models.ApprovalDetails, error) {
 	uid, err := uuid.Parse(approvalUUID)
 	if err != nil {
@@ -206,7 +207,6 @@ func (c *Core) GetApprovalWithInputs(ctx context.Context, approvalUUID string, n
 		return models.ApprovalDetails{}, fmt.Errorf("failed to get approval with inputs: %w", err)
 	}
 
-	// Convert to model
 	details := models.ApprovalDetails{
 		ApprovalRequest: models.ApprovalRequest{
 			UUID:        approval.Uuid.String(),

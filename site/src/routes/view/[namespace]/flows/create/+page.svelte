@@ -192,12 +192,12 @@
                         Create Flow
                     </h1>
                     <p class="mt-1 text-sm text-gray-600">
-                        Define a new automated workflow
+                        Define a new workflow
                     </p>
                 </div>
 
                 <!-- Main Card -->
-                <div class="bg-white rounded-lg shadow border border-gray-200">
+                <div class="bg-white rounded-lg border border-gray-300">
                     <!-- Tab Navigation -->
                     <div class="border-b border-gray-200">
                         <Tabs bind:activeTab {tabs} />

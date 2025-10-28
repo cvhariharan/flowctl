@@ -186,7 +186,6 @@ func (c *Core) checkApprovalRequests(ctx context.Context, execID string, namespa
 				ch <- models.StreamMessage{MType: models.ErrMessageType, Val: []byte("approval request has been rejected")}
 				return
 			}
-			log.Printf("approval request: %v", a)
 
 			// Wait for 5 seconds
 			select {

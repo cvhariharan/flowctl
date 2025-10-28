@@ -282,14 +282,13 @@
                             Edit Flow
                         </h1>
                         <p class="mt-1 text-sm text-gray-600">
-                            Update workflow configuration for {flow.metadata
-                                .name}
+                            Update workflow configuration for {flow.metadata.name}
                         </p>
                     </div>
 
                     <!-- Main Card -->
                     <div
-                        class="bg-white rounded-lg shadow border border-gray-200"
+                        class="bg-white rounded-lg border border-gray-300"
                     >
                         <!-- Tab Navigation -->
                         <div class="border-b border-gray-200">
