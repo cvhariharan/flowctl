@@ -184,7 +184,7 @@ type NodeReq struct {
 	Port           int      `json:"port" validate:"required,min=1,max=65535"`
 	Username       string   `json:"username" validate:"required,min=1,max=50"`
 	ConnectionType string   `json:"connection_type" validate:"required,oneof=ssh qssh"`
-	Tags           []string `json:"tags"`
+	Tags           []string `json:"tags" validate:"omitempty,dive,alphanum_underscore"`
 	Auth           NodeAuth `json:"auth" validate:"required"`
 	// OSFamily       string   `json:"os_family" validate:"required,oneof=linux windows"`
 }

@@ -31,7 +31,7 @@
 <div>
   <div class="flex items-center justify-between mb-6">
     <h3 class="text-base font-medium text-gray-900">Flow Inputs</h3>
-    <button onclick={addInput} class="text-sm text-primary-600 hover:text-primary-700 font-medium cursor-pointer">
+    <button onclick={addInput} class="px-4 py-2 text-sm font-medium bg-primary-500 text-white rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 cursor-pointer">
       + Add Input
     </button>
   </div>

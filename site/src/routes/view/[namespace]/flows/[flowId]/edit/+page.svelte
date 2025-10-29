@@ -332,7 +332,7 @@
                                         goto(
                                             `/view/${namespace}/flows/${flowId}`,
                                         )}
-                                    class="px-6 py-2 text-sm font-medium cursor-pointer text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-400"
+                                    class="px-6 py-2 cursor-pointer text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-400"
                                 >
                                     Cancel
                                 </button>
@@ -340,7 +340,7 @@
                                     type="button"
                                     onclick={updateFlow}
                                     disabled={saving}
-                                    class="px-6 py-2 text-sm font-medium cursor-pointer text-white bg-primary-500 border border-transparent rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    class="px-6 py-2 cursor-pointer text-sm font-medium text-white bg-primary-500 border border-transparent rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-400 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {saving ? "Updating..." : "Update Flow"}
                                 </button>

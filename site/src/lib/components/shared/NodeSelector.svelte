@@ -21,50 +21,42 @@
 
   let searchQuery = $state('');
   let searchResults = $state<NodeResp[]>([]);
-  let allNodes = $state<NodeResp[]>([]);
   let showDropdown = $state(false);
   let loading = $state(false);
-  let initialized = $state(false);
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  async function loadAllNodes() {
-    if (initialized) return;
-
+  async function searchNodes(filter: string = '') {
     loading = true;
     try {
       const response = await apiClient.nodes.list(namespace, {
-        count_per_page: 100 // Get more nodes for selection
+        count_per_page: 100,
+        filter: filter
       });
-      allNodes = response.nodes || [];
-      searchResults = allNodes;
-      initialized = true;
+      searchResults = response.nodes || [];
     } catch (error) {
       handleInlineError(error, 'Unable to Load Nodes');
-      allNodes = [];
       searchResults = [];
     } finally {
       loading = false;
     }
   }
 
-  function filterNodes() {
-    if (!searchQuery.trim()) {
-      searchResults = allNodes;
-    } else {
-      searchResults = allNodes.filter(node =>
-        node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        node.hostname.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (node.tags && node.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
-      );
-    }
-  }
-
   async function handleInput() {
-    filterNodes();
+    // Debounce search
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    searchTimeout = setTimeout(() => {
+      searchNodes(searchQuery);
+    }, 300);
+
+    showDropdown = true;
   }
 
   async function handleFocus() {
-    filterNodes();
-    showDropdown = searchResults.length > 0;
+    await searchNodes(searchQuery);
+    showDropdown = true;
   }
 
   function selectNode(node: NodeResp) {
@@ -86,7 +78,7 @@
 
   // Load nodes when component mounts
   onMount(() => {
-    loadAllNodes();
+    searchNodes();
   });
 
   // Close dropdown when clicking outside
@@ -150,7 +142,7 @@
               </div>
             {/if}
           {/each}
-        {:else if initialized && !loading}
+        {:else if !loading}
           <div class="px-4 py-2 text-sm text-gray-500 text-center">
             {searchQuery ? 'No nodes found' : 'No nodes available'}
           </div>

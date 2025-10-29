@@ -31,7 +31,7 @@
 
 	async function loadSecrets() {
 		if (!flowId) return;
-		
+
 		try {
 			loading = true;
 			secrets = await apiClient.flowSecrets.list(namespace, flowId);
@@ -101,17 +101,17 @@
 		<div>
 			<h3 class="text-lg font-medium text-gray-900">Flow Secrets</h3>
 			<p class="text-sm text-gray-500">
-				{flowId 
+				{flowId
 					? 'Manage encrypted secrets for this flow. Values are never displayed after creation.'
 					: 'Save the flow first to add secrets.'
 				}
 			</p>
 		</div>
-		
+
 		{#if flowId && !disabled}
 			<button
 				onclick={openCreateModal}
-				class="px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 cursor-pointer"
+				class="px-4 py-2 text-sm font-medium bg-primary-500 text-white rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 cursor-pointer"
 			>
 				Add Secret
 			</button>
@@ -140,14 +140,6 @@
 				</svg>
 				<h3 class="mt-2 text-sm font-medium text-gray-900">No secrets yet</h3>
 				<p class="mt-1 text-sm text-gray-500">Add your first secret to get started.</p>
-				<div class="mt-6">
-					<button
-						onclick={openCreateModal}
-						class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-500 hover:bg-primary-600 cursor-pointer"
-					>
-						Add Secret
-					</button>
-				</div>
 			</div>
 		</div>
 	{:else}
@@ -177,7 +169,7 @@
 								</div>
 							</div>
 						</div>
-						
+
 						<div class="flex items-center space-x-2">
 							<button
 								onclick={() => openEditModal(secret)}

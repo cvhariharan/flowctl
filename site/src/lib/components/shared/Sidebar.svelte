@@ -578,14 +578,21 @@
         <button
             type="button"
             onclick={toggleCollapse}
-            class="w-full flex items-center justify-center p-2 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+            class="w-full flex items-center text-sm font-medium p-2 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer {isCollapsed
+                ? 'justify-center'
+                : 'justify-start px-4'}"
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
             {#if isCollapsed}
                 <IconChevronsRight size={20} aria-hidden="true" />
             {:else}
-                <IconChevronsLeft size={20} aria-hidden="true" />
+                <IconChevronsLeft
+                    class="mr-3"
+                    size={20}
+                    aria-hidden="true"
+                />
+                Collapse
             {/if}
         </button>
     </div>

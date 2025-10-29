@@ -2,6 +2,7 @@
     import { apiClient } from "$lib/apiClient.js";
     import { handleInlineError } from "$lib/utils/errorHandling";
     import { createSlug } from "$lib/utils";
+    import { notifications } from "$lib/stores/notifications";
     import CodeEditor from "$lib/components/shared/CodeEditor.svelte";
     import NodeSelector from "$lib/components/shared/NodeSelector.svelte";
     import type { NodeResp } from "$lib/types";
@@ -20,6 +21,11 @@
         executorConfigs: Record<string, any>;
     } = $props();
     let draggedIndex: number | null = null;
+
+    function handleAddAction() {
+        addAction();
+        notifications.info("Action Added", "New action has been added to the flow");
+    }
 
     function removeAction(index: number) {
         actions.splice(index, 1);
@@ -172,8 +178,8 @@
     <div class="flex items-center justify-between mb-6">
         <h3 class="text-base font-medium text-gray-900">Flow Actions</h3>
         <button
-            onclick={addAction}
-            class="text-sm text-primary-600 hover:text-primary-700 font-medium cursor-pointer"
+            onclick={handleAddAction}
+            class="px-4 py-2 text-sm font-medium bg-primary-500 text-white rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 cursor-pointer"
         >
             + Add Action
         </button>
@@ -183,9 +189,6 @@
         {#each actions as action, index (action.tempId)}
             <div
                 class="border border-gray-200 rounded-lg overflow-hidden transition-colors"
-                draggable="true"
-                ondragstart={(e) => dragStart(e, index)}
-                ondragend={dragEnd}
                 ondragover={dragOver}
                 ondragleave={dragLeave}
                 ondrop={(e) => drop(e, index)}
@@ -193,6 +196,9 @@
                 <!-- Action Header -->
                 <div
                     class="bg-gray-50 px-4 py-3 flex items-center justify-between cursor-move"
+                    draggable="true"
+                    ondragstart={(e) => dragStart(e, index)}
+                    ondragend={dragEnd}
                 >
                     <div class="flex items-center gap-3">
                         <svg
@@ -839,7 +845,7 @@
                 </svg>
                 <p>No actions defined yet</p>
                 <button
-                    onclick={addAction}
+                    onclick={handleAddAction}
                     class="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium cursor-pointer"
                 >
                     Add your first action

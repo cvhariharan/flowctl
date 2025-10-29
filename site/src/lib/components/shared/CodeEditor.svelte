@@ -176,10 +176,11 @@
   </div>
 
   <!-- Editor container -->
-  <div 
+  <div
     bind:this={editorContainer}
-    class="border border-gray-300 rounded-md overflow-hidden"
+    class="border border-gray-300 rounded-md overflow-auto"
     style="height: {height}"
+    onwheel={(e) => e.stopPropagation()}
   ></div>
 </div>
 
