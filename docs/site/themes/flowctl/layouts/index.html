@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.LanguageCode }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Site.Title }} - {{ .Site.Params.description }}</title>
+    <meta name="description" content="{{ .Site.Params.description }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <div class="navbar-left">
+                    <a href="/" class="navbar-logo">
+                        <img src="{{ "images/full-logo.svg" | relURL }}" alt="flowctl logo" class="navbar-full-logo">
+                    </a>
+                </div>
+                <div class="navbar-right">
+                    <a href="{{ .Site.Params.docs }}" class="navbar-link">Docs</a>
+                    <a href="https://github.com/cvhariharan/flowctl/releases" class="navbar-link">Download</a>
+                    <a href="{{ .Site.Params.github }}" class="navbar-link" target="_blank">GitHub</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="bg-pattern"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="container">
+            <h2 class="hero-title">Modern Self-Service Platform</h2>
+            <p class="section-desc">Everything you need to automate workflows efficiently and securely<br>Free and Open Source</p>
+            <div class="hero-carousel">
+                <div class="hero-carousel-inner">
+                    {{ range $index, $item := .Site.Params.carousel }}
+                    <div class="hero-carousel-item{{ if eq $index 0 }} active{{ end }}">
+                        <img src="{{ $item.image | relURL }}" alt="{{ $item.alt }}" class="carousel-image" onclick="openModal(this, '{{ $item.caption }}')">
+                        <p class="hero-carousel-caption">{{ $item.caption }}</p>
+                    </div>
+                    {{ end }}
+                </div>
+                <button class="hero-carousel-control prev" onclick="moveCarousel(-1)">&#10094;</button>
+                <button class="hero-carousel-control next" onclick="moveCarousel(1)">&#10095;</button>
+                <div class="hero-carousel-dots">
+                    {{ range $index, $item := .Site.Params.carousel }}
+                    <span class="dot{{ if eq $index 0 }} active{{ end }}" onclick="currentSlide({{ $index }})"></span>
+                    {{ end }}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Feature Showcase -->
+    <section class="feature-showcase">
+        <div class="container">
+            {{ range $index, $feature := .Site.Params.features }}
+            <div class="showcase-item {{ if modBool $index 2 }}reverse{{ end }}">
+                <div class="showcase-content">
+                    <h2>{{ $feature.title }}</h2>
+                    <p>{{ $feature.description | safeHTML }}</p>
+                </div>
+                <div class="showcase-image">
+                    <img src="{{ $feature.image }}" alt="{{ $feature.alt }}" onclick="openModal(this, '{{ $feature.title }}')">
+                </div>
+            </div>
+            {{ end }}
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+        <div class="container">
+            <h2>Features</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <h3>Workflows</h3>
+                    <p>
+                        Define complex workflows using simple configuration. Create
+                        reusable flows with inputs, actions, and approvals.
+                    </p>
+                </div>
+                <div class="feature-item">
+                    <h3>SSO</h3>
+                    <p>Use OIDC to securely authenticate users.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>Approvals</h3>
+                    <p>
+                        Add approval gates to sensitive operations. Control who can
+                        approve workflows with flexible policies.
+                    </p>
+                </div>
+                <div class="feature-item">
+                    <h3>Teams</h3>
+                    <p>
+                        Organize workflows by teams or projects with isolated
+                        namespaces. Built-in RBAC for secure collaboration.
+                    </p>
+                </div>
+                <div class="feature-item">
+                    <h3>Remote Execution</h3>
+                    <p>
+                        Execute workflows on remote nodes. Actions can run concurrently on multiple nodes.
+                    </p>
+                </div>
+                <div class="feature-item">
+                    <h3>Schedule Workflows</h3>
+                    <p>
+                        Add multiple cron schedules to workflows.
+                    </p>
+                </div>
+                <div class="feature-item">
+                    <h3>Secure Secrets</h3>
+                    <p>
+                        Store SSH keys, passwords, and secrets securely. All secrets are encrypted at rest by default.
+                    </p>
+                </div>
+                <div class="feature-item">
+                    <h3>Real-time Logs</h3>
+                    <p>
+                        Track workflow executions with streaming logs. Monitor workflow status and troubleshoot issues.
+                    </p>
+                </div>
+                <div class="feature-item">
+                    <h3>Artifacts</h3>
+                    <p>Use file artifacts produced in previous actions in subsequent actions with ease.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <p class="footer-text">© 2025 flowctl</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal">
+        <span class="modal-close">&times;</span>
+        <img class="modal-content" id="modalImage">
+        <div class="modal-caption" id="modalCaption"></div>
+    </div>
+
+    <script src="{{ "js/script.js" | relURL }}"></script>
+</body>
+</html>

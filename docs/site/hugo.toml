@@ -1,0 +1,62 @@
+baseURL = '/'
+languageCode = 'en-us'
+title = 'flowctl'
+theme = 'flowctl'
+
+[params]
+  description = 'Open-source self-service workflow automation platform for teams'
+  github = 'https://github.com/cvhariharan/flowctl'
+  docs = 'https://docs.flowctl.net'
+
+[[params.carousel]]
+  image = 'images/flows.png'
+  alt = 'flows list'
+  caption = 'Modern dashboard for workflow management'
+
+[[params.carousel]]
+  image = 'images/run.png'
+  alt = 'run flow'
+  caption = 'Trigger flows with custom inputs'
+
+[[params.carousel]]
+  image = 'images/logs.png'
+  alt = 'execution logs'
+  caption = 'Real-time execution logs'
+
+[[params.carousel]]
+  image = 'images/outputs.png'
+  alt = 'execution results'
+  caption = 'Real-time execution results'
+
+[[params.carousel]]
+  image = 'images/approvals.png'
+  alt = 'approval request'
+  caption = 'Approvals for sensitive actions'
+
+[[params.carousel]]
+  image = 'images/credentials.png'
+  alt = 'credentials'
+  caption = 'Securely manage credentials'
+
+[[params.carousel]]
+  image = 'images/nodes.png'
+  alt = 'nodes'
+  caption = 'Manage nodes for remote executions'
+
+[[params.features]]
+  title = 'Define Custom Flows'
+  description = 'Use the built-in flow editor or use YAML/HUML to create complex workflows easily. All flows are stored as simple files.'
+  image = 'images/flow-definition.png'
+  alt = 'flows list'
+
+[[params.features]]
+  title = 'Wait for Approvals'
+  description = 'Actions in a flow can wait for approvals from a reviewer'
+  image = 'images/approval-waiting.png'
+  alt = 'run flow'
+
+[[params.features]]
+  title = 'Real-time Results'
+  description = 'Action results can be chained and used in subsequent actions'
+  image = 'images/outputs.png'
+  alt = 'flow logs'
