@@ -1,9 +1,17 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import rehypeMermaid from "rehype-mermaid";
 
 // https://astro.build/config
 export default defineConfig({
+  markdown: {
+    syntaxHighlight: {
+      type: "shiki",
+      excludeLangs: ["mermaid", "math"],
+    },
+    rehypePlugins: [rehypeMermaid],
+  },
   integrations: [
     starlight({
       title: "flowctl",
@@ -23,12 +31,12 @@ export default defineConfig({
             { label: "Access Control", slug: "general/access-control" },
           ],
         },
-        // {
-        //   label: "Advanced",
-        //   autogenerate: {
-        //     directory: "advanced",
-        //   },
-        // },
+        {
+          label: "Development",
+          autogenerate: {
+            directory: "development",
+          },
+        },
       ],
     }),
   ],
