@@ -114,3 +114,12 @@ require (
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
+
+replace (
+	github.com/cvhariharan/flowctl/executors/docker => ./executors/docker
+	github.com/cvhariharan/flowctl/executors/script => ./executors/script
+	github.com/cvhariharan/flowctl/remote/qssh => ./remoteclients/qssh
+	github.com/cvhariharan/flowctl/remote/ssh => ./remoteclients/ssh
+	github.com/cvhariharan/flowctl/sdk/executor => ./sdk/executor
+	github.com/cvhariharan/flowctl/sdk/remoteclient => ./sdk/remoteclient
+)
