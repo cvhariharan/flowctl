@@ -1,4 +1,4 @@
-module github.com/cvhariharan/flowctl/remote/qssh
+module github.com/cvhariharan/flowctl/remoteclients/qssh
 
 go 1.24.5
 

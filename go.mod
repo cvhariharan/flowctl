@@ -7,8 +7,8 @@ require (
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/cvhariharan/flowctl/executors/docker v0.0.0-20251024120944-b9b77518a391
 	github.com/cvhariharan/flowctl/executors/script v0.0.0-20251024120944-b9b77518a391
-	github.com/cvhariharan/flowctl/remote/qssh v0.0.0-20251024120944-b9b77518a391
-	github.com/cvhariharan/flowctl/remote/ssh v0.0.0-20251024120944-b9b77518a391
+	github.com/cvhariharan/flowctl/remoteclients/qssh v0.0.0-00010101000000-000000000000
+	github.com/cvhariharan/flowctl/remoteclients/ssh v0.0.0-00010101000000-000000000000
 	github.com/cvhariharan/flowctl/sdk/executor v0.0.0-20251024120944-b9b77518a391
 	github.com/expr-lang/expr v1.17.5
 	github.com/go-playground/validator/v10 v10.27.0
@@ -118,8 +118,8 @@ require (
 replace (
 	github.com/cvhariharan/flowctl/executors/docker => ./executors/docker
 	github.com/cvhariharan/flowctl/executors/script => ./executors/script
-	github.com/cvhariharan/flowctl/remote/qssh => ./remoteclients/qssh
-	github.com/cvhariharan/flowctl/remote/ssh => ./remoteclients/ssh
+	github.com/cvhariharan/flowctl/remoteclients/qssh => ./remoteclients/qssh
+	github.com/cvhariharan/flowctl/remoteclients/ssh => ./remoteclients/ssh
 	github.com/cvhariharan/flowctl/sdk/executor => ./sdk/executor
 	github.com/cvhariharan/flowctl/sdk/remoteclient => ./sdk/remoteclient
 )

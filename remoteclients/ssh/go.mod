@@ -1,4 +1,4 @@
-module github.com/cvhariharan/flowctl/remote/ssh
+module github.com/cvhariharan/flowctl/remoteclients/ssh
 
 go 1.24.5
 

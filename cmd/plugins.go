@@ -5,7 +5,7 @@ package cmd
 import (
 	_ "github.com/cvhariharan/flowctl/executors/docker"
 	_ "github.com/cvhariharan/flowctl/executors/script"
-	_ "github.com/cvhariharan/flowctl/remote/qssh"
-	_ "github.com/cvhariharan/flowctl/remote/ssh"
+	_ "github.com/cvhariharan/flowctl/remoteclients/qssh"
+	_ "github.com/cvhariharan/flowctl/remoteclients/ssh"
 	_ "github.com/cvhariharan/flowctl/sdk/executor"
 )
