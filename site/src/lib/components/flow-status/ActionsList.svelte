@@ -95,7 +95,7 @@
 
 <div class="flex flex-col h-full bg-white rounded-lg border border-gray-300 overflow-hidden">
   <!-- Header with Search -->
-  <div class="sticky top-0 bg-white border-b border-gray-300 px-6 py-5 space-y-4 z-10">
+  <div class="flex-shrink-0 sticky top-0 bg-white border-b border-gray-300 px-6 py-5 space-y-4 z-10">
     <h2 class="text-base font-semibold text-gray-900">Actions</h2>
 
     <!-- Search Input -->
@@ -113,7 +113,7 @@
   </div>
 
   <!-- Actions List -->
-  <div class="flex-1 overflow-y-auto p-4">
+  <div class="overflow-y-scroll p-4 min-h-128 max-h-128">
     {#if filteredActions.length === 0}
       <div class="text-center py-8 text-gray-500 text-sm">
         {searchQuery ? 'No actions found' : 'No actions available'}
