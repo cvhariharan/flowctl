@@ -103,6 +103,30 @@ func (d *LocalLinuxDriver) Join(parts ...string) string {
 	return filepath.Join(parts...)
 }
 
+func (d *LocalLinuxDriver) ListFiles(ctx context.Context, dirPath string) ([]string, error) {
+	var files []string
+
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			relPath, err := filepath.Rel(dirPath, path)
+			if err != nil {
+				return err
+			}
+			files = append(files, relPath)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to list files in %s: %w", dirPath, err)
+	}
+
+	return files, nil
+}
+
 func (d *LocalLinuxDriver) Close() error {
 	return nil
 }

@@ -22,10 +22,10 @@ type NodeAuth struct {
 type ExecutionContext struct {
 	// WithConfig is the yaml config passed to the executor
 	WithConfig []byte
-	Artifacts  []string
 	Inputs     map[string]any
 	Stdout     io.Writer
 	Stderr     io.Writer
+	ExecID     string
 }
 
 type Executor interface {

@@ -44,8 +44,6 @@ type Action struct {
 	With      map[string]any `yaml:"with" huml:"with" validate:"required"`
 	Approval  bool           `yaml:"approval" huml:"approval"`
 	Variables []Variable     `yaml:"variables" huml:"variables"`
-	Artifacts []string       `yaml:"artifacts" huml:"artifacts"`
-	Condition string         `yaml:"condition" huml:"condition"`
 	On        []string       `yaml:"on" huml:"on"`
 }
 
@@ -68,8 +66,6 @@ func SchedulerActionToAction(a scheduler.Action) Action {
 		Executor:  a.Executor,
 		Approval:  a.Approval,
 		Variables: variables,
-		Artifacts: a.Artifacts,
-		Condition: a.Condition,
 	}
 }
 
@@ -390,8 +386,6 @@ func ConvertToSchedulerFlow(ctx context.Context, f Flow, namespaceUUID uuid.UUID
 			With:      act.With,
 			Approval:  act.Approval,
 			Variables: variables,
-			Artifacts: act.Artifacts,
-			Condition: act.Condition,
 			On:        schedulerNodes,
 		})
 	}

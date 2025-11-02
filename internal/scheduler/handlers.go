@@ -105,7 +105,7 @@ func (s *Scheduler) executeSingleAction(ctx context.Context, action Action, srcD
 	}
 
 	// Run the action
-	res, err := s.runAction(ctx, action, srcDir, input, streamLogger, artifactDir, secrets, outputs)
+	res, err := s.runAction(ctx, execID, action, srcDir, input, streamLogger, artifactDir, secrets, outputs)
 	if err != nil {
 		// Check if the error is due to context cancellation
 		if errors.Is(err, context.Canceled) {
@@ -146,7 +146,7 @@ func processActionResults(results map[string]string, outputs map[string]interfac
 }
 
 // executeOnNode executes an action on a single node and returns the results
-func (s *Scheduler) executeOnNode(ctx context.Context, node Node, action Action, streamLogger streamlogger.Logger, inputVars map[string]interface{}, withConfig []byte, artifactDir string) ExecResults {
+func (s *Scheduler) executeOnNode(ctx context.Context, execID string, node Node, action Action, streamLogger streamlogger.Logger, inputVars map[string]interface{}, withConfig []byte, artifactDir string) ExecResults {
 	nodeLogger := streamlogger.NewNodeContextLogger(streamLogger, action.ID, node.Name)
 
 	// Create a separate executor instance for each node
@@ -206,7 +206,7 @@ func (s *Scheduler) executeOnNode(ctx context.Context, node Node, action Action,
 	}
 
 	// Push existing artifacts to this node's executor before execution
-	if err := s.pushArtifactsWithDriver(ctx, driver, artifactDir); err != nil {
+	if err := s.pushArtifactsWithDriver(ctx, driver, artifactDir, execID); err != nil {
 		return ExecResults{
 			result: nil,
 			err:    fmt.Errorf("failed to push artifacts to node %s: %w", node.Name, err),
@@ -214,16 +214,16 @@ func (s *Scheduler) executeOnNode(ctx context.Context, node Node, action Action,
 	}
 
 	res, err := exec.Execute(ctx, executor.ExecutionContext{
+		ExecID:     execID,
 		Inputs:     inputVars,
 		WithConfig: withConfig,
-		Artifacts:  action.Artifacts,
 		Stdout:     nodeLogger,
 		Stderr:     nodeLogger,
 	})
 
-	// Pull artifacts from this node after successful execution
-	if err == nil && len(action.Artifacts) > 0 {
-		if pullErr := s.pullArtifactsWithDriver(ctx, driver, artifactDir, action.Artifacts, node.Name); pullErr != nil {
+	// Pull all artifacts from this node after execution
+	if err == nil {
+		if pullErr := s.pullArtifactsWithDriver(ctx, driver, artifactDir, execID, node.Name); pullErr != nil {
 			err = fmt.Errorf("execution succeeded but failed to pull artifacts: %w", pullErr)
 		}
 	}
@@ -286,8 +286,8 @@ func (s *Scheduler) interpolateVariables(action Action, input map[string]interfa
 	return inputVars, nil
 }
 
-// runAction executes a single action - adapted from FlowRunner.runAction
-func (s *Scheduler) runAction(ctx context.Context, action Action, srcdir string, input map[string]interface{}, streamLogger streamlogger.Logger, artifactDir string, secrets map[string]string, outputs map[string]interface{}) (map[string]string, error) {
+// runAction executes a single action
+func (s *Scheduler) runAction(ctx context.Context, execID string, action Action, srcdir string, input map[string]interface{}, streamLogger streamlogger.Logger, artifactDir string, secrets map[string]string, outputs map[string]interface{}) (map[string]string, error) {
 	streamLogger.SetActionID(action.ID)
 
 	jobCtx, cancel := context.WithTimeout(ctx, time.Hour)
@@ -315,7 +315,7 @@ func (s *Scheduler) runAction(ctx context.Context, action Action, srcdir string,
 		wg.Add(1)
 		go func(node Node) {
 			defer wg.Done()
-			result := s.executeOnNode(jobCtx, node, action, streamLogger, inputVars, withConfig, artifactDir)
+			result := s.executeOnNode(jobCtx, execID, node, action, streamLogger, inputVars, withConfig, artifactDir)
 			resChan <- result
 		}(node)
 	}
@@ -339,8 +339,10 @@ func (s *Scheduler) runAction(ctx context.Context, action Action, srcdir string,
 	return mergedResults, nil
 }
 
-// pushArtifactsWithDriver pushes files from the local artifact directory to the remote working directory
-func (s *Scheduler) pushArtifactsWithDriver(ctx context.Context, driver executor.NodeDriver, artifactDir string) error {
+// pushArtifactsWithDriver pushes files from the local artifact directory to the remote artifacts directory
+func (s *Scheduler) pushArtifactsWithDriver(ctx context.Context, driver executor.NodeDriver, artifactDir string, execID string) error {
+	remoteArtifactsDir := driver.Join(driver.TempDir(), fmt.Sprintf("artifacts-%s", execID))
+
 	return filepath.WalkDir(artifactDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -350,7 +352,7 @@ func (s *Scheduler) pushArtifactsWithDriver(ctx context.Context, driver executor
 			if err != nil {
 				return err
 			}
-			remotePath := driver.Join(driver.GetWorkingDirectory(), rPath)
+			remotePath := driver.Join(remoteArtifactsDir, rPath)
 			if err := driver.Upload(ctx, path, remotePath); err != nil {
 				return fmt.Errorf("failed to push artifact %s: %w", path, err)
 			}
@@ -359,24 +361,34 @@ func (s *Scheduler) pushArtifactsWithDriver(ctx context.Context, driver executor
 	})
 }
 
-// pullArtifactsWithDriver downloads files from the remote node's working directory to the local artifact directory
-func (s *Scheduler) pullArtifactsWithDriver(ctx context.Context, driver executor.NodeDriver, artifactDir string, artifacts []string, nodeName string) error {
-	for _, artifact := range artifacts {
-		remotePath := driver.Join(driver.GetWorkingDirectory(), artifact)
+// pullArtifactsWithDriver downloads all files from the remote artifacts directory to the local artifact directory
+func (s *Scheduler) pullArtifactsWithDriver(ctx context.Context, driver executor.NodeDriver, artifactDir string, execID string, nodeName string) error {
+	remoteArtifactsDir := driver.Join(driver.TempDir(), fmt.Sprintf("artifacts-%s", execID))
+
+	// List all files in the remote artifacts directory
+	files, err := driver.ListFiles(ctx, remoteArtifactsDir)
+	if err != nil {
+		// If the directory doesn't exist, there are no artifacts to pull
+		s.logger.Debug("no artifacts to pull", "remoteDir", remoteArtifactsDir, "error", err)
+		return nil
+	}
+
+	for _, file := range files {
+		remotePath := driver.Join(remoteArtifactsDir, file)
 
 		var localPath string
 		if nodeName != "" {
-			localPath = filepath.Join(artifactDir, nodeName, artifact)
+			localPath = filepath.Join(artifactDir, nodeName, file)
 		} else {
-			localPath = filepath.Join(artifactDir, artifact)
+			localPath = filepath.Join(artifactDir, file)
 		}
 
 		if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil {
-			return fmt.Errorf("failed to create directory for artifact %s: %w", artifact, err)
+			return fmt.Errorf("failed to create directory for artifact %s: %w", file, err)
 		}
 
 		if err := driver.Download(ctx, remotePath, localPath); err != nil {
-			return fmt.Errorf("failed to pull artifact %s from node %s: %w", artifact, nodeName, err)
+			return fmt.Errorf("failed to pull artifact %s from node %s: %w", file, nodeName, err)
 		}
 	}
 	return nil

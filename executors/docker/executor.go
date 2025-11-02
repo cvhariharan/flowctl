@@ -146,6 +146,12 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx executor.Execution
 		return nil, fmt.Errorf("failed to create temp file for output: %w", err)
 	}
 
+	// create artifacts directory
+	artifactsDir := d.driver.Join(d.driver.TempDir(), fmt.Sprintf("artifacts-%s", execCtx.ExecID))
+	if err := d.driver.CreateDir(ctx, artifactsDir); err != nil {
+		return nil, fmt.Errorf("failed to create artifacts directory: %w", err)
+	}
+
 	if err := d.driver.CreateDir(ctx, d.workingDirectory); err != nil {
 		return nil, fmt.Errorf("failed to create working directory: %w", err)
 	}
@@ -162,12 +168,20 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx executor.Execution
 		Target: "/tmp/flow/output",
 	})
 
+	d.mounts = append(d.mounts, mount.Mount{
+		Type:   mount.TypeBind,
+		Source: artifactsDir,
+		Target: "/tmp/flow/artifacts",
+	})
+
 	vars := make([]map[string]any, 0)
 	for k, v := range execCtx.Inputs {
 		vars = append(vars, map[string]any{k: v})
 	}
 	// Add output env variable
 	vars = append(vars, map[string]any{"FC_OUTPUT": "/tmp/flow/output"})
+	// Add artifacts env variable
+	vars = append(vars, map[string]any{"FC_ARTIFACTS": "/tmp/flow/artifacts"})
 
 	d.withImage(config.Image).
 		withCmd([]string{config.Script}).

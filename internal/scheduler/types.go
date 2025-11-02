@@ -130,8 +130,6 @@ type Action struct {
 	With      map[string]any `yaml:"with" validate:"required"`
 	Approval  bool           `yaml:"approval"`
 	Variables []Variable     `yaml:"variables"`
-	Artifacts []string       `yaml:"artifacts"`
-	Condition string         `yaml:"condition"`
 	On        []Node         `yaml:"on"`
 }
 

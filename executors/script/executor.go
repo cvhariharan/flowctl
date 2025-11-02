@@ -71,8 +71,14 @@ func (s *ScriptExecutor) Execute(ctx context.Context, execCtx executor.Execution
 		return nil, fmt.Errorf("failed to create temp file for output: %w", err)
 	}
 
+	// Create artifacts directory
+	artifactsDir := s.driver.Join(s.driver.TempDir(), fmt.Sprintf("artifacts-%s", execCtx.ExecID))
+	if err := s.driver.CreateDir(ctx, artifactsDir); err != nil {
+		return nil, fmt.Errorf("failed to create artifacts directory: %w", err)
+	}
+
 	// Prepare environment variables
-	env := s.prepareEnvironment(execCtx.Inputs, tempFile)
+	env := s.prepareEnvironment(execCtx.Inputs, tempFile, artifactsDir)
 
 	// Execute the script
 	if err := s.runScript(ctx, config, env); err != nil {
@@ -93,7 +99,7 @@ func (s *ScriptExecutor) Execute(ctx context.Context, execCtx executor.Execution
 	return outputEnv, nil
 }
 
-func (s *ScriptExecutor) prepareEnvironment(inputs map[string]interface{}, outputFile string) []string {
+func (s *ScriptExecutor) prepareEnvironment(inputs map[string]interface{}, outputFile string, artifactsDir string) []string {
 	var env []string
 
 	for k, v := range inputs {
@@ -101,6 +107,7 @@ func (s *ScriptExecutor) prepareEnvironment(inputs map[string]interface{}, outpu
 	}
 
 	env = append(env, fmt.Sprintf("FC_OUTPUT=%s", outputFile))
+	env = append(env, fmt.Sprintf("FC_ARTIFACTS=%s", artifactsDir))
 
 	return env
 }

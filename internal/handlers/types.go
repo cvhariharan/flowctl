@@ -642,8 +642,6 @@ func convertFlowActionsReqToActions(actionsReq []FlowActionReq) []models.Action 
 			With:      action.With,
 			Approval:  action.Approval,
 			Variables: variables,
-			Artifacts: action.Artifacts,
-			Condition: action.Condition,
 			On:        action.On,
 		}
 	}
@@ -683,8 +681,6 @@ func convertFlowActionsToActionsReq(actions []models.Action) []FlowActionReq {
 			With:      action.With,
 			Approval:  action.Approval,
 			Variables: variables,
-			Artifacts: action.Artifacts,
-			Condition: action.Condition,
 			On:        action.On,
 		}
 	}
