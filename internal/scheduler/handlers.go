@@ -160,6 +160,7 @@ func (s *Scheduler) executeOnNode(ctx context.Context, node Node, action Action,
 	// Ignore local node
 	if node.Name != "" {
 		if err := node.CheckConnectivity(); err != nil {
+			s.logger.Debug("node connectivity", "error", err)
 			return ExecResults{
 				result: nil,
 				err:    fmt.Errorf("failed to connect to node %s", node.Name),

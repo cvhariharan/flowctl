@@ -2,10 +2,13 @@ package scheduler
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
 	"time"
+
+	"github.com/quic-go/quic-go"
 )
 
 const (
@@ -77,6 +80,25 @@ type Node struct {
 // Non-nil error is returned if the node is not accessible
 func (n *Node) CheckConnectivity() error {
 	address := fmt.Sprintf("%s:%d", n.Hostname, n.Port)
+
+	if n.ConnectionType == "qssh" {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: true,
+		}
+
+		conn, err := quic.DialAddr(ctx, address, tlsConfig, &quic.Config{
+			HandshakeIdleTimeout: 5 * time.Second,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to connect to %s via QUIC: %w", address, err)
+		}
+		defer conn.CloseWithError(0, "connectivity check complete")
+		return nil
+	}
+
 	conn, err := net.DialTimeout("tcp", address, 5*time.Second)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s: %w", address, err)
