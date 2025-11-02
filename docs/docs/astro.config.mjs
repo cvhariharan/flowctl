@@ -37,6 +37,12 @@ export default defineConfig({
             directory: "development",
           },
         },
+        {
+          label: "Advanced",
+          autogenerate: {
+            directory: "advanced",
+          },
+        },
       ],
     }),
   ],

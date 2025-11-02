@@ -1,0 +1,88 @@
+---
+title: QSSH Setup
+description: Set up QSSH server on remote nodes for improved SSH reliability
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+## Overview
+
+QSSH enables SSH connections over QUIC transport, providing better performance and reliability over unstable network connections compared to traditional TCP-based SSH.
+
+## Server Setup
+
+### Installation
+
+1. Download the latest `qssh-server` binary from [GitHub releases](https://github.com/cvhariharan/qssh/releases)
+2. Install on the remote node:
+
+```bash
+sudo mv qssh-server /usr/local/bin/qssh-server
+sudo chmod +x /usr/local/bin/qssh-server
+```
+
+### Configuration
+
+Create `/etc/qssh-config.toml`:
+
+```toml
+[server]
+quic_addr = ":4433"           # QSSH listening port
+ssh_addr = "127.0.0.1:22"     # Local SSH daemon
+
+[tls]
+generate_certs = true         # Auto-generate TLS certificates
+cert_file = "/etc/qssh/cert.pem"
+key_file = "/etc/qssh/key.pem"
+
+[quic]
+max_idle_timeout = "30s"
+max_incoming_streams = 100
+keep_alive_period = "10s"
+```
+
+### Running the Server
+
+**Manually:**
+
+```bash
+qssh-server -config-file /etc/qssh-config.toml
+```
+
+**As a systemd service** (recommended):
+
+Create `/etc/systemd/system/qssh.service`:
+
+```ini
+[Unit]
+Description=QSSH Server
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/qssh-server -config-file /etc/qssh-config.toml
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl enable qssh
+sudo systemctl start qssh
+```
+
+## Adding QSSH Nodes in Flowctl
+
+When adding a node in flowctl:
+
+1. Set **Connection Type** to `qssh`
+2. Set **Port** to `4433` (or your configured QSSH port)
+3. Configure other fields as usual (hostname, username, credential)
+
+<Aside type="tip">
+  QSSH is particularly useful for nodes with unreliable network connections or
+  high latency.
+</Aside>
