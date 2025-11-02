@@ -14,6 +14,7 @@ require (
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/gosimple/slug v1.15.0
 	github.com/huml-lang/go-huml v0.1.0
 	github.com/jmoiron/sqlx v1.4.0
@@ -26,6 +27,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/memwey/casbin-sqlx-adapter v0.3.0
 	github.com/nxadm/tail v1.4.11
+	github.com/quic-go/quic-go v0.54.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.9.1
 	github.com/zerodha/simplesessions/stores/postgres/v3 v3.0.0
@@ -85,7 +87,6 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/sftp v1.13.9 // indirect
-	github.com/quic-go/quic-go v0.54.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
