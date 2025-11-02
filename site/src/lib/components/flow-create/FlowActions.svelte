@@ -99,24 +99,6 @@
         action.variables.splice(index, 1);
     }
 
-    function addArtifact(action: any) {
-        if (!action.artifacts) {
-            action.artifacts = [];
-        }
-        action.artifacts.push("");
-    }
-
-    function removeArtifact(action: any, index: number) {
-        action.artifacts.splice(index, 1);
-    }
-
-    function updateArtifact(action: any, index: number, value: string) {
-        if (!action.artifacts) {
-            action.artifacts = [];
-        }
-        action.artifacts[index] = value.trim();
-    }
-
     function updateConfigValue(action: any, key: string, value: any) {
         if (!action.with) {
             action.with = {};
@@ -734,80 +716,6 @@
                                         {/if}
                                     </div>
                                 {/each}
-                            </div>
-                        </div>
-
-                        <!-- Additional Options -->
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <div
-                                    class="flex items-center justify-between mb-2"
-                                >
-                                    <label
-                                        class="block text-sm font-medium text-gray-700"
-                                        >Artifacts</label
-                                    >
-                                    <button
-                                        onclick={() => addArtifact(action)}
-                                        type="button"
-                                        class="text-xs text-primary-600 hover:text-primary-700 cursor-pointer"
-                                    >
-                                        + Add Artifact
-                                    </button>
-                                </div>
-                                <div class="space-y-2">
-                                    {#each (action.artifacts && action.artifacts.length > 0) ? action.artifacts : [""] as artifact, artifactIndex}
-                                        <div class="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={artifact}
-                                                oninput={(e) => {
-                                                    if (!action.artifacts || action.artifacts.length === 0) {
-                                                        action.artifacts = [""];
-                                                    }
-                                                    updateArtifact(
-                                                        action,
-                                                        artifactIndex,
-                                                        e.currentTarget.value,
-                                                    );
-                                                }}
-                                                placeholder="/path/to/output/file"
-                                                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono"
-                                            />
-                                            {#if action.artifacts && action.artifacts.length > 0}
-                                                <button
-                                                    onclick={() =>
-                                                        removeArtifact(
-                                                            action,
-                                                            artifactIndex,
-                                                        )}
-                                                    type="button"
-                                                    class="text-gray-400 hover:text-danger-600 cursor-pointer"
-                                                >
-                                                    <svg
-                                                        class="w-4 h-4"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path
-                                                            stroke-linecap="round"
-                                                            stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M6 18L18 6M6 6l12 12"
-                                                        />
-                                                    </svg>
-                                                </button>
-                                            {:else}
-                                                <div class="w-4"></div>
-                                            {/if}
-                                        </div>
-                                    {/each}
-                                </div>
-                                <p class="mt-1 text-xs text-gray-500">
-                                    File paths to preserve as execution
-                                    artifacts
-                                </p>
                             </div>
                         </div>
 

@@ -585,7 +585,6 @@ type FlowActionReq struct {
 	With      map[string]any   `json:"with" validate:"required"`
 	Approval  bool             `json:"approval"`
 	Variables []map[string]any `json:"variables"`
-	Artifacts []string         `json:"artifacts"`
 	Condition string           `json:"condition"`
 	On        []string         `json:"on"`
 }
