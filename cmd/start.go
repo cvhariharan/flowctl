@@ -8,9 +8,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/casbin/casbin/v2"
@@ -294,17 +292,12 @@ func startServer(db *sqlx.DB, co *core.Core, logger *slog.Logger) {
 		return c.Stream(http.StatusOK, "text/html; charset=utf-8", indexFile)
 	})
 
-	rootURL := appConfig.App.RootURL
-	if !strings.Contains(rootURL, "://") {
-		log.Fatal("root_url should contain a scheme")
+	address := appConfig.App.Address
+	if appConfig.App.UseTLS {
+		log.Fatal(e.StartTLS(address, appConfig.App.HTTPTLSCert, appConfig.App.HTTPTLSKey))
+	} else {
+		log.Fatal(e.Start(address))
 	}
-
-	u, err := url.Parse(rootURL)
-	if err != nil {
-		log.Fatalf("invalid root_url: %v", err)
-	}
-
-	log.Fatal(e.Start(u.Host))
 }
 
 // startWorker creates a worker that processes jobs using the shared scheduler.

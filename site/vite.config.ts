@@ -2,6 +2,8 @@ import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 
+const backendHost = process.env.VITE_BACKEND_HOST || "localhost:7000";
+
 export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
   cacheDir: "node_modules/.vite",
@@ -11,17 +13,17 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:7000",
+        target: `http://${backendHost}`,
         changeOrigin: true,
         secure: false,
       },
       "/login": {
-        target: "http://localhost:7000",
+        target: `http://${backendHost}`,
         changeOrigin: true,
         secure: false,
       },
       "/logout": {
-        target: "http://localhost:7000",
+        target: `http://${backendHost}`,
         changeOrigin: true,
         secure: false,
       },

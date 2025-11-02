@@ -48,6 +48,7 @@ type AppConfig struct {
 	AdminUsername   string          `koanf:"admin_username"`
 	AdminPassword   string          `koanf:"admin_password"`
 	RootURL         string          `koanf:"root_url"`
+	Address         string          `koanf:"address"`
 	UseTLS          bool            `koanf:"use_tls"`
 	HTTPTLSCert     string          `koanf:"http_tls_cert"`
 	HTTPTLSKey      string          `koanf:"http_tls_key"`
@@ -136,6 +137,7 @@ func getDefaultConfig() Config {
 			AdminUsername:   "flowctl_admin",
 			AdminPassword:   "flowctl_password",
 			RootURL:         "http://localhost:7000",
+			Address:         ":7000",
 			UseTLS:          false,
 			HTTPTLSCert:     "server_cert.pem",
 			HTTPTLSKey:      "server_key.pem",
