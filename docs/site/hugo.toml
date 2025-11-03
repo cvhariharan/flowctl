@@ -6,7 +6,7 @@ theme = 'flowctl'
 [params]
   description = 'Open source self-service workflow automation platform for teams'
   github = 'https://github.com/cvhariharan/flowctl'
-  docs = 'https://docs.flowctl.net'
+  docs = 'https://flowctl.net/docs'
 
 [[params.carousel]]
   image = 'images/flows.png'

@@ -5,6 +5,7 @@ import rehypeMermaid from "rehype-mermaid";
 
 // https://astro.build/config
 export default defineConfig({
+  base: "/docs",
   markdown: {
     syntaxHighlight: {
       type: "shiki",

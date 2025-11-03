@@ -50,12 +50,20 @@ jobs:
           hugo \
             --minify \
             --gc \
-            --baseURL "https://flowctl.net"
+            --baseURL "https://flowctl.net" \
+            -d ../public
+
+      - name: Build docs site
+        working-directory: ./docs/docs
+        run: |
+          npm install
+          npx playwright install
+          npm run build -- --outDir ../public/docs
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs/site/public
+          path: ./docs/public
 
   deploy:
     environment:

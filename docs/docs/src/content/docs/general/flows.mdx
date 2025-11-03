@@ -199,9 +199,6 @@ actions:
       script: |
         echo "Script here"
     approval: false # Require manual approval
-    condition: "" # Conditional execution
-    artifacts: # Files to preserve
-      - /path/to/file
 ```
 
 ### Executors
@@ -346,14 +343,12 @@ Preserve files generated during action execution:
     image: alpine
     script: |
       mkdir /reports
-      echo "Report content" > report.txt
-  artifacts:
-    - report.txt
+      echo "Report content" > $FC_ARTIFACTS/report.txt
 ```
 
-<Aside>Artifact files must be available in the working directory.</Aside>
+Any files copied to the `$FC_ARTIFACTS` directory will be available as artifacts in subsequent actions under the same directory.
 
-Artifacts from remote nodes are automatically transferred and made available to subsequent actions at `<NodeName>/path/to/artifact`. If the execution was local, the `<NodeName>` is empty.
+Artifacts from remote nodes are automatically transferred and made available to subsequent actions at `$FC_ARTIFACTS/<NodeName>/path/to/artifact`. If the execution was local, the `<NodeName>` is empty.
 
 **Example: Using artifacts across nodes**
 
@@ -367,9 +362,7 @@ actions:
     with:
       image: alpine
       script: |
-        echo "Hello from remote" > message.txt
-    artifacts:
-      - message.txt
+        echo "Hello from remote" > $FC_ARTIFACTS/message.txt
 
   - id: use_on_local
     name: Use File Locally
@@ -378,7 +371,7 @@ actions:
       image: alpine
       script: |
         # Access artifact from RemoteNode
-        cat RemoteNode/message.txt
+        cat $FC_ARTIFACTS/RemoteNode/message.txt
 ```
 
 ### Remote Execution
@@ -412,18 +405,18 @@ Access these in outputs or subsequent actions:
 
 ```yaml
 variables:
-  - key_value: "{{ actions.KEY }}"
+  - key_value: "{{ outputs.KEY }}"
 ```
 
 If the output is from a remote node, access it as:
 
 ```yaml
 variables:
-  - key_value: "{{ actions.RemoteNodeName.KEY }}"
+  - key_value: "{{ outputs.RemoteNodeName.KEY }}"
 ```
 
 ## Next Steps
 
-- Configure [Remote Nodes](/general/nodes-and-executors#remote-nodes)
-- Learn about [Executors](/general/nodes-and-executors)
-- Explore [Access Control](/general/access-control)
+- Configure [Remote Nodes](/docs/general/nodes-and-executors#remote-nodes)
+- Learn about [Executors](/docs/general/nodes-and-executors)
+- Explore [Access Control](/docs/general/access-control)
