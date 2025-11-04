@@ -108,8 +108,8 @@ func (d *RemoteLinuxDriver) Join(parts ...string) string {
 func (d *RemoteLinuxDriver) ListFiles(ctx context.Context, dirPath string) ([]string, error) {
 	var output strings.Builder
 
-	// Use find command to list all files (not directories) relative to dirPath
-	cmd := fmt.Sprintf("cd %s && find . -type f -printf '%%P\\n' 2>/dev/null || true", dirPath)
+	// Use find command to list only top-level files (not directories) relative to dirPath
+	cmd := fmt.Sprintf("cd %s && find . -maxdepth 1 -type f -printf '%%P\\n' 2>/dev/null || true", dirPath)
 
 	if err := d.client.RunCommand(ctx, cmd, &output, io.Discard); err != nil {
 		return nil, fmt.Errorf("failed to list files in %s: %w", dirPath, err)

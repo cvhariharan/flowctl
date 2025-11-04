@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log"
 	"maps"
 	"os"
@@ -37,12 +36,11 @@ func (s *Scheduler) executeFlow(ctx context.Context, payload FlowExecutionPayloa
 	}
 
 	// Create temporary directory for artifacts shared across all actions in this flow
-	artifactDir, err := os.MkdirTemp("", fmt.Sprintf("artifacts-%s-", payload.ExecID))
-	if err != nil {
+	artifactDir := filepath.Join(os.TempDir(), fmt.Sprintf("artifacts-store-%s", payload.ExecID))
+	if err := os.MkdirAll(artifactDir, 0700); err != nil {
 		return fmt.Errorf("failed to create artifact directory: %w", err)
 	}
 	s.logger.Debug("artifact directory creation", "dir", artifactDir)
-	defer os.RemoveAll(artifactDir)
 
 	streamID := payload.ExecID
 
@@ -71,6 +69,9 @@ func (s *Scheduler) executeFlow(ctx context.Context, payload FlowExecutionPayloa
 		s.logger.Debug("outputs", "results", outputs)
 	}
 
+	// Only remove the artifact store when all actions have been executed
+	// This is to account for approval actions that could be run later
+	os.RemoveAll(artifactDir)
 	return nil
 }
 
@@ -340,32 +341,49 @@ func (s *Scheduler) runAction(ctx context.Context, execID string, action Action,
 }
 
 // pushArtifactsWithDriver pushes files from the local artifact directory to the remote artifacts directory
+// Only pushes direct child files of top-level directories (one level deep)
 func (s *Scheduler) pushArtifactsWithDriver(ctx context.Context, driver executor.NodeDriver, artifactDir string, execID string) error {
 	remoteArtifactsDir := driver.Join(driver.TempDir(), fmt.Sprintf("artifacts-%s", execID))
+	s.logger.Debug("remote artifacts directory", "pushdir", remoteArtifactsDir)
 
-	return filepath.WalkDir(artifactDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() {
-			rPath, err := filepath.Rel(artifactDir, path)
+	// Read top-level entries in artifact directory
+	entries, err := os.ReadDir(artifactDir)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dirPath := filepath.Join(artifactDir, entry.Name())
+			s.logger.Debug("processing top-level directory", "pushdirentry", dirPath)
+
+			childEntries, err := os.ReadDir(dirPath)
 			if err != nil {
 				return err
 			}
-			remotePath := driver.Join(remoteArtifactsDir, rPath)
-			if err := driver.Upload(ctx, path, remotePath); err != nil {
-				return fmt.Errorf("failed to push artifact %s: %w", path, err)
+
+			for _, child := range childEntries {
+				if !child.IsDir() {
+					info, _ :=  child.Info()
+					s.logger.Debug("file size", "filesize", info.Size())
+					localPath := filepath.Join(dirPath, child.Name())
+					remotePath := driver.Join(remoteArtifactsDir, entry.Name(), child.Name())
+					s.logger.Debug("pushing artifact file", "localPath", localPath, "remotePath", remotePath)
+					if err := driver.Upload(ctx, localPath, remotePath); err != nil {
+						return fmt.Errorf("failed to push artifact %s: %w", localPath, err)
+					}
+				}
 			}
 		}
-		return nil
-	})
+	}
+
+	return nil
 }
 
 // pullArtifactsWithDriver downloads all files from the remote artifacts directory to the local artifact directory
 func (s *Scheduler) pullArtifactsWithDriver(ctx context.Context, driver executor.NodeDriver, artifactDir string, execID string, nodeName string) error {
 	remoteArtifactsDir := driver.Join(driver.TempDir(), fmt.Sprintf("artifacts-%s", execID))
-
-	// List all files in the remote artifacts directory
+	s.logger.Debug("remote artifacts directory", "pulldir", remoteArtifactsDir)
 	files, err := driver.ListFiles(ctx, remoteArtifactsDir)
 	if err != nil {
 		// If the directory doesn't exist, there are no artifacts to pull
@@ -377,10 +395,12 @@ func (s *Scheduler) pullArtifactsWithDriver(ctx context.Context, driver executor
 		remotePath := driver.Join(remoteArtifactsDir, file)
 
 		var localPath string
-		if nodeName != "" {
+		if driver.IsRemote() {
+			// Remote execution then store in nodeName subdirectory
 			localPath = filepath.Join(artifactDir, nodeName, file)
 		} else {
-			localPath = filepath.Join(artifactDir, file)
+			// Local execution then store in local subdirectory
+			localPath = filepath.Join(artifactDir, "local", file)
 		}
 
 		if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil {

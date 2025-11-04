@@ -23,6 +23,10 @@ func (h *Handler) HandleCreateNode(c echo.Context) error {
 		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
+	if req.Name == "local" {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("node name cannot be %s", req.Name), fmt.Errorf("node name cannot be %s", req.Name), nil)
+	}
+
 	node := &models.Node{
 		Name:     req.Name,
 		Hostname: req.Hostname,

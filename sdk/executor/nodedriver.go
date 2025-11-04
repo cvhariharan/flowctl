@@ -24,6 +24,7 @@ type NodeDriver interface {
 	IsRemote() bool
 	TempDir() string
 	Join(parts ...string) string
+	// ListFiles should only return top level files and no directories
 	ListFiles(ctx context.Context, dirPath string) ([]string, error)
 	Close() error
 }
