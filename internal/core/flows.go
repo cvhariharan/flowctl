@@ -158,6 +158,22 @@ func (c *Core) GetFlowFromLogID(logID string, namespaceID string) (models.Flow, 
 // QueueFlowExecution adds a flow in the execution queue. The ID returned is the execution queue ID.
 // Exec ID should be universally unique, this is used to create the log stream and identify each execution
 func (c *Core) QueueFlowExecution(ctx context.Context, f models.Flow, input map[string]interface{}, userUUID string, namespaceID string) (string, error) {
+	if !f.Meta.AllowOverlap {
+		namespaceUUID, err := uuid.Parse(namespaceID)
+		if err != nil {
+			return "", fmt.Errorf("invalid namespace UUID: %w", err)
+		}
+		execExists, err := c.store.ExecutionExistsForFlow(ctx, repo.ExecutionExistsForFlowParams{
+			Slug: f.Meta.ID,
+			Uuid: namespaceUUID,
+		})
+		if err != nil {
+			return "", fmt.Errorf("error checking existing executions for flow %s: %w", f.Meta.ID, err)
+		}
+		if execExists {
+			return "", fmt.Errorf("could not queue flow %s for execution: execution overlap is disabled", f.Meta.Name)
+		}
+	}
 
 	info, err := c.queueFlow(ctx, f, input, "", 0, userUUID, namespaceID)
 	if err != nil {

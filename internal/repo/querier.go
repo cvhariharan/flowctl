@@ -37,6 +37,7 @@ type Querier interface {
 	DeleteNamespace(ctx context.Context, argUuid uuid.UUID) error
 	DeleteNode(ctx context.Context, arg DeleteNodeParams) error
 	DeleteUserByUUID(ctx context.Context, argUuid uuid.UUID) error
+	ExecutionExistsForFlow(ctx context.Context, arg ExecutionExistsForFlowParams) (bool, error)
 	GetAllExecutionsPaginated(ctx context.Context, arg GetAllExecutionsPaginatedParams) ([]GetAllExecutionsPaginatedRow, error)
 	GetAllGroups(ctx context.Context) ([]Group, error)
 	GetAllGroupsWithUsers(ctx context.Context) ([]GroupView, error)

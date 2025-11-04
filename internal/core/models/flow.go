@@ -70,13 +70,14 @@ func SchedulerActionToAction(a scheduler.Action) Action {
 }
 
 type Metadata struct {
-	ID          string   `yaml:"id" huml:"id" validate:"required,alphanum_underscore"`
-	DBID        int32    `yaml:"-" huml:"-"`
-	Name        string   `yaml:"name" huml:"name" validate:"required"`
-	Description string   `yaml:"description" huml:"description"`
-	Schedules   []string `yaml:"schedules" huml:"schedules" validate:"omitempty,dive,cron"`
-	SrcDir      string   `yaml:"-" huml:"-"`
-	Namespace   string   `yaml:"namespace" huml:"namespace"`
+	ID           string   `yaml:"id" huml:"id" validate:"required,alphanum_underscore"`
+	DBID         int32    `yaml:"-" huml:"-"`
+	Name         string   `yaml:"name" huml:"name" validate:"required"`
+	Description  string   `yaml:"description" huml:"description"`
+	Schedules    []string `yaml:"schedules" huml:"schedules" validate:"omitempty,dive,cron"`
+	SrcDir       string   `yaml:"-" huml:"-"`
+	Namespace    string   `yaml:"namespace" huml:"namespace"`
+	AllowOverlap bool     `yaml:"allow_overlap" huml:"allow_overlap"`
 }
 
 type Variable map[string]any

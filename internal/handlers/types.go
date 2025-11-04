@@ -358,20 +358,22 @@ func coreFlowInputsToInputs(inputs []models.Input) []FlowInput {
 }
 
 type FlowMeta struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Schedules   []string `json:"schedules"`
-	Namespace   string   `json:"namespace"`
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	Schedules    []string `json:"schedules"`
+	Namespace    string   `json:"namespace"`
+	AllowOverlap bool     `json:"allow_overlap"`
 }
 
 func coreFlowMetatoFlowMeta(m models.Metadata) FlowMeta {
 	return FlowMeta{
-		ID:          m.ID,
-		Name:        m.Name,
-		Description: m.Description,
-		Schedules:   m.Schedules,
-		Namespace:   m.Namespace,
+		ID:           m.ID,
+		Name:         m.Name,
+		Description:  m.Description,
+		Schedules:    m.Schedules,
+		Namespace:    m.Namespace,
+		AllowOverlap: m.AllowOverlap,
 	}
 }
 
@@ -563,9 +565,10 @@ type FlowCreateReq struct {
 }
 
 type FlowMetaReq struct {
-	Name        string   `json:"name" validate:"required,min=3,max=150,alphanum_whitespace"`
-	Description string   `json:"description" validate:"max=255"`
-	Schedules   []string `json:"schedules" validate:"omitempty,dive,cron"`
+	Name         string   `json:"name" validate:"required,min=3,max=150,alphanum_whitespace"`
+	Description  string   `json:"description" validate:"max=255"`
+	Schedules    []string `json:"schedules" validate:"omitempty,dive,cron"`
+	AllowOverlap bool     `json:"allow_overlap"`
 }
 
 type FlowInputReq struct {
@@ -602,9 +605,11 @@ type ExecutionGetReq struct {
 }
 
 type FlowUpdateReq struct {
-	Schedules []string        `json:"schedules" validate:"omitempty,dive,cron"`
-	Inputs    []FlowInputReq  `json:"inputs" validate:"required,dive"`
-	Actions   []FlowActionReq `json:"actions" validate:"required,dive"`
+	Schedules    []string        `json:"schedules" validate:"omitempty,dive,cron"`
+	AllowOverlap bool            `json:"allow_overlap"`
+	Description  string          `json:"description" validate:"max=255"`
+	Inputs       []FlowInputReq  `json:"inputs" validate:"required,dive"`
+	Actions      []FlowActionReq `json:"actions" validate:"required,dive"`
 }
 
 // Helper functions to convert request types to models

@@ -4,7 +4,7 @@
   let {
     metadata = $bindable(),
     inputs = [],
-    readonly = false
+    updatemode = false
   }: {
     metadata: {
       id: string;
@@ -12,9 +12,10 @@
       description: string;
       schedules: string[];
       namespace: string;
+      allow_overlap: boolean;
     };
     inputs?: any[];
-    readonly?: boolean;
+    updatemode?: boolean;
   } = $props();
 
   // Compute schedulable status based on inputs
@@ -23,14 +24,13 @@
   );
 
   function updateName(value: string) {
-    if (readonly) return;
+    if (updatemode) return;
     metadata.name = value;
     // Auto-generate ID from name
     metadata.id = createSlug(value);
   }
 
   function updateDescription(value: string) {
-    if (readonly) return;
     metadata.description = value;
   }
 
@@ -71,9 +71,9 @@
         id="flow-name"
         value={metadata.name}
         oninput={(e) => updateName(e.currentTarget.value)}
-        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent {readonly ? 'bg-gray-50 cursor-not-allowed' : ''}"
+        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent {updatemode ? 'bg-gray-50 cursor-not-allowed' : ''}"
         placeholder="My Flow Name"
-        disabled={readonly}
+        disabled={updatemode}
       />
     </div>
     <div>
@@ -82,9 +82,8 @@
         id="flow-description"
         value={metadata.description}
         oninput={(e) => updateDescription(e.currentTarget.value)}
-        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none h-20 {readonly ? 'bg-gray-50 cursor-not-allowed' : ''}"
+        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none h-20"
         placeholder="Describe what this flow does..."
-        disabled={readonly}
       ></textarea>
     </div>
   </div>
@@ -92,6 +91,20 @@
   <!-- Scheduling Subsection -->
   <div class="mt-8 pt-6 border-t border-gray-200">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">Scheduling</h3>
+
+    <div class="mb-6">
+      <label class="flex items-center space-x-2 cursor-pointer">
+        <input
+          type="checkbox"
+          bind:checked={metadata.allow_overlap}
+          class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+        />
+        <span class="text-sm font-medium text-gray-700">Allow Overlapping Executions</span>
+      </label>
+      <p class="text-xs text-gray-500 mt-1 ml-6">
+        If enabled, new executions can start even if a previous execution is still running / waiting for approval.
+      </p>
+    </div>
 
     {#if isSchedulable}
     <div>

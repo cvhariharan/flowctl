@@ -548,6 +548,8 @@ func (h *Handler) HandleUpdateFlow(c echo.Context) error {
 	// Update the metadata schedules from request
 	updatedMeta := f.Meta
 	updatedMeta.Schedules = req.Schedules
+	updatedMeta.AllowOverlap = req.AllowOverlap
+	updatedMeta.Description = req.Description
 
 	flow := models.Flow{
 		Meta:    updatedMeta,
@@ -598,6 +600,7 @@ func (h *Handler) HandleGetFlowConfig(c echo.Context) error {
 			Name:        f.Meta.Name,
 			Description: f.Meta.Description,
 			Schedules:   f.Meta.Schedules,
+			AllowOverlap: f.Meta.AllowOverlap,
 		},
 		Inputs:  convertFlowInputsToInputsReq(f.Inputs),
 		Actions: convertFlowActionsToActionsReq(f.Actions),

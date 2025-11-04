@@ -30,6 +30,7 @@
             description: "",
             schedules: [] as string[],
             namespace: namespace,
+            allow_overlap: false,
         },
         inputs: [] as any[],
         actions: [] as any[],
@@ -105,6 +106,7 @@
                 description: config.metadata.description || "",
                 schedules: config.metadata.schedules || [],
                 namespace: namespace,
+                allow_overlap: config.metadata.allow_overlap || false,
             };
 
             // Transform inputs
@@ -179,6 +181,8 @@
             const flowData: FlowUpdateReq = {
                 schedules:
                     flow.metadata.schedules?.filter((s) => s.trim()) || [],
+                allow_overlap: flow.metadata.allow_overlap,
+                description: flow.metadata.description || undefined,
                 inputs: flow.inputs
                     .filter((i) => i.name)
                     .map(
@@ -301,7 +305,7 @@
                                 <FlowMetadata
                                     bind:metadata={flow.metadata}
                                     inputs={flow.inputs}
-                                    readonly={true}
+                                    updatemode={true}
                                 />
                             {:else if activeTab === "inputs"}
                                 <FlowInputs

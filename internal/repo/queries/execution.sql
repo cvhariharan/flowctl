@@ -303,3 +303,21 @@ SELECT
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t;
+
+
+-- name: ExecutionExistsForFlow :one
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+),
+latest_versions AS (
+    SELECT exec_id, MAX(version) as max_version
+    FROM execution_log el
+    INNER JOIN flows f ON el.flow_id = f.id
+    WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+    GROUP BY exec_id
+)
+SELECT exists (SELECT * FROM execution_log el INNER JOIN latest_versions lv on el.exec_id = lv.exec_id
+WHERE flow_id = (SELECT id FROM flows WHERE flows.slug = $1) AND
+namespace_id = (SELECT id FROM namespace_lookup) AND
+(status = 'running' or status = 'pending_approval' or status = 'pending') AND
+version = lv.max_version);

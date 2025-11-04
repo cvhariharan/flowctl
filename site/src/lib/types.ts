@@ -77,6 +77,7 @@ export interface FlowMeta {
   description: string;
   schedules: string[];
   namespace: string;
+  allow_overlap: boolean;
 }
 
 export interface FlowAction {
@@ -371,6 +372,7 @@ export interface FlowMetaReq {
   name: string;
   description?: string;
   schedules?: string[];
+  allow_overlap?: boolean;
 }
 
 export interface FlowInputReq {
@@ -408,6 +410,8 @@ export interface FlowCreateResp {
 
 export interface FlowUpdateReq {
   schedules: string[];
+  allow_overlap?: boolean;
+  description?: string;
   inputs: FlowInputReq[];
   actions: FlowActionReq[];
   outputs?: Record<string, any>[];
