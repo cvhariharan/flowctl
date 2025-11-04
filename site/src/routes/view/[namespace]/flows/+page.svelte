@@ -81,6 +81,10 @@
         );
     };
 
+    const handleAdd = () => {
+      goto(`/view/${page.params.namespace}/flows/create`)
+    }
+
     checkPermissions();
 
     const loadFlows = async (filter: string = "", pageNumber: number = 1) => {
@@ -129,8 +133,8 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
             </svg>
           </div>
-          <div class="ml-4">
-            <div class="text-sm font-medium text-gray-900">${value}</div>
+          <div class="ml-4 transition-colors" onclick="document.dispatchEvent(new CustomEvent('viewFlow', {detail: {slug: '${row.slug}'}}))">
+            <div class="text-sm cursor-pointer hover:text-primary-600 font-medium text-gray-900">${value}</div>
           </div>
         </div>
       `,
@@ -201,6 +205,13 @@
 
         return actionsList;
     });
+
+    // Handle flow name clicks
+    if (typeof document !== 'undefined') {
+        document.addEventListener('viewFlow', ((event: CustomEvent) => {
+            goToFlow(event.detail.slug);
+        }) as EventListener);
+    }
 </script>
 
 <svelte:head>
@@ -219,36 +230,20 @@
 </Header>
 
 <!-- Page Content -->
-<div class="flex-1 overflow-y-auto p-6 bg-gray-50">
-    <div class="max-w-7xl mx-auto">
-        <div class="flex items-center justify-between mb-6">
-            <PageHeader
-                title="Flows"
-                subtitle="Manage and run your workflows"
-            />
-            {#if permissions.canCreate}
-                <button
-                    class="inline-flex items-center px-4 py-2 text-sm cursor-pointer font-medium text-white bg-primary-500 border border-transparent rounded-md shadow-sm hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-400"
-                    onclick={() =>
-                        goto(`/view/${page.params.namespace}/flows/create`)}
-                >
-                    <svg
-                        class="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 4v16m8-8H4"
-                        ></path>
-                    </svg>
-                    Add Flow
-                </button>
-            {/if}
-        </div>
+<div class="p-12">
+
+    <PageHeader
+		title="Flows"
+		subtitle="Manage and run your workflows"
+		actions={permissions.canCreate ? [
+			{
+				label: 'Add',
+				onClick: handleAdd,
+				variant: 'primary',
+				icon: '<svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>'
+			}
+		] : []}
+		/>
 
         <!-- Flows Table -->
         <Table
@@ -281,7 +276,6 @@
             </div>
         {/if}
     </div>
-</div>
 
 <!-- Delete Modal -->
 {#if showDeleteModal && flowToDelete}

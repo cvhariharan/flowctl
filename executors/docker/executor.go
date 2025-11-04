@@ -31,7 +31,7 @@ const (
 )
 
 type DockerWithConfig struct {
-	Image  string `yaml:"image" json:"image" jsonschema:"title=image,description=Docker Image"`
+	Image  string `yaml:"image" json:"image" jsonschema:"title=image,description=Docker Image" jsonschema_extras:"placeholder=docker.io/alpine:latest"`
 	Script string `yaml:"script" json:"script" jsonschema:"title=script" jsonschema_extras:"widget=codeeditor"`
 }
 

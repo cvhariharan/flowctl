@@ -240,7 +240,7 @@
                             disabled={saving}
                             class="px-6 py-2 text-sm font-medium cursor-pointer text-white bg-primary-500 border border-transparent rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-400 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {saving ? "Creating..." : "Create Flow"}
+                            {saving ? "Creating..." : "Create"}
                         </button>
                     </div>
                 </div>

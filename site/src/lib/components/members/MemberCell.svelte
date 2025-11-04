@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { NamespaceMemberResp } from '$lib/types';
-  
-  let { row }: { row: NamespaceMemberResp } = $props();
+
+  let { row, onClick }: { row: NamespaceMemberResp; onClick?: (member: NamespaceMemberResp) => void } = $props();
 </script>
 
 <div class="flex items-center">
@@ -16,8 +16,8 @@
       </svg>
     {/if}
   </div>
-  <div>
-    <div class="text-sm font-medium text-gray-900">{row.subject_name}</div>
+  <div class="transition-colors">
+    <div class="text-sm {onClick ? 'cursor-pointer hover:text-primary-600' : ''} font-medium text-gray-900" onclick={() => onClick?.(row)}>{row.subject_name}</div>
     <div class="text-sm text-gray-500">{row.subject_id}</div>
   </div>
 </div>

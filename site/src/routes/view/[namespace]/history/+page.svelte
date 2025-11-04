@@ -94,11 +94,11 @@
 		}
 	];
 
-	
+
 	// Functions
 	async function fetchExecutions(filter: string = '', pageNumber: number = 1) {
 		if (!browser) return;
-		
+
 		loading = true;
 		try {
 			const response = await apiClient.executions.list(data.namespace, {
@@ -185,7 +185,7 @@
 
 <div class="p-12">
 	<!-- Page Header -->
-	<PageHeader 
+	<PageHeader
 		title="Execution History"
 		subtitle="View all flow execution history across all flows in this namespace"
 	/>

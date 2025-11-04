@@ -144,7 +144,7 @@
 
   // Tab configuration
   const tabs = [
-    { id: 'run', label: 'Run Flow' },
+    { id: 'run', label: 'Run' },
     { id: 'history', label: 'History' }
   ];
 </script>
@@ -160,7 +160,7 @@
     { label: data.flowMeta?.meta?.name || 'Loading...' }
   ]}
   actions={[
-    ...(canUpdateFlow ? [{ label: 'Edit Flow', onClick: () => goto(`/view/${namespace}/flows/${flowId}/edit`), variant: 'primary' as const }] : [])
+    ...(canUpdateFlow ? [{ label: 'Edit', onClick: () => goto(`/view/${namespace}/flows/${flowId}/edit`), variant: 'secondary' as const }] : [])
   ]}
 />
 

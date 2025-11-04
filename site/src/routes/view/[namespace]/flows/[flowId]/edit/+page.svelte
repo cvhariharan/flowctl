@@ -342,7 +342,7 @@
                                     disabled={saving}
                                     class="px-6 py-2 cursor-pointer text-sm font-medium text-white bg-primary-500 border border-transparent rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-400 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {saving ? "Updating..." : "Update Flow"}
+                                    {saving ? "Updating..." : "Update"}
                                 </button>
                             </div>
                         {/if}

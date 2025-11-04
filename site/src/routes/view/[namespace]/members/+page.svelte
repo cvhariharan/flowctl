@@ -30,12 +30,13 @@
 	let permissions = $state(data.permissions);
 
 	// Table configuration
-	let tableColumns = [
+	let tableColumns = $derived([
 		{
 			key: 'subject_name',
 			header: 'Member',
 			sortable: true,
-			component: MemberCell
+			component: MemberCell,
+			componentProps: permissions.canUpdate ? { onClick: handleEdit } : {}
 		},
 		{
 			key: 'subject_type',
@@ -53,9 +54,11 @@
 			key: 'created_at',
 			header: 'Added',
 			sortable: true,
-			render: (_value: any, member: NamespaceMemberResp) => formatDateTime(member.created_at)
+			render: (_value: any, member: NamespaceMemberResp) => `
+			  <div class="text-sm text-gray-600">${formatDateTime(member.created_at)}</div>
+			`
 		}
-	];
+	]);
 
 	const tableActions = $derived((): TableAction<NamespaceMemberResp>[] => {
 		const actionsList: TableAction<NamespaceMemberResp>[] = [];
@@ -82,7 +85,7 @@
 	// Functions
 	async function fetchMembers() {
 		if (!browser) return;
-		
+
 		loading = true;
 		try {
 			const response = await apiClient.namespaces.members.list(data.namespace);
@@ -155,7 +158,6 @@
 		deleteMemberName = '';
 	}
 
-
 </script>
 
 <svelte:head>
@@ -167,21 +169,21 @@
   { label: "Members" }
 ]}>
   {#snippet children()}
-    <!-- Empty slot for now -->
+    <div class="mb-10"></div>
   {/snippet}
 </Header>
 
 <div class="p-12">
 	<!-- Page Header -->
-	<PageHeader 
+	<PageHeader
 		title="Members"
 		subtitle="Manage user and group access to this namespace"
 		actions={permissions.canCreate ? [
 			{
-				label: 'Add Member',
+				label: 'Add',
 				onClick: handleAdd,
 				variant: 'primary',
-				icon: '<svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>'
+				icon: '<svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>'
 			}
 		] : []}
 	/>

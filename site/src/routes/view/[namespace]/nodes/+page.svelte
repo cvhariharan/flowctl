@@ -49,7 +49,7 @@
 						</svg>
 					</div>
 					<div>
-						<div class="text-sm font-medium text-gray-900">${node.name}</div>
+						<div class="text-sm font-medium text-gray-900 cursor-pointer hover:text-primary-600 transition-colors" onclick="document.dispatchEvent(new CustomEvent('editNode', {detail: {id: '${node.id}'}}))">${node.name}</div>
 						<div class="text-sm text-gray-500">${node.id}</div>
 					</div>
 				</div>
@@ -73,9 +73,9 @@
 		{
 			key: 'tags',
 			header: 'Tags',
-			render: (_value: any, node: NodeResp) => node.tags && node.tags.length > 0 
+			render: (_value: any, node: NodeResp) => node.tags && node.tags.length > 0
 				? `<div class="flex flex-wrap gap-1">
-					${node.tags.map(tag => 
+					${node.tags.map(tag =>
 						`<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">${tag}</span>`
 					).join('')}
 				</div>`
@@ -98,7 +98,7 @@
 
 	async function fetchStats() {
 		if (!browser) return;
-		
+
 		try {
 			stats = await apiClient.nodes.getStats(data.namespace);
 		} catch (error) {
@@ -108,7 +108,7 @@
 
 	async function fetchNodes(filter: string = '', pageNumber: number = 1) {
 		if (!browser) return;
-		
+
 		loading = true;
 		try {
 			const response = await apiClient.nodes.list(data.namespace, {
@@ -147,7 +147,7 @@
 	async function handleEdit(nodeId: string) {
 		try {
 			const node = await apiClient.nodes.getById(data.namespace, nodeId);
-			
+
 			isEditMode = true;
 			editingNodeId = nodeId;
 			editingNodeData = node;
@@ -207,6 +207,13 @@
 		editingNodeId = null;
 		editingNodeData = null;
 	}
+
+	// Handle node name clicks
+	if (browser) {
+		document.addEventListener('editNode', ((event: CustomEvent) => {
+			handleEdit(event.detail.id);
+		}) as EventListener);
+	}
 </script>
 
 <svelte:head>
@@ -229,12 +236,12 @@
 
 <div class="p-12">
 	<!-- Page Header -->
-	<PageHeader 
+	<PageHeader
 		title="Nodes"
 		subtitle="Manage remote nodes that run flows"
 		actions={[
 			{
-				label: 'Add Node',
+				label: 'Add',
 				onClick: handleAdd,
 				variant: 'primary',
 				IconComponent: IconPlus,

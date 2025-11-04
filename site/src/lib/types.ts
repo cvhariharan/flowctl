@@ -420,6 +420,7 @@ export interface TableColumn<T = any> {
   width?: string;
   render?: (value: any, row: T) => string;
   component?: any;
+  componentProps?: any;
   sortable?: boolean;
 }
 

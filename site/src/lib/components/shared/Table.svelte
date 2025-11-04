@@ -259,6 +259,7 @@
                                     <Component
                                         {row}
                                         value={getValue(row, column)}
+                                        {...(column.componentProps || {})}
                                     />
                                 {:else}
                                     {@html renderValue(row, column)}

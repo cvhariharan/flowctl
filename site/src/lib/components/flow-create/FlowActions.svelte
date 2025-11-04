@@ -371,7 +371,7 @@
                                                 {@const description =
                                                     property.description || ""}
                                                 {@const placeholder =
-                                                    property.examples?.[0] ||
+                                                    property.placeholder ||
                                                     property.default ||
                                                     ""}
 
@@ -685,6 +685,7 @@
                                                 }
                                                 action.variables[varIndex].value = e.currentTarget.value;
                                             }}
+                                            placeholder='value OR {'{{'}inputs.name{'}}'}'
                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono"
                                         />
                                         {#if action.variables && action.variables.length > 0}

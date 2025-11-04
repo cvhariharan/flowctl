@@ -53,7 +53,7 @@
 						}
 					</div>
 					<div>
-						<div class="text-sm font-medium text-gray-900">${credential.name}</div>
+						<div class="text-sm font-medium text-gray-900 cursor-pointer hover:text-primary-600 transition-colors" onclick="document.dispatchEvent(new CustomEvent('editCredential', {detail: {id: '${credential.id}'}}))">${credential.name}</div>
 						<div class="text-sm text-gray-500">${credential.id}</div>
 					</div>
 				</div>
@@ -211,6 +211,12 @@
 		editingCredentialData = null;
 	}
 
+	// Handle credential name clicks
+	if (browser) {
+		document.addEventListener('editCredential', ((event: CustomEvent) => {
+			handleEdit(event.detail.id);
+		}) as EventListener);
+	}
 
 </script>
 
@@ -239,7 +245,7 @@
 		subtitle="Manage SSH keys, passwords, and other authentication credentials"
 		actions={permissions.canCreate ? [
 			{
-				label: 'Add Credential',
+				label: 'Add',
 				onClick: handleAdd,
 				variant: 'primary',
 				IconComponent: IconPlus,
