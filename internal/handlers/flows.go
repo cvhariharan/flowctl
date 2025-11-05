@@ -453,6 +453,8 @@ func (h *Handler) HandleGetFlowInputs(c echo.Context) error {
 		return wrapError(ErrResourceNotFound, "flow not found", err, nil)
 	}
 
+	h.logger.Debug("flow input", "input", fmt.Sprintf("%+v", flow.Inputs))
+
 	inputs := coreFlowInputsToInputs(flow.Inputs)
 	return c.JSON(http.StatusOK, FlowInputsResp{
 		Inputs: inputs,
@@ -597,9 +599,9 @@ func (h *Handler) HandleGetFlowConfig(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, FlowCreateReq{
 		Meta: FlowMetaReq{
-			Name:        f.Meta.Name,
-			Description: f.Meta.Description,
-			Schedules:   f.Meta.Schedules,
+			Name:         f.Meta.Name,
+			Description:  f.Meta.Description,
+			Schedules:    f.Meta.Schedules,
 			AllowOverlap: f.Meta.AllowOverlap,
 		},
 		Inputs:  convertFlowInputsToInputsReq(f.Inputs),

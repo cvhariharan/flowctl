@@ -24,7 +24,10 @@
 
     function handleAddAction() {
         addAction();
-        notifications.info("Action Added", "New action has been added to the flow");
+        notifications.info(
+            "Action Added",
+            "New action has been added to the flow",
+        );
     }
 
     function removeAction(index: number) {
@@ -375,7 +378,7 @@
                                                     property.default ||
                                                     ""}
 
-                                                {#if property.type === "boolean"}
+                                                {#if property.type === "checkbox"}
                                                     <div
                                                         class="flex items-start"
                                                     >
@@ -661,16 +664,24 @@
                                 </button>
                             </div>
                             <div class="space-y-2">
-                                {#each (action.variables && action.variables.length > 0) ? action.variables : [{ name: "", value: "" }] as variable, varIndex}
+                                {#each action.variables && action.variables.length > 0 ? action.variables : [{ name: "", value: "" }] as variable, varIndex}
                                     <div class="flex items-center gap-2">
                                         <input
                                             type="text"
                                             value={variable.name}
                                             oninput={(e) => {
-                                                if (!action.variables || action.variables.length === 0) {
-                                                    action.variables = [{ name: "", value: "" }];
+                                                if (
+                                                    !action.variables ||
+                                                    action.variables.length ===
+                                                        0
+                                                ) {
+                                                    action.variables = [
+                                                        { name: "", value: "" },
+                                                    ];
                                                 }
-                                                action.variables[varIndex].name = e.currentTarget.value;
+                                                action.variables[
+                                                    varIndex
+                                                ].name = e.currentTarget.value;
                                             }}
                                             placeholder="VAR_NAME"
                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono"
@@ -680,12 +691,20 @@
                                             type="text"
                                             value={variable.value}
                                             oninput={(e) => {
-                                                if (!action.variables || action.variables.length === 0) {
-                                                    action.variables = [{ name: "", value: "" }];
+                                                if (
+                                                    !action.variables ||
+                                                    action.variables.length ===
+                                                        0
+                                                ) {
+                                                    action.variables = [
+                                                        { name: "", value: "" },
+                                                    ];
                                                 }
-                                                action.variables[varIndex].value = e.currentTarget.value;
+                                                action.variables[
+                                                    varIndex
+                                                ].value = e.currentTarget.value;
                                             }}
-                                            placeholder='value OR {'{{'}inputs.name{'}}'}'
+                                            placeholder="value OR {'{{'}inputs.name{'}}'}"
                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono"
                                         />
                                         {#if action.variables && action.variables.length > 0}

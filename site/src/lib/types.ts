@@ -65,6 +65,7 @@ export interface FlowInput {
     | "checkbox"
     | "select";
   options: string[];
+  default?: string;
 }
 
 export interface FlowInputsResp {

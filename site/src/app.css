@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 @theme {
-    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-    --font-serif: "Bitter", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-sans:
+        "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-serif:
+        "Bitter", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
     --color-primary-50: hsl(220.8 100% 95.1%);
     --color-primary-100: hsl(220.9 95.7% 91%);
@@ -15,54 +18,54 @@
     --color-primary-800: hsl(221.3 96.7% 24.1%);
     --color-primary-900: hsl(221.6 97.4% 15.1%);
     --color-primary-950: hsl(221.6 96.1% 10%);
-  
-    --color-success-50: hsl(114.4 100% 95.1%);
-    --color-success-100: hsl(113.4 96% 91%);
-    --color-success-200: hsl(110 98% 81%);
-    --color-success-300: hsl(109.5 97% 72%);
-    --color-success-400: hsl(109 98% 63.1%);
-    --color-success-500: hsl(109 98% 53.5%);
-    --color-success-600: hsl(109 97% 44.1%);
-    --color-success-700: hsl(109 98% 33.9%);
-    --color-success-800: hsl(109 97% 24.1%);
-    --color-success-900: hsl(110 97% 15.1%);
-    --color-success-950: hsl(112 96% 10%);
-  
-    --color-warning-50: hsl(51 100% 95.1%);
-    --color-warning-100: hsl(51 96% 91%);
-    --color-warning-200: hsl(52 98% 81%);
-    --color-warning-300: hsl(52.5 97% 72%);
-    --color-warning-400: hsl(53 98% 63.1%);
-    --color-warning-500: hsl(54 98% 53.5%);
-    --color-warning-600: hsl(54.5 97% 44.1%);
-    --color-warning-700: hsl(54.5 98% 33.9%);
-    --color-warning-800: hsl(54 97% 24.1%);
-    --color-warning-900: hsl(53.5 97% 15.1%);
-    --color-warning-950: hsl(53 96% 10%);
-  
-    --color-danger-50: hsl(3.7 100% 95.1%);
-    --color-danger-100: hsl(3 96% 91%);
-    --color-danger-200: hsl(3 98% 81%);
-    --color-danger-300: hsl(3 97% 72%);
-    --color-danger-400: hsl(3 98% 63.1%);
-    --color-danger-500: hsl(3 98% 53.5%);
-    --color-danger-600: hsl(3 97% 44.1%);
-    --color-danger-700: hsl(3 98% 33.9%);
-    --color-danger-800: hsl(3 97% 24.1%);
-    --color-danger-900: hsl(3.5 97% 15.1%);
-    --color-danger-950: hsl(3 96% 10%);
-  
-    --color-info-50: hsl(195 100% 95.1%);
-    --color-info-100: hsl(195 96% 91%);
-    --color-info-200: hsl(195 98% 81%);
-    --color-info-300: hsl(195 97% 72%);
-    --color-info-400: hsl(195 98% 63.1%);
-    --color-info-500: hsl(195 98% 53.5%);
-    --color-info-600: hsl(195 97% 44.1%);
-    --color-info-700: hsl(195 98% 33.9%);
-    --color-info-800: hsl(195 97% 24.1%);
-    --color-info-900: hsl(195 97% 15.1%);
-    --color-info-950: hsl(195 96% 10%);  
+
+    --color-success-50: hsl(151 81% 95.9%);
+    --color-success-100: hsl(149 80.4% 90%);
+    --color-success-200: hsl(152 76% 80.4%);
+    --color-success-300: hsl(156 71.6% 66.9%);
+    --color-success-400: hsl(158 64% 52%);
+    --color-success-500: hsl(160 84.1% 39.4%);
+    --color-success-600: hsl(161 93.5% 30.4%);
+    --color-success-700: hsl(162 93.5% 24.3%);
+    --color-success-800: hsl(163 88.1% 19.8%);
+    --color-success-900: hsl(164 85.7% 16.5%);
+    --color-success-950: hsl(166 91.5% 9%);
+
+    --color-warning-50: hsl(48 100% 96.1%);
+    --color-warning-100: hsl(48 96.5% 88.8%);
+    --color-warning-200: hsl(48 96.6% 76.7%);
+    --color-warning-300: hsl(45.9 96.7% 64.5%);
+    --color-warning-400: hsl(43.3 96.4% 56.3%);
+    --color-warning-500: hsl(37.7 92.1% 50.2%);
+    --color-warning-600: hsl(32.1 94.6% 43.7%);
+    --color-warning-700: hsl(26 90.5% 37.1%);
+    --color-warning-800: hsl(22.7 82.5% 31.4%);
+    --color-warning-900: hsl(21.7 77.8% 26.5%);
+    --color-warning-950: hsl(20.9 91.7% 14.1%);
+
+    --color-danger-50: hsl(0 85.7% 97.3%);
+    --color-danger-100: hsl(0 93.3% 94.1%);
+    --color-danger-200: hsl(0 96.3% 89.4%);
+    --color-danger-300: hsl(0 93.5% 81.8%);
+    --color-danger-400: hsl(0 90.6% 70.8%);
+    --color-danger-500: hsl(0 84.2% 60.2%);
+    --color-danger-600: hsl(0 72.2% 50.6%);
+    --color-danger-700: hsl(0 73.7% 41.8%);
+    --color-danger-800: hsl(0 70% 35.3%);
+    --color-danger-900: hsl(0 62.8% 30.6%);
+    --color-danger-950: hsl(0 75% 15.9%);
+
+    --color-info-50: hsl(186 100% 96.9%);
+    --color-info-100: hsl(185 95.9% 90.4%);
+    --color-info-200: hsl(186 93.5% 81.8%);
+    --color-info-300: hsl(187 92.4% 69%);
+    --color-info-400: hsl(188 85.7% 53.3%);
+    --color-info-500: hsl(189 94.5% 42.7%);
+    --color-info-600: hsl(191 91.4% 36.5%);
+    --color-info-700: hsl(192 82.3% 31%);
+    --color-info-800: hsl(194 69.6% 27.1%);
+    --color-info-900: hsl(196 63.6% 23.7%);
+    --color-info-950: hsl(197 78.7% 15.7%);
 
     --radius: 0.5rem;
 }

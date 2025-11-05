@@ -332,6 +332,7 @@ type FlowInput struct {
 	Required    bool     `json:"required"`
 	Type        string   `json:"type"`
 	Options     []string `json:"options"`
+	Default     string   `json:"default,omitempty"`
 }
 
 type FlowInputsResp struct {
@@ -346,6 +347,7 @@ func coreFlowInputToInput(input models.Input) FlowInput {
 		Required:    input.Required,
 		Type:        string(input.Type),
 		Options:     input.Options,
+		Default:     input.Default,
 	}
 }
 

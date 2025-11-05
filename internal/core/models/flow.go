@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strconv"
 
 	"github.com/cvhariharan/flowctl/internal/scheduler"
 	"github.com/expr-lang/expr"
@@ -157,6 +158,13 @@ func (f Flow) Validate() error {
 		actionsIDs[action.ID] = 1
 	}
 
+	// Validate default values for inputs
+	for _, input := range f.Inputs {
+		if err := validateDefaultValue(input); err != nil {
+			return fmt.Errorf("validation error for input %s: %w", input.Name, err)
+		}
+	}
+
 	// Check if schedules are set on a non-schedulable flow
 	if len(f.Meta.Schedules) > 0 && !f.IsSchedulable() {
 		return fmt.Errorf("cannot set schedules on flow: flow has inputs without default values")
@@ -191,6 +199,29 @@ func (f Flow) IsSchedulable() bool {
 		}
 	}
 	return true
+}
+
+// validateDefaultValue validates that a default value matches the expected input type
+func validateDefaultValue(input Input) error {
+	if input.Default == "" {
+		return nil // Empty default is valid
+	}
+
+	switch input.Type {
+	case INPUT_TYPE_CHECKBOX:
+		if input.Default != "true" && input.Default != "false" {
+			return fmt.Errorf("default for checkbox must be 'true' or 'false'")
+		}
+	case INPUT_TYPE_NUMBER:
+		if _, err := strconv.ParseFloat(input.Default, 64); err != nil {
+			return fmt.Errorf("default for number must be a valid number")
+		}
+	case INPUT_TYPE_SELECT:
+		if len(input.Options) > 0 && !slices.Contains(input.Options, input.Default) {
+			return fmt.Errorf("default for select must be one of the options")
+		}
+	}
+	return nil
 }
 
 func (f Flow) ValidateInput(inputs map[string]interface{}) *FlowValidationError {
