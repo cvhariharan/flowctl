@@ -15,12 +15,14 @@
 		users: initialUsers,
 		totalCount: initialTotalCount,
 		pageCount: initialPageCount,
-		groups
+		groups,
+		refreshTrigger
 	}: {
 		users: UserWithGroups[];
 		totalCount: number;
 		pageCount: number;
 		groups: Group[];
+		refreshTrigger: boolean;
 	} = $props();
 
 	// State
@@ -54,7 +56,7 @@
 							${firstLetter}
 						</div>
 						<div>
-							<div class="text-sm font-medium text-gray-900">${user.name}</div>
+							<div class="text-sm font-medium text-gray-900 cursor-pointer hover:text-primary-600 transition-colors" onclick="document.dispatchEvent(new CustomEvent('editUser', {detail: {id: '${user.id}'}}))">${user.name}</div>
 							<div class="text-sm text-gray-500">${user.username}</div>
 						</div>
 					</div>
@@ -234,6 +236,19 @@
 		editingUserData = null;
 		deleteData = null;
 	}
+
+	// Handle user name clicks
+	if (browser) {
+		document.addEventListener('editUser', ((event: CustomEvent) => {
+			handleEdit(event.detail.id);
+		}) as EventListener);
+	}
+
+	// Refresh data when refreshTrigger changes
+	$effect(() => {
+		refreshTrigger;
+		fetchUsers(searchQuery, currentPage);
+	});
 </script>
 
 <!-- Users Header Actions -->

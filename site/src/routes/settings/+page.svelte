@@ -11,6 +11,7 @@
 
 	// Tab state
 	let activeTab = $state('users');
+	let refreshTrigger = $state(false);
 
 	// Tab configuration
 	const tabs = [
@@ -26,13 +27,15 @@
 		},
 		{
 			id: 'groups',
-			label: 'Groups', 
+			label: 'Groups',
 			badge: data.groupsTotalCount
 		}
 	];
 
 	function handleTabChange(event: CustomEvent<{ tabId: string }>) {
 		activeTab = event.detail.tabId;
+		// Toggle refresh trigger when tab changes
+		refreshTrigger = !refreshTrigger;
 	}
 </script>
 
@@ -64,23 +67,26 @@
 
 	<!-- Tab Content -->
 	{#if activeTab === 'users'}
-		<UsersTab 
+		<UsersTab
 			users={data.users}
 			totalCount={data.usersTotalCount}
 			pageCount={data.usersPageCount}
 			groups={data.groups}
+			{refreshTrigger}
 		/>
 	{:else if activeTab === 'groups'}
 		<GroupsTab
 			groups={data.groups}
 			totalCount={data.groupsTotalCount}
 			pageCount={data.groupsPageCount}
+			{refreshTrigger}
 		/>
 	{:else if activeTab === 'namespaces'}
 		<NamespacesTab
 			namespaces={data.namespaces}
 			totalCount={data.namespacesTotalCount}
 			pageCount={data.namespacesPageCount}
+			{refreshTrigger}
 		/>
 	{/if}
 </div>

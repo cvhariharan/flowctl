@@ -14,11 +14,13 @@
 	let {
 		namespaces: initialNamespaces,
 		totalCount: initialTotalCount,
-		pageCount: initialPageCount
+		pageCount: initialPageCount,
+		refreshTrigger
 	}: {
 		namespaces: NamespaceResp[];
 		totalCount: number;
 		pageCount: number;
+		refreshTrigger: boolean;
 	} = $props();
 
 	// State
@@ -52,7 +54,7 @@
 							${firstLetter}
 						</div>
 						<div>
-							<div class="text-sm font-medium text-gray-900">${namespace.name}</div>
+							<div class="text-sm font-medium text-gray-900 cursor-pointer hover:text-primary-600 transition-colors" onclick="document.dispatchEvent(new CustomEvent('editNamespace', {detail: {id: '${namespace.id}'}}))">${namespace.name}</div>
 							<div class="text-sm text-gray-500">ID: ${namespace.id}</div>
 						</div>
 					</div>
@@ -172,6 +174,19 @@
 		editingNamespaceData = null;
 		deleteData = null;
 	}
+
+	// Handle namespace name clicks
+	if (browser) {
+		document.addEventListener('editNamespace', ((event: CustomEvent) => {
+			handleEdit(event.detail.id);
+		}) as EventListener);
+	}
+
+	// Refresh data when refreshTrigger changes
+	$effect(() => {
+		refreshTrigger;
+		fetchNamespaces(searchQuery, currentPage);
+	});
 </script>
 
 <!-- Namespaces Header Actions -->

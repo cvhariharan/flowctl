@@ -213,15 +213,3 @@
 		/>
 	{/if}
 </div>
-
-<!-- Browse Flows link in empty state -->
-{#if !loading && executions.length === 0}
-	<div class="flex justify-center mt-4">
-		<a
-			href="/view/{data.namespace}/flows"
-			class="bg-primary-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
-		>
-			Browse Flows
-		</a>
-	</div>
-{/if}

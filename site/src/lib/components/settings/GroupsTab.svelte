@@ -14,11 +14,13 @@
 	let {
 		groups: initialGroups,
 		totalCount: initialTotalCount,
-		pageCount: initialPageCount
+		pageCount: initialPageCount,
+		refreshTrigger
 	}: {
 		groups: Group[];
 		totalCount: number;
 		pageCount: number;
+		refreshTrigger: boolean;
 	} = $props();
 
 	// State
@@ -52,7 +54,7 @@
 							${firstLetter}
 						</div>
 						<div>
-							<div class="text-sm font-medium text-gray-900">${group.name}</div>
+							<div class="text-sm font-medium text-gray-900 cursor-pointer hover:text-primary-600 transition-colors" onclick="document.dispatchEvent(new CustomEvent('editGroup', {detail: {id: '${group.id}'}}))">${group.name}</div>
 							<div class="text-sm text-gray-500">${group.description || 'No description'}</div>
 						</div>
 					</div>
@@ -180,6 +182,19 @@
 		editingGroupData = null;
 		deleteData = null;
 	}
+
+	// Handle group name clicks
+	if (browser) {
+		document.addEventListener('editGroup', ((event: CustomEvent) => {
+			handleEdit(event.detail.id);
+		}) as EventListener);
+	}
+
+	// Refresh data when refreshTrigger changes
+	$effect(() => {
+		refreshTrigger;
+		fetchGroups(searchQuery, currentPage);
+	});
 </script>
 
 <!-- Groups Header Actions -->

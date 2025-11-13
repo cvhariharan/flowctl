@@ -82,8 +82,8 @@
     };
 
     const handleAdd = () => {
-      goto(`/view/${page.params.namespace}/flows/create`)
-    }
+        goto(`/view/${page.params.namespace}/flows/create`);
+    };
 
     checkPermissions();
 
@@ -182,7 +182,7 @@
             label: "View",
             onClick: (row: FlowListItem) => goToFlow(row.slug),
             className:
-                "text-green-600 hover:text-green-700 transition-colors cursor-pointer",
+                "text-primary-600 hover:text-primary-700 transition-colors cursor-pointer",
         });
 
         if (permissions.canUpdate) {
@@ -207,8 +207,8 @@
     });
 
     // Handle flow name clicks
-    if (typeof document !== 'undefined') {
-        document.addEventListener('viewFlow', ((event: CustomEvent) => {
+    if (typeof document !== "undefined") {
+        document.addEventListener("viewFlow", ((event: CustomEvent) => {
             goToFlow(event.detail.slug);
         }) as EventListener);
     }
@@ -231,51 +231,52 @@
 
 <!-- Page Content -->
 <div class="p-12">
-
     <PageHeader
-		title="Flows"
-		subtitle="Manage and run your workflows"
-		actions={permissions.canCreate ? [
-			{
-				label: 'Add',
-				onClick: handleAdd,
-				variant: 'primary',
-				icon: '<svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>'
-			}
-		] : []}
-		/>
+        title="Flows"
+        subtitle="Manage and run your workflows"
+        actions={permissions.canCreate
+            ? [
+                  {
+                      label: "Add",
+                      onClick: handleAdd,
+                      variant: "primary",
+                      icon: '<svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>',
+                  },
+              ]
+            : []}
+    />
 
-        <!-- Flows Table -->
-        <Table
-            {columns}
-            data={flows}
-            actions={actions()}
-            {loading}
-            emptyMessage={searchValue
-                ? "Try adjusting your search"
-                : "No flows are available in this namespace"}
-            emptyIcon={`
+    <!-- Flows Table -->
+    <Table
+        {columns}
+        data={flows}
+        actions={actions()}
+        {loading}
+        emptyMessage={searchValue
+            ? "Try adjusting your search"
+            : "No flows are available in this namespace"}
+        emptyIcon={`
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
         </svg>
       `}
-        />
+    />
 
-        <!-- Pagination and Count -->
-        {#if flows.length > 0}
-            <div class="mt-6 flex items-center justify-between">
-                <div class="text-sm text-gray-700">
-                    Showing {flows.length} of {totalCount} flows
-                </div>
-                <Pagination
-                    {currentPage}
-                    totalPages={pageCount}
-                    {loading}
-                    on:page-change={handlePageChange}
-                />
+    <!-- Pagination and Count -->
+    {#if flows.length > 0}
+        <div class="mt-6 flex items-center justify-between">
+            <div class="text-sm text-gray-700">
+                Showing {flows.length} of {totalCount} flows
             </div>
-        {/if}
-    </div>
+            <Pagination
+                {currentPage}
+                totalPages={pageCount}
+                {loading}
+                on:page-change={handlePageChange}
+            />
+        </div>
+    {/if}
+</div>
 
 <!-- Delete Modal -->
 {#if showDeleteModal && flowToDelete}

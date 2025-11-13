@@ -58,25 +58,14 @@
 		{ key: 'hostname', header: 'Hostname', sortable: true },
 		{ key: 'port', header: 'Port', sortable: true },
 		{ key: 'username', header: 'Username', sortable: true },
-		{
-			key: 'os_family',
-			header: 'OS Family',
-			sortable: true,
-			render: (_value: any, node: NodeResp) => `
-				<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-					node.os_family === 'linux'
-						? 'bg-success-100 text-success-800'
-						: 'bg-primary-100 text-primary-800'
-				}">${node.os_family}</span>
-			`
-		},
+		{ key: 'os_family', header: 'OS Family', sortable: true },
 		{
 			key: 'tags',
 			header: 'Tags',
 			render: (_value: any, node: NodeResp) => node.tags && node.tags.length > 0
 				? `<div class="flex flex-wrap gap-1">
 					${node.tags.map(tag =>
-						`<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">${tag}</span>`
+						`<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800">${tag}</span>`
 					).join('')}
 				</div>`
 				: '<span class="text-xs text-gray-400">No tags</span>'
