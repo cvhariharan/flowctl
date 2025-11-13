@@ -58,8 +58,8 @@
     let startTime = $state("");
     let flowName = $state("");
 
-    // WebSocket connection
-    let ws: WebSocket | null = null;
+    // SSE connection
+    let eventSource: EventSource | null = null;
     let hasReceivedMessages = $state(false);
     let manuallyClosed = $state(false);
 
@@ -151,40 +151,36 @@
         }
     };
 
-    const connectWebSocket = () => {
-        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-        const wsUrl = `${protocol}://${window.location.host}/api/v1/${namespace}/logs/${logId}`;
+    const connectSSE = () => {
+        const sseUrl = `/api/v1/${namespace}/logs/${logId}`;
+        eventSource = new EventSource(sseUrl);
 
-        ws = new WebSocket(wsUrl);
-
-        ws.onmessage = (event) => {
+        eventSource.onmessage = (event) => {
             hasReceivedMessages = true;
             let msg = {};
             try {
                 msg = JSON.parse(event.data);
             } catch (e) {
-                handleInlineError(e, "WebSocket Message Parse Error");
+                handleInlineError(e, "SSE Message Parse Error");
             }
             processMessage(msg);
         };
 
-        ws.onclose = (event) => {
-            console.log("WebSocket closed:", event);
-            // Don't update status if we manually closed the connection (e.g., during cancellation)
+        eventSource.addEventListener("end", () => {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            updateExecutionStatus();
+        });
+
+        eventSource.onerror = () => {
             if (manuallyClosed) {
                 return;
             }
 
-            // Let the API polling handle status updates on WebSocket close
-            // This provides more reliable status information from the backend
-            if (event.code === 1000) {
+            if (eventSource?.readyState === EventSource.CLOSED) {
                 updateExecutionStatus();
-            } else if (event.reason) {
-                handleInlineError(
-                    new Error(event.reason),
-                    "WebSocket Connection Error",
-                );
-                updateExecutionStatus(); // Check actual status from API
             }
         };
     };
@@ -286,10 +282,9 @@
                 if (currentActionIndex !== -1) {
                     failedActionIndex = currentActionIndex;
                 }
-                // Close WebSocket connection to prevent reconnection
-                if (ws) {
-                    ws.close();
-                    ws = null;
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
                 }
                 stopStatusPolling();
                 break;
@@ -301,13 +296,12 @@
                 break;
             case "completed":
                 status = "completed";
-                // Close WebSocket connection to prevent reconnection
-                if (ws) {
-                    ws.close();
-                    ws = null;
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
                 }
                 stopStatusPolling();
-                updateExecutionStatus(); // Fetch final status from API
+                updateExecutionStatus();
                 break;
             case "cancelled":
                 status = "cancelled";
@@ -320,10 +314,9 @@
                     value: msg.value || "Flow execution was cancelled",
                     timestamp: msg.timestamp || "",
                 });
-                // Close WebSocket connection to prevent reconnection
-                if (ws) {
-                    ws.close();
-                    ws = null;
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
                 }
                 stopStatusPolling();
                 break;
@@ -406,13 +399,11 @@
         try {
             await apiClient.executions.cancel(namespace, logId);
 
-            // Set status first, then close WebSocket to prevent race condition
             status = "cancelled";
 
-            // Mark as manually closed and close WebSocket connection
             manuallyClosed = true;
-            if (ws) {
-                ws.close();
+            if (eventSource) {
+                eventSource.close();
             }
 
             showWarning(
@@ -447,8 +438,8 @@
             }
         }
 
-        connectWebSocket();
-        startStatusPolling(); // Start polling for status updates
+        connectSSE();
+        startStatusPolling();
     });
 
     // Auto-select running action when it changes
@@ -459,8 +450,8 @@
     });
 
     onDestroy(() => {
-        if (ws) {
-            ws.close();
+        if (eventSource) {
+            eventSource.close();
         }
         stopStatusPolling();
     });

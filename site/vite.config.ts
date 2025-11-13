@@ -31,12 +31,7 @@ export default defineConfig({
         target: `http://${backendHost}`,
         changeOrigin: true,
         secure: false,
-      },
-      "/api/v1": {
-        target: `ws://${backendHost}`,
-        ws: true,
-        rewriteWsOrigin: false,
-      },
+      }
     },
   },
 });

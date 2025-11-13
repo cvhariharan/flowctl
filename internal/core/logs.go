@@ -100,7 +100,6 @@ func (c *Core) streamLogs(ctx context.Context, execID string, namespaceID string
 		}
 
 		for msg := range logCh {
-			log.Println("test", msg)
 			var sm models.StreamMessage
 			if err := json.Unmarshal([]byte(msg), &sm); err != nil {
 				log.Println(err)

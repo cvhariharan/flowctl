@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,19 +9,15 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
-	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 )
 
 const (
 	maxFileSize = 100 * 1024 * 1024 // 100MB
 	tempDirName = "/tmp"
-)
-
-var (
-	upgrader = websocket.Upgrader{}
 )
 
 // convertRequestInputs converts request values from strings to their appropriate types based on flow input definitions
@@ -186,38 +181,65 @@ func (h *Handler) HandleLogStreaming(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	// Upgrade to WebSocket connection
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		h.logger.Error("websocket", "error", err)
-		return err
-	}
-	h.logger.Debug("websocket connection created")
-
 	logID := c.Param("logID")
 	if logID == "" {
-		return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "execution id cannot be empty"))
+		return wrapError(ErrRequiredFieldMissing, "execution id cannot be empty", nil, nil)
 	}
+
+	c.Response().Header().Set("Content-Type", "text/event-stream")
+	c.Response().Header().Set("Cache-Control", "no-cache")
+	c.Response().Header().Set("Connection", "keep-alive")
+	c.Response().Header().Set("X-Accel-Buffering", "no")
+	c.Response().WriteHeader(http.StatusOK)
+
+	h.logger.Debug("SSE connection created", "logID", logID)
 
 	msgCh, err := h.co.StreamLogs(c.Request().Context(), logID, namespace)
 	if err != nil {
 		h.logger.Error("log msg ch", "error", err)
-		return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "error subscribing to logs"))
+		return err
 	}
 
-	for msg := range msgCh {
-		if err := h.handleLogStreaming(msg, ws); err != nil {
-			h.logger.Error("websocket error", "error", err)
-			ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, err.Error()))
+	heartbeatTicker := time.NewTicker(5 * time.Second)
+	defer heartbeatTicker.Stop()
+
+	for {
+		select {
+		case <-c.Request().Context().Done():
+			h.logger.Debug("SSE client disconnected", "logID", logID)
 			return nil
+		case <-heartbeatTicker.C:
+			if _, err := fmt.Fprintf(c.Response(), ": heartbeat\n\n"); err != nil {
+				h.logger.Error("SSE heartbeat error", "error", err, "logID", logID)
+				return nil
+			}
+			if flusher, ok := c.Response().Unwrap().(http.Flusher); ok {
+				flusher.Flush()
+			}
+		case msg, ok := <-msgCh:
+			if !ok {
+				h.logger.Debug("SSE message channel closed", "logID", logID)
+				if _, err := fmt.Fprintf(c.Response(), "event: end\ndata: {}\n\n"); err != nil {
+					h.logger.Error("SSE end event error", "error", err)
+					return err
+				}
+				if flusher, ok := c.Response().Unwrap().(http.Flusher); ok {
+					flusher.Flush()
+				}
+				h.logger.Debug("SSE streaming completed", "logID", logID)
+				return nil
+			}
+			if err := h.handleLogStreaming(msg, c.Response()); err != nil {
+				h.logger.Error("SSE streaming error", "error", err, "logID", logID)
+				return nil
+			}
 		}
 	}
-
-	return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed"))
 }
 
-func (h *Handler) handleLogStreaming(msg models.StreamMessage, ws *websocket.Conn) error {
-	var buf bytes.Buffer
+func (h *Handler) handleLogStreaming(msg models.StreamMessage, w http.ResponseWriter) error {
+	var response FlowLogResp
+
 	switch msg.MType {
 	case models.ResultMessageType:
 		var res map[string]string
@@ -225,32 +247,35 @@ func (h *Handler) handleLogStreaming(msg models.StreamMessage, ws *websocket.Con
 			return fmt.Errorf("could not decode results: %w", err)
 		}
 
-		if err := json.NewEncoder(&buf).Encode(FlowLogResp{
+		response = FlowLogResp{
 			ActionID:  msg.ActionID,
 			MType:     string(msg.MType),
 			Results:   res,
 			NodeID:    msg.NodeID,
 			Timestamp: msg.Timestamp,
-		}); err != nil {
-			return err
 		}
 	default:
 		h.logger.Debug("Default message", "type", msg.MType, "value", msg.Val)
-		if err := json.NewEncoder(&buf).Encode(FlowLogResp{
+		response = FlowLogResp{
 			ActionID:  msg.ActionID,
 			MType:     string(msg.MType),
 			NodeID:    msg.NodeID,
 			Value:     msg.Val,
 			Timestamp: msg.Timestamp,
-		}); err != nil {
-			return err
 		}
 	}
 
-	if buf.Len() > 0 {
-		if err := ws.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
-			return err
-		}
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		return fmt.Errorf("could not marshal response: %w", err)
+	}
+
+	if _, err := fmt.Fprintf(w, "data: %s\n\n", jsonData); err != nil {
+		return err
+	}
+
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
 	}
 
 	return nil
