@@ -279,8 +279,9 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 	}
 
 	fl, err := c.store.GetFlowBySlug(ctx, repo.GetFlowBySlugParams{
-		Slug: f.Meta.ID,
-		Uuid: namespaceUUID,
+		Slug:     f.Meta.ID,
+		Uuid:     namespaceUUID,
+		IsActive: sql.NullBool{Bool: true, Valid: true},
 	})
 	if err != nil {
 		return "", fmt.Errorf("error getting flow details for %s from DB: %w", f.Meta.ID, err)
@@ -301,7 +302,7 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 		NamespaceID:       namespaceID,
 		TriggerType:       scheduler.TriggerTypeManual,
 		UserUUID:          userUUID,
-		FlowDirectory: 	   filepath.Dir(fl.FilePath),
+		FlowDirectory:     filepath.Dir(fl.FilePath),
 	}
 
 	// Create execution log for manual flows before queuing (needed for immediate API calls)
@@ -567,8 +568,9 @@ func (c *Core) UpdateFlow(ctx context.Context, f models.Flow, namespaceID string
 	}
 
 	existingFlow, err := c.store.GetFlowBySlug(ctx, repo.GetFlowBySlugParams{
-		Slug: f.Meta.ID,
-		Uuid: namespaceUUID,
+		Slug:     f.Meta.ID,
+		Uuid:     namespaceUUID,
+		IsActive: sql.NullBool{Bool: true, Valid: true},
 	})
 	if err != nil {
 		return fmt.Errorf("could not get existing flow: %w", err)
@@ -669,20 +671,28 @@ func (c *Core) LoadFlows() error {
 // processNamespaceFlows iterates through directories in the namespace directory and imports the first yaml file per directory as flow. The files are sorted by name.
 func (c *Core) processNamespaceFlows(namespaceDir string) (map[string]models.Flow, error) {
 	m := make(map[string]models.Flow)
+	namespaceName := filepath.Base(namespaceDir)
+
+	ns, err := c.store.GetNamespaceByName(context.Background(), namespaceName)
+	if err != nil {
+		return nil, fmt.Errorf("error getting namespace %s: %w", namespaceName, err)
+	}
+
+	err = c.store.MarkAllFlowsInactiveForNamespace(context.Background(), ns.Uuid)
+	if err != nil {
+		log.Printf("error marking flows inactive for namespace %s: %v", namespaceName, err)
+	}
 
 	entries, err := os.ReadDir(namespaceDir)
 	if err != nil {
 		return nil, fmt.Errorf("error reading namespace %s directory: %w", namespaceDir, err)
 	}
 
-	namespaceName := filepath.Base(namespaceDir)
-
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
 
-		// Find the flow file (YAML or HUML) in the flow directory
 		flowDir := filepath.Join(namespaceDir, entry.Name())
 		flowFiles, err := os.ReadDir(flowDir)
 		if err != nil {
@@ -751,8 +761,9 @@ func (c *Core) importFlowFromFile(flowFilePath, namespaceName string) (models.Fl
 	}
 
 	fd, err := c.store.GetFlowBySlug(context.Background(), repo.GetFlowBySlugParams{
-		Slug: f.Meta.ID,
-		Uuid: ns.Uuid,
+		Slug:     f.Meta.ID,
+		Uuid:     ns.Uuid,
+		IsActive: sql.NullBool{Valid: false},
 	})
 	if err != nil {
 		fd, err = c.store.CreateFlow(context.Background(), repo.CreateFlowParams{
@@ -777,6 +788,14 @@ func (c *Core) importFlowFromFile(flowFilePath, namespaceName string) (models.Fl
 	}
 	if err != nil {
 		return models.Flow{}, "", fmt.Errorf("database operation failed for flow %s: %w", f.Meta.ID, err)
+	}
+
+	err = c.store.MarkFlowActive(context.Background(), repo.MarkFlowActiveParams{
+		Slug: f.Meta.ID,
+		Uuid: ns.Uuid,
+	})
+	if err != nil {
+		return models.Flow{}, "", fmt.Errorf("failed to mark flow %s as active: %w", f.Meta.ID, err)
 	}
 
 	f.Meta.DBID = fd.ID

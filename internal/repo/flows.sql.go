@@ -25,7 +25,7 @@ INSERT INTO flows (
     namespace_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6, (SELECT id FROM namespaces WHERE namespaces.name = $7)
-) RETURNING id, slug, name, checksum, description, cron_schedules, file_path, namespace_id, created_at, updated_at
+) RETURNING id, slug, name, checksum, description, cron_schedules, file_path, namespace_id, is_active, created_at, updated_at
 `
 
 type CreateFlowParams struct {
@@ -58,6 +58,7 @@ func (q *Queries) CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, e
 		pq.Array(&i.CronSchedules),
 		&i.FilePath,
 		&i.NamespaceID,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -88,18 +89,19 @@ func (q *Queries) DeleteFlow(ctx context.Context, arg DeleteFlowParams) error {
 }
 
 const getFlowBySlug = `-- name: GetFlowBySlug :one
-SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.created_at, f.updated_at FROM flows f
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.is_active, f.created_at, f.updated_at FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
-WHERE f.slug = $1 AND n.uuid = $2
+WHERE f.slug = $1 AND n.uuid = $2 AND ($3::boolean IS NULL OR f.is_active = $3)
 `
 
 type GetFlowBySlugParams struct {
-	Slug string    `db:"slug" json:"slug"`
-	Uuid uuid.UUID `db:"uuid" json:"uuid"`
+	Slug     string       `db:"slug" json:"slug"`
+	Uuid     uuid.UUID    `db:"uuid" json:"uuid"`
+	IsActive sql.NullBool `db:"is_active" json:"is_active"`
 }
 
 func (q *Queries) GetFlowBySlug(ctx context.Context, arg GetFlowBySlugParams) (Flow, error) {
-	row := q.db.QueryRowContext(ctx, getFlowBySlug, arg.Slug, arg.Uuid)
+	row := q.db.QueryRowContext(ctx, getFlowBySlug, arg.Slug, arg.Uuid, arg.IsActive)
 	var i Flow
 	err := row.Scan(
 		&i.ID,
@@ -110,6 +112,7 @@ func (q *Queries) GetFlowBySlug(ctx context.Context, arg GetFlowBySlugParams) (F
 		pq.Array(&i.CronSchedules),
 		&i.FilePath,
 		&i.NamespaceID,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -117,10 +120,10 @@ func (q *Queries) GetFlowBySlug(ctx context.Context, arg GetFlowBySlugParams) (F
 }
 
 const getFlowsByNamespace = `-- name: GetFlowsByNamespace :many
-SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.created_at, f.updated_at, n.uuid AS namespace_uuid
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.is_active, f.created_at, f.updated_at, n.uuid AS namespace_uuid
 FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
-WHERE n.uuid = $1
+WHERE n.uuid = $1 AND f.is_active = TRUE
 `
 
 type GetFlowsByNamespaceRow struct {
@@ -132,6 +135,7 @@ type GetFlowsByNamespaceRow struct {
 	CronSchedules []string       `db:"cron_schedules" json:"cron_schedules"`
 	FilePath      string         `db:"file_path" json:"file_path"`
 	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
+	IsActive      bool           `db:"is_active" json:"is_active"`
 	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
 	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
@@ -155,6 +159,7 @@ func (q *Queries) GetFlowsByNamespace(ctx context.Context, argUuid uuid.UUID) ([
 			pq.Array(&i.CronSchedules),
 			&i.FilePath,
 			&i.NamespaceID,
+			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.NamespaceUuid,
@@ -173,10 +178,10 @@ func (q *Queries) GetFlowsByNamespace(ctx context.Context, argUuid uuid.UUID) ([
 }
 
 const getScheduledFlows = `-- name: GetScheduledFlows :many
-SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.created_at, f.updated_at, n.uuid AS namespace_uuid
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.is_active, f.created_at, f.updated_at, n.uuid AS namespace_uuid
 FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
-WHERE f.cron_schedules IS NOT NULL AND array_length(f.cron_schedules, 1) > 0
+WHERE f.is_active = TRUE AND f.cron_schedules IS NOT NULL AND array_length(f.cron_schedules, 1) > 0
 `
 
 type GetScheduledFlowsRow struct {
@@ -188,6 +193,7 @@ type GetScheduledFlowsRow struct {
 	CronSchedules []string       `db:"cron_schedules" json:"cron_schedules"`
 	FilePath      string         `db:"file_path" json:"file_path"`
 	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
+	IsActive      bool           `db:"is_active" json:"is_active"`
 	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
 	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
@@ -211,6 +217,7 @@ func (q *Queries) GetScheduledFlows(ctx context.Context) ([]GetScheduledFlowsRow
 			pq.Array(&i.CronSchedules),
 			&i.FilePath,
 			&i.NamespaceID,
+			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.NamespaceUuid,
@@ -230,7 +237,7 @@ func (q *Queries) GetScheduledFlows(ctx context.Context) ([]GetScheduledFlowsRow
 
 const listFlows = `-- name: ListFlows :many
 WITH filtered AS (
-    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.created_at, f.updated_at, n.uuid AS namespace_uuid FROM flows f
+    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.is_active, f.created_at, f.updated_at, n.uuid AS namespace_uuid FROM flows f
     JOIN namespaces n ON f.namespace_id = n.id
     WHERE n.uuid = $1
 ),
@@ -238,7 +245,7 @@ total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ),
 paged AS (
-    SELECT id, slug, name, checksum, description, cron_schedules, file_path, namespace_id, created_at, updated_at, namespace_uuid FROM filtered
+    SELECT id, slug, name, checksum, description, cron_schedules, file_path, namespace_id, is_active, created_at, updated_at, namespace_uuid FROM filtered
     ORDER BY created_at DESC
     LIMIT $2 OFFSET $3
 ),
@@ -246,7 +253,7 @@ page_count AS (
     SELECT CEIL(total.total_count::numeric / $2::numeric)::bigint AS page_count FROM total
 )
 SELECT
-    p.id, p.slug, p.name, p.checksum, p.description, p.cron_schedules, p.file_path, p.namespace_id, p.created_at, p.updated_at, p.namespace_uuid,
+    p.id, p.slug, p.name, p.checksum, p.description, p.cron_schedules, p.file_path, p.namespace_id, p.is_active, p.created_at, p.updated_at, p.namespace_uuid,
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
@@ -267,6 +274,7 @@ type ListFlowsRow struct {
 	CronSchedules []string       `db:"cron_schedules" json:"cron_schedules"`
 	FilePath      string         `db:"file_path" json:"file_path"`
 	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
+	IsActive      bool           `db:"is_active" json:"is_active"`
 	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
 	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
@@ -292,6 +300,7 @@ func (q *Queries) ListFlows(ctx context.Context, arg ListFlowsParams) ([]ListFlo
 			pq.Array(&i.CronSchedules),
 			&i.FilePath,
 			&i.NamespaceID,
+			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.NamespaceUuid,
@@ -313,15 +322,15 @@ func (q *Queries) ListFlows(ctx context.Context, arg ListFlowsParams) ([]ListFlo
 
 const listFlowsPaginated = `-- name: ListFlowsPaginated :many
 WITH filtered AS (
-    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.created_at, f.updated_at, n.uuid AS namespace_uuid FROM flows f
+    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.is_active, f.created_at, f.updated_at, n.uuid AS namespace_uuid FROM flows f
     JOIN namespaces n ON f.namespace_id = n.id
-    WHERE n.uuid = $1
+    WHERE n.uuid = $1 AND f.is_active = TRUE
 ),
 total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ),
 paged AS (
-    SELECT id, slug, name, checksum, description, cron_schedules, file_path, namespace_id, created_at, updated_at, namespace_uuid FROM filtered
+    SELECT id, slug, name, checksum, description, cron_schedules, file_path, namespace_id, is_active, created_at, updated_at, namespace_uuid FROM filtered
     ORDER BY created_at DESC
     LIMIT $2 OFFSET $3
 ),
@@ -329,7 +338,7 @@ page_count AS (
     SELECT CEIL(total.total_count::numeric / $2::numeric)::bigint AS page_count FROM total
 )
 SELECT
-    p.id, p.slug, p.name, p.checksum, p.description, p.cron_schedules, p.file_path, p.namespace_id, p.created_at, p.updated_at, p.namespace_uuid,
+    p.id, p.slug, p.name, p.checksum, p.description, p.cron_schedules, p.file_path, p.namespace_id, p.is_active, p.created_at, p.updated_at, p.namespace_uuid,
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
@@ -350,6 +359,7 @@ type ListFlowsPaginatedRow struct {
 	CronSchedules []string       `db:"cron_schedules" json:"cron_schedules"`
 	FilePath      string         `db:"file_path" json:"file_path"`
 	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
+	IsActive      bool           `db:"is_active" json:"is_active"`
 	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
 	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
@@ -375,6 +385,7 @@ func (q *Queries) ListFlowsPaginated(ctx context.Context, arg ListFlowsPaginated
 			pq.Array(&i.CronSchedules),
 			&i.FilePath,
 			&i.NamespaceID,
+			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.NamespaceUuid,
@@ -394,11 +405,37 @@ func (q *Queries) ListFlowsPaginated(ctx context.Context, arg ListFlowsPaginated
 	return items, nil
 }
 
+const markAllFlowsInactiveForNamespace = `-- name: MarkAllFlowsInactiveForNamespace :exec
+UPDATE flows SET is_active = FALSE, updated_at = NOW()
+WHERE namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $1)
+`
+
+func (q *Queries) MarkAllFlowsInactiveForNamespace(ctx context.Context, argUuid uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markAllFlowsInactiveForNamespace, argUuid)
+	return err
+}
+
+const markFlowActive = `-- name: MarkFlowActive :exec
+UPDATE flows SET is_active = TRUE, updated_at = NOW()
+WHERE slug = $1 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $2)
+`
+
+type MarkFlowActiveParams struct {
+	Slug string    `db:"slug" json:"slug"`
+	Uuid uuid.UUID `db:"uuid" json:"uuid"`
+}
+
+func (q *Queries) MarkFlowActive(ctx context.Context, arg MarkFlowActiveParams) error {
+	_, err := q.db.ExecContext(ctx, markFlowActive, arg.Slug, arg.Uuid)
+	return err
+}
+
 const searchFlowsPaginated = `-- name: SearchFlowsPaginated :many
 WITH filtered AS (
-    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.created_at, f.updated_at, n.uuid AS namespace_uuid FROM flows f
+    SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.is_active, f.created_at, f.updated_at, n.uuid AS namespace_uuid FROM flows f
     JOIN namespaces n ON f.namespace_id = n.id
     WHERE n.uuid = $1
+      AND f.is_active = TRUE
       AND (lower(f.name) LIKE '%' || lower($2::text) || '%'
            OR lower(f.description) LIKE '%' || lower($2::text) || '%')
 ),
@@ -406,7 +443,7 @@ total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ),
 paged AS (
-    SELECT id, slug, name, checksum, description, cron_schedules, file_path, namespace_id, created_at, updated_at, namespace_uuid FROM filtered
+    SELECT id, slug, name, checksum, description, cron_schedules, file_path, namespace_id, is_active, created_at, updated_at, namespace_uuid FROM filtered
     ORDER BY created_at DESC
     LIMIT $3 OFFSET $4
 ),
@@ -414,7 +451,7 @@ page_count AS (
     SELECT CEIL(total.total_count::numeric / $3::numeric)::bigint AS page_count FROM total
 )
 SELECT
-    p.id, p.slug, p.name, p.checksum, p.description, p.cron_schedules, p.file_path, p.namespace_id, p.created_at, p.updated_at, p.namespace_uuid,
+    p.id, p.slug, p.name, p.checksum, p.description, p.cron_schedules, p.file_path, p.namespace_id, p.is_active, p.created_at, p.updated_at, p.namespace_uuid,
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
@@ -436,6 +473,7 @@ type SearchFlowsPaginatedRow struct {
 	CronSchedules []string       `db:"cron_schedules" json:"cron_schedules"`
 	FilePath      string         `db:"file_path" json:"file_path"`
 	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
+	IsActive      bool           `db:"is_active" json:"is_active"`
 	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
 	NamespaceUuid uuid.UUID      `db:"namespace_uuid" json:"namespace_uuid"`
@@ -466,6 +504,7 @@ func (q *Queries) SearchFlowsPaginated(ctx context.Context, arg SearchFlowsPagin
 			pq.Array(&i.CronSchedules),
 			&i.FilePath,
 			&i.NamespaceID,
+			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.NamespaceUuid,
@@ -492,9 +531,10 @@ UPDATE flows SET
     checksum = $3,
     cron_schedules = $4,
     file_path = $5,
+    is_active = TRUE,
     updated_at = NOW()
 WHERE slug = $6 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.name = $7)
-RETURNING id, slug, name, checksum, description, cron_schedules, file_path, namespace_id, created_at, updated_at
+RETURNING id, slug, name, checksum, description, cron_schedules, file_path, namespace_id, is_active, created_at, updated_at
 `
 
 type UpdateFlowParams struct {
@@ -527,6 +567,7 @@ func (q *Queries) UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, e
 		pq.Array(&i.CronSchedules),
 		&i.FilePath,
 		&i.NamespaceID,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

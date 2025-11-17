@@ -63,7 +63,8 @@ INNER JOIN flows f ON el.flow_id = f.id
 INNER JOIN users u ON el.triggered_by = u.id
 WHERE f.id = $1
   AND el.triggered_by = (SELECT id FROM user_lookup)
-  AND f.namespace_id = (SELECT id FROM namespace_lookup);
+  AND f.namespace_id = (SELECT id FROM namespace_lookup)
+  AND f.is_active = TRUE;
 
 -- name: GetExecutionByExecID :one
 WITH namespace_lookup AS (
@@ -90,7 +91,8 @@ INNER JOIN
 WHERE
     el.exec_id = $1
     AND el.version = (SELECT version FROM latest_version)
-    AND el.namespace_id = (SELECT id FROM namespace_lookup);
+    AND el.namespace_id = (SELECT id FROM namespace_lookup)
+    AND f.is_active = TRUE;
 
 -- name: GetExecutionByExecIDWithNamespace :one
 WITH namespace_lookup AS (
@@ -99,7 +101,7 @@ WITH namespace_lookup AS (
     SELECT MAX(version) as version
     FROM execution_log el2
     INNER JOIN flows f2 ON el2.flow_id = f2.id
-    WHERE el2.exec_id = $1 AND f2.namespace_id = (SELECT id FROM namespace_lookup)
+    WHERE el2.exec_id = $1 AND f2.namespace_id = (SELECT id FROM namespace_lookup) AND f2.is_active = TRUE
 )
 SELECT
     el.*,
@@ -118,7 +120,8 @@ INNER JOIN
 WHERE
     el.exec_id = $1
     AND el.version = (SELECT version FROM latest_version)
-    AND f.namespace_id = (SELECT id FROM namespace_lookup);
+    AND f.namespace_id = (SELECT id FROM namespace_lookup)
+    AND f.is_active = TRUE;
 
 -- name: GetFlowFromExecID :one
 WITH namespace_lookup AS (
@@ -132,7 +135,7 @@ WITH namespace_lookup AS (
 )
 SELECT f.* FROM flows f
 INNER JOIN latest_exec_log el ON el.flow_id = f.id
-WHERE f.namespace_id = (SELECT id FROM namespace_lookup);
+WHERE f.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE;
 
 -- name: GetFlowFromExecIDWithNamespace :one
 WITH namespace_lookup AS (
@@ -143,12 +146,13 @@ WITH namespace_lookup AS (
     INNER JOIN flows f ON el.flow_id = f.id
     WHERE el.exec_id = $1
       AND f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
     ORDER BY el.version DESC
     LIMIT 1
 )
 SELECT f.* FROM flows f
 INNER JOIN latest_exec_log el ON el.flow_id = f.id
-WHERE f.namespace_id = (SELECT id FROM namespace_lookup);
+WHERE f.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE;
 
 -- name: GetExecutionByID :one
 WITH namespace_lookup AS (
@@ -161,7 +165,7 @@ SELECT el.*, u.name, u.username, u.uuid as triggered_by_uuid,
 FROM execution_log el
 INNER JOIN users u ON el.triggered_by = u.id
 INNER JOIN flows f ON el.flow_id = f.id
-WHERE el.id = $1 AND el.namespace_id = (SELECT id FROM namespace_lookup);
+WHERE el.id = $1 AND el.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE;
 
 -- name: GetInputForExecByUUID :one
 WITH namespace_lookup AS (
@@ -187,6 +191,7 @@ latest_versions AS (
     INNER JOIN flows f ON el.flow_id = f.id
     WHERE f.id = $1
       AND f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
     GROUP BY exec_id
 ),
 filtered AS (
@@ -200,6 +205,7 @@ filtered AS (
     INNER JOIN latest_versions lv ON el.exec_id = lv.exec_id AND el.version = lv.max_version
     WHERE f.id = $1
       AND f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
 ),
 total AS (
     SELECT COUNT(*) AS total_count FROM filtered
@@ -227,6 +233,7 @@ latest_versions AS (
     FROM execution_log el
     INNER JOIN flows f ON el.flow_id = f.id
     WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
     GROUP BY exec_id
 ),
 filtered AS (
@@ -239,6 +246,7 @@ filtered AS (
     INNER JOIN users u ON el.triggered_by = u.id
     INNER JOIN latest_versions lv ON el.exec_id = lv.exec_id AND el.version = lv.max_version
     WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
 ),
 total AS (
     SELECT COUNT(*) AS total_count FROM filtered
@@ -266,6 +274,7 @@ latest_versions AS (
     FROM execution_log el
     INNER JOIN flows f ON el.flow_id = f.id
     WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
     GROUP BY exec_id
 ),
 filtered AS (
@@ -278,6 +287,7 @@ filtered AS (
     INNER JOIN users u ON el.triggered_by = u.id
     INNER JOIN latest_versions lv ON el.exec_id = lv.exec_id AND el.version = lv.max_version
     WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
       AND (
         $2 = '' OR
         f.name ILIKE '%' || $2 || '%' OR
@@ -317,7 +327,7 @@ latest_versions AS (
     GROUP BY exec_id
 )
 SELECT exists (SELECT * FROM execution_log el INNER JOIN latest_versions lv on el.exec_id = lv.exec_id
-WHERE flow_id = (SELECT id FROM flows WHERE flows.slug = $1) AND
+WHERE flow_id = (SELECT id FROM flows WHERE flows.slug = $1 AND flows.is_active = TRUE) AND
 namespace_id = (SELECT id FROM namespace_lookup) AND
 (status = 'running' or status = 'pending_approval' or status = 'pending') AND
 version = lv.max_version);

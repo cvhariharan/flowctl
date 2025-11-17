@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS flows (
     cron_schedules TEXT[],
     file_path TEXT NOT NULL,
     namespace_id INTEGER NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     FOREIGN KEY (namespace_id) REFERENCES namespaces(id) ON DELETE CASCADE

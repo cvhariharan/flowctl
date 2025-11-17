@@ -1,7 +1,7 @@
 -- name: GetFlowBySlug :one
 SELECT f.* FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
-WHERE f.slug = $1 AND n.uuid = $2;
+WHERE f.slug = $1 AND n.uuid = $2 AND (sqlc.narg('is_active')::boolean IS NULL OR f.is_active = sqlc.narg('is_active'));
 
 -- name: DeleteAllFlows :exec
 DELETE FROM flows;
@@ -26,6 +26,7 @@ UPDATE flows SET
     checksum = $3,
     cron_schedules = $4,
     file_path = $5,
+    is_active = TRUE,
     updated_at = NOW()
 WHERE slug = $6 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.name = $7)
 RETURNING *;
@@ -37,7 +38,7 @@ DELETE FROM flows WHERE slug = $1 AND namespace_id = (SELECT id FROM namespaces 
 SELECT f.*, n.uuid AS namespace_uuid
 FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
-WHERE n.uuid = $1;
+WHERE n.uuid = $1 AND f.is_active = TRUE;
 
 -- name: ListFlows :many
 WITH filtered AS (
@@ -66,7 +67,7 @@ FROM paged p, page_count pc, total t;
 WITH filtered AS (
     SELECT f.*, n.uuid AS namespace_uuid FROM flows f
     JOIN namespaces n ON f.namespace_id = n.id
-    WHERE n.uuid = $1
+    WHERE n.uuid = $1 AND f.is_active = TRUE
 ),
 total AS (
     SELECT COUNT(*) AS total_count FROM filtered
@@ -90,6 +91,7 @@ WITH filtered AS (
     SELECT f.*, n.uuid AS namespace_uuid FROM flows f
     JOIN namespaces n ON f.namespace_id = n.id
     WHERE n.uuid = $1
+      AND f.is_active = TRUE
       AND (lower(f.name) LIKE '%' || lower($2::text) || '%'
            OR lower(f.description) LIKE '%' || lower($2::text) || '%')
 ),
@@ -114,4 +116,12 @@ FROM paged p, page_count pc, total t;
 SELECT f.*, n.uuid AS namespace_uuid
 FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
-WHERE f.cron_schedules IS NOT NULL AND array_length(f.cron_schedules, 1) > 0;
+WHERE f.is_active = TRUE AND f.cron_schedules IS NOT NULL AND array_length(f.cron_schedules, 1) > 0;
+
+-- name: MarkAllFlowsInactiveForNamespace :exec
+UPDATE flows SET is_active = FALSE, updated_at = NOW()
+WHERE namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $1);
+
+-- name: MarkFlowActive :exec
+UPDATE flows SET is_active = TRUE, updated_at = NOW()
+WHERE slug = $1 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $2);

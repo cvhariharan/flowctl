@@ -87,6 +87,8 @@ type Querier interface {
 	ListFlows(ctx context.Context, arg ListFlowsParams) ([]ListFlowsRow, error)
 	ListFlowsPaginated(ctx context.Context, arg ListFlowsPaginatedParams) ([]ListFlowsPaginatedRow, error)
 	ListNamespaces(ctx context.Context, arg ListNamespacesParams) ([]ListNamespacesRow, error)
+	MarkAllFlowsInactiveForNamespace(ctx context.Context, argUuid uuid.UUID) error
+	MarkFlowActive(ctx context.Context, arg MarkFlowActiveParams) error
 	RejectRequestByUUID(ctx context.Context, arg RejectRequestByUUIDParams) (RejectRequestByUUIDRow, error)
 	RemoveAllGroupsForUserByUUID(ctx context.Context, userUuid uuid.UUID) error
 	RemoveNamespaceMember(ctx context.Context, arg RemoveNamespaceMemberParams) (NamespaceMember, error)

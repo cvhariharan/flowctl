@@ -374,6 +374,7 @@ type Flow struct {
 	CronSchedules []string       `db:"cron_schedules" json:"cron_schedules"`
 	FilePath      string         `db:"file_path" json:"file_path"`
 	NamespaceID   int32          `db:"namespace_id" json:"namespace_id"`
+	IsActive      bool           `db:"is_active" json:"is_active"`
 	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
 }

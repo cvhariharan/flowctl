@@ -78,7 +78,7 @@ WITH namespace_lookup AS (
     AND approvals.exec_log_id IN (
         SELECT el.id FROM execution_log el
         JOIN flows f ON el.flow_id = f.id
-        WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+        WHERE f.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE
     )
     RETURNING id, uuid, exec_log_id, action_id, status, decided_by, namespace_id, created_at, updated_at
 )
@@ -139,7 +139,7 @@ FROM approvals a
 JOIN execution_log el ON a.exec_log_id = el.id
 JOIN flows f ON el.flow_id = f.id
 JOIN users u ON el.triggered_by = u.id
-WHERE a.uuid = $1 AND f.namespace_id = (SELECT id FROM namespace_lookup)
+WHERE a.uuid = $1 AND f.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE
 `
 
 type GetApprovalByUUIDParams struct {
@@ -190,6 +190,7 @@ JOIN flows f ON el.flow_id = f.id
 WHERE el.exec_id = $1
   AND a.action_id = $2
   AND f.namespace_id = (SELECT id FROM namespace_lookup)
+  AND f.is_active = TRUE
 `
 
 type GetApprovalRequestForActionAndExecParams struct {
@@ -235,6 +236,7 @@ JOIN users u ON el.triggered_by = u.id
 WHERE el.exec_id = $1
   AND f.namespace_id = (SELECT id FROM namespace_lookup)
   AND el.version = (SELECT max_version FROM latest_version)
+  AND f.is_active = TRUE
 `
 
 type GetApprovalRequestForExecParams struct {
@@ -292,7 +294,7 @@ JOIN execution_log el ON a.exec_log_id = el.id
 JOIN flows f ON el.flow_id = f.id
 JOIN users u ON el.triggered_by = u.id
 LEFT JOIN users us ON a.decided_by = us.id
-WHERE a.uuid = $1 AND f.namespace_id = (SELECT id FROM namespace_lookup)
+WHERE a.uuid = $1 AND f.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE
 `
 
 type GetApprovalWithInputsByUUIDParams struct {
@@ -356,6 +358,7 @@ filtered AS (
     JOIN flows f ON el.flow_id = f.id
     JOIN users u ON el.triggered_by = u.id
     WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
       AND (CASE WHEN $2::text = '' THEN TRUE ELSE a.status = $2::approval_status END)
       AND (
         $3 = '' OR
@@ -463,7 +466,7 @@ WITH namespace_lookup AS (
     AND approvals.exec_log_id IN (
         SELECT el.id FROM execution_log el
         JOIN flows f ON el.flow_id = f.id
-        WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+        WHERE f.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE
     )
     RETURNING id, uuid, exec_log_id, action_id, status, decided_by, namespace_id, created_at, updated_at
 )

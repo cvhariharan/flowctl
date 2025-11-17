@@ -87,7 +87,7 @@ latest_versions AS (
     GROUP BY exec_id
 )
 SELECT exists (SELECT id, el.exec_id, flow_id, version, input, error, current_action_id, status, trigger_type, triggered_by, namespace_id, created_at, updated_at, lv.exec_id, max_version FROM execution_log el INNER JOIN latest_versions lv on el.exec_id = lv.exec_id
-WHERE flow_id = (SELECT id FROM flows WHERE flows.slug = $1) AND
+WHERE flow_id = (SELECT id FROM flows WHERE flows.slug = $1 AND flows.is_active = TRUE) AND
 namespace_id = (SELECT id FROM namespace_lookup) AND
 (status = 'running' or status = 'pending_approval' or status = 'pending') AND
 version = lv.max_version)
@@ -114,6 +114,7 @@ latest_versions AS (
     FROM execution_log el
     INNER JOIN flows f ON el.flow_id = f.id
     WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
     GROUP BY exec_id
 ),
 filtered AS (
@@ -126,6 +127,7 @@ filtered AS (
     INNER JOIN users u ON el.triggered_by = u.id
     INNER JOIN latest_versions lv ON el.exec_id = lv.exec_id AND el.version = lv.max_version
     WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
 ),
 total AS (
     SELECT COUNT(*) AS total_count FROM filtered
@@ -246,6 +248,7 @@ WHERE
     el.exec_id = $1
     AND el.version = (SELECT version FROM latest_version)
     AND el.namespace_id = (SELECT id FROM namespace_lookup)
+    AND f.is_active = TRUE
 `
 
 type GetExecutionByExecIDParams struct {
@@ -309,7 +312,7 @@ WITH namespace_lookup AS (
     SELECT MAX(version) as version
     FROM execution_log el2
     INNER JOIN flows f2 ON el2.flow_id = f2.id
-    WHERE el2.exec_id = $1 AND f2.namespace_id = (SELECT id FROM namespace_lookup)
+    WHERE el2.exec_id = $1 AND f2.namespace_id = (SELECT id FROM namespace_lookup) AND f2.is_active = TRUE
 )
 SELECT
     el.id, el.exec_id, el.flow_id, el.version, el.input, el.error, el.current_action_id, el.status, el.trigger_type, el.triggered_by, el.namespace_id, el.created_at, el.updated_at,
@@ -329,6 +332,7 @@ WHERE
     el.exec_id = $1
     AND el.version = (SELECT version FROM latest_version)
     AND f.namespace_id = (SELECT id FROM namespace_lookup)
+    AND f.is_active = TRUE
 `
 
 type GetExecutionByExecIDWithNamespaceParams struct {
@@ -396,7 +400,7 @@ SELECT el.id, el.exec_id, el.flow_id, el.version, el.input, el.error, el.current
 FROM execution_log el
 INNER JOIN users u ON el.triggered_by = u.id
 INNER JOIN flows f ON el.flow_id = f.id
-WHERE el.id = $1 AND el.namespace_id = (SELECT id FROM namespace_lookup)
+WHERE el.id = $1 AND el.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE
 `
 
 type GetExecutionByIDParams struct {
@@ -469,6 +473,7 @@ INNER JOIN users u ON el.triggered_by = u.id
 WHERE f.id = $1
   AND el.triggered_by = (SELECT id FROM user_lookup)
   AND f.namespace_id = (SELECT id FROM namespace_lookup)
+  AND f.is_active = TRUE
 `
 
 type GetExecutionsByFlowParams struct {
@@ -552,6 +557,7 @@ latest_versions AS (
     INNER JOIN flows f ON el.flow_id = f.id
     WHERE f.id = $1
       AND f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
     GROUP BY exec_id
 ),
 filtered AS (
@@ -565,6 +571,7 @@ filtered AS (
     INNER JOIN latest_versions lv ON el.exec_id = lv.exec_id AND el.version = lv.max_version
     WHERE f.id = $1
       AND f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
 ),
 total AS (
     SELECT COUNT(*) AS total_count FROM filtered
@@ -675,9 +682,9 @@ WITH namespace_lookup AS (
     ORDER BY version DESC
     LIMIT 1
 )
-SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.created_at, f.updated_at FROM flows f
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.is_active, f.created_at, f.updated_at FROM flows f
 INNER JOIN latest_exec_log el ON el.flow_id = f.id
-WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+WHERE f.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE
 `
 
 type GetFlowFromExecIDParams struct {
@@ -697,6 +704,7 @@ func (q *Queries) GetFlowFromExecID(ctx context.Context, arg GetFlowFromExecIDPa
 		pq.Array(&i.CronSchedules),
 		&i.FilePath,
 		&i.NamespaceID,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -712,12 +720,13 @@ WITH namespace_lookup AS (
     INNER JOIN flows f ON el.flow_id = f.id
     WHERE el.exec_id = $1
       AND f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
     ORDER BY el.version DESC
     LIMIT 1
 )
-SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.created_at, f.updated_at FROM flows f
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.cron_schedules, f.file_path, f.namespace_id, f.is_active, f.created_at, f.updated_at FROM flows f
 INNER JOIN latest_exec_log el ON el.flow_id = f.id
-WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+WHERE f.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE
 `
 
 type GetFlowFromExecIDWithNamespaceParams struct {
@@ -737,6 +746,7 @@ func (q *Queries) GetFlowFromExecIDWithNamespace(ctx context.Context, arg GetFlo
 		pq.Array(&i.CronSchedules),
 		&i.FilePath,
 		&i.NamespaceID,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -778,6 +788,7 @@ latest_versions AS (
     FROM execution_log el
     INNER JOIN flows f ON el.flow_id = f.id
     WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
     GROUP BY exec_id
 ),
 filtered AS (
@@ -790,6 +801,7 @@ filtered AS (
     INNER JOIN users u ON el.triggered_by = u.id
     INNER JOIN latest_versions lv ON el.exec_id = lv.exec_id AND el.version = lv.max_version
     WHERE f.namespace_id = (SELECT id FROM namespace_lookup)
+      AND f.is_active = TRUE
       AND (
         $2 = '' OR
         f.name ILIKE '%' || $2 || '%' OR
