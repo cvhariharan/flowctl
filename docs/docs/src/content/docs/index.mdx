@@ -18,21 +18,7 @@ Alternatively, you can set up flowctl manually with the following steps.
 
    Download the latest release for your platform from [GitHub Releases](https://github.com/cvhariharan/flowctl/releases).
 
-2. **Start PostgreSQL**
-
-   If you have Docker installed:
-
-   ```bash
-   docker run -d \
-     --name flowctl-postgres \
-     -e POSTGRES_USER=flowctl \
-     -e POSTGRES_PASSWORD=flowctl \
-     -e POSTGRES_DB=flowctl \
-     -p 5432:5432 \
-     postgres:17-alpine
-   ```
-
-3. **Configure flowctl**
+2. **Configure flowctl**
 
    ```bash
    flowctl --new-config
@@ -41,7 +27,7 @@ Alternatively, you can set up flowctl manually with the following steps.
    This will generate a default `config.toml` file in the current directory. Customize it if required.
    Create the flows directory as specified in `flows_directory` in `config.toml`.
 
-4. **DB migration**
+3. **DB migration**
 
    ```bash
    flowctl install
@@ -49,7 +35,7 @@ Alternatively, you can set up flowctl manually with the following steps.
 
    This will perform DB migrations. It is safe to run this multiple times.
 
-5. **Start flowctl**
+4. **Start flowctl**
 
    ```bash
    flowctl start
@@ -58,7 +44,7 @@ Alternatively, you can set up flowctl manually with the following steps.
    This will start the server and the background workers.
    The application will be available at [http://localhost:7000](http://localhost:7000). This will use the `config.toml` in the current working directory by default. You can pass `--config` flag to use a different config.
 
-6. **Login**
+5. **Login**
 
    Use the admin credentials you configured in `config.toml`.
 
@@ -124,12 +110,10 @@ This uses the [gocloud](https://gocloud.dev/howto/secrets/) package which suppor
 
 ```toml
 [app.scheduler]
-  backend = ""
   workers = 20
   cron_sync_interval = "5m0s"
 ```
 
-- **`backend`**: Scheduler backend type. Leave empty to use the default postgres backend (only available backend currently).
 - **`workers`**: Number of concurrent workers for executing flows (default: number of CPU threads)
 - **`cron_sync_interval`**: How often to sync scheduled flows from the database (default: `5m0s`)
 
@@ -137,7 +121,6 @@ This uses the [gocloud](https://gocloud.dev/howto/secrets/) package which suppor
 
 ```toml
 [app.logger]
-  backend = "file"
   log_directory = "/var/log/flowctl"
   max_size_bytes = 0
   retention_time = 0

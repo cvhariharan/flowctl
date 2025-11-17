@@ -42,31 +42,23 @@ Use the provided [docker-compose.yml](./docker-compose.yml) file.
 
 1. Download the latest binary from [releases](https://github.com/cvhariharan/flowctl/releases)
 
-2. Start PostgreSQL:
+2. Generate configuration:
 
    ```bash
-   docker run -d \
-     --name flowctl-postgres \
-     -e POSTGRES_USER=flowctl \
-     -e POSTGRES_PASSWORD=flowctl \
-     -e POSTGRES_DB=flowctl \
-     -p 5432:5432 \
-     postgres:17-alpine
+   ./flowctl --new-config
    ```
 
-3. Generate configuration:
+3. Database migrations:
 
    ```bash
-   flowctl --new-config
+   ./flowctl install
    ```
 
-4. Start flowctl:
+3. Start the server and visit `http://localhost:7000`:
 
    ```bash
-   flowctl start
+   ./flowctl install
    ```
-
-5. Access the UI at [http://localhost:7000](http://localhost:7000)
 
 ## Example Workflow
 
@@ -77,9 +69,10 @@ metadata:
   description: A simple greeting flow
 
 inputs:
-  - name: username
+  - name: email
     type: string
-    label: Username
+    label: Email
+    validation: email matches "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\\.[a-zA-Z]{2,}$"
     required: true
 
 actions:
@@ -87,7 +80,7 @@ actions:
     name: Greet User
     executor: docker
     variables:
-      - username: "{{ inputs.username }}"
+      - username: "{{ inputs.email }}"
     with:
       image: docker.io/alpine
       script: |
