@@ -92,7 +92,7 @@ func Load(configPath string) (Config, error) {
 
 	if err := k.Load(env.Provider("FLOWCTL_", ".", func(s string) string {
 		return strings.ReplaceAll(strings.ToLower(
-			strings.TrimPrefix(s, "FLOWCTL_")), "_", ".")
+			strings.TrimPrefix(s, "FLOWCTL_")), "__", ".")
 	}), nil); err != nil {
 		return Config{}, fmt.Errorf("error loading environment variables: %w", err)
 	}
