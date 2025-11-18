@@ -41,7 +41,9 @@
     historyLoading = true;
 
     try {
-      const response = await fetch(`/api/v1/${namespace}/flows/${flowId}/executions?page=${historyCurrentPage}&count_per_page=${historyItemsPerPage}`);
+      const response = await fetch(`/api/v1/${namespace}/flows/${flowId}/executions?page=${historyCurrentPage}&count_per_page=${historyItemsPerPage}`, {
+        credentials: 'include',
+      });
       const result = await response.json();
 
       if (!response.ok) {

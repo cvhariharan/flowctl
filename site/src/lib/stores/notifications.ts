@@ -11,11 +11,12 @@ export interface Notification {
 
 function createNotificationStore() {
   const { subscribe, update } = writable<Notification[]>([]);
+  let counter = 0;
 
   const store = {
     subscribe,
     add: (notification: Omit<Notification, 'id'>) => {
-      const id = crypto.randomUUID();
+      const id = `notification-${Date.now()}-${counter++}`;
       const newNotification: Notification = {
         id,
         duration: 5000, // Default 5 seconds
