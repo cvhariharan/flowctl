@@ -34,7 +34,7 @@
 
 #### Docker
 
-Use the provided [docker-compose.yml](./docker-compose.yml) file.
+Use the provided [docker-compose.yml](https://raw.githubusercontent.com/cvhariharan/flowctl/refs/heads/master/docker-compose.yaml) file.
 
 ---
 
