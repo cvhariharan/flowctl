@@ -1,0 +1,124 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - cd site && npm install
+    - cd site && npm run build
+
+builds:
+  - main: .
+    binary: flowctl
+    ldflags:
+      - -s -w
+      - -X 'github.com/cvhariharan/flowctl/cmd.version={{.Version}}'
+      - -X 'github.com/cvhariharan/flowctl/cmd.commit={{.ShortCommit}}'
+      - -X 'github.com/cvhariharan/flowctl/cmd.date={{.Date}}'
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - "386"
+      - arm
+      - arm64
+    goarm:
+      - "7"
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+
+dockers:
+  - image_templates:
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-amd64"
+    use: buildx
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    goos: linux
+    goarch: amd64
+
+  - image_templates:
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-arm64"
+    use: buildx
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    goos: linux
+    goarch: arm64
+
+  - image_templates:
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-armv7"
+    use: buildx
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - "--platform=linux/arm/v7"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    goos: linux
+    goarch: arm
+    goarm: "7"
+
+  - image_templates:
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-386"
+    use: buildx
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - "--platform=linux/386"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    goos: linux
+    goarch: "386"
+
+docker_manifests:
+  - name_template: "ghcr.io/cvhariharan/flowctl:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-amd64"
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-arm64"
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-armv7"
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-386"
+
+  - name_template: "ghcr.io/cvhariharan/flowctl:latest"
+    image_templates:
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-amd64"
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-arm64"
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-armv7"
+      - "ghcr.io/cvhariharan/flowctl:{{ .Version }}-386"
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-alpha"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'

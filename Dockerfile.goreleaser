@@ -1,0 +1,6 @@
+  FROM debian:bookworm-slim
+  WORKDIR /app
+  COPY flowctl /app/flowctl
+  RUN apt update && apt install -y tzdata
+  ENTRYPOINT ["/app/flowctl"]
+  CMD ["start"]
