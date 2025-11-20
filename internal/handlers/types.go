@@ -456,10 +456,11 @@ func coreFlowsToFlows(flows []models.Flow) FlowListResponse {
 }
 
 type UserProfileResponse struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Name     string `json:"name"`
-	Role     string `json:"role"`
+	ID       string   `json:"id"`
+	Username string   `json:"username"`
+	Name     string   `json:"name"`
+	Role     string   `json:"role"`
+	Groups   []string `json:"groups"`
 }
 
 func coreUserInfoToUserProfile(u models.UserInfo) UserProfileResponse {
@@ -468,6 +469,7 @@ func coreUserInfoToUserProfile(u models.UserInfo) UserProfileResponse {
 		Username: u.Username,
 		Name:     u.Name,
 		Role:     string(u.Role),
+		Groups:   u.Groups,
 	}
 }
 

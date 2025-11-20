@@ -16,6 +16,7 @@ export interface UserProfileResponse {
   username: string;
   name: string;
   role: string;
+  groups?: string[];
 }
 
 export interface AuthReq {
