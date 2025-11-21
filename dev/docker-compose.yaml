@@ -49,6 +49,9 @@ services:
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/go/cache
       - ./app-config.toml:/etc/flowctl/config.toml
+      - /var/run/docker.sock:/var/run/docker.sock
+      # This is a workaround to get tmp mounts in executors working
+      - /tmp:/tmp
     depends_on:
       - dex
       - postgres

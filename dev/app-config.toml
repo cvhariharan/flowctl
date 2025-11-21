@@ -8,17 +8,17 @@ root_url = "http://localhost:7000"
 secure_cookie_key = "tf0Hd_W6Hu5oHExXv8zZ6Q=="
 use_tls = false
 
-[app.keystore]
+[keystore]
   keeper_url = "base64key://2M-MkchieLohxn0jlmSfbuh4KE4EZz9tWrhcY9DZ8bE="
 
-[app.logger]
+[logger]
   backend = "file"
   log_directory = "/var/log/flowctl"
   max_size_bytes = 0
   retention_time = "0s"
   scan_interval = "1h0m0s"
 
-[app.oidc]
+[oidc]
   client_id = "flowctl"
   client_secret = "secret"
   issuer = "http://dex:5556/dex"
@@ -26,7 +26,7 @@ use_tls = false
   token_url = "http://dex:5556/dex/token"
   redirect_url = "http://localhost:5555/auth/callback"
 
-[app.scheduler]
+[scheduler]
   backend = ""
   cron_sync_interval = "5m0s"
   workers = 20
