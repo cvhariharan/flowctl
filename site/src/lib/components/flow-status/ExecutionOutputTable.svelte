@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { 
+  let {
     results
   }: {
     results: Record<string, any>
@@ -19,9 +19,7 @@
         {#each Object.entries(results) as [key, value]}
           <tr class="hover:bg-gray-50 transition-colors">
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-mono">{key}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              <code class="px-2 py-1 bg-success-50 text-success-700 rounded">{value}</code>
-            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-mono">{value}</td>
           </tr>
         {/each}
       </tbody>
