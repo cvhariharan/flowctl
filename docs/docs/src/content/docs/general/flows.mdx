@@ -12,7 +12,7 @@ Flows are the core automation units in flowctl. A flow is a sequence of actions 
 
 ## Flow Structure
 
-Every flow consists of four main sections:
+Every flow consists of three main sections:
 
 1. **Metadata** - Flow identification and configuration
 2. **Inputs** - Parameters that users provide when triggering the flow
@@ -181,6 +181,7 @@ inputs:
     type: string
     validation: len(username) >= 3 && len(username) <= 20
 ```
+Validations are [expr](https://expr-lang.org/) statements that should evaluate to either `true` or `false`.
 
 ## Actions
 
