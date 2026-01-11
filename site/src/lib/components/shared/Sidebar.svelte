@@ -22,6 +22,7 @@
         IconUsers,
         IconCircleCheck,
         IconClock,
+        IconWebhook,
         IconSettings,
         IconChevronsLeft,
         IconChevronsRight,
@@ -48,6 +49,7 @@
         members: ResourcePermissions;
         approvals: ResourcePermissions;
         history: ResourcePermissions;
+        webhooks: ResourcePermissions;
     }>({
         flows: {
             canCreate: false,
@@ -91,6 +93,12 @@
             canDelete: false,
             canRead: false,
         },
+        webhooks: {
+            canCreate: false,
+            canUpdate: false,
+            canDelete: false,
+            canRead: false,
+        },
     });
 
     const isActiveLink = (section: string): boolean => {
@@ -110,6 +118,8 @@
             return currentPath.includes("/approvals");
         } else if (section === "history") {
             return currentPath.includes("/history");
+        } else if (section === "webhooks") {
+            return currentPath.includes("/webhooks");
         } else if (section === "settings") {
             return currentPath.includes("/settings");
         }
@@ -184,6 +194,7 @@
             members: "member",
             approvals: "approval",
             history: "execution",
+            webhooks: "webhook",
         };
 
         try {
@@ -500,6 +511,33 @@
                     />
                     {#if !isCollapsed}
                         Secrets
+                    {/if}
+                </a>
+            </li>
+        {/if}
+        {#if permissions.webhooks.canRead}
+            <li>
+                <a
+                    href="/view/{namespace}/webhooks"
+                    class="flex items-center text-sm font-medium rounded-lg transition-colors {isCollapsed
+                        ? 'justify-center px-4 py-3'
+                        : 'px-4 py-3'}"
+                    class:bg-primary-50={isActiveLink("webhooks")}
+                    class:text-primary-600={isActiveLink("webhooks")}
+                    class:text-gray-700={!isActiveLink("webhooks")}
+                    class:hover:bg-gray-100={!isActiveLink("webhooks")}
+                    aria-current={isActiveLink("webhooks") ? "page" : undefined}
+                    title={isCollapsed ? "Webhooks" : ""}
+                >
+                    <IconWebhook
+                        class="text-xl flex-shrink-0 {isCollapsed
+                            ? ''
+                            : 'mr-3'}"
+                        size={20}
+                        aria-hidden="true"
+                    />
+                    {#if !isCollapsed}
+                        Webhooks
                     {/if}
                 </a>
             </li>

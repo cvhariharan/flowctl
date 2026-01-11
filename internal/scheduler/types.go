@@ -194,9 +194,15 @@ const (
 )
 
 type Notify struct {
-	Channel   string        `yaml:"channel" json:"channel"`
-	Receivers []string      `yaml:"receivers" json:"receivers"`
-	Events    []NotifyEvent `yaml:"events" json:"events"`
+	Channel          string                   `yaml:"channel" json:"channel"`
+	Receivers        []string                 `yaml:"receivers" json:"receivers"`
+	WebhookNames     []string                 `yaml:"webhook_names" json:"webhook_names"`
+	TemplateOverride *NotifyTemplateOverride  `yaml:"template_override" json:"template_override"`
+	Events           []NotifyEvent            `yaml:"events" json:"events"`
+}
+
+type NotifyTemplateOverride struct {
+	Body string `yaml:"body" json:"body"`
 }
 
 type Flow struct {

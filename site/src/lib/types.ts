@@ -49,8 +49,73 @@ export interface Schedule {
 
 export interface Notify {
   channel: string;
-  receivers: string[];
+  receivers?: string[];
+  webhook_names?: string[];
+  template_override?: {
+    body: string;
+  };
   events: string[];
+}
+
+export interface WebhookHeader {
+  key: string;
+  value: string;
+}
+
+export interface WebhookTemplate {
+  format: string;
+  body: string;
+}
+
+export interface WebhookCreateReq {
+  name: string;
+  description?: string;
+  type: string;
+  url: string;
+  content_type?: string;
+  headers?: WebhookHeader[];
+  template: WebhookTemplate;
+  is_active?: boolean;
+}
+
+export interface WebhookUpdateReq {
+  name: string;
+  description?: string;
+  type: string;
+  url?: string;
+  content_type?: string;
+  headers?: WebhookHeader[];
+  template: WebhookTemplate;
+  is_active?: boolean;
+}
+
+export interface WebhookListItem {
+  id: string;
+  name: string;
+  type: string;
+  description?: string;
+  url_masked: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WebhookListResponse {
+  webhooks: WebhookListItem[];
+}
+
+export interface WebhookResp {
+  id: string;
+  name: string;
+  type: string;
+  description?: string;
+  url_masked: string;
+  content_type: string;
+  headers?: WebhookHeader[];
+  template: WebhookTemplate;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Flow {
@@ -470,6 +535,7 @@ export interface FlowUpdateReq {
   inputs: FlowInputReq[];
   actions: FlowActionReq[];
   outputs?: Record<string, any>[];
+  notify?: Notify[];
 }
 
 // Table component types
@@ -488,6 +554,9 @@ export interface TableAction<T = any> {
   onClick?: (row: T, event?: Event) => void;
   href?: (row: T) => string;
   className?: string;
+  IconComponent?: any;
+  iconSize?: number;
+  iconOnly?: boolean;
 }
 
 export interface TableProps<T = any> {

@@ -28,6 +28,10 @@ import type {
   NamespaceSecretReq,
   NamespaceSecretUpdateReq,
   NamespaceSecretResp,
+  WebhookCreateReq,
+  WebhookUpdateReq,
+  WebhookListResponse,
+  WebhookResp,
   NamespaceReq,
   NamespaceResp,
   NamespaceMemberReq,
@@ -345,6 +349,37 @@ export const apiClient = {
     delete: (namespace: string, secretId: string) =>
       baseFetch<void>(`/api/v1/${namespace}/secrets/${secretId}`, {
         method: 'DELETE',
+      }),
+  },
+
+  // Namespace webhooks
+  namespaceWebhooks: {
+    list: (namespace: string) =>
+      baseFetch<WebhookListResponse>(`/api/v1/${namespace}/webhooks`),
+    getById: (namespace: string, webhookId: string) =>
+      baseFetch<WebhookResp>(`/api/v1/${namespace}/webhooks/${webhookId}`),
+    create: (namespace: string, webhook: WebhookCreateReq) =>
+      baseFetch<WebhookResp>(`/api/v1/${namespace}/webhooks`, {
+        method: 'POST',
+        body: JSON.stringify(webhook),
+      }),
+    update: (namespace: string, webhookId: string, webhook: WebhookUpdateReq) =>
+      baseFetch<WebhookResp>(`/api/v1/${namespace}/webhooks/${webhookId}`, {
+        method: 'PUT',
+        body: JSON.stringify(webhook),
+      }),
+    delete: (namespace: string, webhookId: string) =>
+      baseFetch<void>(`/api/v1/${namespace}/webhooks/${webhookId}`, {
+        method: 'DELETE',
+      }),
+    test: (namespace: string, webhookId: string) =>
+      baseFetch<{ message: string }>(`/api/v1/${namespace}/webhooks/${webhookId}/test`, {
+        method: 'POST',
+      }),
+    duplicate: (namespace: string, webhookId: string, payload: { name: string; description?: string }) =>
+      baseFetch<WebhookResp>(`/api/v1/${namespace}/webhooks/${webhookId}/duplicate`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
       }),
   },
 

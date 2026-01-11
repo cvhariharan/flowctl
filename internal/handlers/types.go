@@ -328,9 +328,15 @@ type Schedule struct {
 
 // Notify represents notification configuration for flow events
 type Notify struct {
-	Channel   string   `json:"channel" validate:"required,oneof=email"`
-	Receivers []string `json:"receivers" validate:"required,min=1,dive,notification_receiver"`
-	Events    []string `json:"events" validate:"required,dive,min=1,oneof=on_success on_failure on_waiting on_cancelled"`
+	Channel          string                 `json:"channel" validate:"required,oneof=email webhook"`
+	Receivers        []string               `json:"receivers" validate:"omitempty,dive,notification_receiver"`
+	WebhookNames     []string               `json:"webhook_names" validate:"omitempty,dive,required"`
+	TemplateOverride *NotifyTemplateOverride `json:"template_override"`
+	Events           []string               `json:"events" validate:"required,dive,min=1,oneof=on_success on_failure on_waiting on_cancelled"`
+}
+
+type NotifyTemplateOverride struct {
+	Body string `json:"body"`
 }
 
 func convertNotifyToNotifyReq(notify []models.Notify) []Notify {
@@ -340,10 +346,16 @@ func convertNotifyToNotifyReq(notify []models.Notify) []Notify {
 		for j, e := range n.Events {
 			events[j] = string(e)
 		}
+		var override *NotifyTemplateOverride
+		if n.TemplateOverride != nil {
+			override = &NotifyTemplateOverride{Body: n.TemplateOverride.Body}
+		}
 		resp[i] = Notify{
-			Channel:   n.Channel,
-			Receivers: n.Receivers,
-			Events:    events,
+			Channel:          n.Channel,
+			Receivers:        n.Receivers,
+			WebhookNames:     n.WebhookNames,
+			TemplateOverride: override,
+			Events:           events,
 		}
 	}
 	return resp
@@ -356,10 +368,16 @@ func convertNotifyReqToNotify(notify []Notify) []models.Notify {
 		for j, e := range n.Events {
 			events[j] = models.NotifyEvent(e)
 		}
+		var override *models.NotifyTemplateOverride
+		if n.TemplateOverride != nil {
+			override = &models.NotifyTemplateOverride{Body: n.TemplateOverride.Body}
+		}
 		resp[i] = models.Notify{
-			Channel:   n.Channel,
-			Receivers: n.Receivers,
-			Events:    events,
+			Channel:          n.Channel,
+			Receivers:        n.Receivers,
+			WebhookNames:     n.WebhookNames,
+			TemplateOverride: override,
+			Events:           events,
 		}
 	}
 	return resp
@@ -864,6 +882,91 @@ func coreNamespaceSecretToNamespaceSecretResp(secret models.NamespaceSecret) Nam
 		CreatedAt:   secret.CreatedAt,
 		UpdatedAt:   secret.UpdatedAt,
 	}
+}
+
+type WebhookHeaderReq struct {
+	Key   string `json:"key" validate:"required"`
+	Value string `json:"value" validate:"required"`
+}
+
+type WebhookHeaderResp struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type WebhookTemplateReq struct {
+	Format string `json:"format" validate:"required"`
+	Body   string `json:"body" validate:"required"`
+}
+
+type WebhookTemplateResp struct {
+	Format string `json:"format"`
+	Body   string `json:"body"`
+}
+
+type WebhookCreateReq struct {
+	Name        string              `json:"name" validate:"required"`
+	Description string              `json:"description"`
+	Type        string              `json:"type" validate:"required,oneof=generic slack teams"`
+	URL         string              `json:"url" validate:"required"`
+	ContentType string              `json:"content_type"`
+	Headers     []WebhookHeaderReq  `json:"headers"`
+	Template    WebhookTemplateReq  `json:"template" validate:"required"`
+	IsActive    *bool               `json:"is_active"`
+}
+
+type WebhookUpdateReq struct {
+	WebhookID   string              `param:"webhookID" validate:"required"`
+	Name        string              `json:"name" validate:"required"`
+	Description string              `json:"description"`
+	Type        string              `json:"type" validate:"required,oneof=generic slack teams"`
+	URL         *string             `json:"url"`
+	ContentType string              `json:"content_type"`
+	Headers     *[]WebhookHeaderReq `json:"headers"`
+	Template    WebhookTemplateReq  `json:"template" validate:"required"`
+	IsActive    *bool               `json:"is_active"`
+}
+
+type WebhookGetReq struct {
+	WebhookID string `param:"webhookID" validate:"required"`
+}
+
+type WebhookDuplicateReq struct {
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description"`
+}
+
+type WebhookListResp struct {
+	Webhooks []WebhookListItem `json:"webhooks"`
+}
+
+type WebhookListItem struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description,omitempty"`
+	URLMasked   string `json:"url_masked"`
+	IsActive    bool   `json:"is_active"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
+type WebhookResp struct {
+	ID          string              `json:"id"`
+	Name        string              `json:"name"`
+	Type        string              `json:"type"`
+	Description string              `json:"description,omitempty"`
+	URLMasked   string              `json:"url_masked"`
+	ContentType string              `json:"content_type"`
+	Headers     []WebhookHeaderResp `json:"headers,omitempty"`
+	Template    WebhookTemplateResp `json:"template"`
+	IsActive    bool                `json:"is_active"`
+	CreatedAt   string              `json:"created_at"`
+	UpdatedAt   string              `json:"updated_at"`
+}
+
+type WebhookTestResp struct {
+	Message string `json:"message"`
 }
 
 type FlowCancellationResp struct {

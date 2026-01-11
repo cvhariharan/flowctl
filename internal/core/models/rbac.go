@@ -20,6 +20,7 @@ const (
 	ResourceExecution       Resource = "execution"
 	ResourceApproval        Resource = "approval"
 	ResourceNamespace       Resource = "namespace"
+	ResourceWebhook         Resource = "webhook"
 )
 
 type RBACAction string

@@ -460,6 +460,23 @@ type NamespaceSecret struct {
 	UpdatedAt      time.Time      `db:"updated_at" json:"updated_at"`
 }
 
+type NamespaceWebhook struct {
+	ID               int32          `db:"id" json:"id"`
+	Uuid             uuid.UUID      `db:"uuid" json:"uuid"`
+	Name             string         `db:"name" json:"name"`
+	Description      sql.NullString `db:"description" json:"description"`
+	Type             string         `db:"type" json:"type"`
+	EncryptedUrl     string         `db:"encrypted_url" json:"encrypted_url"`
+	EncryptedHeaders sql.NullString `db:"encrypted_headers" json:"encrypted_headers"`
+	ContentType      string         `db:"content_type" json:"content_type"`
+	TemplateBody     string         `db:"template_body" json:"template_body"`
+	TemplateFormat   string         `db:"template_format" json:"template_format"`
+	IsActive         bool           `db:"is_active" json:"is_active"`
+	NamespaceID      int32          `db:"namespace_id" json:"namespace_id"`
+	CreatedAt        time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt        time.Time      `db:"updated_at" json:"updated_at"`
+}
+
 type Node struct {
 	ID             int32                `db:"id" json:"id"`
 	Uuid           uuid.UUID            `db:"uuid" json:"uuid"`
@@ -490,6 +507,33 @@ type Session struct {
 	ID        string          `db:"id" json:"id"`
 	Data      json.RawMessage `db:"data" json:"data"`
 	CreatedAt time.Time       `db:"created_at" json:"created_at"`
+}
+
+type WebhookDelivery struct {
+	ID               int32          `db:"id" json:"id"`
+	Uuid             uuid.UUID      `db:"uuid" json:"uuid"`
+	WebhookID        int32          `db:"webhook_id" json:"webhook_id"`
+	FlowID           string         `db:"flow_id" json:"flow_id"`
+	ExecutionID      string         `db:"execution_id" json:"execution_id"`
+	Event            string         `db:"event" json:"event"`
+	Status           string         `db:"status" json:"status"`
+	AttemptCount     int32          `db:"attempt_count" json:"attempt_count"`
+	NextAttemptAt    sql.NullTime   `db:"next_attempt_at" json:"next_attempt_at"`
+	LastStatusCode   sql.NullInt32  `db:"last_status_code" json:"last_status_code"`
+	LastErrorMessage sql.NullString `db:"last_error_message" json:"last_error_message"`
+	DeliveredAt      sql.NullTime   `db:"delivered_at" json:"delivered_at"`
+	CreatedAt        time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt        time.Time      `db:"updated_at" json:"updated_at"`
+}
+
+type WebhookDeliveryAttempt struct {
+	ID            int32          `db:"id" json:"id"`
+	DeliveryID    uuid.UUID      `db:"delivery_id" json:"delivery_id"`
+	AttemptNumber int32          `db:"attempt_number" json:"attempt_number"`
+	StatusCode    sql.NullInt32  `db:"status_code" json:"status_code"`
+	ErrorMessage  sql.NullString `db:"error_message" json:"error_message"`
+	DurationMs    sql.NullInt32  `db:"duration_ms" json:"duration_ms"`
+	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
 }
 
 type User struct {

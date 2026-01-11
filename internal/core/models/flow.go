@@ -55,9 +55,15 @@ const (
 )
 
 type Notify struct {
-	Channel   string        `yaml:"channel" huml:"channel" json:"channel" validate:"required,oneof=email"`
-	Receivers []string      `yaml:"receivers" huml:"receivers" json:"receivers" validate:"required,min=1,dive,notification_receiver"`
-	Events    []NotifyEvent `yaml:"events" huml:"events" json:"events" validate:"required,dive,min=1,oneof=on_success on_failure on_waiting on_cancelled"`
+	Channel          string               `yaml:"channel" huml:"channel" json:"channel" validate:"required,oneof=email webhook"`
+	Receivers        []string             `yaml:"receivers" huml:"receivers" json:"receivers" validate:"omitempty,dive,notification_receiver"`
+	WebhookNames     []string             `yaml:"webhook_names" huml:"webhook_names" json:"webhook_names" validate:"omitempty,dive,required"`
+	TemplateOverride *NotifyTemplateOverride `yaml:"template_override" huml:"template_override" json:"template_override"`
+	Events           []NotifyEvent        `yaml:"events" huml:"events" json:"events" validate:"required,dive,min=1,oneof=on_success on_failure on_waiting on_cancelled"`
+}
+
+type NotifyTemplateOverride struct {
+	Body string `yaml:"body" huml:"body" json:"body"`
 }
 
 type Action struct {
@@ -224,6 +230,36 @@ func (f Flow) Validate() error {
 	// Check if schedules are set on a non-schedulable flow
 	if len(f.Schedules) > 0 && !f.IsSchedulable() {
 		return fmt.Errorf("cannot set schedules on flow: flow has inputs without default values")
+	}
+
+	for i, n := range f.Notify {
+		switch n.Channel {
+		case "email":
+			if len(n.Receivers) == 0 {
+				return fmt.Errorf("notify[%d]: receivers are required for email notifications", i)
+			}
+			if len(n.WebhookNames) > 0 {
+				return fmt.Errorf("notify[%d]: webhook_names are only valid for webhook notifications", i)
+			}
+			if n.TemplateOverride != nil {
+				return fmt.Errorf("notify[%d]: template_override is only valid for webhook notifications", i)
+			}
+		case "webhook":
+			if len(n.WebhookNames) == 0 {
+				return fmt.Errorf("notify[%d]: webhook_names are required for webhook notifications", i)
+			}
+			for _, name := range n.WebhookNames {
+				if strings.TrimSpace(name) == "" {
+					return fmt.Errorf("notify[%d]: webhook_names cannot be empty", i)
+				}
+			}
+			if len(n.Receivers) > 0 {
+				return fmt.Errorf("notify[%d]: receivers are only valid for email notifications", i)
+			}
+			if n.TemplateOverride != nil && strings.TrimSpace(n.TemplateOverride.Body) == "" {
+				return fmt.Errorf("notify[%d]: template_override.body is required when provided", i)
+			}
+		}
 	}
 
 	return validate.Struct(f)
@@ -508,10 +544,18 @@ func ConvertToSchedulerFlow(ctx context.Context, f Flow, namespaceUUID uuid.UUID
 		for _, e := range n.Events {
 			events = append(events, scheduler.NotifyEvent(e))
 		}
+		var override *scheduler.NotifyTemplateOverride
+		if n.TemplateOverride != nil {
+			override = &scheduler.NotifyTemplateOverride{
+				Body: n.TemplateOverride.Body,
+			}
+		}
 		notify = append(notify, scheduler.Notify{
-			Channel:   n.Channel,
-			Receivers: n.Receivers,
-			Events:    events,
+			Channel:          n.Channel,
+			Receivers:        n.Receivers,
+			WebhookNames:     n.WebhookNames,
+			TemplateOverride: override,
+			Events:           events,
 		})
 	}
 

@@ -62,6 +62,10 @@ func (c *Core) InitializeRBACPolicies() error {
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNamespaceSecret), string(models.RBACActionCreate))
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNamespaceSecret), string(models.RBACActionUpdate))
 	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceNamespaceSecret), string(models.RBACActionDelete))
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceWebhook), string(models.RBACActionView))
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceWebhook), string(models.RBACActionCreate))
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceWebhook), string(models.RBACActionUpdate))
+	c.enforcer.AddPolicy("role:admin", "*", string(models.ResourceWebhook), string(models.RBACActionDelete))
 
 	// Synchronize user/group role assignments from database
 	if err := c.SynchronizePolicies(context.Background()); err != nil {

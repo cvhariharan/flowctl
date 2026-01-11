@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"slices"
 	"sync"
 
 	"github.com/casbin/casbin/v2"
@@ -190,6 +191,9 @@ func initializeSharedComponents() *SharedComponents {
 
 	// Initialize messengers
 	messengersMap, messengerNames := initMessengers(appConfig.Messengers, logger)
+	if !slices.Contains(messengerNames, "webhook") {
+		messengerNames = append(messengerNames, "webhook")
+	}
 
 	// Create core with scheduler
 	co, err := core.NewCore(appConfig.App.FlowsDirectory, s, sch, keeper, enforcer, messengerNames)
@@ -213,8 +217,14 @@ func initializeSharedComponents() *SharedComponents {
 		log.Fatal(err)
 	}
 
+	webhookHandler := scheduler.NewWebhookDeliveryHandler(s, keeper, sch, logger.WithGroup("webhook_handler"), appConfig.App.RootURL)
+	if err := sch.SetHandler(webhookHandler); err != nil {
+		log.Fatal(err)
+	}
+
 	queueWeights := []scheduler.QueueWeight{
-		{PayloadType: scheduler.PayloadTypeFlowExecution, Weight: 100},
+		{PayloadType: scheduler.PayloadTypeFlowExecution, Weight: 90},
+		{PayloadType: scheduler.PayloadTypeWebhookDelivery, Weight: 10},
 	}
 
 	if len(messengersMap) > 0 {
@@ -229,8 +239,9 @@ func initializeSharedComponents() *SharedComponents {
 
 		// Update queue weights to include notifications
 		queueWeights = []scheduler.QueueWeight{
-			{PayloadType: scheduler.PayloadTypeFlowExecution, Weight: 90},
+			{PayloadType: scheduler.PayloadTypeFlowExecution, Weight: 80},
 			{PayloadType: scheduler.PayloadTypeNotification, Weight: 10},
+			{PayloadType: scheduler.PayloadTypeWebhookDelivery, Weight: 10},
 		}
 
 		logger.Info("notifications enabled", "channels", len(messengersMap))
@@ -378,6 +389,15 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 	namespaceGroup.POST("/secrets", h.HandleCreateNamespaceSecret, h.AuthorizeNamespaceAction(models.ResourceNamespaceSecret, models.RBACActionCreate))
 	namespaceGroup.PUT("/secrets/:secretID", h.HandleUpdateNamespaceSecret, h.AuthorizeNamespaceAction(models.ResourceNamespaceSecret, models.RBACActionUpdate))
 	namespaceGroup.DELETE("/secrets/:secretID", h.HandleDeleteNamespaceSecret, h.AuthorizeNamespaceAction(models.ResourceNamespaceSecret, models.RBACActionDelete))
+
+	// Webhook routes - admins only
+	namespaceGroup.GET("/webhooks", h.HandleListWebhooks, h.AuthorizeNamespaceAction(models.ResourceWebhook, models.RBACActionView))
+	namespaceGroup.GET("/webhooks/:webhookID", h.HandleGetWebhook, h.AuthorizeNamespaceAction(models.ResourceWebhook, models.RBACActionView))
+	namespaceGroup.POST("/webhooks", h.HandleCreateWebhook, h.AuthorizeNamespaceAction(models.ResourceWebhook, models.RBACActionCreate))
+	namespaceGroup.PUT("/webhooks/:webhookID", h.HandleUpdateWebhook, h.AuthorizeNamespaceAction(models.ResourceWebhook, models.RBACActionUpdate))
+	namespaceGroup.DELETE("/webhooks/:webhookID", h.HandleDeleteWebhook, h.AuthorizeNamespaceAction(models.ResourceWebhook, models.RBACActionDelete))
+	namespaceGroup.POST("/webhooks/:webhookID/test", h.HandleTestWebhook, h.AuthorizeNamespaceAction(models.ResourceWebhook, models.RBACActionUpdate))
+	namespaceGroup.POST("/webhooks/:webhookID/duplicate", h.HandleDuplicateWebhook, h.AuthorizeNamespaceAction(models.ResourceWebhook, models.RBACActionCreate))
 
 	buildFS, err := fs.Sub(StaticFiles, "site/build")
 	if err != nil {

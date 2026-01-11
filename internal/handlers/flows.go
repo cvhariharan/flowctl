@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
@@ -758,4 +759,39 @@ func (h *Handler) HandleRetryExecution(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusCreated)
+}
+
+func validateNotifyConfigs(notify []Notify) error {
+	for i, n := range notify {
+		switch n.Channel {
+		case "email":
+			if len(n.Receivers) == 0 {
+				return fmt.Errorf("notify[%d]: receivers are required for email notifications", i)
+			}
+			if len(n.WebhookNames) > 0 {
+				return fmt.Errorf("notify[%d]: webhook_names are only valid for webhook notifications", i)
+			}
+			if n.TemplateOverride != nil {
+				return fmt.Errorf("notify[%d]: template_override is only valid for webhook notifications", i)
+			}
+		case "webhook":
+			if len(n.WebhookNames) == 0 {
+				return fmt.Errorf("notify[%d]: webhook_names are required for webhook notifications", i)
+			}
+			for _, name := range n.WebhookNames {
+				if strings.TrimSpace(name) == "" {
+					return fmt.Errorf("notify[%d]: webhook_names cannot be empty", i)
+				}
+			}
+			if len(n.Receivers) > 0 {
+				return fmt.Errorf("notify[%d]: receivers are only valid for email notifications", i)
+			}
+			if n.TemplateOverride != nil && strings.TrimSpace(n.TemplateOverride.Body) == "" {
+				return fmt.Errorf("notify[%d]: template_override.body is required when provided", i)
+			}
+		default:
+			return fmt.Errorf("notify[%d]: invalid channel %q", i, n.Channel)
+		}
+	}
+	return nil
 }

@@ -105,6 +105,8 @@
             channel: "",
             events: [],
             receivers: [],
+            webhook_names: [],
+            template_override: { body: "" },
         });
     }
 
@@ -167,11 +169,27 @@
                     ),
                 notify: flow.notifications
                     .filter((n) => n.channel)
-                    .map((notification) => ({
-                        channel: notification.channel,
-                        events: notification.events || [],
-                        receivers: notification.receivers || [],
-                    })),
+                    .map((notification) => {
+                        const base = {
+                            channel: notification.channel,
+                            events: notification.events || [],
+                        };
+                        if (notification.channel === "webhook") {
+                            return {
+                                ...base,
+                                webhook_names:
+                                    notification.webhook_names || [],
+                                template_override:
+                                    notification.template_override?.body
+                                        ? { body: notification.template_override.body }
+                                        : undefined,
+                            };
+                        }
+                        return {
+                            ...base,
+                            receivers: notification.receivers || [],
+                        };
+                    }),
             };
 
             const result = await apiClient.flows.create(namespace, flowData);
@@ -249,6 +267,7 @@
                             <FlowNotifications
                                 bind:notifications={flow.notifications}
                                 {addNotification}
+                                {namespace}
                             />
                         {:else if activeTab === "secrets"}
                             <SecretsTab {namespace} disabled={true} />

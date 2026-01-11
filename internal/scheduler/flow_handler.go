@@ -837,6 +837,11 @@ func (h *FlowExecutionHandler) enqueueNotifications(ctx context.Context, execID 
 			continue
 		}
 
+		if notify.Channel == "webhook" {
+			h.enqueueWebhookNotifications(ctx, execID, event, payload, notify)
+			continue
+		}
+
 		var errMsg string
 		if execErr != nil {
 			errMsg = execErr.Error()
@@ -860,6 +865,62 @@ func (h *FlowExecutionHandler) enqueueNotifications(ctx context.Context, execID 
 			h.logger.Error("failed to queue notification", "execID", execID, "channel", notify.Channel, "error", err)
 		} else {
 			h.logger.Debug("notification queued", "execID", execID, "channel", notify.Channel, "event", event)
+		}
+	}
+}
+
+func (h *FlowExecutionHandler) enqueueWebhookNotifications(ctx context.Context, execID string, event NotifyEvent, payload FlowExecutionPayload, notify Notify) {
+	if h.taskQueuer == nil {
+		return
+	}
+
+	namespaceUUID, err := uuid.Parse(payload.NamespaceID)
+	if err != nil {
+		h.logger.Error("invalid namespace UUID for webhook notifications", "execID", execID, "error", err)
+		return
+	}
+
+	overrideBody := ""
+	if notify.TemplateOverride != nil {
+		overrideBody = notify.TemplateOverride.Body
+	}
+
+	for _, webhookName := range notify.WebhookNames {
+		hook, err := h.store.GetNamespaceWebhookByName(ctx, repo.GetNamespaceWebhookByNameParams{
+			Uuid: namespaceUUID,
+			Name: webhookName,
+		})
+		if err != nil {
+			h.logger.Error("failed to resolve webhook", "execID", execID, "webhook", webhookName, "error", err)
+			continue
+		}
+
+		if !hook.IsActive {
+			h.logger.Warn("webhook is inactive", "execID", execID, "webhook", webhookName)
+			continue
+		}
+
+		delivery, err := h.store.CreateWebhookDelivery(ctx, repo.CreateWebhookDeliveryParams{
+			WebhookID:   hook.ID,
+			FlowID:      payload.Workflow.Meta.ID,
+			ExecutionID: execID,
+			Event:       string(event),
+		})
+		if err != nil {
+			h.logger.Error("failed to create webhook delivery", "execID", execID, "webhook", webhookName, "error", err)
+			continue
+		}
+
+		jobPayload := WebhookDeliveryPayload{
+			DeliveryID:       delivery.Uuid.String(),
+			TemplateOverride: overrideBody,
+		}
+
+		jobID := fmt.Sprintf("webhook-%s-%s", execID, delivery.Uuid.String())
+		if _, err := h.taskQueuer.QueueTask(ctx, PayloadTypeWebhookDelivery, jobID, jobPayload); err != nil {
+			h.logger.Error("failed to queue webhook delivery", "execID", execID, "delivery_id", delivery.Uuid.String(), "error", err)
+		} else {
+			h.logger.Debug("webhook delivery queued", "execID", execID, "delivery_id", delivery.Uuid.String(), "event", event)
 		}
 	}
 }

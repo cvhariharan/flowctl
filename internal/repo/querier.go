@@ -21,6 +21,7 @@ type Querier interface {
 	AssignGroupNamespaceRole(ctx context.Context, arg AssignGroupNamespaceRoleParams) (NamespaceMember, error)
 	AssignUserNamespaceRole(ctx context.Context, arg AssignUserNamespaceRoleParams) (NamespaceMember, error)
 	CancelTasksByExecID(ctx context.Context, execID string) error
+	AddWebhookDeliveryAttempt(ctx context.Context, arg AddWebhookDeliveryAttemptParams) (WebhookDeliveryAttempt, error)
 	CreateCredential(ctx context.Context, arg CreateCredentialParams) (Credential, error)
 	CreateCronSchedule(ctx context.Context, arg CreateCronScheduleParams) (CronSchedule, error)
 	CreateFlow(ctx context.Context, arg CreateFlowParams) (Flow, error)
@@ -28,10 +29,12 @@ type Querier interface {
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (Group, error)
 	CreateNamespace(ctx context.Context, name string) (Namespace, error)
 	CreateNamespaceSecret(ctx context.Context, arg CreateNamespaceSecretParams) (NamespaceSecret, error)
+	CreateNamespaceWebhook(ctx context.Context, arg CreateNamespaceWebhookParams) (NamespaceWebhook, error)
 	CreateNode(ctx context.Context, arg CreateNodeParams) (Node, error)
 	// Immediate task operations
 	CreateSchedulerTask(ctx context.Context, arg CreateSchedulerTaskParams) (SchedulerTask, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateWebhookDelivery(ctx context.Context, arg CreateWebhookDeliveryParams) (WebhookDelivery, error)
 	DeleteAllFlows(ctx context.Context) error
 	DeleteCredential(ctx context.Context, arg DeleteCredentialParams) error
 	DeleteCronSchedulesByFlowID(ctx context.Context, flowID int32) error
@@ -40,6 +43,7 @@ type Querier interface {
 	DeleteGroupByUUID(ctx context.Context, argUuid uuid.UUID) error
 	DeleteNamespace(ctx context.Context, argUuid uuid.UUID) error
 	DeleteNamespaceSecret(ctx context.Context, arg DeleteNamespaceSecretParams) error
+	DeleteNamespaceWebhook(ctx context.Context, arg DeleteNamespaceWebhookParams) error
 	DeleteNode(ctx context.Context, arg DeleteNodeParams) error
 	DeleteUserByUUID(ctx context.Context, argUuid uuid.UUID) error
 	ExecutionExistsForFlow(ctx context.Context, arg ExecutionExistsForFlowParams) (bool, error)
@@ -81,6 +85,9 @@ type Querier interface {
 	GetNamespaceByUUID(ctx context.Context, argUuid uuid.UUID) (Namespace, error)
 	GetNamespaceMembers(ctx context.Context, argUuid uuid.UUID) ([]GetNamespaceMembersRow, error)
 	GetNamespaceSecretByUUID(ctx context.Context, arg GetNamespaceSecretByUUIDParams) (GetNamespaceSecretByUUIDRow, error)
+	GetNamespaceWebhookByID(ctx context.Context, id int32) (GetNamespaceWebhookByIDRow, error)
+	GetNamespaceWebhookByName(ctx context.Context, arg GetNamespaceWebhookByNameParams) (GetNamespaceWebhookByNameRow, error)
+	GetNamespaceWebhookByUUID(ctx context.Context, arg GetNamespaceWebhookByUUIDParams) (GetNamespaceWebhookByUUIDRow, error)
 	GetNodeByName(ctx context.Context, arg GetNodeByNameParams) (GetNodeByNameRow, error)
 	GetNodeByUUID(ctx context.Context, arg GetNodeByUUIDParams) (GetNodeByUUIDRow, error)
 	GetNodeStats(ctx context.Context, argUuid uuid.UUID) (GetNodeStatsRow, error)
@@ -96,11 +103,13 @@ type Querier interface {
 	GetUserGroups(ctx context.Context, argUuid uuid.UUID) ([]Group, error)
 	GetUserNamespacesWithRoles(ctx context.Context, argUuid uuid.UUID) ([]GetUserNamespacesWithRolesRow, error)
 	GetUsersByRole(ctx context.Context, role UserRoleType) ([]User, error)
+	GetWebhookDeliveryByUUID(ctx context.Context, uuid uuid.UUID) (WebhookDelivery, error)
 	IncrementActionRetry(ctx context.Context, arg IncrementActionRetryParams) (IncrementActionRetryRow, error)
 	ListFlowSecrets(ctx context.Context, arg ListFlowSecretsParams) ([]ListFlowSecretsRow, error)
 	ListFlows(ctx context.Context, arg ListFlowsParams) ([]ListFlowsRow, error)
 	ListFlowsPaginated(ctx context.Context, arg ListFlowsPaginatedParams) ([]ListFlowsPaginatedRow, error)
 	ListNamespaceSecrets(ctx context.Context, argUuid uuid.UUID) ([]ListNamespaceSecretsRow, error)
+	ListNamespaceWebhooks(ctx context.Context, argUuid uuid.UUID) ([]ListNamespaceWebhooksRow, error)
 	ListNamespaces(ctx context.Context, arg ListNamespacesParams) ([]ListNamespacesRow, error)
 	MarkAllFlowsInactiveForNamespace(ctx context.Context, argUuid uuid.UUID) error
 	MarkFlowActive(ctx context.Context, arg MarkFlowActiveParams) error
@@ -125,10 +134,12 @@ type Querier interface {
 	UpdateNamespace(ctx context.Context, arg UpdateNamespaceParams) (Namespace, error)
 	UpdateNamespaceMember(ctx context.Context, arg UpdateNamespaceMemberParams) (NamespaceMember, error)
 	UpdateNamespaceSecret(ctx context.Context, arg UpdateNamespaceSecretParams) (NamespaceSecret, error)
+	UpdateNamespaceWebhook(ctx context.Context, arg UpdateNamespaceWebhookParams) (NamespaceWebhook, error)
 	UpdateNode(ctx context.Context, arg UpdateNodeParams) (Node, error)
 	UpdateTaskStatus(ctx context.Context, arg UpdateTaskStatusParams) error
 	UpdateUserByUUID(ctx context.Context, arg UpdateUserByUUIDParams) (User, error)
 	UpdateUserPasswordByUsername(ctx context.Context, arg UpdateUserPasswordByUsernameParams) (User, error)
+	UpdateWebhookDelivery(ctx context.Context, arg UpdateWebhookDeliveryParams) (WebhookDelivery, error)
 }
 
 var _ Querier = (*Queries)(nil)

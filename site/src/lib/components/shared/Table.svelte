@@ -281,20 +281,38 @@
                                         <a
                                             href={action.href(row)}
                                             class="{action.className ||
-                                                ' border-primary-500 text-primary-600 hover:bg-primary-50'} border mr-3 cursor-pointer px-3 py-1 rounded transition-colors inline-block"
+                                                ' border-primary-500 text-primary-600 hover:bg-primary-50'} border mr-3 cursor-pointer px-3 py-1 rounded transition-colors inline-flex items-center justify-center gap-2"
                                             aria-label={action.label}
+                                            title={action.label}
                                         >
-                                            {action.label}
+                                            {#if action.IconComponent}
+                                                {@const ActionIcon = action.IconComponent}
+                                                <ActionIcon size={action.iconSize || 16} />
+                                            {/if}
+                                            {#if action.iconOnly}
+                                                <span class="sr-only">{action.label}</span>
+                                            {:else}
+                                                {action.label}
+                                            {/if}
                                         </a>
                                     {:else}
                                         <button
                                             onclick={(e) =>
                                                 handleActionClick(action, row, e)}
                                             class="{action.className ||
-                                                ' border-primary-500 text-primary-600 hover:bg-primary-50'} border mr-3 cursor-pointer px-3 py-1 rounded transition-colors"
+                                                ' border-primary-500 text-primary-600 hover:bg-primary-50'} border mr-3 cursor-pointer px-3 py-1 rounded transition-colors inline-flex items-center justify-center gap-2"
                                             aria-label={action.label}
+                                            title={action.label}
                                         >
-                                            {action.label}
+                                            {#if action.IconComponent}
+                                                {@const ActionIcon = action.IconComponent}
+                                                <ActionIcon size={action.iconSize || 16} />
+                                            {/if}
+                                            {#if action.iconOnly}
+                                                <span class="sr-only">{action.label}</span>
+                                            {:else}
+                                                {action.label}
+                                            {/if}
                                         </button>
                                     {/if}
                                 {/each}
