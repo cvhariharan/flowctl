@@ -315,6 +315,19 @@ func (ns NullUserRoleType) Value() (driver.Value, error) {
 	return string(ns.UserRoleType), nil
 }
 
+type ApiKey struct {
+	ID         int32        `db:"id" json:"id"`
+	Uuid       uuid.UUID    `db:"uuid" json:"uuid"`
+	Name       string       `db:"name" json:"name"`
+	KeyHash    string       `db:"key_hash" json:"key_hash"`
+	KeyPrefix  string       `db:"key_prefix" json:"key_prefix"`
+	UserID     int32        `db:"user_id" json:"user_id"`
+	ExpiresAt  sql.NullTime `db:"expires_at" json:"expires_at"`
+	LastUsedAt sql.NullTime `db:"last_used_at" json:"last_used_at"`
+	CreatedAt  time.Time    `db:"created_at" json:"created_at"`
+	UpdatedAt  time.Time    `db:"updated_at" json:"updated_at"`
+}
+
 type Approval struct {
 	ID          int32          `db:"id" json:"id"`
 	Uuid        uuid.UUID      `db:"uuid" json:"uuid"`

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/labstack/echo/v4"
@@ -12,6 +13,13 @@ import (
 
 func (h *Handler) Authenticate(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		// Try API key authentication first
+		if userInfo, ok := h.tryAPIKeyAuth(c); ok {
+			c.Set("user", userInfo)
+			return next(c)
+		}
+
+		// Fall back to session authentication
 		sess, err := h.sessMgr.Acquire(nil, c, c)
 		if err != nil {
 			return wrapError(ErrAuthenticationFailed, "could not get user session", err, nil)
@@ -61,6 +69,37 @@ func (h *Handler) Authenticate(next echo.HandlerFunc) echo.HandlerFunc {
 
 		return next(c)
 	}
+}
+
+// tryAPIKeyAuth attempts to authenticate using an API key from the Authorization header
+// Returns the user info and true if successful, otherwise returns empty and false
+func (h *Handler) tryAPIKeyAuth(c echo.Context) (models.UserInfo, bool) {
+	// Check Authorization header: Bearer <api_key>
+	authHeader := c.Request().Header.Get("Authorization")
+	if authHeader != "" {
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			apiKey := strings.TrimPrefix(authHeader, "Bearer ")
+			if strings.HasPrefix(apiKey, "flowctl_") {
+				userInfo, err := h.co.ValidateAPIKey(c.Request().Context(), apiKey)
+				if err == nil {
+					return userInfo, true
+				}
+				h.logger.Debug("API key validation failed", "error", err)
+			}
+		}
+	}
+
+	// Check X-API-Key header
+	apiKey := c.Request().Header.Get("X-API-Key")
+	if apiKey != "" && strings.HasPrefix(apiKey, "flowctl_") {
+		userInfo, err := h.co.ValidateAPIKey(c.Request().Context(), apiKey)
+		if err == nil {
+			return userInfo, true
+		}
+		h.logger.Debug("API key validation failed", "error", err)
+	}
+
+	return models.UserInfo{}, false
 }
 
 func (h *Handler) AuthorizeForRole(expectedRole string) echo.MiddlewareFunc {

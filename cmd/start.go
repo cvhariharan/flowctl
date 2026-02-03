@@ -279,7 +279,11 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 	e.GET("/login/oidc/:provider", h.HandleOIDCLogin)
 	e.GET("/auth/callback", h.HandleAuthCallback)
 
+	// OpenAPI specification
+	e.GET("/openapi.json", h.HandleOpenAPISpec)
+
 	if metricsManager != nil {
+
 		metricsPath := appConfig.Metrics.Path
 		if metricsPath == "" {
 			metricsPath = "/metrics"
@@ -302,7 +306,13 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 	api.DELETE("/users/:userID", h.HandleDeleteUser, h.AuthorizeForRole("superuser"))
 	api.PUT("/users/:userID", h.HandleUpdateUser, h.AuthorizeForRole("superuser"))
 
+	// API key management - authenticated users can manage their own keys
+	api.POST("/api-keys", h.HandleCreateAPIKey)
+	api.GET("/api-keys", h.HandleListAPIKeys)
+	api.DELETE("/api-keys/:keyID", h.HandleDeleteAPIKey)
+
 	api.GET("/groups", h.HandleGroupPagination, h.AuthorizeNamespaceAdmins())
+
 	api.GET("/groups/:groupID", h.HandleGetGroup, h.AuthorizeForRole("superuser"))
 	api.PUT("/groups/:groupID", h.HandleUpdateGroup, h.AuthorizeForRole("superuser"))
 	api.POST("/groups", h.HandleCreateGroup, h.AuthorizeForRole("superuser"))
