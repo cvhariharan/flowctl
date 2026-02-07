@@ -389,6 +389,7 @@ type FlowInput struct {
 	Required    bool     `json:"required"`
 	Type        string   `json:"type"`
 	Options     []string `json:"options"`
+	OptionsURL  string   `json:"options_url,omitempty"`
 	Default     string   `json:"default,omitempty"`
 	MaxFileSize int64    `json:"max_file_size,omitempty"`
 }
@@ -405,6 +406,7 @@ func coreFlowInputToInput(input models.Input) FlowInput {
 		Required:    input.Required,
 		Type:        string(input.Type),
 		Options:     input.Options,
+		OptionsURL:  input.OptionsURL,
 		Default:     input.Default,
 		MaxFileSize: input.MaxFileSize,
 	}
@@ -675,6 +677,7 @@ type FlowInputReq struct {
 	Required    bool     `json:"required"`
 	Default     string   `json:"default"`
 	Options     []string `json:"options"`
+	OptionsURL  string   `json:"options_url"`
 	MaxFileSize int64    `json:"max_file_size"`
 }
 
@@ -727,6 +730,7 @@ func convertFlowInputsReqToInputs(inputsReq []FlowInputReq) []models.Input {
 			Required:    input.Required,
 			Default:     input.Default,
 			Options:     input.Options,
+			OptionsURL:  input.OptionsURL,
 			MaxFileSize: input.MaxFileSize,
 		}
 	}
@@ -768,6 +772,7 @@ func convertFlowInputsToInputsReq(inputs []models.Input) []FlowInputReq {
 			Required:    input.Required,
 			Default:     input.Default,
 			Options:     input.Options,
+			OptionsURL:  input.OptionsURL,
 			MaxFileSize: input.MaxFileSize,
 		}
 	}

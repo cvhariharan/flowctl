@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"time"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
+	"github.com/cvhariharan/flowctl/internal/utils"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -129,6 +131,46 @@ func (h *Handler) processFlowInputs(c echo.Context, flow models.Flow, execID str
 	return req, nil
 }
 
+// mergeRemoteOptions fetches and merges remote options into the flow's inputs
+// This is called before validation to ensure select inputs have options available
+func (h *Handler) mergeRemoteOptions(flow *models.Flow, variables map[string]interface{}) error {
+	for i, input := range flow.Inputs {
+		// Only process select inputs with OptionsURL
+		if input.Type == models.INPUT_TYPE_SELECT && input.OptionsURL != "" {
+			// Fetch remote options with variable interpolation
+			remoteOptions, err := utils.FetchRemoteOptionsWithVariables(input.OptionsURL, variables)
+			if err != nil {
+				h.logger.Warn("failed to fetch remote options", "input", input.Name, "url", input.OptionsURL, "error", err)
+				// Continue without remote options - will fall back to static options if available
+				continue
+			}
+
+			// Merge remote options with static options
+			if len(remoteOptions) > 0 {
+				// If no static options, use only remote options
+				if len(input.Options) == 0 {
+					flow.Inputs[i].Options = remoteOptions
+				} else {
+					// Merge: prioritize remote options but keep unique static options
+					mergedOptions := make([]string, 0)
+					for _, opt := range remoteOptions {
+						if !slices.Contains(mergedOptions, opt) {
+							mergedOptions = append(mergedOptions, opt)
+						}
+					}
+					for _, opt := range input.Options {
+						if !slices.Contains(mergedOptions, opt) {
+							mergedOptions = append(mergedOptions, opt)
+						}
+					}
+					flow.Inputs[i].Options = mergedOptions
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 	user, err := h.getUserInfo(c)
 	if err != nil {
@@ -172,6 +214,11 @@ func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 
 	if err := convertRequestInputs(req, f); err != nil {
 		return wrapError(ErrInvalidInput, "input conversion error", err, nil)
+	}
+
+	// Merge remote options from URLs into the flow inputs before validation
+	if err := h.mergeRemoteOptions(&f, req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("could not fetch remote options: %v", err), err, nil)
 	}
 
 	if err := f.ValidateInput(req); err != nil {
@@ -507,6 +554,10 @@ func (h *Handler) HandleGetFlowInputs(c echo.Context) error {
 	}
 
 	h.logger.Debug("flow input", "input", fmt.Sprintf("%+v", flow.Inputs))
+
+	// Fetch remote options if OptionsURL is provided
+	// Pass an empty context since there are no user inputs available yet
+	_ = h.mergeRemoteOptions(&flow, make(map[string]interface{}))
 
 	inputs := coreFlowInputsToInputs(flow.Inputs)
 	return c.JSON(http.StatusOK, FlowInputsResp{

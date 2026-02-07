@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { FlowInput } from '$lib/types';
+	import { onMount } from 'svelte';
 
 	let {
 		inputs = [],
@@ -12,6 +13,84 @@
 		errors?: Record<string, string>;
 		useFormData?: boolean;
 	} = $props();
+
+	// Track loading state and merged options for each input
+	let remoteOptionsLoading: Record<string, boolean> = $state({});
+	let mergedOptions: Record<string, string[]> = $state({});
+
+	// Interpolate variables in URL
+	function interpolateVariables(url: string, vars: Record<string, any>): string {
+		let result = url;
+		const pattern = /\{\{(\w+)\}\}/g;
+		result = result.replace(pattern, (match, varName) => {
+			const value = vars[varName];
+			return value !== undefined ? String(value) : match;
+		});
+		return result;
+	}
+
+	// Fetch options from remote URL
+	async function fetchRemoteOptions(input: FlowInput) {
+		if (!input.options_url) {
+			return;
+		}
+
+		remoteOptionsLoading[input.name] = true;
+
+		try {
+			// Interpolate variables in the URL
+			const url = interpolateVariables(input.options_url, values);
+
+			const response = await fetch(url);
+			if (!response.ok) {
+				console.error(`Failed to fetch options from ${url}: ${response.statusText}`);
+				return;
+			}
+
+			const data = await response.json();
+			const remote = Array.isArray(data) ? data : [];
+
+			// Extract option names from the response
+			const remoteOptionNames = remote
+				.filter(opt => opt && opt.name)
+				.map(opt => opt.name);
+
+			// Merge with static options
+			const merged = [...remoteOptionNames];
+			for (const staticOpt of input.options || []) {
+				if (!merged.includes(staticOpt)) {
+					merged.push(staticOpt);
+				}
+			}
+
+			mergedOptions[input.name] = merged;
+		} catch (error) {
+			console.error(`Error fetching remote options for ${input.name}:`, error);
+		} finally {
+			remoteOptionsLoading[input.name] = false;
+		}
+	}
+
+	// Load remote options when component mounts or when inputs change
+	onMount(async () => {
+		for (const input of inputs) {
+			if (input.type === 'select' && input.options_url) {
+				await fetchRemoteOptions(input);
+			}
+		}
+	});
+
+	// Update mergedOptions when inputs change
+	$effect.pre(() => {
+		inputs;
+		for (const input of inputs) {
+			if (input.type === 'select' && input.options_url) {
+				if (!mergedOptions[input.name]) {
+					fetchRemoteOptions(input);
+				}
+			}
+		}
+	});
 </script>
 
 {#if inputs && inputs.length > 0}
@@ -68,8 +147,19 @@
 						/>
 					{/if}
 				</div>
-			{:else if input.type === 'select' && input.options}
-				{#if useFormData}
+			{:else if input.type === 'select' && (input.options || input.options_url)}
+				{@const isLoading = remoteOptionsLoading[input.name]}
+				{@const options = mergedOptions[input.name] || input.options || []}
+				{#if isLoading}
+					<div class="flex items-center gap-2 px-3 py-2 text-foreground bg-card border border-input rounded-md text-sm">
+						<svg class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+						Loading options...
+					</div>
+					</div>
+				{:else if useFormData}
 					<select
 						id={input.name}
 						name={input.name}
@@ -78,7 +168,7 @@
 						class="w-full px-3 py-2 text-foreground bg-card border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
 					>
 						<option value="">Select an option</option>
-						{#each input.options as option}
+						{#each options as option}
 							<option value={option} selected={option === (values[input.name] ?? input.default)}
 								>{option}</option
 							>
@@ -91,7 +181,7 @@
 						class="w-full px-3 py-2 text-foreground bg-card border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
 					>
 						<option value="">Select an option</option>
-						{#each input.options as option}
+						{#each options as option}
 							<option value={option}>{option}</option>
 						{/each}
 					</select>

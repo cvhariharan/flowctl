@@ -1,0 +1,50 @@
+metadata:
+  id: remote_options_demo
+  name: Remote Options Demo
+  description: A flow demonstrating the use of remote options URLs
+
+inputs:
+  - name: country
+    type: select
+    label: Country
+    description: Select a country
+    required: true
+    options:
+      - United States
+      - Canada
+      - Mexico
+
+  - name: city
+    type: select
+    label: City
+    description: Cities in the selected country (fetched from remote API)
+    required: true
+    options_url: "https://api.example.com/cities?country={{country}}"
+
+  - name: service
+    type: select
+    label: Service Type
+    description: Available services
+    required: true
+    options:
+      - web
+      - api
+      - database
+
+  - name: region
+    type: select
+    label: Region
+    description: Deployment region (fetched dynamically based on country and city)
+    required: false
+    options_url: "https://api.example.com/regions?country={{country}}&city={{city}}"
+
+actions:
+  - id: display_info
+    name: Display Information
+    executor: script
+    with:
+      script: |
+        echo "Country: {{country}}"
+        echo "City: {{city}}"
+        echo "Service: {{service}}"
+        echo "Region: {{region}}"

@@ -182,17 +182,33 @@
                 </div>
 
                 {#if input.type === "select"}
-                    <div class="mt-4 p-3 bg-muted rounded-md">
-                        <label
-                            class="block text-sm font-medium text-foreground mb-2"
-                            >Options (one per line)</label
-                        >
-                        <textarea
-                            bind:value={input.optionsText}
-                            oninput={() => updateOptions(input)}
-                            class="w-full px-3 py-2 text-foreground bg-card border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono h-20"
-                            placeholder="option1&#10;option2&#10;option3"
-                        ></textarea>
+                    <div class="mt-4 p-3 bg-muted rounded-md space-y-4">
+                        <div>
+                            <label
+                                class="block text-sm font-medium text-foreground mb-2"
+                                >Options (one per line)</label
+                            >
+                            <textarea
+                                bind:value={input.optionsText}
+                                oninput={() => updateOptions(input)}
+                                class="w-full px-3 py-2 text-foreground bg-card border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono h-20"
+                                placeholder="option1&#10;option2&#10;option3"
+                            ></textarea>
+                            <p class="text-xs text-muted-foreground mt-1">Static options (leave empty if using remote URL)</p>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-sm font-medium text-foreground mb-2"
+                                >Remote Options URL</label
+                            >
+                            <input
+                                type="text"
+                                bind:value={input.options_url}
+                                class="w-full px-3 py-2 text-foreground bg-card border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono"
+                                placeholder="https://api.example.com/options?env={{environment}}"
+                            />
+                            <p class="text-xs text-muted-foreground mt-1">JSON API endpoint returning array of objects with 'name' field. Supports variable interpolation using {{'{{'}}variable_name{{'}}'}}</p>
+                        </div>
                     </div>
                 {/if}
 

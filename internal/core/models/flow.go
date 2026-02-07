@@ -37,6 +37,7 @@ type Input struct {
 	Required    bool      `yaml:"required" huml:"required" json:"required"`
 	Default     string    `yaml:"default" huml:"default" json:"default"`
 	Options     []string  `yaml:"options" huml:"options" json:"options"`
+	OptionsURL  string    `yaml:"options_url" huml:"options_url" json:"options_url"`
 	MaxFileSize int64     `yaml:"max_file_size" huml:"max_file_size" json:"max_file_size"`
 }
 

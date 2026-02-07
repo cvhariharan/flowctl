@@ -116,6 +116,7 @@ export interface FlowInput {
     | "checkbox"
     | "select";
   options: string[];
+  options_url?: string;
   default?: string;
   max_file_size?: number;
 }
@@ -484,6 +485,7 @@ export interface FlowInputReq {
   required?: boolean;
   default?: string;
   options?: string[];
+  options_url?: string;
   max_file_size?: number;
 }
 
