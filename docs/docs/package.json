@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@astrojs/starlight": "^0.36.0",
-    "astro": "^5.6.1",
+    "astro": "^5.17.3",
     "playwright": "^1.56.1",
     "rehype-mermaid": "^3.0.0",
     "sharp": "^0.34.2"
