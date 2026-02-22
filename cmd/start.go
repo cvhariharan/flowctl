@@ -343,6 +343,7 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 	namespaceGroup.GET("/flows", h.HandleFlowsPagination, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
 	namespaceGroup.POST("/flows", h.HandleCreateFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionCreate))
 	namespaceGroup.GET("/flows/:flowID", h.HandleGetFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
+	namespaceGroup.POST("/flows/:flowID/duplicate", h.HandleDuplicateFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionCreate))
 	namespaceGroup.PUT("/flows/:flowID", h.HandleUpdateFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionUpdate))
 	namespaceGroup.DELETE("/flows/:flowID", h.HandleDeleteFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionDelete))
 	namespaceGroup.GET("/flows/executions/:execID", h.HandleGetExecutionSummary, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))

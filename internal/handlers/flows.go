@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
@@ -610,6 +611,56 @@ func (h *Handler) HandleCreateFlow(c echo.Context) error {
 	return c.JSON(http.StatusCreated, FlowCreateResp{
 		ID: flow.Meta.ID,
 	})
+}
+
+func (h *Handler) HandleDuplicateFlow(c echo.Context) error {
+	namespaceID, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
+	}
+
+	sourceFlowID := c.Param("flowID")
+	if sourceFlowID == "" {
+		return wrapError(ErrRequiredFieldMissing, "flow ID cannot be empty", nil, nil)
+	}
+
+	var req FlowDuplicateReq
+	if err := c.Bind(&req); err != nil && err != io.EOF {
+		return wrapError(ErrInvalidInput, "invalid request", err, nil)
+	}
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	sourceFlow, err := h.co.GetFlowByID(sourceFlowID, namespaceID)
+	if err != nil {
+		return wrapError(ErrResourceNotFound, "flow not found", err, nil)
+	}
+
+	name := req.Name
+	if strings.TrimSpace(name) == "" {
+		name = sourceFlow.Meta.Name + " Copy"
+	}
+
+	candidateID := GenerateSlug(name)
+	finalID := candidateID
+	for i := 2; i <= 100; i++ {
+		if _, err := h.co.GetFlowByID(finalID, namespaceID); err != nil {
+			break
+		}
+		finalID = fmt.Sprintf("%s_%d", candidateID, i)
+	}
+
+	dupFlow := sourceFlow
+	dupFlow.Meta.DBID = 0
+	dupFlow.Meta.ID = finalID
+	dupFlow.Meta.Name = name
+
+	if err := h.co.CreateFlow(c.Request().Context(), dupFlow, namespaceID); err != nil {
+		return wrapError(ErrOperationFailed, err.Error(), err, nil)
+	}
+
+	return c.JSON(http.StatusCreated, FlowCreateResp{ID: dupFlow.Meta.ID})
 }
 
 func (h *Handler) HandleUpdateFlow(c echo.Context) error {

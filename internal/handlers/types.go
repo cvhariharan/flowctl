@@ -696,6 +696,10 @@ type FlowGetReq struct {
 	FlowID string `param:"flowID" validate:"required"`
 }
 
+type FlowDuplicateReq struct {
+	Name string `json:"name" validate:"omitempty,max=150,alphanum_whitespace"`
+}
+
 type LogStreamingReq struct {
 	LogID string `param:"logID" validate:"required,uuid4"`
 }
