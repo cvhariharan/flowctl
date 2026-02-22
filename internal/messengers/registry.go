@@ -10,15 +10,16 @@ var (
 	smu            sync.RWMutex
 )
 
-// RegisterSchema registers a messenger's config schema. Panics on duplicate.
-func RegisterSchema(name string, schema any) {
+// RegisterSchema registers a messenger's config schema. Returns an error on duplicate.
+func RegisterSchema(name string, schema any) error {
 	smu.Lock()
 	defer smu.Unlock()
 
 	if _, exists := schemaRegistry[name]; exists {
-		panic(fmt.Sprintf("messenger schema '%s' is already registered", name))
+		return fmt.Errorf("messenger schema '%s' is already registered", name)
 	}
 	schemaRegistry[name] = schema
+	return nil
 }
 
 // GetAllSchemas returns a map of all registered messenger names to their config schemas.

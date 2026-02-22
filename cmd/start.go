@@ -102,8 +102,11 @@ func initMessengers(cfg config.MessengersConfig, groupResolver messengers.GroupR
 			logger.Error("failed to create email messenger", "error", err)
 		} else {
 			m["email"] = emailMessenger
-			messengers.RegisterSchema("email", messengers.GetEmailNotifySchema())
-			logger.Info("email messenger initialized")
+			if err := messengers.RegisterSchema("email", messengers.GetEmailNotifySchema()); err != nil {
+				logger.Error("failed to register messenger schema", "error", err)
+			} else {
+				logger.Info("email messenger initialized")
+			}
 		}
 	}
 
@@ -113,8 +116,11 @@ func initMessengers(cfg config.MessengersConfig, groupResolver messengers.GroupR
 			logger.Error("failed to create webhook messenger", "error", err)
 		} else {
 			m["webhook"] = webhookMessenger
-			messengers.RegisterSchema("webhook", messengers.GetWebhookNotifySchema())
-			logger.Info("webhook messenger initialized")
+			if err := messengers.RegisterSchema("webhook", messengers.GetWebhookNotifySchema()); err != nil {
+				logger.Error("failed to register messenger schema", "error", err)
+			} else {
+				logger.Info("webhook messenger initialized")
+			}
 		}
 	}
 
