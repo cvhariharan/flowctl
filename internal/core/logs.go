@@ -174,6 +174,7 @@ func (c *Core) checkApprovalRequests(ctx context.Context, execID string, namespa
 			case "pending":
 				ch <- models.StreamMessage{MType: models.ApprovalMessageType, Val: a.UUID}
 			case "approved":
+				ch <- models.StreamMessage{MType: models.MessageType("approved"), Val: a.UUID}
 				return
 			case "rejected":
 				ch <- models.StreamMessage{MType: models.ErrMessageType, Val: "approval request has been rejected"}

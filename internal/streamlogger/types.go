@@ -37,6 +37,7 @@ const (
 	ResultMessageType    MessageType = "result"
 	StateMessageType     MessageType = "state"
 	CancelledMessageType MessageType = "cancelled"
+	ApprovedMessageType  MessageType = "approved"
 )
 
 type StreamMessage struct {
