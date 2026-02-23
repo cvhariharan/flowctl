@@ -70,18 +70,22 @@ func (h *Handler) HandleGetApproval(c echo.Context) error {
 		return wrapError(ErrOperationFailed, "could not get approval details", err, nil)
 	}
 
+	// Get logs from previous actions
+	previousLogs, _ := h.co.GetPreviousActionLogs(c.Request().Context(), approval.ExecID, namespace)
+
 	response := ApprovalDetailsResp{
-		ID:          approval.UUID,
-		ActionID:    approval.ActionID,
-		Status:      string(approval.Status),
-		ExecID:      approval.ExecID,
-		Inputs:      approval.Inputs,
-		DecidedBy:   approval.DecidedBy,
-		FlowName:    approval.FlowName,
-		FlowID:      approval.FlowID,
-		RequestedBy: approval.RequestedBy,
-		CreatedAt:   approval.CreatedAt,
-		UpdatedAt:   approval.UpdatedAt,
+		ID:           approval.UUID,
+		ActionID:     approval.ActionID,
+		Status:       string(approval.Status),
+		ExecID:       approval.ExecID,
+		Inputs:       approval.Inputs,
+		DecidedBy:    approval.DecidedBy,
+		FlowName:     approval.FlowName,
+		FlowID:       approval.FlowID,
+		RequestedBy:  approval.RequestedBy,
+		CreatedAt:    approval.CreatedAt,
+		UpdatedAt:    approval.UpdatedAt,
+		PreviousLogs: previousLogs,
 	}
 
 	return c.JSON(http.StatusOK, response)

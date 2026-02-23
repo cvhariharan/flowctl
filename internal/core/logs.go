@@ -9,6 +9,8 @@ import (
 
 	"encoding/json"
 
+	"strings"
+
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/repo"
 	"github.com/google/uuid"
@@ -191,4 +193,27 @@ func (c *Core) checkApprovalRequests(ctx context.Context, execID string, namespa
 	}(ctx, f, ch)
 
 	return ch, nil
+}
+
+// GetPreviousActionLogs reads and returns the logs of all completed actions
+// for a given execution, to be shown in the approval panel
+func (c *Core) GetPreviousActionLogs(ctx context.Context, execID string, namespaceID string) (string, error) {
+        actionRetries := c.getActionRetries(ctx, execID, namespaceID)
+        logCh, err := c.LogManager.StreamLogs(ctx, execID, actionRetries)
+        if err != nil {
+                return "", fmt.Errorf("error reading logs for exec %s: %w", execID, err)
+        }
+
+        var sb strings.Builder
+        for line := range logCh {
+                var sm models.StreamMessage
+                if err := json.Unmarshal([]byte(line), &sm); err != nil {
+                        continue
+                }
+                if sm.MType == models.LogMessageType {
+                        sb.WriteString(sm.Val)
+                }
+        }
+
+        return sb.String(), nil
 }
