@@ -72,7 +72,15 @@ func (d *RemoteLinuxDriver) Exec(ctx context.Context, command string, workingDir
 
 	// Add environment variable exports
 	for _, envVar := range env {
-		parts = append(parts, fmt.Sprintf("export %s", envVar))
+		idx := strings.Index(envVar, "=")
+		if idx >= 0 {
+			key := envVar[:idx]
+			val := envVar[idx+1:]
+			val = strings.ReplaceAll(val, "'", "'\\''")
+			parts = append(parts, fmt.Sprintf("export %s='%s'", key, val))
+		} else {
+			parts = append(parts, fmt.Sprintf("export %s", envVar))
+		}
 	}
 
 	// Add working directory change if needed
