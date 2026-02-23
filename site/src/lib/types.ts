@@ -292,6 +292,7 @@ export interface ApprovalDetailsResp {
   approved_by?: string;
   created_at: string;
   updated_at: string;
+  previous_logs?: string;
 }
 
 // Execution types

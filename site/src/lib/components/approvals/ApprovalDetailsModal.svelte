@@ -254,6 +254,18 @@
                             </div>
                         {/if}
 
+                        <!-- Previous Action Logs -->
+                        {#if approval.previous_logs}
+                            <div>
+                                <h4 class="text-base font-semibold text-foreground mb-3">
+                                    Output de acciones anteriores
+                                </h4>
+                                <div class="bg-black rounded-lg p-4 overflow-x-auto max-h-96 overflow-y-auto">
+                                    <pre class="text-green-400 text-xs font-mono whitespace-pre-wrap">{approval.previous_logs}</pre>
+                                </div>
+                            </div>
+                        {/if}
+
                         <!-- Action Buttons -->
                         {#if approval && approval.status === "pending"}
                             <div
