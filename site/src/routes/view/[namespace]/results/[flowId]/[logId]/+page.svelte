@@ -197,6 +197,14 @@
                 executionSummary.current_action_id,
                 executionSummary.status,
             );
+        } else if (executionSummary.status === "completed") {
+            // Mark all actions as completed when execution finishes
+            console.log("POLLING: completed, actions:", actions.length, "current completedActions:", completedActions);
+            const allIndexes = actions.map((_, i) => i);
+            completedActions = allIndexes;
+            currentActionIndex = -1;
+            status = "completed";
+            console.log("POLLING: set completedActions to", completedActions);
         }
 
         // Start/stop polling based on status
@@ -229,6 +237,7 @@
             } catch (e) {
                 handleInlineError(e, "SSE Message Parse Error");
             }
+            console.log("SSE raw:", msg.message_type, JSON.stringify(msg).substring(0,100));
             processMessage(msg);
         };
 
@@ -286,8 +295,11 @@
         ) {
             currentActionIndex = actionIndex;
         } else if (executionStatus === "pending_approval") {
-            currentActionIndex = actionIndex;
-            status = "awaiting_approval";
+            // Only set awaiting_approval if not already completed
+            if (status !== "completed" && status !== "errored" && status !== "cancelled") {
+                currentActionIndex = actionIndex;
+                status = "awaiting_approval";
+            }
         }
     };
 
@@ -325,6 +337,10 @@
                 });
                 break;
             case "result":
+                // result means the last action completed
+                completedActions = actions.map((_, i) => i);
+                currentActionIndex = -1;
+                status = "completed";
                 results = { ...results, ...(msg.results || {}) };
                 break;
             case "error":
@@ -353,15 +369,25 @@
                 status = "awaiting_approval";
                 stopStatusPolling();
                 break;
+            case "approved":
+                console.log("SSE: approved message received!");
+                flushMessageBuffer();
+                showApproval = false;
+                status = "running";
+                startStatusPolling();
+                break;
             case "completed":
                 flushMessageBuffer();
+                console.log("SSE: completed received, actions:", actions.length);
                 status = "completed";
+                completedActions = actions.map((_, i) => i);
+                currentActionIndex = -1;
+                console.log("SSE: completedActions set to", completedActions);
                 if (eventSource) {
                     eventSource.close();
                     eventSource = null;
                 }
                 stopStatusPolling();
-                updateExecutionStatus();
                 break;
             case "cancelled":
                 flushMessageBuffer();
