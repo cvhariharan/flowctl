@@ -81,7 +81,7 @@ func (d *LocalLinuxDriver) SetPermissions(ctx context.Context, path string, perm
 func (d *LocalLinuxDriver) Exec(ctx context.Context, command string, workingDir string, env []string, stdout, stderr io.Writer) error {
 	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", command)
 	cmd.Dir = workingDir
-	cmd.Env = env
+	cmd.Env = append(os.Environ(), env...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
