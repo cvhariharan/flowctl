@@ -197,7 +197,7 @@
                 executionSummary.current_action_id,
                 executionSummary.status,
             );
-        } else if (executionSummary.status === "completed") {
+        } else if (newStatus === "completed") {
             // Mark all actions as completed when execution finishes
             console.log("POLLING: completed, actions:", actions.length, "current completedActions:", completedActions);
             const allIndexes = actions.map((_, i) => i);
@@ -275,7 +275,7 @@
             }
         }
 
-        if (executionStatus === "completed") {
+        if (executionStatus === "completed" && status !== "awaiting_approval") {
             for (let i = 0; i < actions.length; i++) {
                 if (!completedActions.includes(i)) {
                     completedActions.push(i);
@@ -337,11 +337,12 @@
                 });
                 break;
             case "result":
-                // result means the last action completed
-                completedActions = actions.map((_, i) => i);
-                currentActionIndex = -1;
-                status = "completed";
+                // result means current action completed, but flow may continue (e.g. approval follows)
+                if (currentActionIndex !== -1 && !completedActions.includes(currentActionIndex)) {
+                    completedActions.push(currentActionIndex);
+                }
                 results = { ...results, ...(msg.results || {}) };
+                // Don't set status="completed" here - wait for SSE "completed" message
                 break;
             case "error":
                 flushMessageBuffer();
