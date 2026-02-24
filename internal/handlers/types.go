@@ -3,13 +3,14 @@ package handlers
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/gosimple/slug"
 )
 
 const (
-	TimeFormat = "2006-01-02T15:04:05Z"
+	TimeFormat = time.RFC3339
 )
 
 // GenerateSlug creates a slug from the provided string

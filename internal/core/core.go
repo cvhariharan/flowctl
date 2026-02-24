@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/cvhariharan/flowctl/internal/core/models"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	TimeFormat = "2006-01-02T15:04:05Z"
+	TimeFormat = time.RFC3339
 )
 
 type Core struct {
