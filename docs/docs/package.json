@@ -10,8 +10,8 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.36.0",
-    "astro": "^5.18.1",
+    "@astrojs/starlight": "^0.38.3",
+    "astro": "^6.1.9",
     "playwright": "^1.56.1",
     "rehype-mermaid": "^3.0.0",
     "sharp": "^0.34.2"
