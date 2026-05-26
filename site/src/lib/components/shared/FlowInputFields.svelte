@@ -13,6 +13,14 @@
 		errors?: Record<string, string>;
 		useFormData?: boolean;
 	} = $props();
+
+	$effect(() => {
+		for (const input of inputs) {
+			if (input.default !== undefined && values[input.name] === undefined) {
+				values[input.name] = input.default;
+			}
+		}
+	});
 </script>
 
 {#if inputs && inputs.length > 0}
@@ -72,6 +80,7 @@
 					placeholder="Select an option"
 					required={input.required}
 					id={input.name}
+					name={useFormData ? input.name : undefined}
 				/>
 			{:else if input.type === 'file'}
 				<div class="vstack">

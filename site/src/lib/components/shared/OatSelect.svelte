@@ -10,6 +10,7 @@
     disabled = false,
     required = false,
     id,
+    name,
     onchange
   }: {
     value?: string;
@@ -18,6 +19,7 @@
     disabled?: boolean;
     required?: boolean;
     id?: string;
+    name?: string;
     onchange?: () => void;
   } = $props();
 
@@ -55,8 +57,8 @@
   </div>
 </ot-dropdown>
 
-{#if required}
-  <select value={value ?? ''} {required} {disabled} tabindex="-1" aria-hidden="true" style="position: absolute; opacity: 0; height: 0; pointer-events: none; overflow: hidden">
+{#if required || name}
+  <select bind:value {name} {required} {disabled} tabindex="-1" aria-hidden="true" style="position: absolute; opacity: 0; height: 0; pointer-events: none; overflow: hidden">
     <option value="">{placeholder}</option>
     {#each options as opt}
       <option value={opt.value}>{opt.label}</option>
