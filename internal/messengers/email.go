@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"log/slog"
+	"net/smtp"
 	"strings"
 
 	"github.com/cvhariharan/flowctl/internal/config"
@@ -226,7 +227,7 @@ func (e *EmailMessenger) resolveReceivers(ctx context.Context, receivers []strin
 
 // smtpAuth returns nil when username is empty, skipping SMTP AUTH entirely.
 // This allows connecting to local MTAs that don't require authentication.
-func smtpAuth(username, password string) *smtppool.LoginAuth {
+func smtpAuth(username, password string) smtp.Auth {
 	if username == "" {
 		return nil
 	}
