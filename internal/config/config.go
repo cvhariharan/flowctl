@@ -162,15 +162,16 @@ type WebhookConfig struct {
 }
 
 type SMTPConfig struct {
-	Enabled     bool   `koanf:"enabled"`
-	Host        string `koanf:"host" validate:"required_if=Enabled true"`
-	Port        int    `koanf:"port" validate:"required_if=Enabled true,min=1,max=65535"`
-	Username    string `koanf:"username"`
-	Password    string `koanf:"password"`
-	FromAddress string `koanf:"from_address" validate:"required_if=Enabled true,email"`
-	FromName    string `koanf:"from_name"`
-	MaxConns    int    `koanf:"max_conns" validate:"min=1"`
-	SSL         string `koanf:"ssl" validate:"omitempty,oneof=none tls starttls"`
+	Enabled        bool   `koanf:"enabled"`
+	Host           string `koanf:"host" validate:"required_if=Enabled true"`
+	Port           int    `koanf:"port" validate:"required_if=Enabled true,min=1,max=65535"`
+	Username       string `koanf:"username"`
+	Password       string `koanf:"password"`
+	FromAddress    string `koanf:"from_address" validate:"required_if=Enabled true,email"`
+	FromName       string `koanf:"from_name"`
+	MaxConns       int    `koanf:"max_conns" validate:"min=1"`
+	SSL            string `koanf:"ssl" validate:"omitempty,oneof=none tls starttls"`
+	TLSSkipVerify  bool   `koanf:"tls_skip_verify"`
 }
 
 func Load(configPath string) (Config, error) {

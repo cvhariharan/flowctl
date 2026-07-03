@@ -3,6 +3,7 @@ package messengers
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"embed"
 	"fmt"
 	"html/template"
@@ -56,8 +57,9 @@ func NewEmailMessenger(cfg config.SMTPConfig, groupResolver GroupResolver, logge
 		Host:     cfg.Host,
 		Port:     cfg.Port,
 		MaxConns: cfg.MaxConns,
-		Auth:     &smtppool.LoginAuth{Username: cfg.Username, Password: cfg.Password},
+		Auth:     smtpAuth(cfg.Username, cfg.Password),
 		SSL:      sslType,
+		TLSConfig: smtpTLSConfig(cfg.Host, cfg.TLSSkipVerify),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SMTP pool: %w", err)
@@ -220,6 +222,27 @@ func (e *EmailMessenger) resolveReceivers(ctx context.Context, receivers []strin
 		}
 	}
 	return to
+}
+
+// smtpAuth returns nil when username is empty, skipping SMTP AUTH entirely.
+// This allows connecting to local MTAs that don't require authentication.
+func smtpAuth(username, password string) *smtppool.LoginAuth {
+	if username == "" {
+		return nil
+	}
+	return &smtppool.LoginAuth{Username: username, Password: password}
+}
+
+// smtpTLSConfig returns a TLS config with the given server name.
+// If skipVerify is true, certificate verification is disabled.
+func smtpTLSConfig(host string, skipVerify bool) *tls.Config {
+	if !skipVerify && host != "" {
+		return &tls.Config{ServerName: host}
+	}
+	if skipVerify {
+		return &tls.Config{InsecureSkipVerify: true}
+	}
+	return nil
 }
 
 // Close closes the SMTP connection pool
