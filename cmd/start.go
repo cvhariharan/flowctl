@@ -441,6 +441,11 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 		log.Fatal(err)
 	}
 
+	// Serve custom branding assets from local directory
+	if appConfig.Branding.BrandingDir != "" {
+		e.Static("/branding", appConfig.Branding.BrandingDir)
+	}
+
 	// Serve static assets from embedded FS
 	e.GET("/_app/*", echo.WrapHandler(http.FileServer(http.FS(buildFS))))
 	e.GET("/robots.txt", echo.WrapHandler(http.StripPrefix("/", http.FileServer(http.FS(buildFS)))))

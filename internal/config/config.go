@@ -26,6 +26,7 @@ type Config struct {
 	Logger     Logger           `koanf:"logger"`
 	Metrics    Metrics          `koanf:"metrics"`
 	Messengers MessengersConfig `koanf:"messengers"`
+	Branding   BrandingConfig   `koanf:"branding"`
 }
 
 func (c *Config) Validate() error {
@@ -45,6 +46,16 @@ func (c *Config) Validate() error {
 type Metrics struct {
 	Enabled bool   `koanf:"enabled"`
 	Path    string `koanf:"path"`
+}
+
+type BrandingConfig struct {
+	AppName      string `koanf:"app_name"`
+	LogoURL      string `koanf:"logo_url"`
+	LogoLightURL string `koanf:"logo_light_url"`
+	FaviconURL   string `koanf:"favicon_url"`
+	PrimaryColor string `koanf:"primary_color"`
+	SidebarColor string `koanf:"sidebar_color"`
+	BrandingDir  string `koanf:"branding_dir"`
 }
 
 type DBConfig struct {

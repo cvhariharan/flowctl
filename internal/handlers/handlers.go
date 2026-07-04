@@ -103,11 +103,24 @@ func (h *Handler) HandlePing(c echo.Context) error {
 }
 
 func (h *Handler) HandleGetInfo(c echo.Context) error {
+	var branding *BrandingInfo
+	bc := h.config.Branding
+	if bc.AppName != "" || bc.LogoURL != "" || bc.PrimaryColor != "" || bc.FaviconURL != "" || bc.SidebarColor != "" {
+		branding = &BrandingInfo{
+			AppName:      bc.AppName,
+			LogoURL:      bc.LogoURL,
+			LogoLightURL: bc.LogoLightURL,
+			FaviconURL:   bc.FaviconURL,
+			PrimaryColor: bc.PrimaryColor,
+			SidebarColor: bc.SidebarColor,
+		}
+	}
 	return c.JSON(http.StatusOK, AppInfoResponse{
 		Version:         h.version,
 		Commit:          h.commit,
 		BuildDate:       h.buildDate,
 		DefaultTimezone: h.config.Scheduler.DefaultTimezone,
+		Branding:        branding,
 	})
 }
 
