@@ -104,7 +104,7 @@ func (h *Handler) HandlePing(c echo.Context) error {
 
 func (h *Handler) HandleGetInfo(c echo.Context) error {
 	var branding *BrandingInfo
-	bc := h.config.Branding
+	bc := h.config.App.Branding
 	if bc.AppName != "" || bc.LogoURL != "" || bc.PrimaryColor != "" || bc.FaviconURL != "" || bc.SidebarColor != "" {
 		branding = &BrandingInfo{
 			AppName:      bc.AppName,

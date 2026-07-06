@@ -26,7 +26,6 @@ type Config struct {
 	Logger     Logger           `koanf:"logger"`
 	Metrics    Metrics          `koanf:"metrics"`
 	Messengers MessengersConfig `koanf:"messengers"`
-	Branding   BrandingConfig   `koanf:"branding"`
 }
 
 func (c *Config) Validate() error {
@@ -125,16 +124,17 @@ type Logger struct {
 }
 
 type AppConfig struct {
-	AdminUsername     string `koanf:"admin_username" validate:"required,min=1"`
-	AdminPassword     string `koanf:"admin_password" validate:"required,min=8"`
-	RootURL           string `koanf:"root_url" validate:"required,url"`
-	Address           string `koanf:"address" validate:"required"`
-	UseTLS            bool   `koanf:"use_tls"`
-	HTTPTLSCert       string `koanf:"http_tls_cert" validate:"required_if=UseTLS true"`
-	HTTPTLSKey        string `koanf:"http_tls_key" validate:"required_if=UseTLS true"`
-	FlowsDirectory    string `koanf:"flows_directory" validate:"required"`
-	MaxFileUploadSize int64  `koanf:"max_file_upload_size" validate:"required,min=1"`
-	PluginDir         string `koanf:"plugin_dir"`
+	AdminUsername     string         `koanf:"admin_username" validate:"required,min=1"`
+	AdminPassword     string         `koanf:"admin_password" validate:"required,min=8"`
+	RootURL           string         `koanf:"root_url" validate:"required,url"`
+	Address           string         `koanf:"address" validate:"required"`
+	UseTLS            bool           `koanf:"use_tls"`
+	HTTPTLSCert       string         `koanf:"http_tls_cert" validate:"required_if=UseTLS true"`
+	HTTPTLSKey        string         `koanf:"http_tls_key" validate:"required_if=UseTLS true"`
+	FlowsDirectory    string         `koanf:"flows_directory" validate:"required"`
+	MaxFileUploadSize int64          `koanf:"max_file_upload_size" validate:"required,min=1"`
+	PluginDir         string         `koanf:"plugin_dir"`
+	Branding          BrandingConfig `koanf:"branding"`
 }
 
 type KeystoreConfig struct {

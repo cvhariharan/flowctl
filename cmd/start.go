@@ -442,8 +442,8 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 	}
 
 	// Serve custom branding assets from local directory
-	if appConfig.Branding.BrandingDir != "" {
-		e.Static("/branding", appConfig.Branding.BrandingDir)
+	if appConfig.App.Branding.BrandingDir != "" {
+		e.Static("/branding", appConfig.App.Branding.BrandingDir)
 	}
 
 	// Serve static assets from embedded FS
