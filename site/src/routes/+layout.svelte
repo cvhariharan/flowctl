@@ -61,7 +61,7 @@
 	{#if $appInfo?.branding?.primary_color || $appInfo?.branding?.sidebar_color}
 		{@const primary = $appInfo.branding.primary_color}
 		{@const sidebar = $appInfo.branding.sidebar_color}
-		{@html `<style>:root{${primary ? `--primary:${primary};` : ''}${sidebar ? '--card:' + sidebar + ';' : ''}}</style>`}
+		{@html `<style>html:root,html:root[data-theme="dark"],html:root[data-theme="light"],html body[data-theme="dark"],html body[data-theme="light"]{${primary ? `--primary:${primary};` : ''}${sidebar ? '--card:' + sidebar + ';' : ''}}</style>`}
 	{/if}
 	{#if $appInfo?.branding?.app_name}
 		<title>{$appInfo.branding.app_name}</title>
