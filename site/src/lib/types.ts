@@ -24,6 +24,16 @@ export interface AppInfoResponse {
   commit: string;
   build_date: string;
   default_timezone: string;
+  branding?: BrandingInfo;
+}
+
+export interface BrandingInfo {
+  app_name?: string;
+  logo_url?: string;
+  logo_light_url?: string;
+  favicon_url?: string;
+  primary_color?: string;
+  sidebar_color?: string;
 }
 
 export interface AuthReq {
