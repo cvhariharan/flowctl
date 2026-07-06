@@ -97,6 +97,52 @@ actions:
         echo "Hello, $username!"
 ```
 
+## Custom Branding
+
+Flowctl supports custom branding to match your organization's identity. Configure it under `[app.branding]` in `config.toml` or via environment variables.
+
+```toml
+[app.branding]
+  app_name = "ACME Flowctl"
+  logo_url = "/branding/logo.svg"
+  logo_light_url = "/branding/logo-light.svg"
+  favicon_url = "/branding/favicon.png"
+  primary_color = "#e4002b"
+  sidebar_color = "#1a1a2e"
+  branding_dir = "/app/branding"
+```
+
+| Field | Description | Default |
+|-------|-------------|---------|
+| `app_name` | Custom page title | "Flowctl" |
+| `logo_url` | Logo for light theme (local path or URL) | Embedded logo |
+| `logo_light_url` | Logo for dark theme | Falls back to `logo_url` |
+| `favicon_url` | Favicon (local path or URL) | Embedded favicon |
+| `primary_color` | Primary color (hex) | `#155DFC` |
+| `sidebar_color` | Sidebar background color (hex) | Theme default |
+| `branding_dir` | Local directory to serve at `/branding/` | Not set |
+
+Each field is optional and independent — configure only what you need, the rest falls back to defaults.
+
+**Environment variables:** use the `FLOWCTL_APP__BRANDING__` prefix, e.g.:
+
+```bash
+FLOWCTL_APP__BRANDING__APP_NAME="ACME Flowctl"
+FLOWCTL_APP__BRANDING__PRIMARY_COLOR="#e4002b"
+FLOWCTL_APP__BRANDING__FAVICON_URL="https://example.com/favicon.png"
+```
+
+**Docker/Podman with custom logos:**
+
+```yaml
+volumes:
+  - ./branding:/app/branding:ro
+environment:
+  FLOWCTL_APP__BRANDING__APP_NAME: "ACME Flowctl"
+  FLOWCTL_APP__BRANDING__LOGO_URL: "/branding/logo.svg"
+  FLOWCTL_APP__BRANDING__BRANDING_DIR: "/app/branding"
+```
+
 ## Documentation
 
 Full documentation is available at [flowctl.net](https://flowctl.net)
