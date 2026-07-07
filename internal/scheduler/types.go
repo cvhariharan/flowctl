@@ -129,13 +129,15 @@ type Input struct {
 }
 
 type Action struct {
-	ID        string         `yaml:"id" validate:"required,alphanum_underscore"`
-	Name      string         `yaml:"name" validate:"required"`
-	Executor  string         `yaml:"executor"`
-	With      map[string]any `yaml:"with" validate:"required"`
-	Approval  bool           `yaml:"approval"`
-	Variables []Variable     `yaml:"variables"`
-	On        []Node         `yaml:"on"`
+	ID             string         `yaml:"id" validate:"required,alphanum_underscore"`
+	Name           string         `yaml:"name" validate:"required"`
+	Executor       string         `yaml:"executor"`
+	With           map[string]any `yaml:"with" validate:"required"`
+	Approval       bool           `yaml:"approval"`
+	Approvers      []string       `yaml:"approvers,omitempty"`
+	ApprovalGroups []string       `yaml:"approval_groups,omitempty"`
+	Variables      []Variable     `yaml:"variables"`
+	On             []Node         `yaml:"on"`
 }
 
 type Scheduling struct {

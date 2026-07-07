@@ -4,8 +4,10 @@
   import { handleInlineError } from '$lib/utils/errorHandling';
   import { clearPermissionCache } from '$lib/utils/permissions';
   import ApiTokensModal from './ApiTokensModal.svelte';
+  import ChangePasswordModal from './ChangePasswordModal.svelte';
 
   let showApiTokens = $state(false);
+  let showChangePassword = $state(false);
 
   const getUserInitials = (username: string): string => {
     return username.charAt(0).toUpperCase();
@@ -25,6 +27,10 @@
   const openCredentials = () => {
     showApiTokens = true;
   };
+
+  const openChangePassword = () => {
+    showChangePassword = true;
+  };
 </script>
 
 <ot-dropdown style="display: block" class="mt-2">
@@ -39,12 +45,17 @@
   </button>
   <div popover id="user-menu">
     <button role="menuitem" onclick={openCredentials}>Credentials</button>
+    <button role="menuitem" onclick={openChangePassword}>Change Password</button>
     <button role="menuitem" onclick={logout}>Logout</button>
   </div>
 </ot-dropdown>
 
 {#if showApiTokens}
   <ApiTokensModal onClose={() => (showApiTokens = false)} />
+{/if}
+
+{#if showChangePassword}
+  <ChangePasswordModal onClose={() => (showChangePassword = false)} />
 {/if}
 
 <style>

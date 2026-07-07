@@ -16,11 +16,13 @@ const (
 )
 
 type ApprovalRequest struct {
-	UUID        string
-	ActionID    string
-	Status      ApprovalType
-	ExecID      string
-	RequestedBy string
+	UUID           string
+	ActionID       string
+	Status         ApprovalType
+	ExecID         string
+	RequestedBy    string
+	Approvers      []string
+	ApprovalGroups []string
 }
 
 func (a ApprovalRequest) MarshalBinary() ([]byte, error) {
@@ -40,6 +42,12 @@ func (a ApprovalRequest) MarshalBinary() ([]byte, error) {
 	}
 	if err := gob.NewEncoder(&buf).Encode(a.RequestedBy); err != nil {
 		return nil, fmt.Errorf("failed to encode RequestedBy: %w", err)
+	}
+	if err := gob.NewEncoder(&buf).Encode(a.Approvers); err != nil {
+		return nil, fmt.Errorf("failed to encode Approvers: %w", err)
+	}
+	if err := gob.NewEncoder(&buf).Encode(a.ApprovalGroups); err != nil {
+		return nil, fmt.Errorf("failed to encode ApprovalGroups: %w", err)
 	}
 
 	return buf.Bytes(), nil
@@ -62,6 +70,12 @@ func (a *ApprovalRequest) UnmarshalBinary(data []byte) error {
 	}
 	if err := gob.NewDecoder(buf).Decode(&a.RequestedBy); err != nil {
 		return fmt.Errorf("failed to decode RequestedBy: %w", err)
+	}
+	if err := gob.NewDecoder(buf).Decode(&a.Approvers); err != nil {
+		return fmt.Errorf("failed to decode Approvers: %w", err)
+	}
+	if err := gob.NewDecoder(buf).Decode(&a.ApprovalGroups); err != nil {
+		return fmt.Errorf("failed to decode ApprovalGroups: %w", err)
 	}
 
 	return nil

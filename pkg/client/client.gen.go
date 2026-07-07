@@ -644,6 +644,14 @@ type ApprovalsPaginateResponse struct {
 	TotalCount *int64          `json:"total_count,omitempty"`
 }
 
+// ArtifactMetadata defines model for ArtifactMetadata.
+type ArtifactMetadata struct {
+	ModifiedAt time.Time `json:"modified_at"`
+	Name       string    `json:"name"`
+	Path       string    `json:"path"`
+	Size       int64     `json:"size"`
+}
+
 // AuthReq defines model for AuthReq.
 type AuthReq struct {
 	Password string `json:"password"`
@@ -1337,6 +1345,11 @@ type ListExecutionsParams struct {
 	CountPerPage *CountPerPage `form:"count_per_page,omitempty" json:"count_per_page,omitempty"`
 }
 
+// DownloadExecutionArtifactParams defines parameters for DownloadExecutionArtifact.
+type DownloadExecutionArtifactParams struct {
+	Path string `form:"path" json:"path"`
+}
+
 // ListFlowExecutionsParams defines parameters for ListFlowExecutions.
 type ListFlowExecutionsParams struct {
 	// Filter Substring filter applied server-side.
@@ -1701,6 +1714,12 @@ type ClientInterface interface {
 
 	// GetExecution request
 	GetExecution(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListExecutionArtifacts request
+	ListExecutionArtifacts(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DownloadExecutionArtifact request
+	DownloadExecutionArtifact(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, params *DownloadExecutionArtifactParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CancelExecution request
 	CancelExecution(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2517,6 +2536,30 @@ func (c *Client) ListExecutions(ctx context.Context, namespace NamespacePath, pa
 
 func (c *Client) GetExecution(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetExecutionRequest(c.Server, namespace, execID)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListExecutionArtifacts(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExecutionArtifactsRequest(c.Server, namespace, execID)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DownloadExecutionArtifact(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, params *DownloadExecutionArtifactParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDownloadExecutionArtifactRequest(c.Server, namespace, execID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5206,6 +5249,111 @@ func NewGetExecutionRequest(server string, namespace NamespacePath, execID opena
 	return req, nil
 }
 
+// NewListExecutionArtifactsRequest generates requests for ListExecutionArtifacts
+func NewListExecutionArtifactsRequest(server string, namespace NamespacePath, execID openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "namespace", namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "execID", execID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/%s/flows/executions/%s/artifacts", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDownloadExecutionArtifactRequest generates requests for DownloadExecutionArtifact
+func NewDownloadExecutionArtifactRequest(server string, namespace NamespacePath, execID openapi_types.UUID, params *DownloadExecutionArtifactParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "namespace", namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "execID", execID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/%s/flows/executions/%s/artifacts/download", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCancelExecutionRequest generates requests for CancelExecution
 func NewCancelExecutionRequest(server string, namespace NamespacePath, execID openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -7859,6 +8007,12 @@ type ClientWithResponsesInterface interface {
 	// GetExecutionWithResponse request
 	GetExecutionWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetExecutionResponse, error)
 
+	// ListExecutionArtifactsWithResponse request
+	ListExecutionArtifactsWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*ListExecutionArtifactsResponse, error)
+
+	// DownloadExecutionArtifactWithResponse request
+	DownloadExecutionArtifactWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, params *DownloadExecutionArtifactParams, reqEditors ...RequestEditorFn) (*DownloadExecutionArtifactResponse, error)
+
 	// CancelExecutionWithResponse request
 	CancelExecutionWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*CancelExecutionResponse, error)
 
@@ -9254,6 +9408,65 @@ func (r GetExecutionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetExecutionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListExecutionArtifactsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]ArtifactMetadata
+}
+
+// Status returns HTTPResponse.Status
+func (r ListExecutionArtifactsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListExecutionArtifactsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListExecutionArtifactsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DownloadExecutionArtifactResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r DownloadExecutionArtifactResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DownloadExecutionArtifactResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DownloadExecutionArtifactResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -11268,6 +11481,24 @@ func (c *ClientWithResponses) GetExecutionWithResponse(ctx context.Context, name
 	return ParseGetExecutionResponse(rsp)
 }
 
+// ListExecutionArtifactsWithResponse request returning *ListExecutionArtifactsResponse
+func (c *ClientWithResponses) ListExecutionArtifactsWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*ListExecutionArtifactsResponse, error) {
+	rsp, err := c.ListExecutionArtifacts(ctx, namespace, execID, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListExecutionArtifactsResponse(rsp)
+}
+
+// DownloadExecutionArtifactWithResponse request returning *DownloadExecutionArtifactResponse
+func (c *ClientWithResponses) DownloadExecutionArtifactWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, params *DownloadExecutionArtifactParams, reqEditors ...RequestEditorFn) (*DownloadExecutionArtifactResponse, error) {
+	rsp, err := c.DownloadExecutionArtifact(ctx, namespace, execID, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDownloadExecutionArtifactResponse(rsp)
+}
+
 // CancelExecutionWithResponse request returning *CancelExecutionResponse
 func (c *ClientWithResponses) CancelExecutionWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*CancelExecutionResponse, error) {
 	rsp, err := c.CancelExecution(ctx, namespace, execID, reqEditors...)
@@ -12971,6 +13202,48 @@ func ParseGetExecutionResponse(rsp *http.Response) (*GetExecutionResponse, error
 		}
 		response.JSON200 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseListExecutionArtifactsResponse parses an HTTP response from a ListExecutionArtifactsWithResponse call
+func ParseListExecutionArtifactsResponse(rsp *http.Response) (*ListExecutionArtifactsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListExecutionArtifactsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ArtifactMetadata
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDownloadExecutionArtifactResponse parses an HTTP response from a DownloadExecutionArtifactWithResponse call
+func ParseDownloadExecutionArtifactResponse(rsp *http.Response) (*DownloadExecutionArtifactResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DownloadExecutionArtifactResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
 	}
 
 	return response, nil

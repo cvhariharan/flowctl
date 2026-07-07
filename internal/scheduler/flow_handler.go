@@ -19,6 +19,7 @@ import (
 
 	"github.com/cvhariharan/flowctl/internal/metrics"
 	"github.com/cvhariharan/flowctl/internal/repo"
+	"github.com/cvhariharan/flowctl/internal/storage"
 	"github.com/cvhariharan/flowctl/internal/streamlogger"
 	"github.com/cvhariharan/flowctl/sdk/executor"
 	"github.com/expr-lang/expr"
@@ -40,6 +41,7 @@ type FlowExecutionHandler struct {
 	taskQueuer       TaskQueuer
 	executorKeys     map[string]string // executor_name → API token
 	apiBaseURL       string
+	storage          storage.Storage
 }
 
 type flowRunContext struct {
@@ -81,6 +83,7 @@ type FlowHandlerConfig struct {
 	FlowExecutionTimeout time.Duration
 	ExecutorKeys         map[string]string // executor_name → API token
 	APIBaseURL           string
+	Storage              storage.Storage
 }
 
 // NewFlowExecutionHandler creates a new flow execution handler
@@ -98,6 +101,7 @@ func NewFlowExecutionHandler(cfg FlowHandlerConfig) *FlowExecutionHandler {
 		executionTimeout: cfg.FlowExecutionTimeout,
 		executorKeys:     cfg.ExecutorKeys,
 		apiBaseURL:       cfg.APIBaseURL,
+		storage:          cfg.Storage,
 	}
 }
 
@@ -202,6 +206,29 @@ func (h *FlowExecutionHandler) executeFlow(ctx context.Context, execID string, p
 		}
 	}
 
+	// Persist uploaded files if storage is configured
+	if h.storage != nil {
+		uploadsDir := filepath.Join(artifactDir, "uploads")
+		entries, err := os.ReadDir(uploadsDir)
+		if err == nil {
+			for _, entry := range entries {
+				if !entry.IsDir() {
+					path := filepath.Join(uploadsDir, entry.Name())
+					file, err := os.Open(path)
+					if err == nil {
+						// path format: <flow_slug>/<exec_id>/uploads/<filename>
+						storageKey := fmt.Sprintf("%s/%s/uploads/%s", payload.Workflow.Meta.ID, execID, entry.Name())
+						h.logger.Debug("persisting uploaded input file", "key", storageKey)
+						if err := h.storage.Put(ctx, storageKey, file); err != nil {
+							h.logger.Warn("failed to persist uploaded input file", "key", storageKey, "error", err)
+						}
+						file.Close()
+					}
+				}
+			}
+		}
+	}
+
 	streamID := execID
 
 	streamLogger, err := h.logmanager.NewLogger(streamID)
@@ -245,6 +272,13 @@ func (h *FlowExecutionHandler) executeFlow(ctx context.Context, execID string, p
 		h.logger.Debug("Action results", "results", res)
 		processActionResults(res, runCtx.outputs)
 		h.logger.Debug("outputs", "results", runCtx.outputs)
+
+		// Persist artifacts for this action
+		if h.storage != nil {
+			if err := h.persistActionArtifacts(ctx, payload.Workflow.Meta.ID, execID, action.ID, artifactDir); err != nil {
+				h.logger.Warn("failed to persist action artifacts", "actionID", action.ID, "error", err)
+			}
+		}
 	}
 
 	// Only remove the artifact store when all actions have been executed
@@ -986,3 +1020,56 @@ func applyDefaultInputs(definitions []Input, inputs map[string]any) {
 		}
 	}
 }
+
+func (h *FlowExecutionHandler) persistActionArtifacts(ctx context.Context, flowSlug string, execID string, actionID string, artifactDir string) error {
+	if h.storage == nil {
+		return nil
+	}
+
+	entries, err := os.ReadDir(artifactDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == "uploads" {
+			continue
+		}
+
+		nodeDir := filepath.Join(artifactDir, entry.Name())
+		err := filepath.WalkDir(nodeDir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if !d.IsDir() {
+				relPath, err := filepath.Rel(nodeDir, path)
+				if err != nil {
+					return err
+				}
+
+				file, err := os.Open(path)
+				if err != nil {
+					return err
+				}
+				defer file.Close()
+
+				// Path structure: <flow_slug>/<exec_id>/<action_id>/<filename>
+				storageKey := fmt.Sprintf("%s/%s/%s/%s", flowSlug, execID, actionID, relPath)
+				h.logger.Debug("persisting action artifact file", "key", storageKey, "localPath", path)
+				if err := h.storage.Put(ctx, storageKey, file); err != nil {
+					return fmt.Errorf("failed to persist artifact %s: %w", storageKey, err)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+

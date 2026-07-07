@@ -1,0 +1,25 @@
+metadata:
+    id: test_artifact_flow
+    name: Test Artifact Flow
+    description: A test flow to generate an artifact and test retention
+    namespace: default
+    prefix: ""
+    allow_overlap: false
+    user_schedulable: false
+    max_retries: 0
+inputs: []
+actions:
+    - id: write_file_to_artifacts
+      name: Write file to artifacts
+      executor: script
+      with:
+        script: echo "Artifact retention is working perfectly!" > "$FC_ARTIFACTS/retention_test.txt"
+      approval: true
+      approvers:
+        - test
+      variables: []
+      "on":
+        - shiroorvps
+outputs: []
+schedules: []
+notify: []

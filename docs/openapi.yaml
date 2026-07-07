@@ -745,6 +745,42 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlowTriggerResp" }
 
+  /api/v1/{namespace}/flows/executions/{execID}/artifacts:
+    parameters:
+      - $ref: "#/components/parameters/NamespacePath"
+      - { name: execID, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: ListExecutionArtifacts
+      tags: [Flows]
+      summary: List/browse artifacts for an execution
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ArtifactMetadata"
+
+  /api/v1/{namespace}/flows/executions/{execID}/artifacts/download:
+    parameters:
+      - $ref: "#/components/parameters/NamespacePath"
+      - { name: execID, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: path, in: query, required: true, schema: { type: string } }
+    get:
+      operationId: DownloadExecutionArtifact
+      tags: [Flows]
+      summary: Download an artifact file
+      responses:
+        "200":
+          description: OK
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
   /api/v1/{namespace}/flows/{flowID}/executions:
     parameters:
       - $ref: "#/components/parameters/NamespacePath"
@@ -1579,6 +1615,15 @@ components:
             - INTERNAL_ERROR
         details:
           description: Optional, code-specific payload.
+
+    ArtifactMetadata:
+      type: object
+      required: [path, name, size, modified_at]
+      properties:
+        path: { type: string }
+        name: { type: string }
+        size: { type: integer, format: int64 }
+        modified_at: { type: string, format: date-time }
 
     # Auth
     AuthReq:

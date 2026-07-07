@@ -13,6 +13,7 @@ import (
 	"github.com/cvhariharan/flowctl/internal/config"
 	"github.com/cvhariharan/flowctl/internal/core"
 	"github.com/cvhariharan/flowctl/internal/core/models"
+	"github.com/cvhariharan/flowctl/internal/storage"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/zerodha/simplesessions/stores/postgres/v3"
@@ -42,6 +43,7 @@ type Handler struct {
 	version            string
 	commit             string
 	buildDate          string
+	storage            storage.Storage
 }
 
 func getCookie(name string, r interface{}) (*http.Cookie, error) {
@@ -91,7 +93,28 @@ func NewHandler(logger *slog.Logger, db *sql.DB, co *core.Core, cfg config.Confi
 		}
 	}()
 
-	h := &Handler{co: co, validate: validate, logger: logger, sessMgr: sessMgr, config: cfg, authconfig: make(map[string]OIDCAuthConfig), executorSigningKey: executorSigningKey, version: version, commit: commit, buildDate: buildDate}
+	var storeInstance storage.Storage
+	if cfg.Artifacts.Retain {
+		var err error
+		storeInstance, err = storage.NewLocalStorage(cfg.Artifacts.Directory)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize artifacts storage: %w", err)
+		}
+	}
+
+	h := &Handler{
+		co:                 co,
+		validate:           validate,
+		logger:             logger,
+		sessMgr:            sessMgr,
+		config:             cfg,
+		authconfig:         make(map[string]OIDCAuthConfig),
+		executorSigningKey: executorSigningKey,
+		version:            version,
+		commit:             commit,
+		buildDate:          buildDate,
+		storage:            storeInstance,
+	}
 	if err := h.initOIDC(); err != nil {
 		return nil, fmt.Errorf("error initializing oidc config: %w", err)
 	}

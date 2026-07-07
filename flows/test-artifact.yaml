@@ -1,0 +1,14 @@
+metadata:
+  id: test_artifact_flow
+  name: Test Artifact Flow
+  description: A test flow to generate an artifact and test retention
+inputs: []
+actions:
+  - id: write_file
+    name: Write file to artifacts
+    executor: script
+    on:
+      - shiroorvps
+    with:
+      script: |
+        echo "Artifact retention is working perfectly!" > "$FC_ARTIFACTS/retention_test.txt"

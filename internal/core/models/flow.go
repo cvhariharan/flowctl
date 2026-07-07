@@ -69,13 +69,15 @@ type Notify struct {
 }
 
 type Action struct {
-	ID        string         `yaml:"id" huml:"id" validate:"required,alphanum_underscore"`
-	Name      string         `yaml:"name" huml:"name" validate:"required"`
-	Executor  string         `yaml:"executor" huml:"executor"`
-	With      map[string]any `yaml:"with" huml:"with" validate:"required"`
-	Approval  bool           `yaml:"approval" huml:"approval"`
-	Variables []Variable     `yaml:"variables" huml:"variables"`
-	On        []string       `yaml:"on" huml:"on"`
+	ID             string         `yaml:"id" huml:"id" validate:"required,alphanum_underscore"`
+	Name           string         `yaml:"name" huml:"name" validate:"required"`
+	Executor       string         `yaml:"executor" huml:"executor"`
+	With           map[string]any `yaml:"with" huml:"with" validate:"required"`
+	Approval       bool           `yaml:"approval" huml:"approval"`
+	Approvers      []string       `yaml:"approvers,omitempty" huml:"approvers,omitempty"`
+	ApprovalGroups []string       `yaml:"approval_groups,omitempty" huml:"approval_groups,omitempty"`
+	Variables      []Variable     `yaml:"variables" huml:"variables"`
+	On             []string       `yaml:"on" huml:"on"`
 }
 
 func SchedulerActionToAction(a scheduler.Action) Action {
@@ -90,13 +92,15 @@ func SchedulerActionToAction(a scheduler.Action) Action {
 	}
 
 	return Action{
-		ID:        a.ID,
-		Name:      a.Name,
-		With:      a.With,
-		On:        nodeNames,
-		Executor:  a.Executor,
-		Approval:  a.Approval,
-		Variables: variables,
+		ID:             a.ID,
+		Name:           a.Name,
+		With:           a.With,
+		On:             nodeNames,
+		Executor:       a.Executor,
+		Approval:       a.Approval,
+		Approvers:      a.Approvers,
+		ApprovalGroups: a.ApprovalGroups,
+		Variables:      variables,
 	}
 }
 
@@ -172,7 +176,7 @@ func AlphanumericUnderscore(fl validator.FieldLevel) bool {
 }
 
 func AlphanumericSpace(fl validator.FieldLevel) bool {
-	regex := regexp.MustCompile(`^[a-zA-Z0-9 ]+$`)
+	regex := regexp.MustCompile(`^[a-zA-Z0-9 _\.\-:/()]+$`)
 	value := fl.Field().String()
 
 	return regex.MatchString(value)

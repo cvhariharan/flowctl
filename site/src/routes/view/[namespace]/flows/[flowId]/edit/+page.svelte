@@ -290,6 +290,8 @@
                             executor: action.executor as "script" | "docker",
                             with: action.with || {},
                             approval: action.approval || false,
+                            approvers: action.approvers?.length ? action.approvers : undefined,
+                            approval_groups: action.approval_groups?.length ? action.approval_groups : undefined,
                             variables: action.variables
                                 ?.filter((v: any) => v.name && v.name.trim())
                                 .map((v: any) => ({ [v.name]: v.value })),

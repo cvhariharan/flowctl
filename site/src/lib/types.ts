@@ -151,6 +151,8 @@ export interface FlowAction {
   executor: string;
   approval: boolean;
   on: string[];
+  approvers?: string[];
+  approval_groups?: string[];
 }
 
 export interface ScheduledExecution {
@@ -301,6 +303,8 @@ export interface ApprovalDetailsResp {
   flow_id: string;
   requested_by: string;
   approved_by?: string;
+  approvers?: string[];
+  approval_groups?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -555,6 +559,8 @@ export interface FlowActionReq {
   executor: "script" | "docker";
   with: Record<string, any>;
   approval?: boolean;
+  approvers?: string[];
+  approval_groups?: string[];
   variables?: Record<string, any>[];
   artifacts?: string[];
   condition?: string;
@@ -616,3 +622,11 @@ export interface ApiToken {
 export interface ApiTokenCreated extends ApiToken {
   token: string;
 }
+
+export interface ArtifactMetadata {
+  path: string;
+  name: string;
+  size: number;
+  modified_at: string;
+}
+

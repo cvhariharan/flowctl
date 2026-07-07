@@ -416,12 +416,51 @@
                             />
                         </div>
 
-                        <div class="hstack gap-2">
-                            <input
-                                type="checkbox"
-                                bind:checked={action.approval}
-                            />
-                            <label>Require approval before execution</label>
+                        <div class="approval-section">
+                            <div class="hstack gap-2 items-center">
+                                <input
+                                    type="checkbox"
+                                    id="approval-{action.tempId}"
+                                    bind:checked={action.approval}
+                                    {disabled}
+                                />
+                                <label for="approval-{action.tempId}">Require approval before execution</label>
+                            </div>
+
+                            {#if action.approval}
+                                <div class="approval-details vstack gap-3">
+                                    <div data-field>
+                                        <label for="approvers-{action.tempId}">Allowed Approvers <span class="hint">(optional — leave blank to allow any reviewer/admin)</span></label>
+                                        <input
+                                            type="text"
+                                            id="approvers-{action.tempId}"
+                                            value={(action.approvers || []).join(", ")}
+                                            oninput={(e) => {
+                                                const raw = e.currentTarget.value;
+                                                action.approvers = raw.split(",").map((s: string) => s.trim()).filter(Boolean);
+                                            }}
+                                            placeholder="alice, bob (comma-separated usernames)"
+                                            {disabled}
+                                        />
+                                        <p class="field-hint text-lighter">Specific users who may approve this step</p>
+                                    </div>
+                                    <div data-field>
+                                        <label for="approval-groups-{action.tempId}">Allowed Approval Groups <span class="hint">(optional)</span></label>
+                                        <input
+                                            type="text"
+                                            id="approval-groups-{action.tempId}"
+                                            value={(action.approval_groups || []).join(", ")}
+                                            oninput={(e) => {
+                                                const raw = e.currentTarget.value;
+                                                action.approval_groups = raw.split(",").map((s: string) => s.trim()).filter(Boolean);
+                                            }}
+                                            placeholder="security-team, ops (comma-separated group names)"
+                                            {disabled}
+                                        />
+                                        <p class="field-hint text-lighter">Groups whose members may approve this step</p>
+                                    </div>
+                                </div>
+                            {/if}
                         </div>
                     </div>
                 {/if}
@@ -533,5 +572,24 @@
     }
     .opacity-50 {
         opacity: 0.5;
+    }
+    .approval-section {
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 0.375rem;
+        background: var(--faint);
+    }
+    .approval-details {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+    }
+    .hint {
+        font-size: 0.7rem;
+        font-weight: 400;
+        color: var(--muted-foreground);
+    }
+    .text-lighter {
+        color: var(--muted-foreground);
     }
 </style>

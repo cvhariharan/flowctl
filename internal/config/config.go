@@ -26,6 +26,7 @@ type Config struct {
 	Logger     Logger           `koanf:"logger"`
 	Metrics    Metrics          `koanf:"metrics"`
 	Messengers MessengersConfig `koanf:"messengers"`
+	Artifacts  ArtifactsConfig  `koanf:"artifacts"`
 }
 
 func (c *Config) Validate() error {
@@ -37,6 +38,12 @@ func (c *Config) Validate() error {
 
 	if err := validateOIDCProviders(c.OIDC); err != nil {
 		return fmt.Errorf("invalid oidc configuration: %w", err)
+	}
+
+	if c.Artifacts.Retain {
+		if c.Artifacts.Directory == "" {
+			return fmt.Errorf("artifacts.directory is required when retain is true")
+		}
 	}
 
 	return nil
@@ -173,6 +180,14 @@ type SMTPConfig struct {
 	SSL         string `koanf:"ssl" validate:"omitempty,oneof=none tls starttls"`
 }
 
+type ArtifactsConfig struct {
+	Retain        bool          `koanf:"retain"`
+	Directory     string        `koanf:"directory"`
+	RetentionTime time.Duration `koanf:"retention_time"`
+	ScanInterval  time.Duration `koanf:"scan_interval"`
+}
+
+
 func Load(configPath string) (Config, error) {
 	k := koanf.New(".")
 
@@ -265,6 +280,12 @@ func GetDefaultConfig() Config {
 				Enabled: false,
 				Timeout: 30 * time.Second,
 			},
+		},
+		Artifacts: ArtifactsConfig{
+			Retain:        false,
+			Directory:     "artifacts",
+			RetentionTime: 0,
+			ScanInterval:  1 * time.Hour,
 		},
 	}
 }

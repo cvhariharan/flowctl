@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
@@ -929,3 +930,118 @@ func (h *Handler) isUserOnly(ctx context.Context, userID, namespaceID string) (b
 	}
 	return best == namespaceRoleWeight[models.NamespaceRoleUser], nil
 }
+
+type ArtifactMetadata struct {
+	Path       string    `json:"path"`
+	Name       string    `json:"name"`
+	Size       int64     `json:"size"`
+	ModifiedAt time.Time `json:"modified_at"`
+}
+
+func (h *Handler) HandleListArtifacts(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
+	}
+
+	execID := c.Param("execID")
+	if execID == "" {
+		return wrapError(ErrRequiredFieldMissing, "execID cannot be empty", nil, nil)
+	}
+
+	execSummary, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), execID, namespace)
+	if err != nil {
+		return wrapError(ErrResourceNotFound, "execution not found", err, nil)
+	}
+
+	userInfo, err := h.getUserInfo(c)
+	if err != nil {
+		return wrapError(ErrForbidden, "could not get user info", err, nil)
+	}
+
+	restricted, err := h.isUserOnly(c.Request().Context(), userInfo.ID, namespace)
+	if err != nil {
+		return wrapError(ErrOperationFailed, "could not determine user role", err, nil)
+	}
+	if restricted && execSummary.TriggeredByID != userInfo.ID {
+		return wrapError(ErrForbidden, "insufficient permissions", nil, nil)
+	}
+
+	artifacts := []ArtifactMetadata{}
+	if h.storage == nil {
+		return c.JSON(http.StatusOK, artifacts)
+	}
+
+	prefix := fmt.Sprintf("%s/%s/", execSummary.FlowID, execID)
+	list, err := h.storage.List(c.Request().Context(), prefix)
+	if err != nil {
+		h.logger.Error("failed to list artifacts", "execID", execID, "error", err)
+		return wrapError(ErrOperationFailed, "failed to list artifacts", err, nil)
+	}
+
+	for _, obj := range list {
+		relPath := strings.TrimPrefix(obj.Path, prefix)
+		artifacts = append(artifacts, ArtifactMetadata{
+			Path:       relPath,
+			Name:       obj.Name,
+			Size:       obj.Size,
+			ModifiedAt: obj.ModifiedAt,
+		})
+	}
+
+	return c.JSON(http.StatusOK, artifacts)
+}
+
+func (h *Handler) HandleDownloadArtifact(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
+	}
+
+	execID := c.Param("execID")
+	if execID == "" {
+		return wrapError(ErrRequiredFieldMissing, "execID cannot be empty", nil, nil)
+	}
+
+	pathParam := c.QueryParam("path")
+	if pathParam == "" {
+		return wrapError(ErrRequiredFieldMissing, "path query parameter is required", nil, nil)
+	}
+
+	execSummary, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), execID, namespace)
+	if err != nil {
+		return wrapError(ErrResourceNotFound, "execution not found", err, nil)
+	}
+
+	userInfo, err := h.getUserInfo(c)
+	if err != nil {
+		return wrapError(ErrForbidden, "could not get user info", err, nil)
+	}
+
+	restricted, err := h.isUserOnly(c.Request().Context(), userInfo.ID, namespace)
+	if err != nil {
+		return wrapError(ErrOperationFailed, "could not determine user role", err, nil)
+	}
+	if restricted && execSummary.TriggeredByID != userInfo.ID {
+		return wrapError(ErrForbidden, "insufficient permissions", nil, nil)
+	}
+
+	if h.storage == nil {
+		return wrapError(ErrResourceNotFound, "artifact retention is disabled", nil, nil)
+	}
+
+	prefix := fmt.Sprintf("%s/%s/", execSummary.FlowID, execID)
+	storageKey := filepath.Clean(prefix + pathParam)
+	if !strings.HasPrefix(storageKey, prefix) {
+		return wrapError(ErrForbidden, "access denied", nil, nil)
+	}
+
+	reader, err := h.storage.Get(c.Request().Context(), storageKey)
+	if err != nil {
+		return wrapError(ErrResourceNotFound, "artifact not found", err, nil)
+	}
+
+	c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filepath.Base(storageKey)))
+	return c.Stream(http.StatusOK, "application/octet-stream", reader)
+}
+

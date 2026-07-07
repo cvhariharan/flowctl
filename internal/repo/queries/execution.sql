@@ -482,3 +482,29 @@ WHERE execution_log.exec_id = $1
   AND version = (SELECT version FROM latest_version)
   AND namespace_id = (SELECT id FROM namespace_lookup)
   AND started_at IS NULL;
+
+-- name: GetExecutionStatusByExecID :one
+WITH latest_version AS (
+    SELECT MAX(version) as version
+    FROM execution_log
+    WHERE execution_log.exec_id = $1
+)
+SELECT status
+FROM execution_log
+WHERE execution_log.exec_id = $1
+  AND version = (SELECT version FROM latest_version);
+
+-- name: GetFinishedExecutionsOlderThan :many
+WITH latest_version AS (
+    SELECT exec_id, MAX(version) as version
+    FROM execution_log
+    GROUP BY exec_id
+)
+SELECT el.exec_id, f.slug as flow_slug
+FROM execution_log el
+INNER JOIN latest_version lv ON el.exec_id = lv.exec_id AND el.version = lv.version
+INNER JOIN flows f ON el.flow_id = f.id
+WHERE el.status IN ('completed'::execution_status, 'errored'::execution_status, 'cancelled'::execution_status)
+  AND el.updated_at < $1;
+
+

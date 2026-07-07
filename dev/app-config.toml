@@ -7,33 +7,52 @@ http_tls_key = "server_key.pem"
 root_url = "http://localhost:7000"
 secure_cookie_key = "tf0Hd_W6Hu5oHExXv8zZ6Q=="
 use_tls = false
+address = "0.0.0.0:7000"
+max_file_upload_size = 104857600
 
 [keystore]
-  keeper_url = "base64key://2M-MkchieLohxn0jlmSfbuh4KE4EZz9tWrhcY9DZ8bE="
+keeper_url = "base64key://2M-MkchieLohxn0jlmSfbuh4KE4EZz9tWrhcY9DZ8bE="
 
 [logger]
-  backend = "file"
-  log_directory = "/var/log/flowctl"
-  max_size_bytes = 0
-  retention_time = "0s"
-  scan_interval = "1h0m0s"
+backend = "file"
+log_directory = "/var/log/flowctl"
+max_size_bytes = 0
+retention_time = "0s"
+scan_interval = "1h0m0s"
 
-[oidc]
-  client_id = "flowctl"
-  client_secret = "secret"
-  issuer = "http://dex:5556/dex"
-  auth_url = "http://localhost:5556/dex/auth"
-  token_url = "http://dex:5556/dex/token"
-  redirect_url = "http://localhost:5555/auth/callback"
+[[oidc]]
+name = "oidc"
+client_id = "flowctl"
+client_secret = "secret"
+issuer = "http://dex:5556/dex"
+auth_url = "http://localhost:5556/dex/auth"
+token_url = "http://dex:5556/dex/token"
+redirect_url = "http://localhost:7500/auth/callback" # Wait, in dev docker-compose.yaml it was redirects. Let's keep redirect_url.
 
 [scheduler]
-  backend = ""
-  cron_sync_interval = "5m0s"
-  workers = 20
+backend = ""
+cron_sync_interval = "5m0s"
+workers = 20
+flow_execution_timeout = "1h"
+default_timezone = "UTC"
 
 [db]
-  dbname = "flowctl"
-  host = "postgres"
-  password = "flowctl"
-  port = 5432
-  user = "flowctl"
+dbname = "flowctl"
+host = "postgres"
+password = "flowctl"
+port = 5432
+user = "flowctl"
+
+[messengers.email]
+enabled = false
+host = "localhost"
+port = 587
+from_address = "flowctl@flowctl.internal"
+max_conns = 10
+
+[artifacts]
+retain = true
+directory = "artifacts"
+retention_time = "24h"
+scan_interval = "1m"
+

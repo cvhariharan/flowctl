@@ -67,17 +67,19 @@ func (h *Handler) HandleGetApproval(c echo.Context) error {
 	}
 
 	response := ApprovalDetailsResp{
-		ID:          approval.UUID,
-		ActionID:    approval.ActionID,
-		Status:      string(approval.Status),
-		ExecID:      approval.ExecID,
-		Inputs:      approval.Inputs,
-		DecidedBy:   approval.DecidedBy,
-		FlowName:    approval.FlowName,
-		FlowID:      approval.FlowID,
-		RequestedBy: approval.RequestedBy,
-		CreatedAt:   approval.CreatedAt,
-		UpdatedAt:   approval.UpdatedAt,
+		ID:             approval.UUID,
+		ActionID:       approval.ActionID,
+		Status:         string(approval.Status),
+		ExecID:         approval.ExecID,
+		Inputs:         approval.Inputs,
+		DecidedBy:      approval.DecidedBy,
+		FlowName:       approval.FlowName,
+		FlowID:         approval.FlowID,
+		RequestedBy:    approval.RequestedBy,
+		Approvers:      approval.Approvers,
+		ApprovalGroups: approval.ApprovalGroups,
+		CreatedAt:      approval.CreatedAt,
+		UpdatedAt:      approval.UpdatedAt,
 	}
 
 	return c.JSON(http.StatusOK, response)

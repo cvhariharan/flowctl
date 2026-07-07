@@ -10,12 +10,15 @@ import (
 )
 
 type RequestApprovalParam struct {
-	ID string
+	ID             string
+	Approvers      []string
+	ApprovalGroups []string
 }
 
 type CreateUserTxParams struct {
 	Name      string
 	Username  string
+	Password  string
 	LoginType UserLoginType
 	Role      UserRoleType
 	Groups    []string
@@ -114,9 +117,11 @@ func (p *PostgresStore) RequestApprovalTx(ctx context.Context, execID string, na
 	}
 
 	a, err := q.AddApprovalRequest(ctx, AddApprovalRequestParams{
-		ExecLogID: e.ID,
-		ActionID:  action.ID,
-		Uuid:      namespaceUUID,
+		ExecLogID:      e.ID,
+		ActionID:       action.ID,
+		Uuid:           namespaceUUID,
+		Approvers:      action.Approvers,
+		ApprovalGroups: action.ApprovalGroups,
 	})
 	if err != nil {
 		return AddApprovalRequestRow{}, fmt.Errorf("could not create approval request: %w", err)
@@ -138,9 +143,15 @@ func (p *PostgresStore) CreateUserTx(ctx context.Context, params CreateUserTxPar
 
 	q := Queries{db: tx}
 
+	password := sql.NullString{}
+	if params.Password != "" {
+		password = sql.NullString{String: params.Password, Valid: true}
+	}
+
 	user, err := q.CreateUser(ctx, CreateUserParams{
 		Name:      params.Name,
 		Username:  params.Username,
+		Password:  password,
 		LoginType: params.LoginType,
 		Role:      params.Role,
 	})

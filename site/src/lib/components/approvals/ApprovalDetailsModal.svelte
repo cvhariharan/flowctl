@@ -143,6 +143,29 @@
                                 <span class="text-sm">{formatDateTime(approval.created_at, "Never")}</span>
                             </div>
                         </div>
+
+                        {#if (approval.approvers && approval.approvers.length > 0) || (approval.approval_groups && approval.approval_groups.length > 0)}
+                            <div class="approvers-section">
+                                <span class="info-label text-sm font-medium">Restricted to</span>
+                                <div class="tags-row">
+                                    {#if approval.approvers}
+                                        {#each approval.approvers as approver}
+                                            <span class="tag tag-user" title="User approver">👤 {approver}</span>
+                                        {/each}
+                                    {/if}
+                                    {#if approval.approval_groups}
+                                        {#each approval.approval_groups as group}
+                                            <span class="tag tag-group" title="Group approver">🏷 {group}</span>
+                                        {/each}
+                                    {/if}
+                                </div>
+                            </div>
+                        {:else}
+                            <div class="approvers-section">
+                                <span class="info-label text-sm font-medium">Restricted to</span>
+                                <span class="text-sm text-lighter">Any namespace reviewer or admin</span>
+                            </div>
+                        {/if}
                     </div>
 
                     <!-- Execution Inputs -->
@@ -222,5 +245,38 @@
     }
     .capitalize {
         text-transform: capitalize;
+    }
+    .approvers-section {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+    }
+    .tags-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+        margin-top: 0.375rem;
+    }
+    .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .tag-user {
+        background: color-mix(in srgb, var(--primary) 12%, transparent);
+        color: var(--primary);
+        border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+    }
+    .tag-group {
+        background: color-mix(in srgb, var(--warning, #f59e0b) 12%, transparent);
+        color: var(--warning, #f59e0b);
+        border: 1px solid color-mix(in srgb, var(--warning, #f59e0b) 25%, transparent);
+    }
+    .text-lighter {
+        color: var(--muted-foreground);
     }
 </style>

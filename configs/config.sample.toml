@@ -167,3 +167,18 @@ enabled = false
 signing_key = ""
 # (optional) HTTP request timeout (default: 30s)
 timeout = "30s"
+
+# Persistent artifacts storage and retention settings
+[artifacts]
+# (optional) Enable retaining artifacts after flow execution. Disabled (false) by default.
+retain = false
+# Directory for local storage of artifacts
+directory = "artifacts"
+# (optional) retention_time can be used to delete old artifacts.
+# Artifacts created before the retention_time will be deleted.
+# Default is unlimited (no artifacts will be deleted)
+retention_time = "0s"
+# (optional) Scan interval for artifact retention.
+# Default is 1h
+scan_interval = "1h"
+

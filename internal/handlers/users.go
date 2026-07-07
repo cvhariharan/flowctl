@@ -134,7 +134,7 @@ func (h *Handler) HandleCreateUser(c echo.Context) error {
 		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
-	u, err := h.co.CreateUser(c.Request().Context(), req.Name, req.Username, models.OIDCLoginType, models.StandardUserRole, req.Groups)
+	u, err := h.co.CreateUser(c.Request().Context(), req.Name, req.Username, models.StandardLoginType, models.StandardUserRole, req.Groups, "password")
 	if err != nil {
 		return wrapError(ErrOperationFailed, "could not create user", err, nil)
 	}
@@ -148,4 +148,26 @@ func (h *Handler) HandleCreateUser(c echo.Context) error {
 		User:   coreUsertoUser(user.User),
 		Groups: coreGroupArrayCast(user.Groups),
 	})
+}
+
+func (h *Handler) HandleChangePassword(c echo.Context) error {
+	var req ChangePasswordReq
+	if err := c.Bind(&req); err != nil {
+		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
+	}
+
+	user, err := h.getUserInfo(c)
+	if err != nil {
+		return wrapError(ErrAuthenticationFailed, "could not get user details", err, nil)
+	}
+
+	if err := h.co.ChangePassword(c.Request().Context(), user.Username, req.OldPassword, req.NewPassword); err != nil {
+		return wrapError(ErrOperationFailed, err.Error(), err, nil)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "password changed successfully"})
 }

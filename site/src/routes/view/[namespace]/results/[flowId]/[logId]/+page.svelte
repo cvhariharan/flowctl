@@ -6,7 +6,7 @@
     import ActionsList from "$lib/components/flow-status/ActionsList.svelte";
     import LogsView from "$lib/components/flow-status/LogsView.svelte";
     import ExecutionOutputTable from "$lib/components/flow-status/ExecutionOutputTable.svelte";
-    import type { FlowMetaResp, ExecutionSummary } from "$lib/types";
+    import type { FlowMetaResp, ExecutionSummary, ArtifactMetadata } from "$lib/types";
     import { apiClient, ApiError } from "$lib/apiClient";
     import {
         handleInlineError,
@@ -120,6 +120,17 @@
         logOutput = "";
     };
 
+    let artifacts = $state<ArtifactMetadata[]>([]);
+
+    const loadArtifacts = async () => {
+        if (!logId) return;
+        try {
+            artifacts = await apiClient.executions.getArtifacts(namespace, logId);
+        } catch (error) {
+            console.error("Failed to load artifacts:", error);
+        }
+    };
+
     // Polling for execution status updates
     let statusPollingInterval: NodeJS.Timeout | null = null;
 
@@ -205,6 +216,7 @@
             newStatus === "cancelled"
         ) {
             stopStatusPolling();
+            loadArtifacts();
         } else {
             startStatusPolling();
         }
@@ -598,6 +610,7 @@
             connectSSE();
         }
         startStatusPolling();
+        loadArtifacts();
     });
 
     // Auto-select running action when it changes
@@ -698,7 +711,7 @@
         </div>
 
         <!-- Collapsible sections -->
-        {#if data.executionSummary?.input || Object.keys(results).length > 0}
+        {#if data.executionSummary?.input || Object.keys(results).length > 0 || artifacts.length > 0}
             <div class="collapsible-sections">
                 {#if data.executionSummary?.input}
                     <details>
@@ -712,6 +725,28 @@
                         <summary>Outputs</summary>
                         <div>
                             <ExecutionOutputTable {results} />
+                        </div>
+                    </details>
+                {/if}
+
+                {#if artifacts.length > 0}
+                    <details open>
+                        <summary>Artifacts</summary>
+                        <div class="artifacts-container">
+                            <ul class="artifacts-list">
+                                {#each artifacts as artifact}
+                                    <li class="artifact-item">
+                                        <a
+                                            href="/api/v1/{encodeURIComponent(namespace)}/flows/executions/{logId}/artifacts/download?path={encodeURIComponent(artifact.path)}"
+                                            download={artifact.name}
+                                            class="artifact-link"
+                                        >
+                                            <span class="artifact-name">{artifact.path}</span>
+                                        </a>
+                                        <span class="artifact-size">({(artifact.size / 1024).toFixed(2)} KB)</span>
+                                    </li>
+                                {/each}
+                            </ul>
                         </div>
                     </details>
                 {/if}
@@ -854,5 +889,52 @@
         flex: 1;
         overflow: hidden;
         padding: var(--space-2);
+    }
+
+    .artifacts-container {
+        padding: var(--space-3);
+    }
+
+    .artifacts-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .artifact-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-3);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-small);
+        background: var(--background);
+        transition: border-color var(--transition-fast);
+    }
+
+    .artifact-item:hover {
+        border-color: var(--primary);
+    }
+
+    .artifact-link {
+        color: var(--primary);
+        text-decoration: none;
+        font-family: var(--font-mono);
+        font-size: var(--text-6);
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+
+    .artifact-link:hover {
+        text-decoration: underline;
+    }
+
+    .artifact-size {
+        font-size: var(--text-7);
+        color: var(--muted-foreground);
     }
 </style>

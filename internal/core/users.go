@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/repo"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -159,7 +161,7 @@ func (c *Core) isReservedUser(ctx context.Context, userUUID string) bool {
 	return u.Role == repo.UserRoleTypeSuperuser
 }
 
-func (c *Core) CreateUser(ctx context.Context, name, username string, loginType models.UserLoginType, userRole models.UserRoleType, groups []string) (models.UserWithGroups, error) {
+func (c *Core) CreateUser(ctx context.Context, name, username string, loginType models.UserLoginType, userRole models.UserRoleType, groups []string, password ...string) (models.UserWithGroups, error) {
 	var ltype repo.UserLoginType
 	switch loginType {
 	case models.OIDCLoginType:
@@ -180,9 +182,19 @@ func (c *Core) CreateUser(ctx context.Context, name, username string, loginType 
 		return models.UserWithGroups{}, fmt.Errorf("unknown role type")
 	}
 
+	var hashedPassword string
+	if len(password) > 0 && password[0] != "" {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(password[0]), bcrypt.DefaultCost)
+		if err != nil {
+			return models.UserWithGroups{}, fmt.Errorf("could not hash password: %w", err)
+		}
+		hashedPassword = string(hashed)
+	}
+
 	params := repo.CreateUserTxParams{
 		Name:      name,
 		Username:  username,
+		Password:  hashedPassword,
 		LoginType: ltype,
 		Role:      urole,
 		Groups:    groups,
@@ -229,6 +241,36 @@ func (c *Core) UpdateUser(ctx context.Context, userUUID string, name string, use
 	}
 
 	return c.repoUserViewToUserWithGroups(userWithGroups)
+}
+
+func (c *Core) ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error {
+	user, err := c.store.GetUserByUsername(ctx, username)
+	if err != nil {
+		return fmt.Errorf("could not get user %s: %w", username, err)
+	}
+
+	if user.Password.String == "" {
+		return fmt.Errorf("user does not have password-based login")
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password.String), []byte(oldPassword)); err != nil {
+		return fmt.Errorf("old password is incorrect")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("could not hash password: %w", err)
+	}
+
+	_, err = c.store.UpdateUserPasswordByUsername(ctx, repo.UpdateUserPasswordByUsernameParams{
+		Username: username,
+		Password: sql.NullString{String: string(hashedPassword), Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("could not update password: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Core) repoUserViewToUserWithGroups(user repo.UserView) (models.UserWithGroups, error) {

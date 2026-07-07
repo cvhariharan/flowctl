@@ -10,6 +10,7 @@ import (
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/repo"
 	"github.com/google/uuid"
+	"slices"
 )
 
 var (
@@ -42,9 +43,33 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 		return fmt.Errorf("decidedby UUID is not a UUID: %w", err)
 	}
 
-	user, err := c.store.GetUserByUUID(ctx, userid)
+	userWithGroups, err := c.GetUserWithUUIDWithGroups(ctx, decidedBy)
 	if err != nil {
 		return err
+	}
+
+	if len(areq.Approvers) > 0 || len(areq.ApprovalGroups) > 0 {
+		isAllowed := false
+		if slices.Contains(areq.Approvers, userWithGroups.Username) {
+			isAllowed = true
+		}
+		if !isAllowed {
+			for _, group := range userWithGroups.Groups {
+				if slices.Contains(areq.ApprovalGroups, group.ID) {
+					isAllowed = true
+					break
+				}
+			}
+		}
+		if !isAllowed {
+			return fmt.Errorf("user %s is not authorized to decide this approval request", userWithGroups.Username)
+		}
+	}
+
+	// Fetch DB user record to get the integer ID required by ProcessApprovalDecisionTx
+	dbUser, err := c.store.GetUserByUUID(ctx, userid)
+	if err != nil {
+		return fmt.Errorf("could not get user %s: %w", decidedBy, err)
 	}
 
 	namespaceUUID, err := uuid.Parse(namespaceID)
@@ -54,14 +79,14 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 
 	var cancellationNote string
 	if status == models.ApprovalStatusRejected {
-		cancellationNote = fmt.Sprintf("Flow execution cancelled due to approval rejection by %s", user.Name)
+		cancellationNote = fmt.Sprintf("Flow execution cancelled due to approval rejection by %s", dbUser.Name)
 	}
 
 	// Process approval decision
 	result, err := c.store.ProcessApprovalDecisionTx(ctx, repo.ApprovalDecisionTxParams{
 		ApprovalUUID:     uid,
 		NamespaceUUID:    namespaceUUID,
-		DecidedByUserID:  user.ID,
+		DecidedByUserID:  dbUser.ID,
 		Status:           repo.ApprovalStatus(status),
 		CancellationNote: cancellationNote,
 	})
@@ -106,7 +131,11 @@ func (c *Core) RequestApproval(ctx context.Context, execID string, action models
 		return "", fmt.Errorf("pending approval request: %s", existingReq.Uuid.String())
 	}
 
-	areq, err := c.store.RequestApprovalTx(ctx, execID, namespaceUUID, repo.RequestApprovalParam{ID: action.ID})
+	areq, err := c.store.RequestApprovalTx(ctx, execID, namespaceUUID, repo.RequestApprovalParam{
+		ID:             action.ID,
+		Approvers:      action.Approvers,
+		ApprovalGroups: action.ApprovalGroups,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -135,11 +164,13 @@ func (c *Core) GetApprovalsRequestsForExec(ctx context.Context, execID string, n
 	}
 
 	existingReq := models.ApprovalRequest{
-		UUID:        areq.Uuid.String(),
-		Status:      models.ApprovalType(areq.Status),
-		ActionID:    areq.ActionID,
-		ExecID:      execID,
-		RequestedBy: areq.RequestedBy,
+		UUID:           areq.Uuid.String(),
+		Status:         models.ApprovalType(areq.Status),
+		ActionID:       areq.ActionID,
+		ExecID:         execID,
+		RequestedBy:    areq.RequestedBy,
+		Approvers:      areq.Approvers,
+		ApprovalGroups: areq.ApprovalGroups,
 	}
 
 	return existingReq, nil
@@ -177,11 +208,13 @@ func (c *Core) GetApprovalRequest(ctx context.Context, approvalUUID string, name
 	}
 
 	approval := models.ApprovalRequest{
-		UUID:        areq.Uuid.String(),
-		Status:      models.ApprovalType(areq.Status),
-		ActionID:    areq.ActionID,
-		ExecID:      exec.ExecID,
-		RequestedBy: areq.RequestedBy,
+		UUID:           areq.Uuid.String(),
+		Status:         models.ApprovalType(areq.Status),
+		ActionID:       areq.ActionID,
+		ExecID:         exec.ExecID,
+		RequestedBy:    areq.RequestedBy,
+		Approvers:      areq.Approvers,
+		ApprovalGroups: areq.ApprovalGroups,
 	}
 
 	return approval, nil
@@ -209,11 +242,13 @@ func (c *Core) GetApprovalWithInputs(ctx context.Context, approvalUUID string, n
 
 	details := models.ApprovalDetails{
 		ApprovalRequest: models.ApprovalRequest{
-			UUID:        approval.Uuid.String(),
-			ActionID:    approval.ActionID,
-			Status:      models.ApprovalType(approval.Status),
-			ExecID:      approval.ExecID,
-			RequestedBy: approval.RequestedBy,
+			UUID:           approval.Uuid.String(),
+			ActionID:       approval.ActionID,
+			Status:         models.ApprovalType(approval.Status),
+			ExecID:         approval.ExecID,
+			RequestedBy:    approval.RequestedBy,
+			Approvers:      approval.Approvers,
+			ApprovalGroups: approval.ApprovalGroups,
 		},
 		DecidedBy: approval.DecidedByName.String,
 		Inputs:    approval.ExecInputs,

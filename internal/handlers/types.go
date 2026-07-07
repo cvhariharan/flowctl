@@ -166,17 +166,19 @@ type ApprovalResp struct {
 }
 
 type ApprovalDetailsResp struct {
-	ID          string          `json:"id"`
-	ActionID    string          `json:"action_id"`
-	Status      string          `json:"status"`
-	ExecID      string          `json:"exec_id"`
-	Inputs      json.RawMessage `json:"inputs,omitempty"`
-	FlowName    string          `json:"flow_name"`
-	FlowID      string          `json:"flow_id"`
-	DecidedBy   string          `json:"approved_by"`
-	RequestedBy string          `json:"requested_by"`
-	CreatedAt   string          `json:"created_at"`
-	UpdatedAt   string          `json:"updated_at"`
+	ID             string          `json:"id"`
+	ActionID       string          `json:"action_id"`
+	Status         string          `json:"status"`
+	ExecID         string          `json:"exec_id"`
+	Inputs         json.RawMessage `json:"inputs,omitempty"`
+	FlowName       string          `json:"flow_name"`
+	FlowID         string          `json:"flow_id"`
+	DecidedBy      string          `json:"approved_by"`
+	RequestedBy    string          `json:"requested_by"`
+	Approvers      []string        `json:"approvers,omitempty"`
+	ApprovalGroups []string        `json:"approval_groups,omitempty"`
+	CreatedAt      string          `json:"created_at"`
+	UpdatedAt      string          `json:"updated_at"`
 }
 
 type ApprovalsPaginateResponse struct {
@@ -459,20 +461,24 @@ func coreFlowMetatoFlowMeta(m models.Metadata, schedules []models.Schedule) Flow
 }
 
 type FlowAction struct {
-	ID       string   `json:"id"`
-	Name     string   `json:"name"`
-	Executor string   `json:"executor"`
-	Approval bool     `json:"approval"`
-	On       []string `json:"on"`
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Executor       string   `json:"executor"`
+	Approval       bool     `json:"approval"`
+	On             []string `json:"on"`
+	Approvers      []string `json:"approvers,omitempty"`
+	ApprovalGroups []string `json:"approval_groups,omitempty"`
 }
 
 func coreFlowActiontoFlowAction(a models.Action) FlowAction {
 	return FlowAction{
-		ID:       a.ID,
-		Name:     a.Name,
-		Executor: a.Executor,
-		Approval: a.Approval,
-		On:       a.On,
+		ID:             a.ID,
+		Name:           a.Name,
+		Executor:       a.Executor,
+		Approval:       a.Approval,
+		On:             a.On,
+		Approvers:      a.Approvers,
+		ApprovalGroups: a.ApprovalGroups,
 	}
 }
 
@@ -515,6 +521,11 @@ type UserReq struct {
 	Name     string   `json:"name" validate:"required,min=2,max=50,alphanum_whitespace"`
 	Username string   `json:"username" validate:"required,email"`
 	Groups   []string `json:"groups"`
+}
+
+type ChangePasswordReq struct {
+	OldPassword string `json:"old_password" validate:"required"`
+	NewPassword string `json:"new_password" validate:"required,min=8"`
 }
 
 type GroupReq struct {
@@ -701,13 +712,15 @@ type FlowInputReq struct {
 }
 
 type FlowActionReq struct {
-	Name      string           `json:"name" validate:"required,alphanum_whitespace,min=1,max=150"`
-	Executor  string           `json:"executor"`
-	With      map[string]any   `json:"with" validate:"required"`
-	Approval  bool             `json:"approval"`
-	Variables []map[string]any `json:"variables"`
-	Condition string           `json:"condition"`
-	On        []string         `json:"on"`
+	Name           string           `json:"name" validate:"required,alphanum_whitespace,min=1,max=150"`
+	Executor       string           `json:"executor"`
+	With           map[string]any   `json:"with" validate:"required"`
+	Approval       bool             `json:"approval"`
+	Approvers      []string         `json:"approvers,omitempty"`
+	ApprovalGroups []string         `json:"approval_groups,omitempty"`
+	Variables      []map[string]any `json:"variables"`
+	Condition      string           `json:"condition"`
+	On             []string         `json:"on"`
 }
 
 type FlowCreateResp struct {
@@ -776,13 +789,15 @@ func convertFlowActionsReqToActions(actionsReq []FlowActionReq) []models.Action 
 		}
 
 		actions[i] = models.Action{
-			ID:        GenerateSlug(action.Name),
-			Name:      action.Name,
-			Executor:  action.Executor,
-			With:      action.With,
-			Approval:  action.Approval,
-			Variables: variables,
-			On:        action.On,
+			ID:             GenerateSlug(action.Name),
+			Name:           action.Name,
+			Executor:       action.Executor,
+			With:           action.With,
+			Approval:       action.Approval,
+			Approvers:      action.Approvers,
+			ApprovalGroups: action.ApprovalGroups,
+			Variables:      variables,
+			On:             action.On,
 		}
 	}
 	return actions
@@ -826,12 +841,14 @@ func convertFlowActionsToActionsReq(actions []models.Action) []FlowActionReq {
 		}
 
 		actionsReq[i] = FlowActionReq{
-			Name:      action.Name,
-			Executor:  action.Executor,
-			With:      action.With,
-			Approval:  action.Approval,
-			Variables: variables,
-			On:        action.On,
+			Name:           action.Name,
+			Executor:       action.Executor,
+			With:           action.With,
+			Approval:       action.Approval,
+			Approvers:      action.Approvers,
+			ApprovalGroups: action.ApprovalGroups,
+			Variables:      variables,
+			On:             action.On,
 		}
 	}
 	return actionsReq
