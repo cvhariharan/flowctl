@@ -37,7 +37,7 @@ require (
 	github.com/zerodha/simplesessions/stores/postgres/v3 v3.0.0
 	github.com/zerodha/simplesessions/v3 v3.0.0
 	gocloud.dev v0.43.0
-	golang.org/x/crypto v0.51.0
+	golang.org/x/crypto v0.52.0
 	golang.org/x/oauth2 v0.35.0
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
