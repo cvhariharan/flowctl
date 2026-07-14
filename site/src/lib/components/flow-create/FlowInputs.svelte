@@ -43,6 +43,9 @@
             input.max_file_size = undefined;
             input.maxFileSizeMB = undefined;
         }
+        if (input.type === "node" && input.multiple === undefined) {
+            input.multiple = false;
+        }
     }
 
     function updateOptions(input: any) {
@@ -137,7 +140,8 @@
                                 { value: 'password', label: 'Password' },
                                 { value: 'file', label: 'File' },
                                 { value: 'datetime', label: 'DateTime' },
-                                { value: 'select', label: 'Select' }
+                                { value: 'select', label: 'Select' },
+                                { value: 'node', label: 'Node' }
                             ]}
                             onchange={() => onInputTypeChange(input)}
                         />
@@ -284,6 +288,18 @@
                                 ></textarea>
                             </div>
                         {/if}
+                    </div>
+                {/if}
+
+                {#if input.type === "node"}
+                    <div class="options-section mt-4">
+                        <div class="hstack gap-2">
+                            <input
+                                type="checkbox"
+                                bind:checked={input.multiple}
+                            />
+                            <label>Allow selecting multiple nodes/tags</label>
+                        </div>
                     </div>
                 {/if}
 

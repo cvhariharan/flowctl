@@ -21,7 +21,7 @@ type NodeAuth struct {
 
 type ExecutionContext struct {
 	// WithConfig is the yaml config passed to the executor
-	WithConfig []byte
+	WithConfig    []byte
 	Inputs        map[string]any
 	Stdout        io.Writer
 	Stderr        io.Writer
@@ -29,11 +29,11 @@ type ExecutionContext struct {
 	NamespaceName string // human-readable namespace name for API calls
 	APIKey        string // executor API key for authenticating with the server
 	APIBaseURL    string // server base URL for API calls
-	ExecID     string // unique ID for this execution
-	FlowID     string // ID of the flow being executed
-	FlowName   string // human-readable flow name
-	ActionID   string // ID of the current action being executed
-	ActionName string // human-readable action name
+	ExecID        string // unique ID for this execution
+	FlowID        string // ID of the flow being executed
+	FlowName      string // human-readable flow name
+	ActionID      string // ID of the current action being executed
+	ActionName    string // human-readable action name
 	// Nodes contains all target nodes for this action. Executors that handle
 	// node dispatch internally can use this list
 	Nodes []Node

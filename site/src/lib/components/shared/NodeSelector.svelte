@@ -10,14 +10,21 @@
     selectedNodes = $bindable([]),
     placeholder = 'Search nodes or use tag:name...',
     disabled = false,
-    multiple = true
+    multiple = true,
+    flowId = ''
   }: {
     namespace: string;
     selectedNodes: string[];
     placeholder?: string;
     disabled?: boolean;
     multiple?: boolean;
+    flowId?: string;
   } = $props();
+
+  const listNodes = (params: { count_per_page?: number; filter?: string; tags?: string[] }) =>
+    flowId
+      ? apiClient.nodes.listForFlow(namespace, flowId, params)
+      : apiClient.nodes.list(namespace, params);
 
   let searchQuery = $state('');
   let searchResults = $state<NodeResp[]>([]);
@@ -47,7 +54,7 @@
 
       if (tagName) {
         try {
-          const response = await apiClient.nodes.list(namespace, { count_per_page: 100, tags: [tagName] });
+          const response = await listNodes({ count_per_page: 100, tags: [tagName] });
           searchResults = response.nodes || [];
         } catch (error) {
           handleInlineError(error, 'Unable to Load Nodes');
@@ -64,7 +71,7 @@
     }
 
     try {
-      const response = await apiClient.nodes.list(namespace, { count_per_page: 100, filter });
+      const response = await listNodes({ count_per_page: 100, filter });
       searchResults = response.nodes || [];
     } catch (error) {
       handleInlineError(error, 'Unable to Load Nodes');

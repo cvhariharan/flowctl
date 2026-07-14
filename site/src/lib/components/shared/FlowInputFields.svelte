@@ -1,20 +1,34 @@
 <script lang="ts">
 	import OatSelect from '$lib/components/shared/OatSelect.svelte';
+	import NodeSelector from '$lib/components/shared/NodeSelector.svelte';
 	import type { FlowInput } from '$lib/types';
 
 	let {
 		inputs = [],
 		values = $bindable({}),
 		errors = {},
-		useFormData = false
+		useFormData = false,
+		namespace = '',
+		flowId = ''
 	}: {
 		inputs?: FlowInput[];
 		values?: Record<string, any>;
 		errors?: Record<string, string>;
 		useFormData?: boolean;
+		namespace?: string;
+		flowId?: string;
 	} = $props();
 
+	function nodeValues(v: any): string[] {
+		if (Array.isArray(v)) return v;
+		if (typeof v === 'string' && v) return [v];
+		return [];
+	}
+
 	function defaultValue(input: FlowInput) {
+		if (input.type === 'node') {
+			return input.default ? [input.default] : [];
+		}
 		if (input.default === undefined) return undefined;
 		if (input.type === 'checkbox') return input.default.toLowerCase() === 'true';
 		return input.default;
@@ -24,6 +38,13 @@
 		if (typeof value === 'boolean') return value;
 		if (typeof value === 'string') return value.toLowerCase() === 'true';
 		return Boolean(value);
+	}
+
+	for (const input of inputs) {
+		const value = defaultValue(input);
+		if (value !== undefined && values[input.name] === undefined) {
+			values[input.name] = value;
+		}
 	}
 
 	$effect(() => {
@@ -138,6 +159,21 @@
 						/>
 					{/if}
 				</div>
+			{:else if input.type === 'node'}
+				<div style="margin-block-start: var(--space-1)">
+					<NodeSelector
+						{namespace}
+						{flowId}
+						bind:selectedNodes={values[input.name]}
+						placeholder={input.description || 'Search nodes or tag:name...'}
+						multiple={input.multiple ?? false}
+					/>
+				</div>
+				{#if useFormData}
+					{#each nodeValues(values[input.name]) as n}
+						<input type="hidden" name={input.name} value={n} />
+					{/each}
+				{/if}
 			{:else if input.type === 'password'}
 				<div>
 					{#if useFormData}

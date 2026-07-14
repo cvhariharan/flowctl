@@ -31,6 +31,51 @@ var (
 	ErrFlowNotFound = errors.New("flow not found")
 )
 
+// resolveOverrideNodes finds a node-typed input in the flow and resolves its selected
+// names/tags to scheduler nodes. Returns nil if no node input exists or nothing was selected.
+func (c *Core) resolveOverrideNodes(ctx context.Context, f models.Flow, input map[string]any, namespaceUUID uuid.UUID) ([]scheduler.Node, error) {
+	for _, inp := range f.Inputs {
+		if inp.Type != models.INPUT_TYPE_NODE {
+			continue
+		}
+		raw, ok := input[inp.Name]
+		if !ok {
+			continue
+		}
+		targets := toStringSlice(raw)
+		if len(targets) == 0 {
+			continue
+		}
+		nodes, err := models.ResolveTargets(ctx, targets, namespaceUUID, c.GetNodesByNames, c.GetNodesByTags)
+		if err != nil {
+			return nil, err
+		}
+		return models.NodesToScheduler(nodes), nil
+	}
+	return nil, nil
+}
+
+func toStringSlice(v any) []string {
+	switch t := v.(type) {
+	case []string:
+		return t
+	case []any:
+		out := make([]string, 0, len(t))
+		for _, it := range t {
+			if s, ok := it.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	case string:
+		if t == "" {
+			return nil
+		}
+		return []string{t}
+	}
+	return nil
+}
+
 // isSubpath checks if child is under parent (or equal to parent)
 func isSubpath(parent, child string) (bool, error) {
 	parent, err := filepath.Abs(parent)
@@ -381,6 +426,11 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 		dbTriggerType = repo.TriggerTypeScheduled
 	}
 
+	overrideNodes, err := c.resolveOverrideNodes(ctx, f, input, namespaceUUID)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve override nodes: %w", err)
+	}
+
 	// Create flow execution payload for scheduler
 	payload := scheduler.FlowExecutionPayload{
 		Workflow:          schedulerFlow,
@@ -390,6 +440,7 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 		TriggerType:       triggerType,
 		UserUUID:          userUUID,
 		FlowDirectory:     filepath.Dir(fl.FilePath),
+		OverrideNodes:     overrideNodes,
 		Resumed:           retry,
 	}
 
@@ -1112,6 +1163,16 @@ func (c *Core) SyncScheduledFlowJobs(ctx context.Context) ([]scheduler.Scheduled
 			}
 		}
 
+		modelFlow, err := c.GetFlowByID(flow.Slug, flow.NamespaceUuid.String())
+		var overrideNodes []scheduler.Node
+		if err == nil {
+			overrideNodes, err = c.resolveOverrideNodes(ctx, modelFlow, input, flow.NamespaceUuid)
+			if err != nil {
+				log.Printf("failed to resolve override nodes for schedule %d: %v", flow.ScheduleID, err)
+				overrideNodes = nil
+			}
+		}
+
 		payload := scheduler.FlowExecutionPayload{
 			Workflow:          schedulerFlow,
 			Input:             input,
@@ -1120,6 +1181,7 @@ func (c *Core) SyncScheduledFlowJobs(ctx context.Context) ([]scheduler.Scheduled
 			TriggerType:       scheduler.TriggerTypeScheduled,
 			UserUUID:          userUUID,
 			FlowDirectory:     filepath.Dir(flow.FilePath),
+			OverrideNodes:     overrideNodes,
 		}
 
 		jobs = append(jobs, scheduler.ScheduledJob{

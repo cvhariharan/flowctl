@@ -362,6 +362,8 @@ export const apiClient = {
   nodes: {
     list: (namespace: string, params: NodePaginateRequest = {}) =>
       baseFetch<NodesPaginateResponse>(`/api/v1/${encodeURIComponent(namespace)}/nodes${buildQueryString(params)}`),
+    listForFlow: (namespace: string, flowId: string, params: NodePaginateRequest = {}) =>
+      baseFetch<NodesPaginateResponse>(`/api/v1/${encodeURIComponent(namespace)}/flows/${encodeURIComponent(flowId)}/nodes${buildQueryString(params)}`),
     getStats: (namespace: string) =>
       baseFetch<NodeStatsResp>(`/api/v1/${encodeURIComponent(namespace)}/nodes/stats`),
     getById: (namespace: string, id: string) =>

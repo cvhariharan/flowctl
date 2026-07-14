@@ -87,6 +87,19 @@ paths:
               schema:
                 type: string
 
+  /info:
+    get:
+      operationId: GetInfo
+      tags: [Meta]
+      summary: Get application build and runtime information
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AppInfoResponse" }
+
   /login:
     post:
       operationId: Login
@@ -618,6 +631,31 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlowInputsResp" }
+
+  /api/v1/{namespace}/flows/{flowID}/nodes:
+    parameters:
+      - $ref: "#/components/parameters/NamespacePath"
+      - { name: flowID, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: ListNodesForFlow
+      tags: [Nodes]
+      summary: List nodes available when executing a flow
+      parameters:
+        - $ref: "#/components/parameters/Filter"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/CountPerPage"
+        - name: tags
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema: { type: array, items: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NodesPaginateResponse" }
 
   /api/v1/{namespace}/flows/{flowID}/config:
     parameters:
@@ -1782,6 +1820,7 @@ components:
         name: { type: string }
         executor: { type: string }
         approval: { type: boolean }
+        allow_node_override: { type: boolean }
         on:
           type: array
           items: { type: string }
@@ -1885,6 +1924,7 @@ components:
           type: object
           additionalProperties: true
         approval: { type: boolean }
+        allow_node_override: { type: boolean }
         variables:
           type: array
           items:
@@ -2203,6 +2243,13 @@ components:
         total_count: { type: integer, format: int64 }
 
     # Meta
+    AppInfoResponse:
+      type: object
+      properties:
+        version: { type: string }
+        commit: { type: string }
+        build_date: { type: string }
+        default_timezone: { type: string }
     ExecutorInfo:
       type: object
       properties:

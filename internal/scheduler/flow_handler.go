@@ -43,16 +43,17 @@ type FlowExecutionHandler struct {
 }
 
 type flowRunContext struct {
-	execID       string
-	workflowMeta Metadata
-	variableMeta flowVariableMetadata
-	input        map[string]any
-	streamLogger streamlogger.Logger
-	artifactDir  string
-	secrets      map[string]string
-	outputs      map[string]any
-	namespaceID  string
-	userUUID     string
+	execID        string
+	workflowMeta  Metadata
+	variableMeta  flowVariableMetadata
+	input         map[string]any
+	streamLogger  streamlogger.Logger
+	artifactDir   string
+	secrets       map[string]string
+	outputs       map[string]any
+	namespaceID   string
+	userUUID      string
+	overrideNodes []Node
 }
 
 type flowVariableMetadata struct {
@@ -222,16 +223,17 @@ func (h *FlowExecutionHandler) executeFlow(ctx context.Context, execID string, p
 
 	// Initialize outputs map to accumulate results from all previous actions
 	runCtx := flowRunContext{
-		execID:       execID,
-		workflowMeta: payload.Workflow.Meta,
-		variableMeta: newFlowVariableMetadata(payload.Workflow.Meta),
-		input:        payload.Input,
-		streamLogger: streamLogger,
-		artifactDir:  artifactDir,
-		secrets:      flowSecrets,
-		outputs:      make(map[string]any),
-		namespaceID:  payload.NamespaceID,
-		userUUID:     payload.UserUUID,
+		execID:        execID,
+		workflowMeta:  payload.Workflow.Meta,
+		variableMeta:  newFlowVariableMetadata(payload.Workflow.Meta),
+		input:         payload.Input,
+		streamLogger:  streamLogger,
+		artifactDir:   artifactDir,
+		secrets:       flowSecrets,
+		outputs:       make(map[string]any),
+		namespaceID:   payload.NamespaceID,
+		userUUID:      payload.UserUUID,
+		overrideNodes: payload.OverrideNodes,
 	}
 
 	for i := payload.StartingActionIdx; i < len(payload.Workflow.Actions); i++ {
@@ -629,14 +631,22 @@ func (h *FlowExecutionHandler) runAction(ctx context.Context, action Action, run
 		return nil, fmt.Errorf("failed to marshal 'with' config: %w", err)
 	}
 
+	caps, _ := executor.GetCapabilities(action.Executor)
+
+	if action.AllowNodeOverride && caps&executor.RemoteExecution != 0 && len(runCtx.overrideNodes) > 0 {
+		action.On = runCtx.overrideNodes
+	}
+
 	if len(action.On) == 0 {
 		action.On = append(action.On, Node{})
 	}
 
+	h.logger.Debug("final nodes", "nodes", action.On)
+
 	// Executors with NodeDispatch capability handle node fan-out themselves
 	// so run them once locally and pass the selected nodes through ExecutionContext
 	dispatchNodes := action.On
-	if caps, err := executor.GetCapabilities(action.Executor); err == nil && caps&executor.NodeDispatch != 0 {
+	if caps&executor.NodeDispatch != 0 {
 		dispatchNodes = []Node{{}}
 	}
 

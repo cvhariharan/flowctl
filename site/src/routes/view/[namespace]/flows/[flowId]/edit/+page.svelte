@@ -127,6 +127,8 @@
                 remoteHeaders: input.remote_options?.headers
                     ? Object.entries(input.remote_options.headers).map(([key, value]) => ({ key, value }))
                     : [],
+                multiple: input.multiple ?? false,
+                required: input.required ?? false,
             }));
 
             // Transform actions
@@ -142,6 +144,8 @@
                     : [],
                 artifacts: action.artifacts || [],
                 selectedNodes: action.on || [],
+                approval: action.approval ?? false,
+                allow_node_override: action.allow_node_override ?? false,
                 collapsed: false,
             }));
 
@@ -193,6 +197,7 @@
             selectedNodes: [],
             variables: [],
             approval: false,
+            allow_node_override: false,
             artifacts: [],
             condition: "",
             collapsed: false,
@@ -228,6 +233,10 @@
             if (!input.name?.trim()) {
                 errors.push(`Input ${i + 1}: Input name is required.`);
             }
+        }
+
+        if (flow.inputs.filter((input) => input.type === "node").length > 1) {
+            errors.push("Only one input of type node is allowed per flow.");
         }
 
         if (errors.length > 0) {
@@ -280,6 +289,7 @@
                                       }
                                     : undefined,
                             max_file_size: input.max_file_size || undefined,
+                            multiple: input.type === "node" ? input.multiple || false : undefined,
                         }),
                     ),
                 actions: flow.actions
@@ -290,6 +300,7 @@
                             executor: action.executor as "script" | "docker",
                             with: action.with || {},
                             approval: action.approval || false,
+                            allow_node_override: action.allow_node_override || false,
                             variables: action.variables
                                 ?.filter((v: any) => v.name && v.name.trim())
                                 .map((v: any) => ({ [v.name]: v.value })),

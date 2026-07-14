@@ -459,20 +459,22 @@ func coreFlowMetatoFlowMeta(m models.Metadata, schedules []models.Schedule) Flow
 }
 
 type FlowAction struct {
-	ID       string   `json:"id"`
-	Name     string   `json:"name"`
-	Executor string   `json:"executor"`
-	Approval bool     `json:"approval"`
-	On       []string `json:"on"`
+	ID                string   `json:"id"`
+	Name              string   `json:"name"`
+	Executor          string   `json:"executor"`
+	Approval          bool     `json:"approval"`
+	AllowNodeOverride bool     `json:"allow_node_override"`
+	On                []string `json:"on"`
 }
 
 func coreFlowActiontoFlowAction(a models.Action) FlowAction {
 	return FlowAction{
-		ID:       a.ID,
-		Name:     a.Name,
-		Executor: a.Executor,
-		Approval: a.Approval,
-		On:       a.On,
+		ID:                a.ID,
+		Name:              a.Name,
+		Executor:          a.Executor,
+		Approval:          a.Approval,
+		AllowNodeOverride: a.AllowNodeOverride,
+		On:                a.On,
 	}
 }
 
@@ -701,13 +703,14 @@ type FlowInputReq struct {
 }
 
 type FlowActionReq struct {
-	Name      string           `json:"name" validate:"required,alphanum_whitespace,min=1,max=150"`
-	Executor  string           `json:"executor"`
-	With      map[string]any   `json:"with" validate:"required"`
-	Approval  bool             `json:"approval"`
-	Variables []map[string]any `json:"variables"`
-	Condition string           `json:"condition"`
-	On        []string         `json:"on"`
+	Name              string           `json:"name" validate:"required,alphanum_whitespace,min=1,max=150"`
+	Executor          string           `json:"executor"`
+	With              map[string]any   `json:"with" validate:"required"`
+	Approval          bool             `json:"approval"`
+	AllowNodeOverride bool             `json:"allow_node_override"`
+	Variables         []map[string]any `json:"variables"`
+	Condition         string           `json:"condition"`
+	On                []string         `json:"on"`
 }
 
 type FlowCreateResp struct {
@@ -776,13 +779,14 @@ func convertFlowActionsReqToActions(actionsReq []FlowActionReq) []models.Action 
 		}
 
 		actions[i] = models.Action{
-			ID:        GenerateSlug(action.Name),
-			Name:      action.Name,
-			Executor:  action.Executor,
-			With:      action.With,
-			Approval:  action.Approval,
-			Variables: variables,
-			On:        action.On,
+			ID:                GenerateSlug(action.Name),
+			Name:              action.Name,
+			Executor:          action.Executor,
+			With:              action.With,
+			Approval:          action.Approval,
+			AllowNodeOverride: action.AllowNodeOverride,
+			Variables:         variables,
+			On:                action.On,
 		}
 	}
 	return actions
@@ -826,12 +830,13 @@ func convertFlowActionsToActionsReq(actions []models.Action) []FlowActionReq {
 		}
 
 		actionsReq[i] = FlowActionReq{
-			Name:      action.Name,
-			Executor:  action.Executor,
-			With:      action.With,
-			Approval:  action.Approval,
-			Variables: variables,
-			On:        action.On,
+			Name:              action.Name,
+			Executor:          action.Executor,
+			With:              action.With,
+			Approval:          action.Approval,
+			AllowNodeOverride: action.AllowNodeOverride,
+			Variables:         variables,
+			On:                action.On,
 		}
 	}
 	return actionsReq

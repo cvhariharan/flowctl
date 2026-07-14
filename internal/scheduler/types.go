@@ -129,13 +129,14 @@ type Input struct {
 }
 
 type Action struct {
-	ID        string         `yaml:"id" validate:"required,alphanum_underscore"`
-	Name      string         `yaml:"name" validate:"required"`
-	Executor  string         `yaml:"executor"`
-	With      map[string]any `yaml:"with" validate:"required"`
-	Approval  bool           `yaml:"approval"`
-	Variables []Variable     `yaml:"variables"`
-	On        []Node         `yaml:"on"`
+	ID                string         `yaml:"id" validate:"required,alphanum_underscore"`
+	Name              string         `yaml:"name" validate:"required"`
+	Executor          string         `yaml:"executor"`
+	With              map[string]any `yaml:"with" validate:"required"`
+	Approval          bool           `yaml:"approval"`
+	AllowNodeOverride bool           `yaml:"allow_node_override"`
+	Variables         []Variable     `yaml:"variables"`
+	On                []Node         `yaml:"on"`
 }
 
 type Scheduling struct {
@@ -217,6 +218,7 @@ type FlowExecutionPayload struct {
 	TriggerType       TriggerType
 	UserUUID          string
 	FlowDirectory     string
+	OverrideNodes     []Node
 
 	// Resumed should be set to true if resuming an existing execution (after approval or retry)
 	Resumed bool

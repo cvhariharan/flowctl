@@ -592,6 +592,14 @@ type APITokenCreated struct {
 	UUID  openapi_types.UUID `json:"uuid"`
 }
 
+// AppInfoResponse defines model for AppInfoResponse.
+type AppInfoResponse struct {
+	BuildDate       *string `json:"build_date,omitempty"`
+	Commit          *string `json:"commit,omitempty"`
+	DefaultTimezone *string `json:"default_timezone,omitempty"`
+	Version         *string `json:"version,omitempty"`
+}
+
 // ApprovalActionResp defines model for ApprovalActionResp.
 type ApprovalActionResp struct {
 	ID       *openapi_types.UUID       `json:"id,omitempty"`
@@ -739,22 +747,24 @@ type ExecutorsListResponse struct {
 
 // FlowAction defines model for FlowAction.
 type FlowAction struct {
-	Approval *bool     `json:"approval,omitempty"`
-	Executor *string   `json:"executor,omitempty"`
-	ID       *string   `json:"id,omitempty"`
-	Name     *string   `json:"name,omitempty"`
-	On       *[]string `json:"on,omitempty"`
+	AllowNodeOverride *bool     `json:"allow_node_override,omitempty"`
+	Approval          *bool     `json:"approval,omitempty"`
+	Executor          *string   `json:"executor,omitempty"`
+	ID                *string   `json:"id,omitempty"`
+	Name              *string   `json:"name,omitempty"`
+	On                *[]string `json:"on,omitempty"`
 }
 
 // FlowActionReq defines model for FlowActionReq.
 type FlowActionReq struct {
-	Approval  *bool                     `json:"approval,omitempty"`
-	Condition *string                   `json:"condition,omitempty"`
-	Executor  *string                   `json:"executor,omitempty"`
-	Name      string                    `json:"name"`
-	On        *[]string                 `json:"on,omitempty"`
-	Variables *[]map[string]interface{} `json:"variables,omitempty"`
-	With      map[string]interface{}    `json:"with"`
+	AllowNodeOverride *bool                     `json:"allow_node_override,omitempty"`
+	Approval          *bool                     `json:"approval,omitempty"`
+	Condition         *string                   `json:"condition,omitempty"`
+	Executor          *string                   `json:"executor,omitempty"`
+	Name              string                    `json:"name"`
+	On                *[]string                 `json:"on,omitempty"`
+	Variables         *[]map[string]interface{} `json:"variables,omitempty"`
+	With              map[string]interface{}    `json:"with"`
 }
 
 // FlowCancellationResp defines model for FlowCancellationResp.
@@ -1347,6 +1357,17 @@ type ListFlowExecutionsParams struct {
 	CountPerPage *CountPerPage `form:"count_per_page,omitempty" json:"count_per_page,omitempty"`
 }
 
+// ListNodesForFlowParams defines parameters for ListNodesForFlow.
+type ListNodesForFlowParams struct {
+	// Filter Substring filter applied server-side.
+	Filter *Filter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Page 1-based page number; `0` means the first page.
+	Page         *Page         `form:"page,omitempty" json:"page,omitempty"`
+	CountPerPage *CountPerPage `form:"count_per_page,omitempty" json:"count_per_page,omitempty"`
+	Tags         *[]string     `form:"tags,omitempty" json:"tags,omitempty"`
+}
+
 // ListSchedulesParams defines parameters for ListSchedules.
 type ListSchedulesParams struct {
 	// Page 1-based page number; `0` means the first page.
@@ -1753,6 +1774,9 @@ type ClientInterface interface {
 	// GetFlowDetails request
 	GetFlowDetails(ctx context.Context, namespace NamespacePath, flowID string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListNodesForFlow request
+	ListNodesForFlow(ctx context.Context, namespace NamespacePath, flowID string, params *ListNodesForFlowParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListSchedules request
 	ListSchedules(ctx context.Context, namespace NamespacePath, flowID string, params *ListSchedulesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1872,6 +1896,9 @@ type ClientInterface interface {
 
 	// CompleteOIDCLogin request
 	CompleteOIDCLogin(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetInfo request
+	GetInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// LoginWithBody request with any body
 	LoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2743,6 +2770,18 @@ func (c *Client) GetFlowDetails(ctx context.Context, namespace NamespacePath, fl
 	return c.Client.Do(req)
 }
 
+func (c *Client) ListNodesForFlow(ctx context.Context, namespace NamespacePath, flowID string, params *ListNodesForFlowParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListNodesForFlowRequest(c.Server, namespace, flowID, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) ListSchedules(ctx context.Context, namespace NamespacePath, flowID string, params *ListSchedulesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListSchedulesRequest(c.Server, namespace, flowID, params)
 	if err != nil {
@@ -3261,6 +3300,18 @@ func (c *Client) TriggerFlow(ctx context.Context, namespace NamespacePath, flow 
 
 func (c *Client) CompleteOIDCLogin(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCompleteOIDCLoginRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInfoRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -5890,6 +5941,110 @@ func NewGetFlowDetailsRequest(server string, namespace NamespacePath, flowID str
 	return req, nil
 }
 
+// NewListNodesForFlowRequest generates requests for ListNodesForFlow
+func NewListNodesForFlowRequest(server string, namespace NamespacePath, flowID string, params *ListNodesForFlowParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "namespace", namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "flowID", flowID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/%s/flows/%s/nodes", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Filter != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filter", *params.Filter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.CountPerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "count_per_page", *params.CountPerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Tags != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tags", *params.Tags, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListSchedulesRequest generates requests for ListSchedules
 func NewListSchedulesRequest(server string, namespace NamespacePath, flowID string, params *ListSchedulesParams) (*http.Request, error) {
 	var err error
@@ -7488,6 +7643,33 @@ func NewCompleteOIDCLoginRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetInfoRequest generates requests for GetInfo
+func NewGetInfoRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/info")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewLoginRequest calls the generic Login builder with application/json body
 func NewLoginRequest(server string, body LoginJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -7910,6 +8092,9 @@ type ClientWithResponsesInterface interface {
 	// GetFlowDetailsWithResponse request
 	GetFlowDetailsWithResponse(ctx context.Context, namespace NamespacePath, flowID string, reqEditors ...RequestEditorFn) (*GetFlowDetailsResponse, error)
 
+	// ListNodesForFlowWithResponse request
+	ListNodesForFlowWithResponse(ctx context.Context, namespace NamespacePath, flowID string, params *ListNodesForFlowParams, reqEditors ...RequestEditorFn) (*ListNodesForFlowResponse, error)
+
 	// ListSchedulesWithResponse request
 	ListSchedulesWithResponse(ctx context.Context, namespace NamespacePath, flowID string, params *ListSchedulesParams, reqEditors ...RequestEditorFn) (*ListSchedulesResponse, error)
 
@@ -8029,6 +8214,9 @@ type ClientWithResponsesInterface interface {
 
 	// CompleteOIDCLoginWithResponse request
 	CompleteOIDCLoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CompleteOIDCLoginResponse, error)
+
+	// GetInfoWithResponse request
+	GetInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetInfoResponse, error)
 
 	// LoginWithBodyWithResponse request with any body
 	LoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginResponse, error)
@@ -9707,6 +9895,36 @@ func (r GetFlowDetailsResponse) ContentType() string {
 	return ""
 }
 
+type ListNodesForFlowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NodesPaginateResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r ListNodesForFlowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListNodesForFlowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListNodesForFlowResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListSchedulesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -10657,6 +10875,36 @@ func (r CompleteOIDCLoginResponse) ContentType() string {
 	return ""
 }
 
+type GetInfoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AppInfoResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetInfoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetInfoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetInfoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type LoginResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11427,6 +11675,15 @@ func (c *ClientWithResponses) GetFlowDetailsWithResponse(ctx context.Context, na
 	return ParseGetFlowDetailsResponse(rsp)
 }
 
+// ListNodesForFlowWithResponse request returning *ListNodesForFlowResponse
+func (c *ClientWithResponses) ListNodesForFlowWithResponse(ctx context.Context, namespace NamespacePath, flowID string, params *ListNodesForFlowParams, reqEditors ...RequestEditorFn) (*ListNodesForFlowResponse, error) {
+	rsp, err := c.ListNodesForFlow(ctx, namespace, flowID, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListNodesForFlowResponse(rsp)
+}
+
 // ListSchedulesWithResponse request returning *ListSchedulesResponse
 func (c *ClientWithResponses) ListSchedulesWithResponse(ctx context.Context, namespace NamespacePath, flowID string, params *ListSchedulesParams, reqEditors ...RequestEditorFn) (*ListSchedulesResponse, error) {
 	rsp, err := c.ListSchedules(ctx, namespace, flowID, params, reqEditors...)
@@ -11809,6 +12066,15 @@ func (c *ClientWithResponses) CompleteOIDCLoginWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseCompleteOIDCLoginResponse(rsp)
+}
+
+// GetInfoWithResponse request returning *GetInfoResponse
+func (c *ClientWithResponses) GetInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetInfoResponse, error) {
+	rsp, err := c.GetInfo(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInfoResponse(rsp)
 }
 
 // LoginWithBodyWithResponse request with arbitrary body returning *LoginResponse
@@ -13336,6 +13602,32 @@ func ParseGetFlowDetailsResponse(rsp *http.Response) (*GetFlowDetailsResponse, e
 	return response, nil
 }
 
+// ParseListNodesForFlowResponse parses an HTTP response from a ListNodesForFlowWithResponse call
+func ParseListNodesForFlowResponse(rsp *http.Response) (*ListNodesForFlowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListNodesForFlowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodesPaginateResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListSchedulesResponse parses an HTTP response from a ListSchedulesWithResponse call
 func ParseListSchedulesResponse(rsp *http.Response) (*ListSchedulesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -14057,6 +14349,32 @@ func ParseCompleteOIDCLoginResponse(rsp *http.Response) (*CompleteOIDCLoginRespo
 	response := &CompleteOIDCLoginResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetInfoResponse parses an HTTP response from a GetInfoWithResponse call
+func ParseGetInfoResponse(rsp *http.Response) (*GetInfoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetInfoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppInfoResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	}
 
 	return response, nil

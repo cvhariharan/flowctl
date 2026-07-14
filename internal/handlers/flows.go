@@ -139,6 +139,14 @@ func (h *Handler) processFlowInputs(c echo.Context, flow models.Flow, execID str
 			} else {
 				req[input.Name] = "false"
 			}
+		case models.INPUT_TYPE_NODE:
+			form, err := c.FormParams()
+			if err != nil {
+				return nil, err
+			}
+			if values := form[input.Name]; len(values) > 0 {
+				req[input.Name] = values
+			}
 		default:
 			if value := c.FormValue(input.Name); value != "" {
 				req[input.Name] = value

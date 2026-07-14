@@ -27,6 +27,7 @@ const (
 	INPUT_TYPE_DATETIME InputType = "datetime"
 	INPUT_TYPE_CHECKBOX InputType = "checkbox"
 	INPUT_TYPE_SELECT   InputType = "select"
+	INPUT_TYPE_NODE     InputType = "node"
 )
 
 type RemoteOptions struct {
@@ -37,13 +38,14 @@ type RemoteOptions struct {
 
 type Input struct {
 	Name          string         `yaml:"name" huml:"name" json:"name" validate:"required,alphanum_underscore"`
-	Type          InputType      `yaml:"type" huml:"type" json:"type" validate:"required,oneof=string number password file datetime checkbox select"`
+	Type          InputType      `yaml:"type" huml:"type" json:"type" validate:"required,oneof=string number password file datetime checkbox select node"`
 	Label         string         `yaml:"label" huml:"label" json:"label"`
 	Description   string         `yaml:"description" huml:"description" json:"description"`
 	Validation    string         `yaml:"validation" huml:"validation" json:"validation"`
 	Required      bool           `yaml:"required" huml:"required" json:"required"`
 	Default       string         `yaml:"default" huml:"default" json:"default"`
 	Options       []string       `yaml:"options" huml:"options" json:"options"`
+	Multiple      bool           `yaml:"multiple" huml:"multiple" json:"multiple"`
 	MaxFileSize   int64          `yaml:"max_file_size" huml:"max_file_size" json:"max_file_size"`
 	RemoteOptions *RemoteOptions `yaml:"remote_options,omitempty" huml:"remote_options" json:"remote_options,omitempty"`
 }
@@ -69,13 +71,14 @@ type Notify struct {
 }
 
 type Action struct {
-	ID        string         `yaml:"id" huml:"id" validate:"required,alphanum_underscore"`
-	Name      string         `yaml:"name" huml:"name" validate:"required"`
-	Executor  string         `yaml:"executor" huml:"executor"`
-	With      map[string]any `yaml:"with" huml:"with" validate:"required"`
-	Approval  bool           `yaml:"approval" huml:"approval"`
-	Variables []Variable     `yaml:"variables" huml:"variables"`
-	On        []string       `yaml:"on" huml:"on"`
+	ID                string         `yaml:"id" huml:"id" validate:"required,alphanum_underscore"`
+	Name              string         `yaml:"name" huml:"name" validate:"required"`
+	Executor          string         `yaml:"executor" huml:"executor"`
+	With              map[string]any `yaml:"with" huml:"with" validate:"required"`
+	Approval          bool           `yaml:"approval" huml:"approval"`
+	AllowNodeOverride bool           `yaml:"allow_node_override" huml:"allow_node_override" json:"allow_node_override"`
+	Variables         []Variable     `yaml:"variables" huml:"variables"`
+	On                []string       `yaml:"on" huml:"on"`
 }
 
 func SchedulerActionToAction(a scheduler.Action) Action {
@@ -90,13 +93,14 @@ func SchedulerActionToAction(a scheduler.Action) Action {
 	}
 
 	return Action{
-		ID:        a.ID,
-		Name:      a.Name,
-		With:      a.With,
-		On:        nodeNames,
-		Executor:  a.Executor,
-		Approval:  a.Approval,
-		Variables: variables,
+		ID:                a.ID,
+		Name:              a.Name,
+		With:              a.With,
+		On:                nodeNames,
+		Executor:          a.Executor,
+		Approval:          a.Approval,
+		AllowNodeOverride: a.AllowNodeOverride,
+		Variables:         variables,
 	}
 }
 
@@ -230,6 +234,16 @@ func (f Flow) Validate() error {
 			return fmt.Errorf("action ID %s is reused, actions IDs should be unique", action.ID)
 		}
 		actionsIDs[action.ID] = 1
+	}
+
+	nodeInputCount := 0
+	for _, input := range f.Inputs {
+		if input.Type == INPUT_TYPE_NODE {
+			nodeInputCount++
+		}
+	}
+	if nodeInputCount > 1 {
+		return fmt.Errorf("only one input of type node is allowed per flow")
 	}
 
 	// Validate default values for inputs
@@ -377,6 +391,19 @@ func validateType(name string, val interface{}, t InputType) error {
 		if !ok {
 			return fmt.Errorf("input %s must be a boolean", name)
 		}
+	case INPUT_TYPE_NODE:
+		if _, ok := val.([]string); ok {
+			return nil
+		}
+		if items, ok := val.([]interface{}); ok {
+			for _, it := range items {
+				if _, ok := it.(string); !ok {
+					return fmt.Errorf("input %s must be a list of strings", name)
+				}
+			}
+			return nil
+		}
+		return fmt.Errorf("input %s must be a list of strings", name)
 	default:
 		return fmt.Errorf("unknown input type: %s", t)
 	}
@@ -456,6 +483,71 @@ func ParseActionTargets(on []string) (nodeNames []string, tags []string) {
 	return nodeNames, tags
 }
 
+// ResolveTargets resolves a list of node names / "tag:<name>" entries into deduplicated Nodes.
+func ResolveTargets(
+	ctx context.Context,
+	targets []string,
+	namespaceUUID uuid.UUID,
+	getNodesByNames func(context.Context, []string, uuid.UUID) ([]Node, error),
+	getNodesByTags func(context.Context, []string, uuid.UUID) ([]Node, error),
+) ([]Node, error) {
+	nodeNames, tags := ParseActionTargets(targets)
+
+	var nodes []Node
+	if len(nodeNames) > 0 {
+		byName, err := getNodesByNames(ctx, nodeNames, namespaceUUID)
+		if err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, byName...)
+	}
+
+	if len(tags) > 0 {
+		byTag, err := getNodesByTags(ctx, tags, namespaceUUID)
+		if err != nil {
+			return nil, err
+		}
+		seen := make(map[string]bool, len(nodes))
+		for _, n := range nodes {
+			seen[n.ID] = true
+		}
+		for _, n := range byTag {
+			if !seen[n.ID] {
+				nodes = append(nodes, n)
+				seen[n.ID] = true
+			}
+		}
+	}
+
+	return nodes, nil
+}
+
+// NodesToScheduler converts a slice of models.Node to []scheduler.Node.
+func NodesToScheduler(nodes []Node) []scheduler.Node {
+	if len(nodes) == 0 {
+		return nil
+	}
+	out := make([]scheduler.Node, 0, len(nodes))
+	for _, node := range nodes {
+		out = append(out, scheduler.Node{
+			ID:             node.ID,
+			Name:           node.Name,
+			Hostname:       node.Hostname,
+			Port:           node.Port,
+			Username:       node.Username,
+			OSFamily:       node.OSFamily,
+			ConnectionType: node.ConnectionType,
+			Tags:           node.Tags,
+			Auth: scheduler.NodeAuth{
+				CredentialID: node.Auth.CredentialID,
+				Method:       scheduler.AuthMethod(node.Auth.Method),
+				Key:          node.Auth.Key,
+			},
+		})
+	}
+	return out
+}
+
 // ConvertToSchedulerFlow converts a Flow to scheduler.Flow
 func ConvertToSchedulerFlow(ctx context.Context, f Flow, namespaceUUID uuid.UUID, getNodesByNames func(context.Context, []string, uuid.UUID) ([]Node, error), getNodesByTags func(context.Context, []string, uuid.UUID) ([]Node, error)) (scheduler.Flow, error) {
 	// Convert inputs
@@ -475,69 +567,25 @@ func ConvertToSchedulerFlow(ctx context.Context, f Flow, namespaceUUID uuid.UUID
 
 	var actions []scheduler.Action
 	for _, act := range f.Actions {
-		nodeNames, tags := ParseActionTargets(act.On)
-
-		var nodes []Node
-		if len(nodeNames) > 0 {
-			nodesByName, err := getNodesByNames(ctx, nodeNames, namespaceUUID)
-			if err != nil {
-				return scheduler.Flow{}, fmt.Errorf("failed to get nodes by names for action %s: %w", act.ID, err)
-			}
-			nodes = append(nodes, nodesByName...)
+		nodes, err := ResolveTargets(ctx, act.On, namespaceUUID, getNodesByNames, getNodesByTags)
+		if err != nil {
+			return scheduler.Flow{}, fmt.Errorf("failed to resolve nodes for action %s: %w", act.ID, err)
 		}
 
-		if len(tags) > 0 {
-			nodesByTags, err := getNodesByTags(ctx, tags, namespaceUUID)
-			if err != nil {
-				return scheduler.Flow{}, fmt.Errorf("failed to get nodes by tag for action %s: %w", act.ID, err)
-			}
-			// Deduplicate nodes
-			seen := make(map[string]bool)
-			for _, n := range nodes {
-				seen[n.ID] = true
-			}
-			for _, n := range nodesByTags {
-				if !seen[n.ID] {
-					nodes = append(nodes, n)
-					seen[n.ID] = true
-				}
-			}
-		}
-
-		// Convert nodes to scheduler format
-		var schedulerNodes []scheduler.Node
-		for _, node := range nodes {
-			schedulerNodes = append(schedulerNodes, scheduler.Node{
-				ID:             node.ID,
-				Name:           node.Name,
-				Hostname:       node.Hostname,
-				Port:           node.Port,
-				Username:       node.Username,
-				OSFamily:       node.OSFamily,
-				ConnectionType: node.ConnectionType,
-				Tags:           node.Tags,
-				Auth: scheduler.NodeAuth{
-					CredentialID: node.Auth.CredentialID,
-					Method:       scheduler.AuthMethod(node.Auth.Method),
-					Key:          node.Auth.Key,
-				},
-			})
-		}
-
-		// Convert variables
 		var variables []scheduler.Variable
 		for _, v := range act.Variables {
 			variables = append(variables, scheduler.Variable(v))
 		}
 
 		actions = append(actions, scheduler.Action{
-			ID:        act.ID,
-			Name:      act.Name,
-			Executor:  act.Executor,
-			With:      act.With,
-			Approval:  act.Approval,
-			Variables: variables,
-			On:        schedulerNodes,
+			ID:                act.ID,
+			Name:              act.Name,
+			Executor:          act.Executor,
+			With:              act.With,
+			Approval:          act.Approval,
+			AllowNodeOverride: act.AllowNodeOverride,
+			Variables:         variables,
+			On:                NodesToScheduler(nodes),
 		})
 	}
 

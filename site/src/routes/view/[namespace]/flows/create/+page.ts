@@ -67,6 +67,8 @@ export const load: PageLoad = async ({ parent, url }) => {
           ...input,
           optionsText: input.options ? input.options.join('\n') : '',
           maxFileSizeMB: input.max_file_size ? input.max_file_size / 1024 / 1024 : undefined,
+          multiple: input.multiple ?? false,
+          required: input.required ?? false,
         })),
         actions: (duplicateConfig.actions || []).map((action: any, index: number) => ({
           tempId: Date.now() + index,
@@ -79,6 +81,8 @@ export const load: PageLoad = async ({ parent, url }) => {
             : [],
           artifacts: action.artifacts || [],
           selectedNodes: action.on || [],
+          approval: action.approval ?? false,
+          allow_node_override: action.allow_node_override ?? false,
           collapsed: false,
         })),
         notifications: (duplicateConfig.notify || []).map((n: any) => ({

@@ -74,7 +74,21 @@ func (h *Handler) HandleListNodes(c echo.Context) error {
 	if !ok {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
+	return h.listNodes(c, namespace)
+}
 
+// HandleListNodesForFlow lists nodes scoped to a flow the caller can execute.
+// Used by the trigger UI so that users with flow:execute (but not node:view)
+// can still pick hosts for a node-typed flow input.
+func (h *Handler) HandleListNodesForFlow(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
+	}
+	return h.listNodes(c, namespace)
+}
+
+func (h *Handler) listNodes(c echo.Context, namespace string) error {
 	var req NodePaginateRequest
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "could not decode request", err, nil)

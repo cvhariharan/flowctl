@@ -122,9 +122,11 @@ export interface FlowInput {
     | "file"
     | "datetime"
     | "checkbox"
-    | "select";
+    | "select"
+    | "node";
   options: string[];
   default?: string;
+  multiple?: boolean;
   max_file_size?: number;
 }
 
@@ -150,6 +152,7 @@ export interface FlowAction {
   name: string;
   executor: string;
   approval: boolean;
+  allow_node_override?: boolean;
   on: string[];
 }
 
@@ -539,13 +542,15 @@ export interface FlowInputReq {
     | "file"
     | "datetime"
     | "checkbox"
-    | "select";
+    | "select"
+    | "node";
   label?: string;
   description?: string;
   validation?: string;
   required?: boolean;
   default?: string;
   options?: string[];
+  multiple?: boolean;
   remote_options?: RemoteOptionsReq;
   max_file_size?: number;
 }
@@ -555,6 +560,7 @@ export interface FlowActionReq {
   executor: "script" | "docker";
   with: Record<string, any>;
   approval?: boolean;
+  allow_node_override?: boolean;
   variables?: Record<string, any>[];
   artifacts?: string[];
   condition?: string;

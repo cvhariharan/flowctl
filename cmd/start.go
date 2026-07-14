@@ -384,6 +384,7 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 	namespaceGroup.GET("/flows/executions", h.HandleAllExecutionsPagination, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionView))
 
 	namespaceGroup.GET("/flows/:flowID/inputs", h.HandleGetFlowInputs, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
+	namespaceGroup.GET("/flows/:flowID/nodes", h.HandleListNodesForFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionExecute))
 	namespaceGroup.GET("/flows/:flowID/meta", h.HandleGetFlowMeta, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
 	namespaceGroup.GET("/flows/:flowID/config", h.HandleGetFlowConfig, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionViewConfig))
 

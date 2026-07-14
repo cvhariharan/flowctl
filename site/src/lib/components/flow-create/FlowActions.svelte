@@ -62,6 +62,10 @@
     }
 
     async function onExecutorChange(action: any) {
+        if (!executorHasCapability(action.executor, "remote_execution")) {
+            action.allow_node_override = false;
+        }
+
         if (!action.executor) {
             action.with = {};
             return;
@@ -252,6 +256,17 @@
                             </div>
                             {/if}
                         </div>
+
+                        {#if executorHasCapability(action.executor, 'remote_execution')}
+                            <div class="hstack gap-2">
+                                <input
+                                    type="checkbox"
+                                    bind:checked={action.allow_node_override}
+                                    {disabled}
+                                />
+                                <label>Allow node override from flow inputs</label>
+                            </div>
+                        {/if}
 
                         <!-- Dynamic Executor Configuration -->
                         {#if action.executor && executorConfigs[action.executor]}

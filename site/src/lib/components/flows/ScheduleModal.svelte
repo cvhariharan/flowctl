@@ -159,7 +159,7 @@
       {#if flowInputs.length > 0}
         <div class="inputs-section">
           <h3 class="text-sm font-medium">Flow Inputs</h3>
-          <FlowInputFields inputs={flowInputs} bind:values={formData.inputs} />
+          <FlowInputFields inputs={flowInputs} bind:values={formData.inputs} {namespace} {flowId} />
         </div>
       {/if}
     </section>
