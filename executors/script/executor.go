@@ -72,13 +72,12 @@ func GetCapabilities() executor.Capability {
 	return executor.RemoteExecution | executor.EnvironmentVariables | executor.FileTransfer | executor.StreamingOutput
 }
 
-func (s *ScriptExecutor) Execute(ctx context.Context, execCtx executor.ExecutionContext) (map[string]string, error) {
+func (s *ScriptExecutor) Execute(ctx context.Context, execCtx executor.ExecutionContext) (executor.ExecutionResult, error) {
 	var config ScriptWithConfig
 	if err := yaml.Unmarshal(execCtx.WithConfig, &config); err != nil {
-		return nil, fmt.Errorf("could not read config for script executor %s: %w", s.name, err)
+		return executor.ExecutionResult{}, fmt.Errorf("could not read config for script executor %s: %w", s.name, err)
 	}
 
-	// Set default interpreter
 	if config.Interpreter == "" {
 		config.Interpreter = "/bin/bash"
 	}
@@ -87,37 +86,39 @@ func (s *ScriptExecutor) Execute(ctx context.Context, execCtx executor.Execution
 	s.stderr = execCtx.Stderr
 
 	if err := s.driver.CreateDir(ctx, s.workingDirectory); err != nil {
-		return nil, fmt.Errorf("failed to create working directory: %w", err)
+		return executor.ExecutionResult{}, fmt.Errorf("failed to create working directory: %w", err)
 	}
 
-	tempFile := s.driver.Join(s.driver.TempDir(), fmt.Sprintf("script-executor-output-%s", xid.New().String()))
-	if err := s.driver.CreateFile(ctx, tempFile); err != nil {
-		return nil, fmt.Errorf("failed to create temp file for output: %w", err)
+	outputFile := s.driver.Join(s.driver.TempDir(), fmt.Sprintf("script-executor-output-%s", xid.New().String()))
+	if err := s.driver.CreateFile(ctx, outputFile); err != nil {
+		return executor.ExecutionResult{}, fmt.Errorf("failed to create temp file for output: %w", err)
 	}
 
-	// Prepare environment variables
-	env := s.prepareEnvironment(execCtx.Inputs, tempFile)
+	globalFile := s.driver.Join(s.driver.TempDir(), fmt.Sprintf("script-executor-global-%s", xid.New().String()))
+	if err := s.driver.CreateFile(ctx, globalFile); err != nil {
+		return executor.ExecutionResult{}, fmt.Errorf("failed to create temp file for global output: %w", err)
+	}
 
-	// Execute the script
+	env := s.prepareEnvironment(execCtx.Inputs, outputFile, globalFile)
+
 	if err := s.runScript(ctx, config, env); err != nil {
-		return nil, err
+		return executor.ExecutionResult{}, err
 	}
 
-	// Read output file and parse environment variables
-	outputContents, err := s.readTempFileContents(ctx, tempFile)
+	outputs, err := s.readEnvFile(ctx, outputFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read temp file contents: %w", err)
+		return executor.ExecutionResult{}, fmt.Errorf("failed to read output: %w", err)
 	}
 
-	outputEnv, err := envparse.Parse(outputContents)
+	globals, err := s.readEnvFile(ctx, globalFile)
 	if err != nil {
-		return nil, fmt.Errorf("could not load output env: %w", err)
+		return executor.ExecutionResult{}, fmt.Errorf("failed to read global output: %w", err)
 	}
 
-	return outputEnv, nil
+	return executor.ExecutionResult{Outputs: outputs, Globals: globals}, nil
 }
 
-func (s *ScriptExecutor) prepareEnvironment(inputs map[string]interface{}, outputFile string) []string {
+func (s *ScriptExecutor) prepareEnvironment(inputs map[string]interface{}, outputFile, globalFile string) []string {
 	var env []string
 
 	for k, v := range inputs {
@@ -125,6 +126,7 @@ func (s *ScriptExecutor) prepareEnvironment(inputs map[string]interface{}, outpu
 	}
 
 	env = append(env, fmt.Sprintf("FC_OUTPUT=%s", outputFile))
+	env = append(env, fmt.Sprintf("FC_OUTPUT_GLOBAL=%s", globalFile))
 	env = append(env, fmt.Sprintf("FC_ARTIFACTS=%s", s.artifactsDir))
 
 	return env
@@ -160,23 +162,24 @@ func (s *ScriptExecutor) runScript(ctx context.Context, config ScriptWithConfig,
 	return s.driver.Exec(ctx, command, s.workingDirectory, env, s.stdout, s.stderr)
 }
 
-func (s *ScriptExecutor) readTempFileContents(ctx context.Context, tempFile string) (io.Reader, error) {
-	localTempFile, err := os.CreateTemp("/tmp", "script-executor-output-*")
+func (s *ScriptExecutor) readEnvFile(ctx context.Context, remoteFile string) (map[string]string, error) {
+	localFile, err := os.CreateTemp("/tmp", "script-executor-output-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create local temp file: %w", err)
 	}
-	defer os.Remove(localTempFile.Name())
-	defer localTempFile.Close()
+	defer os.Remove(localFile.Name())
+	defer localFile.Close()
 
-	if err := s.driver.Download(ctx, tempFile, localTempFile.Name()); err != nil {
+	if err := s.driver.Download(ctx, remoteFile, localFile.Name()); err != nil {
 		return nil, fmt.Errorf("failed to download temp file: %w", err)
 	}
 
-	content, err := os.ReadFile(localTempFile.Name())
+	content, err := os.ReadFile(localFile.Name())
 	if err != nil {
-		return nil, fmt.Errorf("failed to read temp file %s: %w", localTempFile.Name(), err)
+		return nil, fmt.Errorf("failed to read temp file %s: %w", localFile.Name(), err)
 	}
-	return strings.NewReader(string(content)), nil
+
+	return envparse.Parse(strings.NewReader(string(content)))
 }
 
 // ScriptExecutorPlugin implements executor.ExecutorPlugin for the script executor.

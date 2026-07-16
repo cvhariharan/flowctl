@@ -183,6 +183,9 @@
                         </svg>
                         <span class="action-name">{action.name || "Untitled Action"}</span>
                         <span class="action-badge">{action.executor || "No executor"}</span>
+                        {#if action.id}
+                            <code class="action-id">id: {action.id}</code>
+                        {/if}
                     </div>
                     <div class="hstack gap-1">
                         <button
@@ -509,6 +512,23 @@
         background: var(--faint);
         color: var(--foreground);
         border-radius: 9999px;
+    }
+    .action-id {
+        font-size: 0.75rem;
+        padding: 0.125rem 0.5rem;
+        background: var(--surface, transparent);
+        color: var(--muted-foreground);
+        border: 1px solid var(--border);
+        border-radius: 0.25rem;
+    }
+    .action-id-hint {
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+    .action-id-hint code {
+        background: var(--faint);
+        padding: 0 0.25rem;
+        border-radius: 0.25rem;
     }
     .grid-2 {
         display: grid;

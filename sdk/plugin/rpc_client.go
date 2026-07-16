@@ -87,7 +87,7 @@ func (r *grpcRemoteExecutor) Close() error {
 	return nil
 }
 
-func (r *grpcRemoteExecutor) Execute(ctx context.Context, execCtx executor.ExecutionContext) (map[string]string, error) {
+func (r *grpcRemoteExecutor) Execute(ctx context.Context, execCtx executor.ExecutionContext) (executor.ExecutionResult, error) {
 	protoNodes := make([]*proto.Node, len(execCtx.Nodes))
 	for i, n := range execCtx.Nodes {
 		protoNodes[i] = &proto.Node{
@@ -116,12 +116,12 @@ func (r *grpcRemoteExecutor) Execute(ctx context.Context, execCtx executor.Execu
 
 	stream, err := r.client.Execute(ctx, req)
 	if err != nil {
-		return nil, err
+		return executor.ExecutionResult{}, err
 	}
 
 	var (
-		outputs  map[string]string
-		execErr  error
+		result  executor.ExecutionResult
+		execErr error
 	)
 
 	for {
@@ -130,7 +130,7 @@ func (r *grpcRemoteExecutor) Execute(ctx context.Context, execCtx executor.Execu
 			break
 		}
 		if err != nil {
-			return nil, err
+			return executor.ExecutionResult{}, err
 		}
 
 		switch p := msg.Payload.(type) {
@@ -141,14 +141,15 @@ func (r *grpcRemoteExecutor) Execute(ctx context.Context, execCtx executor.Execu
 				execCtx.Stderr.Write(p.Log.Data)
 			}
 		case *proto.ExecuteResponse_Result:
-			outputs = p.Result.Outputs
+			result.Outputs = p.Result.Outputs
+			result.Globals = p.Result.Globals
 			if p.Result.Error != "" {
 				execErr = fmt.Errorf("%s", p.Result.Error)
 			}
 		}
 	}
 
-	return outputs, execErr
+	return result, execErr
 }
 
 func anyInputsToProto(m map[string]any) map[string]string {

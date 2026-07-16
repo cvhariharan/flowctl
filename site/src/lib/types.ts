@@ -556,6 +556,7 @@ export interface FlowInputReq {
 }
 
 export interface FlowActionReq {
+  id?: string;
   name: string;
   executor: "script" | "docker";
   with: Record<string, any>;

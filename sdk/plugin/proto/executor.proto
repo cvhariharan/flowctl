@@ -53,6 +53,7 @@ message LogLine {
 message Result {
     map<string, string> outputs = 1;
     string error = 2;
+    map<string, string> globals = 3;
 }
 
 message ExecuteResponse {

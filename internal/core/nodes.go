@@ -3,14 +3,18 @@ package core
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"encoding/hex"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/repo"
 	"github.com/google/uuid"
 )
+
+// reservedGlobalNodeName conflicts with the outputs.global.<action_id> namespace
+// used for FC_OUTPUT_GLOBAL values.
+const reservedGlobalNodeName = "global"
 
 func (c *Core) CreateNode(ctx context.Context, node *models.Node, namespaceID string) (models.Node, error) {
 	namespaceUUID, err := uuid.Parse(namespaceID)
@@ -20,6 +24,9 @@ func (c *Core) CreateNode(ctx context.Context, node *models.Node, namespaceID st
 
 	if node.Name == "" {
 		return models.Node{}, errors.New("node name is required")
+	}
+	if node.Name == reservedGlobalNodeName {
+		return models.Node{}, fmt.Errorf("node name %q is reserved", reservedGlobalNodeName)
 	}
 	if node.Hostname == "" {
 		return models.Node{}, errors.New("hostname is required")
@@ -160,6 +167,9 @@ func (c *Core) UpdateNode(ctx context.Context, id string, node *models.Node, nam
 
 	if node.Name == "" {
 		return models.Node{}, errors.New("node name is required")
+	}
+	if node.Name == reservedGlobalNodeName {
+		return models.Node{}, fmt.Errorf("node name %q is reserved", reservedGlobalNodeName)
 	}
 	if node.Hostname == "" {
 		return models.Node{}, errors.New("hostname is required")

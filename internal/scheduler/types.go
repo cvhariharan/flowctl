@@ -61,8 +61,9 @@ const (
 )
 
 type ExecResults struct {
-	result map[string]string
-	err    error
+	result  map[string]string
+	globals map[string]string
+	err     error
 }
 
 type Node struct {

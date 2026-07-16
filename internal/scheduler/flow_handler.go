@@ -29,6 +29,10 @@ import (
 
 const PayloadTypeFlowExecution PayloadType = "flow_execution"
 
+// globalOutputKey is the reserved outputs bucket for FC_OUTPUT_GLOBAL values.
+// Referenced from flows as outputs.global.<action_id>.<KEY>.
+const globalOutputKey = "global"
+
 // FlowExecutionHandler handles flow execution jobs
 type FlowExecutionHandler struct {
 	store            repo.Store
@@ -239,13 +243,14 @@ func (h *FlowExecutionHandler) executeFlow(ctx context.Context, execID string, p
 	for i := payload.StartingActionIdx; i < len(payload.Workflow.Actions); i++ {
 		action := payload.Workflow.Actions[i]
 
-		res, err := h.executeSingleAction(ctx, action, runCtx)
+		res, globals, err := h.executeSingleAction(ctx, action, runCtx)
 		if err != nil {
 			return err
 		}
 
-		h.logger.Debug("Action results", "results", res)
+		h.logger.Debug("Action results", "results", res, "globals", globals)
 		processActionResults(res, runCtx.outputs)
+		mergeGlobals(globals, action.ID, runCtx.outputs)
 		h.logger.Debug("outputs", "results", runCtx.outputs)
 	}
 
@@ -347,24 +352,21 @@ func (h *FlowExecutionHandler) copyFlowFilesToArtifacts(flowDir string, artifact
 }
 
 // executeSingleAction executes a single action within a flow, handling approval and error checkpointing
-func (h *FlowExecutionHandler) executeSingleAction(ctx context.Context, action Action, runCtx flowRunContext) (map[string]string, error) {
-	// Check for context cancellation
+func (h *FlowExecutionHandler) executeSingleAction(ctx context.Context, action Action, runCtx flowRunContext) (map[string]string, map[string]string, error) {
 	if ctx.Err() != nil {
 		if err := runCtx.streamLogger.Checkpoint("", "", "execution cancelled", streamlogger.CancelledMessageType); err != nil {
 			h.logger.Error("failed to send cancellation message", "error", err)
 		}
-		return nil, ErrExecutionCancelled
+		return nil, nil, ErrExecutionCancelled
 	}
 
-	// Check for approval requests
 	if err := h.checkApproval(ctx, runCtx.execID, action, runCtx.namespaceID); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// Increment retry count for this action
 	namespaceUUID, err := uuid.Parse(runCtx.namespaceID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid namespace UUID: %w", err)
+		return nil, nil, fmt.Errorf("invalid namespace UUID: %w", err)
 	}
 
 	row, err := h.store.IncrementActionRetry(ctx, repo.IncrementActionRetryParams{
@@ -373,32 +375,40 @@ func (h *FlowExecutionHandler) executeSingleAction(ctx context.Context, action A
 		Uuid:    namespaceUUID,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to increment retry count for action %s: %w", action.ID, err)
+		return nil, nil, fmt.Errorf("failed to increment retry count for action %s: %w", action.ID, err)
 	}
 
 	runCtx.streamLogger.SetRetry(row.RetryCount)
 	h.logger.Debug("action retry count", "action", action.ID, "retry", row.RetryCount)
 
-	// Run the action
-	res, err := h.runAction(ctx, action, runCtx)
+	res, globals, err := h.runAction(ctx, action, runCtx)
 	if err != nil {
-		// Check if the error is due to context cancellation
 		if errors.Is(err, context.Canceled) {
 			if streamErr := runCtx.streamLogger.Checkpoint(action.ID, "", "execution cancelled", streamlogger.CancelledMessageType); streamErr != nil {
 				h.logger.Error("failed to send cancelled message", "execID", runCtx.execID, "actionID", action.ID, "error", streamErr)
 			}
-			return nil, ErrExecutionCancelled
+			return nil, nil, ErrExecutionCancelled
 		}
 		runCtx.streamLogger.Checkpoint(action.ID, "", err.Error(), streamlogger.ErrMessageType)
-		return nil, err
+		return nil, nil, err
 	}
 
-	// Checkpoint successful result
-	if err := runCtx.streamLogger.Checkpoint(action.ID, "", res, streamlogger.ResultMessageType); err != nil {
-		return nil, err
+	if err := runCtx.streamLogger.Checkpoint(action.ID, "", mergeCheckpointResult(res, globals, action.ID), streamlogger.ResultMessageType); err != nil {
+		return nil, nil, err
 	}
 
-	return res, nil
+	return res, globals, nil
+}
+
+func mergeCheckpointResult(outputs, globals map[string]string, actionID string) map[string]string {
+	merged := make(map[string]string, len(outputs)+len(globals))
+	for k, v := range outputs {
+		merged[k] = v
+	}
+	for k, v := range globals {
+		merged[fmt.Sprintf("%s.%s.%s", globalOutputKey, actionID, k)] = v
+	}
+	return merged
 }
 
 // processActionResults processes action results and updates the outputs map
@@ -417,6 +427,29 @@ func processActionResults(results map[string]string, outputs map[string]any) {
 		} else {
 			outputs[k] = v
 		}
+	}
+}
+
+// mergeGlobals writes an action's globals into outputs.global.<action_id>.
+func mergeGlobals(globals map[string]string, actionID string, outputs map[string]any) {
+	if len(globals) == 0 {
+		return
+	}
+
+	globalBucket, ok := outputs[globalOutputKey].(map[string]any)
+	if !ok {
+		globalBucket = make(map[string]any)
+		outputs[globalOutputKey] = globalBucket
+	}
+
+	actionBucket, ok := globalBucket[actionID].(map[string]any)
+	if !ok {
+		actionBucket = make(map[string]any)
+		globalBucket[actionID] = actionBucket
+	}
+
+	for k, v := range globals {
+		actionBucket[k] = v
 	}
 }
 
@@ -538,30 +571,34 @@ func (h *FlowExecutionHandler) executeOnNode(ctx context.Context, node Node, act
 		Nodes:         execNodes,
 	})
 
-	// Pull all artifacts from this node after execution
 	if err == nil {
 		if pullErr := h.pullArtifactsWithDriver(ctx, artifactDriver, runCtx.artifactDir, runCtx.execID, node.Name); pullErr != nil {
 			err = fmt.Errorf("execution succeeded but failed to pull artifacts: %w", pullErr)
 		}
 	}
 
-	// Add node.Name suffix to result keys
-	prefixedRes := prefixResultKeys(res, node.Name)
-
 	return ExecResults{
-		result: prefixedRes,
-		err:    err,
+		result:  prefixResultKeys(res.Outputs, node.Name),
+		globals: sanitizeKeys(res.Globals),
+		err:     err,
 	}
 }
 
-// prefixResultKeys adds node name suffix to result keys for node-specific outputs
+var keySanitizer = regexp.MustCompile(`[^a-zA-Z0-9_]+`)
+
+func sanitizeKeys(results map[string]string) map[string]string {
+	out := make(map[string]string, len(results))
+	for k, v := range results {
+		out[keySanitizer.ReplaceAllString(k, "_")] = v
+	}
+	return out
+}
+
 func prefixResultKeys(results map[string]string, nodeName string) map[string]string {
-	prefixedRes := make(map[string]string)
+	prefixedRes := make(map[string]string, len(results))
 	for key, value := range results {
-		// Format key as valid environment variable (replace special chars with _)
-		prefixedKey := regexp.MustCompile(`[^a-zA-Z0-9_]+`).ReplaceAllString(key, "_")
+		prefixedKey := keySanitizer.ReplaceAllString(key, "_")
 		if nodeName != "" {
-			// example key@hostname
 			prefixedKey = prefixedKey + "@" + nodeName
 		}
 		prefixedRes[prefixedKey] = value
@@ -614,21 +651,20 @@ func (h *FlowExecutionHandler) interpolateVariables(action Action, runCtx flowRu
 }
 
 // runAction executes a single action
-func (h *FlowExecutionHandler) runAction(ctx context.Context, action Action, runCtx flowRunContext) (map[string]string, error) {
+func (h *FlowExecutionHandler) runAction(ctx context.Context, action Action, runCtx flowRunContext) (map[string]string, map[string]string, error) {
 	runCtx.streamLogger.SetActionID(action.ID)
 
 	jobCtx, cancel := context.WithTimeout(ctx, h.executionTimeout)
 	defer cancel()
 
-	// Interpolate variables
 	inputVars, err := h.interpolateVariables(action, runCtx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	withConfig, err := yaml.Marshal(action.With)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal 'with' config: %w", err)
+		return nil, nil, fmt.Errorf("failed to marshal 'with' config: %w", err)
 	}
 
 	caps, _ := executor.GetCapabilities(action.Executor)
@@ -665,20 +701,20 @@ func (h *FlowExecutionHandler) runAction(ctx context.Context, action Action, run
 	wg.Wait()
 	close(resChan)
 
-	// Merge all results into a single map
 	mergedResults := make(map[string]string)
+	mergedGlobals := make(map[string]string)
 	for res := range resChan {
 		if res.err != nil {
-			// Check if any executor returned a context cancellation error
 			if errors.Is(res.err, context.Canceled) {
-				return nil, context.Canceled
+				return nil, nil, context.Canceled
 			}
-			return nil, res.err
+			return nil, nil, res.err
 		}
 		maps.Copy(mergedResults, res.result)
+		maps.Copy(mergedGlobals, res.globals)
 	}
 
-	return mergedResults, nil
+	return mergedResults, mergedGlobals, nil
 }
 
 // transformPaths replaces local artifact paths with executor artifact paths in input variables.

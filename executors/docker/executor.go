@@ -141,18 +141,16 @@ func (d *DockerExecutor) withCredentials(username, password string) *DockerExecu
 	return d
 }
 
-func (d *DockerExecutor) Execute(ctx context.Context, execCtx executor.ExecutionContext) (map[string]string, error) {
+func (d *DockerExecutor) Execute(ctx context.Context, execCtx executor.ExecutionContext) (executor.ExecutionResult, error) {
 	var config DockerWithConfig
 	if err := yaml.Unmarshal(execCtx.WithConfig, &config); err != nil {
-		return nil, fmt.Errorf("could not read config for docker executor %s: %w", d.name, err)
+		return executor.ExecutionResult{}, fmt.Errorf("could not read config for docker executor %s: %w", d.name, err)
 	}
 
-	// Set default interpreter
 	if config.Interpreter == "" {
 		config.Interpreter = "/bin/sh"
 	}
 
-	// Normalize extension (add dot if not present)
 	if config.Extension == "" {
 		config.Extension = ".sh"
 	}
@@ -166,46 +164,53 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx executor.Execution
 
 	cli, err := d.getDockerClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get docker client: %w", err)
+		return executor.ExecutionResult{}, fmt.Errorf("failed to get docker client: %w", err)
 	}
 	defer cli.Close()
 
 	d.client = cli
 
-	// create a file for storing output
-	tempFile := d.driver.Join(d.driver.TempDir(), fmt.Sprintf("docker-executor-output-%s", xid.New().String()))
-	if err := d.driver.CreateFile(ctx, tempFile); err != nil {
-		return nil, fmt.Errorf("failed to create temp file for output: %w", err)
+	outputFile := d.driver.Join(d.driver.TempDir(), fmt.Sprintf("docker-executor-output-%s", xid.New().String()))
+	if err := d.driver.CreateFile(ctx, outputFile); err != nil {
+		return executor.ExecutionResult{}, fmt.Errorf("failed to create temp file for output: %w", err)
 	}
 
-	// create artifacts directory
+	globalFile := d.driver.Join(d.driver.TempDir(), fmt.Sprintf("docker-executor-global-%s", xid.New().String()))
+	if err := d.driver.CreateFile(ctx, globalFile); err != nil {
+		return executor.ExecutionResult{}, fmt.Errorf("failed to create temp file for global output: %w", err)
+	}
+
 	artifactsDir := d.driver.Join(d.driver.TempDir(), fmt.Sprintf("artifacts-%s", d.execID))
 	if err := d.driver.CreateDir(ctx, artifactsDir); err != nil {
-		return nil, fmt.Errorf("failed to create artifacts directory: %w", err)
+		return executor.ExecutionResult{}, fmt.Errorf("failed to create artifacts directory: %w", err)
 	}
 
-	// Write script to local temp file
 	localScriptFile := fmt.Sprintf("/tmp/docker-script-%s%s", xid.New().String(), ext)
 	if err := os.WriteFile(localScriptFile, []byte(config.Script), 0755); err != nil {
-		return nil, fmt.Errorf("failed to write local script file: %w", err)
+		return executor.ExecutionResult{}, fmt.Errorf("failed to write local script file: %w", err)
 	}
 	defer os.Remove(localScriptFile)
 
-	// Upload script to remote location
 	remoteScriptFile := d.driver.Join(d.driver.TempDir(), fmt.Sprintf("docker-script-%s%s", xid.New().String(), ext))
 	if err := d.driver.Upload(ctx, localScriptFile, remoteScriptFile); err != nil {
-		return nil, fmt.Errorf("failed to upload script: %w", err)
+		return executor.ExecutionResult{}, fmt.Errorf("failed to upload script: %w", err)
 	}
 	defer d.driver.Remove(ctx, remoteScriptFile)
 
 	if err := d.driver.SetPermissions(ctx, remoteScriptFile, 0755); err != nil {
-		return nil, fmt.Errorf("failed to set executable permissions: %w", err)
+		return executor.ExecutionResult{}, fmt.Errorf("failed to set executable permissions: %w", err)
 	}
 
 	d.mounts = append(d.mounts, mount.Mount{
 		Type:   mount.TypeBind,
-		Source: tempFile,
+		Source: outputFile,
 		Target: "/tmp/flow/output",
+	})
+
+	d.mounts = append(d.mounts, mount.Mount{
+		Type:   mount.TypeBind,
+		Source: globalFile,
+		Target: "/tmp/flow/output_global",
 	})
 
 	d.mounts = append(d.mounts, mount.Mount{
@@ -214,7 +219,6 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx executor.Execution
 		Target: ArtifactsDir,
 	})
 
-	// Mount the script file
 	containerScriptPath := fmt.Sprintf("/tmp/flow/script%s", ext)
 	d.mounts = append(d.mounts, mount.Mount{
 		Type:   mount.TypeBind,
@@ -226,9 +230,8 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx executor.Execution
 	for k, v := range execCtx.Inputs {
 		vars = append(vars, map[string]any{k: v})
 	}
-	// Add output env variable
 	vars = append(vars, map[string]any{"FC_OUTPUT": "/tmp/flow/output"})
-	// Add artifacts env variable
+	vars = append(vars, map[string]any{"FC_OUTPUT_GLOBAL": "/tmp/flow/output_global"})
 	vars = append(vars, map[string]any{"FC_ARTIFACTS": "/tmp/flow/artifacts"})
 
 	d.withImage(config.Image).
@@ -239,39 +242,40 @@ func (d *DockerExecutor) Execute(ctx context.Context, execCtx executor.Execution
 	d.stderr = execCtx.Stderr
 
 	if err := d.run(ctx); err != nil {
-		return nil, err
+		return executor.ExecutionResult{}, err
 	}
 
-	outputContents, err := d.readTempFileContents(ctx, tempFile)
+	outputs, err := d.readEnvFile(ctx, outputFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read temp file contents: %w", err)
+		return executor.ExecutionResult{}, fmt.Errorf("failed to read output: %w", err)
 	}
 
-	outputEnv, err := envparse.Parse(outputContents)
+	globals, err := d.readEnvFile(ctx, globalFile)
 	if err != nil {
-		return nil, fmt.Errorf("could not load output env: %w", err)
+		return executor.ExecutionResult{}, fmt.Errorf("failed to read global output: %w", err)
 	}
 
-	return outputEnv, nil
+	return executor.ExecutionResult{Outputs: outputs, Globals: globals}, nil
 }
 
-func (d *DockerExecutor) readTempFileContents(ctx context.Context, tempFile string) (io.Reader, error) {
-	localTempFile, err := os.CreateTemp("/tmp", "docker-executor-output-*")
+func (d *DockerExecutor) readEnvFile(ctx context.Context, remoteFile string) (map[string]string, error) {
+	localFile, err := os.CreateTemp("/tmp", "docker-executor-output-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create local temp file: %w", err)
 	}
-	defer os.Remove(localTempFile.Name())
-	defer localTempFile.Close()
+	defer os.Remove(localFile.Name())
+	defer localFile.Close()
 
-	if err := d.driver.Download(ctx, tempFile, localTempFile.Name()); err != nil {
+	if err := d.driver.Download(ctx, remoteFile, localFile.Name()); err != nil {
 		return nil, fmt.Errorf("failed to download temp file: %w", err)
 	}
 
-	content, err := os.ReadFile(localTempFile.Name())
+	content, err := os.ReadFile(localFile.Name())
 	if err != nil {
-		return nil, fmt.Errorf("failed to read temp file %s: %w", localTempFile.Name(), err)
+		return nil, fmt.Errorf("failed to read temp file %s: %w", localFile.Name(), err)
 	}
-	return strings.NewReader(string(content)), nil
+
+	return envparse.Parse(strings.NewReader(string(content)))
 }
 
 func (d *DockerExecutor) run(ctx context.Context) error {

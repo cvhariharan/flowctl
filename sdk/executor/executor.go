@@ -70,8 +70,13 @@ func CapabilityStrings(c Capability) []string {
 	return names
 }
 
+type ExecutionResult struct {
+	Outputs map[string]string
+	Globals map[string]string
+}
+
 type Executor interface {
-	Execute(ctx context.Context, execCtx ExecutionContext) (outputs map[string]string, err error)
+	Execute(ctx context.Context, execCtx ExecutionContext) (ExecutionResult, error)
 	GetArtifactsDir() string
 	Close() error
 }

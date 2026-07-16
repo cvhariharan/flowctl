@@ -100,13 +100,13 @@ func (s *grpcServer) Execute(req *proto.ExecuteRequest, stream proto.ExecutorPlu
 		Nodes:         sdkNodes,
 	}
 
-	outputs, execErr := exec.Execute(stream.Context(), execCtx)
+	execResult, execErr := exec.Execute(stream.Context(), execCtx)
 
 	stdoutW.Close()
 	stderrW.Close()
 	wg.Wait()
 
-	result := &proto.Result{Outputs: outputs}
+	result := &proto.Result{Outputs: execResult.Outputs, Globals: execResult.Globals}
 	if execErr != nil {
 		result.Error = execErr.Error()
 	}

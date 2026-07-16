@@ -703,6 +703,7 @@ type FlowInputReq struct {
 }
 
 type FlowActionReq struct {
+	ID                string           `json:"id,omitempty"`
 	Name              string           `json:"name" validate:"required,alphanum_whitespace,min=1,max=150"`
 	Executor          string           `json:"executor"`
 	With              map[string]any   `json:"with" validate:"required"`
@@ -830,6 +831,7 @@ func convertFlowActionsToActionsReq(actions []models.Action) []FlowActionReq {
 		}
 
 		actionsReq[i] = FlowActionReq{
+			ID:                action.ID,
 			Name:              action.Name,
 			Executor:          action.Executor,
 			With:              action.With,

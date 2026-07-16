@@ -53,35 +53,35 @@ func GetCapabilities() executor.Capability {
 	return executor.StreamingOutput
 }
 
-func (j *FlowExecutor) Execute(ctx context.Context, execCtx executor.ExecutionContext) (map[string]string, error) {
+func (j *FlowExecutor) Execute(ctx context.Context, execCtx executor.ExecutionContext) (executor.ExecutionResult, error) {
 	if execCtx.APIKey == "" || execCtx.APIBaseURL == "" {
-		return nil, fmt.Errorf("flow executor %s requires API credentials (APIKey and APIBaseURL)", j.name)
+		return executor.ExecutionResult{}, fmt.Errorf("flow executor %s requires API credentials (APIKey and APIBaseURL)", j.name)
 	}
 
 	var config FlowWithConfig
 	if err := yaml.Unmarshal(execCtx.WithConfig, &config); err != nil {
-		return nil, fmt.Errorf("could not read config for Flow executor %s: %w", j.name, err)
+		return executor.ExecutionResult{}, fmt.Errorf("could not read config for Flow executor %s: %w", j.name, err)
 	}
 
 	if config.FlowID == "" {
-		return nil, fmt.Errorf("flow_id is required for Flow executor %s", j.name)
+		return executor.ExecutionResult{}, fmt.Errorf("flow_id is required for Flow executor %s", j.name)
 	}
 
 	params := make(map[string]interface{})
 	if config.Params != "" {
 		if err := json.Unmarshal([]byte(config.Params), &params); err != nil {
-			return nil, fmt.Errorf("failed to parse params JSON: %w", err)
+			return executor.ExecutionResult{}, fmt.Errorf("failed to parse params JSON: %w", err)
 		}
 	}
 
 	client, err := newFlowAPIClient(execCtx.APIBaseURL, execCtx.APIKey, execCtx.UserUUID)
 	if err != nil {
-		return nil, err
+		return executor.ExecutionResult{}, err
 	}
 
 	triggerResp, err := triggerFlow(ctx, client, execCtx.NamespaceName, config.FlowID, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to trigger flow %q: %w", config.FlowID, err)
+		return executor.ExecutionResult{}, fmt.Errorf("failed to trigger flow %q: %w", config.FlowID, err)
 	}
 
 	execID := triggerResp.ExecID.String()
@@ -94,21 +94,21 @@ func (j *FlowExecutor) Execute(ctx context.Context, execCtx executor.ExecutionCo
 	if config.Wait {
 		status, err := j.waitForCompletion(ctx, client, execCtx.NamespaceName, execID)
 		if err != nil {
-			return nil, err
+			return executor.ExecutionResult{Outputs: outputs}, err
 		}
 		outputs["status"] = status
 
 		if status == statusErrored {
-			return outputs, fmt.Errorf("child flow execution %s errored", triggerResp.ExecID)
+			return executor.ExecutionResult{Outputs: outputs}, fmt.Errorf("child flow execution %s errored", triggerResp.ExecID)
 		}
 		if status == statusCancelled {
-			return outputs, fmt.Errorf("child flow execution %s was cancelled", triggerResp.ExecID)
+			return executor.ExecutionResult{Outputs: outputs}, fmt.Errorf("child flow execution %s was cancelled", triggerResp.ExecID)
 		}
 
 		fmt.Fprintf(execCtx.Stdout, "flow %s completed with status %s\n", config.FlowID, status)
 	}
 
-	return outputs, nil
+	return executor.ExecutionResult{Outputs: outputs}, nil
 }
 
 func newFlowAPIClient(baseURL, apiKey, userUUID string) (*apiclient.ClientWithResponses, error) {
