@@ -32,8 +32,7 @@ export interface BrandingInfo {
   logo_url?: string;
   logo_light_url?: string;
   favicon_url?: string;
-  primary_color?: string;
-  sidebar_color?: string;
+  has_theme_css?: boolean;
 }
 
 export interface AuthReq {

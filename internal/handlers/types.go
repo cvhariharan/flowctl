@@ -565,8 +565,7 @@ type BrandingInfo struct {
 	LogoURL      string `json:"logo_url,omitempty"`
 	LogoLightURL string `json:"logo_light_url,omitempty"`
 	FaviconURL   string `json:"favicon_url,omitempty"`
-	PrimaryColor string `json:"primary_color,omitempty"`
-	SidebarColor string `json:"sidebar_color,omitempty"`
+	HasThemeCSS  bool   `json:"has_theme_css,omitempty"`
 }
 
 func coreUserInfoToUserProfile(u models.UserInfo) UserProfileResponse {

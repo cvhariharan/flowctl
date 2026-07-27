@@ -52,8 +52,6 @@ type BrandingConfig struct {
 	LogoURL      string `koanf:"logo_url"`
 	LogoLightURL string `koanf:"logo_light_url"`
 	FaviconURL   string `koanf:"favicon_url"`
-	PrimaryColor string `koanf:"primary_color"`
-	SidebarColor string `koanf:"sidebar_color"`
 	BrandingDir  string `koanf:"branding_dir"`
 }
 

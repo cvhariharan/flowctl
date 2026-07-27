@@ -6,6 +6,8 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -105,14 +107,19 @@ func (h *Handler) HandlePing(c echo.Context) error {
 func (h *Handler) HandleGetInfo(c echo.Context) error {
 	var branding *BrandingInfo
 	bc := h.config.App.Branding
-	if bc.AppName != "" || bc.LogoURL != "" || bc.PrimaryColor != "" || bc.FaviconURL != "" || bc.SidebarColor != "" {
+	if bc.AppName != "" || bc.LogoURL != "" || bc.FaviconURL != "" || bc.BrandingDir != "" {
+		hasThemeCSS := false
+		if bc.BrandingDir != "" {
+			if _, err := os.Stat(filepath.Join(bc.BrandingDir, "theme.css")); err == nil {
+				hasThemeCSS = true
+			}
+		}
 		branding = &BrandingInfo{
 			AppName:      bc.AppName,
 			LogoURL:      bc.LogoURL,
 			LogoLightURL: bc.LogoLightURL,
 			FaviconURL:   bc.FaviconURL,
-			PrimaryColor: bc.PrimaryColor,
-			SidebarColor: bc.SidebarColor,
+			HasThemeCSS:  hasThemeCSS,
 		}
 	}
 	return c.JSON(http.StatusOK, AppInfoResponse{

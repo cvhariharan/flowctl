@@ -107,8 +107,6 @@ Flowctl supports custom branding to match your organization's identity. Configur
   logo_url = "/branding/logo.svg"
   logo_light_url = "/branding/logo-light.svg"
   favicon_url = "/branding/favicon.png"
-  primary_color = "#e4002b"
-  sidebar_color = "#1a1a2e"
   branding_dir = "/app/branding"
 ```
 
@@ -118,21 +116,31 @@ Flowctl supports custom branding to match your organization's identity. Configur
 | `logo_url` | Logo for light theme (local path or URL) | Embedded logo |
 | `logo_light_url` | Logo for dark theme | Falls back to `logo_url` |
 | `favicon_url` | Favicon (local path or URL) | Embedded favicon |
-| `primary_color` | Primary color (hex) | `#155DFC` |
-| `sidebar_color` | Sidebar background color (hex) | Theme default |
 | `branding_dir` | Local directory to serve at `/branding/` | Not set |
 
 Each field is optional and independent — configure only what you need, the rest falls back to defaults.
+
+### Custom Theme (colors)
+
+Place a `theme.css` file in the branding directory to override CSS variables. It loads after the bundled CSS, so standard cascade rules apply:
+
+```css
+/* /app/branding/theme.css */
+:root { --primary: #e4002b; }
+:root[data-theme="dark"], body[data-theme="dark"] { --primary: #ff5a4d; }
+```
+
+See all available variables in [app.css](site/src/app.css).
 
 **Environment variables:** use the `FLOWCTL_APP__BRANDING__` prefix, e.g.:
 
 ```bash
 FLOWCTL_APP__BRANDING__APP_NAME="ACME Flowctl"
-FLOWCTL_APP__BRANDING__PRIMARY_COLOR="#e4002b"
 FLOWCTL_APP__BRANDING__FAVICON_URL="https://example.com/favicon.png"
+FLOWCTL_APP__BRANDING__BRANDING_DIR="/app/branding"
 ```
 
-**Docker/Podman with custom logos:**
+**Docker/Podman with custom branding:**
 
 ```yaml
 volumes:

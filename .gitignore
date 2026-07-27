@@ -3,3 +3,4 @@ oauth-proxy.cfg
 web/node_modules
 go.work
 go.work.sum
+podman-compose-test.yml
