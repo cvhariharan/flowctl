@@ -125,6 +125,14 @@ func (c *Core) GetFlowByID(id string, namespaceID string) (models.Flow, error) {
 		return models.Flow{}, ErrFlowNotFound
 	}
 
+	// Clone Inputs so callers can mutate per-input
+	// fields without racing with concurrent readers of the cached flow.
+	if len(f.Inputs) > 0 {
+		inputs := make([]models.Input, len(f.Inputs))
+		copy(inputs, f.Inputs)
+		f.Inputs = inputs
+	}
+
 	return f, nil
 }
 
@@ -1207,6 +1215,10 @@ func (c *Core) CreateSchedule(ctx context.Context, flowID, cron, timezone string
 		return models.Schedule{}, fmt.Errorf("user schedules are not enabled for this flow")
 	}
 
+	if verr := c.PrepareAndValidateInputs(ctx, &flow, namespaceID, inputs, ""); verr != nil {
+		return models.Schedule{}, verr
+	}
+
 	existing, err := c.store.GetScheduleByFlowAndCron(ctx, repo.GetScheduleByFlowAndCronParams{
 		FlowID:        flow.Meta.DBID,
 		Cron:          cron,
@@ -1395,6 +1407,10 @@ func (c *Core) UpdateSchedule(ctx context.Context, scheduleUUID, cron, timezone 
 
 	if !flow.Meta.UserSchedulable {
 		return models.Schedule{}, fmt.Errorf("user schedules are not enabled for this flow")
+	}
+
+	if verr := c.PrepareAndValidateInputs(ctx, &flow, namespaceID, inputs, ""); verr != nil {
+		return models.Schedule{}, verr
 	}
 
 	inputsJSON, err := json.Marshal(inputs)

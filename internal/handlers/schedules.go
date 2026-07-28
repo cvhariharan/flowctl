@@ -1,11 +1,24 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/labstack/echo/v4"
 )
+
+func scheduleInputError(err error) error {
+	var verr *models.FlowValidationError
+	if !errors.As(err, &verr) {
+		return nil
+	}
+	return wrapError(ErrValidationFailed, "", err, FlowInputValidationError{
+		FieldName:  verr.FieldName,
+		ErrMessage: verr.Msg,
+	})
+}
 
 func (h *Handler) HandleCreateSchedule(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
@@ -29,6 +42,9 @@ func (h *Handler) HandleCreateSchedule(c echo.Context) error {
 
 	schedule, err := h.co.CreateSchedule(c.Request().Context(), req.FlowID, req.Cron, req.Timezone, req.Inputs, user.ID, namespace)
 	if err != nil {
+		if valErr := scheduleInputError(err); valErr != nil {
+			return valErr
+		}
 		return wrapError(ErrOperationFailed, err.Error(), err, nil)
 	}
 
@@ -128,6 +144,9 @@ func (h *Handler) HandleUpdateSchedule(c echo.Context) error {
 
 	schedule, err := h.co.UpdateSchedule(c.Request().Context(), req.ScheduleID, req.Cron, req.Timezone, req.Inputs, req.IsActive, user.ID, namespace)
 	if err != nil {
+		if valErr := scheduleInputError(err); valErr != nil {
+			return valErr
+		}
 		return wrapError(ErrOperationFailed, err.Error(), err, nil)
 	}
 
