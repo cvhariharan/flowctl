@@ -564,6 +564,7 @@ type BrandingInfo struct {
 	AppName      string `json:"app_name,omitempty"`
 	LogoURL      string `json:"logo_url,omitempty"`
 	LogoLightURL string `json:"logo_light_url,omitempty"`
+	IconURL      string `json:"icon_url,omitempty"`
 	FaviconURL   string `json:"favicon_url,omitempty"`
 	HasThemeCSS  bool   `json:"has_theme_css,omitempty"`
 }

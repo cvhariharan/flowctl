@@ -5,6 +5,7 @@
   import { handleInlineError } from '$lib/utils/errorHandling';
   import { getDefaultNamespace } from '$lib/utils/navigation';
   import { isLoading } from '$lib/stores/auth';
+  import { appInfo } from '$lib/stores/auth';
   import { onMount } from 'svelte';
   import Logo from '$lib/components/shared/Logo.svelte';
   import LoginCard from '$lib/components/login/LoginCard.svelte';
@@ -49,7 +50,7 @@
 </script>
 
 <svelte:head>
-  <title>Login - Flowctl</title>
+  <title>Login - {$appInfo?.branding?.app_name || "Flowctl"}</title>
 </svelte:head>
 
 <main class="login-page">

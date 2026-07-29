@@ -51,6 +51,7 @@ type BrandingConfig struct {
 	AppName      string `koanf:"app_name"`
 	LogoURL      string `koanf:"logo_url"`
 	LogoLightURL string `koanf:"logo_light_url"`
+	IconURL      string `koanf:"icon_url"`
 	FaviconURL   string `koanf:"favicon_url"`
 	BrandingDir  string `koanf:"branding_dir"`
 }

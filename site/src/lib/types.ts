@@ -31,6 +31,7 @@ export interface BrandingInfo {
   app_name?: string;
   logo_url?: string;
   logo_light_url?: string;
+  icon_url?: string;
   favicon_url?: string;
   has_theme_css?: boolean;
 }

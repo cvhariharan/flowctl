@@ -15,7 +15,7 @@
 
   let logoSrc = $derived(
     iconOnly
-      ? ($appInfo?.branding?.logo_url || logoSvg)
+      ? ($appInfo?.branding?.icon_url || logoSvg)
       : $resolvedTheme === 'dark'
         ? ($appInfo?.branding?.logo_light_url || $appInfo?.branding?.logo_url || fullLogoLightSvg)
         : ($appInfo?.branding?.logo_url || fullLogoSvg)
