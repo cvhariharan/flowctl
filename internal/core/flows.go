@@ -29,6 +29,7 @@ import (
 
 var (
 	ErrFlowNotFound = errors.New("flow not found")
+	ErrFlowExists   = errors.New("flow already exists")
 )
 
 // resolveOverrideNodes finds a node-typed input in the flow and resolves its selected
@@ -95,8 +96,8 @@ func isSubpath(parent, child string) (bool, error) {
 	return !strings.HasPrefix(rel, ".."), nil
 }
 
-// detectFlowFormat determines the flow format based on file extension
-func detectFlowFormat(filePath string) models.FlowFormat {
+// DetectFlowFormat determines the flow format based on file extension
+func DetectFlowFormat(filePath string) models.FlowFormat {
 	ext := strings.ToLower(filepath.Ext(filePath))
 	switch ext {
 	case ".huml":
@@ -724,10 +725,11 @@ func (c *Core) GetExecutionByExecID(ctx context.Context, execID string, namespac
 
 func (c *Core) CreateFlow(ctx context.Context, f models.Flow, namespaceID string) error {
 	c.rwf.RLock()
-	if _, exists := c.flows[f.Meta.ID]; exists {
-		return fmt.Errorf("flow with id %s already exists", f.Meta.ID)
-	}
+	_, exists := c.flows[fmt.Sprintf("%s:%s", f.Meta.ID, namespaceID)]
 	c.rwf.RUnlock()
+	if exists {
+		return fmt.Errorf("%w: %s", ErrFlowExists, f.Meta.ID)
+	}
 
 	// Remove duplicate schedules
 	f.Schedules = removeDuplicateSchedules(f.Schedules)
@@ -749,7 +751,7 @@ func (c *Core) CreateFlow(ctx context.Context, f models.Flow, namespaceID string
 
 	yamlFilePath := filepath.Join(flowDir, fmt.Sprintf("%s.yaml", f.Meta.ID))
 	if _, err := os.Stat(yamlFilePath); err == nil {
-		return fmt.Errorf("flow with this ID already exists: %w", err)
+		return fmt.Errorf("%w: %s", ErrFlowExists, f.Meta.ID)
 	}
 
 	yamlData, err := models.MarshalFlow(f, models.FlowFormatYAML)
@@ -813,7 +815,7 @@ func (c *Core) UpdateFlow(ctx context.Context, f models.Flow, namespaceID string
 	}
 
 	// Detect the format of the existing file and use the same format
-	format := detectFlowFormat(flowFilePath)
+	format := DetectFlowFormat(flowFilePath)
 	flowData, err := models.MarshalFlow(f, format)
 	if err != nil {
 		return fmt.Errorf("could not marshal flow to %s: %w", format, err)
@@ -976,7 +978,7 @@ func (c *Core) importFlowFromFile(ctx context.Context, flowFilePath, namespaceNa
 	checksum := hex.EncodeToString(h.Sum(nil))
 
 	// Detect format based on file extension and unmarshal accordingly
-	format := detectFlowFormat(flowFilePath)
+	format := DetectFlowFormat(flowFilePath)
 	f, err := models.UnmarshalFlow(data, format)
 	if err != nil {
 		return models.Flow{}, "", fmt.Errorf("error parsing flow file in %s: %w", flowFilePath, err)

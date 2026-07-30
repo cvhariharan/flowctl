@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/cvhariharan/flowctl/internal/core"
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -18,6 +20,7 @@ import (
 
 const (
 	optionsRequestIDHeader = "X-Options-Request-ID"
+	importBodyOverhead     = 4 << 10
 )
 
 // populateRemoteOptions calls core.PopulateRemoteOptions and handles errors.
@@ -830,6 +833,85 @@ func (h *Handler) HandleGetFlowConfig(c echo.Context) error {
 		Actions:       convertFlowActionsToActionsReq(f.Actions),
 		Notifications: convertNotifyToNotifyReq(f.Notify),
 	})
+}
+
+func (h *Handler) HandleExportFlow(c echo.Context) error {
+	namespaceID, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
+	}
+
+	f, err := h.co.GetFlowByID(c.Param("flowID"), namespaceID)
+	if err != nil {
+		return wrapError(ErrResourceNotFound, "flow not found", err, nil)
+	}
+
+	data, err := models.MarshalFlow(f, models.FlowFormatYAML)
+	if err != nil {
+		return wrapError(ErrOperationFailed, "could not marshal flow to YAML", err, nil)
+	}
+
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.yaml"`, f.Meta.ID))
+	return c.Blob(http.StatusOK, "application/yaml", data)
+}
+
+func (h *Handler) HandleImportFlow(c echo.Context) error {
+	namespaceID, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
+	}
+
+	maxSize := h.config.App.MaxFlowImportSize
+	tooLargeMsg := fmt.Sprintf("flow file exceeds maximum size of %dKB", maxSize/1024)
+
+	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, maxSize+importBodyOverhead)
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			return wrapError(ErrInvalidInput, tooLargeMsg, err, nil)
+		}
+		return wrapError(ErrInvalidInput, "flow file is required", err, nil)
+	}
+
+	if file.Size > maxSize {
+		return wrapError(ErrInvalidInput, tooLargeMsg, nil, nil)
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return wrapError(ErrInvalidInput, "could not open flow file", err, nil)
+	}
+	defer src.Close()
+
+	data, err := io.ReadAll(src)
+	if err != nil {
+		return wrapError(ErrInvalidInput, "could not read flow file", err, nil)
+	}
+
+	flow, err := models.UnmarshalFlow(data, core.DetectFlowFormat(file.Filename))
+	if err != nil {
+		return wrapError(ErrInvalidInput, err.Error(), err, nil)
+	}
+
+	flow.Meta.Namespace = c.Param("namespace")
+	if flow.Meta.ID == "" {
+		flow.Meta.ID = GenerateSlug(flow.Meta.Name)
+	}
+
+	if err := flow.Validate(); err != nil {
+		return wrapError(ErrValidationFailed, err.Error(), err, nil)
+	}
+
+	if err := h.co.CreateFlow(c.Request().Context(), flow, namespaceID); err != nil {
+		if errors.Is(err, core.ErrFlowExists) {
+			return wrapError(ErrResourceConflict, fmt.Sprintf("a flow with id %s already exists in this namespace", flow.Meta.ID), err, nil)
+		}
+		return wrapError(ErrOperationFailed, err.Error(), err, nil)
+	}
+
+	return c.JSON(http.StatusCreated, FlowCreateResp{ID: flow.Meta.ID})
 }
 
 func (h *Handler) HandleCancelExecution(c echo.Context) error {

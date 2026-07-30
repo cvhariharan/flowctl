@@ -92,6 +92,7 @@ func (c *Core) InitializeRBACPolicies() error {
 	c.enforcer.AddPolicy("role:admin", "/*", string(models.ResourceNamespaceSecret), string(models.RBACActionDelete))
 	// Admin can view flow config (does not inherit from operator, so must be explicit)
 	c.enforcer.AddPolicy("role:admin", "/*", string(models.ResourceFlow), string(models.RBACActionViewConfig))
+	c.enforcer.AddPolicy("role:admin", "/*", string(models.ResourceFlow), string(models.RBACActionExport))
 
 	// Synchronize user/group role assignments from database
 	if err := c.SynchronizePolicies(context.Background()); err != nil {

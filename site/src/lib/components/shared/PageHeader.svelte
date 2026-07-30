@@ -4,7 +4,8 @@
   let {
     title,
     subtitle,
-    actions = []
+    actions = [],
+    children
   }: {
     title: string,
     subtitle?: string,
@@ -15,7 +16,8 @@
       icon?: string,
       IconComponent?: ComponentType,
       iconSize?: number
-    }>
+    }>,
+    children?: any
   } = $props();
 </script>
 
@@ -27,8 +29,11 @@
     {/if}
   </div>
 
-  {#if actions.length > 0}
+  {#if children || actions.length > 0}
     <div class="hstack gap-3">
+      {#if children}
+        {@render children()}
+      {/if}
       {#each actions as action}
         <button
           onclick={action.onClick}

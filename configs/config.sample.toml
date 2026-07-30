@@ -24,6 +24,9 @@ root_url = "http://localhost:7000"
 # (required) Maximum file upload size in bytes (default: 104857600 = 100MB)
 max_file_upload_size = 104857600
 
+# (optional) Maximum size of a flow definition uploaded via flow import, in bytes
+max_flow_import_size = 262144
+
 # (optional) Directory to load external executor plugins from
 # plugin_dir = ""
 
