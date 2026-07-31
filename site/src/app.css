@@ -196,6 +196,13 @@ dialog > form > footer {
   background-color: color-mix(in srgb, var(--neutral) 30%, transparent);
 }
 
+/* oat focuses the first menu item when a dropdown opens and styles :focus like
+   :hover, so it looks hovered until the pointer moves. Keep that highlight for
+   keyboard focus only. */
+ot-dropdown [role="menuitem"]:focus:not(:focus-visible):not(:hover) {
+  background-color: transparent;
+}
+
 /* ── Selector popover (shared by Node/Group/User/Multi selectors) ── */
 /* Matches oat's ot-dropdown [popover] styling for use without the web component */
 .selector-popover {

@@ -365,6 +365,7 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 	namespaceGroup := api.Group("/:namespace", h.NamespaceMiddleware)
 	namespaceGroup.GET("/flows", h.HandleFlowsPagination, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionView))
 	namespaceGroup.POST("/flows", h.HandleCreateFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionCreate))
+	namespaceGroup.POST("/flows/import", h.HandleImportFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionCreate))
 
 	namespaceGroup.GET("/flows/groups/me", h.HandleListMyFlowGroups, h.AuthorizeNamespaceAction(models.ResourceNamespace, models.RBACActionView))
 	namespaceGroup.GET("/flows/groups/:group", h.HandleGetFlowGroup, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
@@ -376,6 +377,7 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 	namespaceGroup.GET("/flows/:flowID", h.HandleGetFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
 	namespaceGroup.PUT("/flows/:flowID", h.HandleUpdateFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionUpdate))
 	namespaceGroup.DELETE("/flows/:flowID", h.HandleDeleteFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionDelete))
+	namespaceGroup.GET("/flows/:flowID/export", h.HandleExportFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionExport))
 
 	namespaceGroup.GET("/flows/executions/:execID", h.HandleGetExecutionSummary, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionView))
 	namespaceGroup.POST("/flows/executions/:execID/cancel", h.HandleCancelExecution, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionUpdate))

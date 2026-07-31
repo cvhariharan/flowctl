@@ -284,6 +284,17 @@ export const apiClient = {
         method: 'POST',
         body: JSON.stringify(flowData),
       }),
+    import: (namespace: string, file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      return baseFetch<FlowCreateResp>(`/api/v1/${encodeURIComponent(namespace)}/flows/import`, {
+        method: 'POST',
+        body: form,
+        headers: { 'X-CSRF-Token': getCsrfToken() },
+      });
+    },
+    export: (namespace: string, flowId: string) =>
+      baseFetch<string>(`/api/v1/${encodeURIComponent(namespace)}/flows/${flowId}/export`),
     getConfig: (namespace: string, flowId: string) =>
       baseFetch<FlowCreateReq>(`/api/v1/${encodeURIComponent(namespace)}/flows/${flowId}/config`),
     update: (namespace: string, flowId: string, flowData: FlowUpdateReq) =>

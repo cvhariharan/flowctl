@@ -27,6 +27,9 @@ const (
 	// Not found errors (404)
 	ErrResourceNotFound = "RESOURCE_NOT_FOUND"
 
+	// Conflict errors (409)
+	ErrResourceConflict = "RESOURCE_CONFLICT"
+
 	// Server errors (500)
 	ErrOperationFailed = "OPERATION_FAILED"
 	ErrInternalError   = "INTERNAL_ERROR"
@@ -50,6 +53,9 @@ var errorCodeToHTTPStatus = map[string]int{
 
 	// Not found errors (404)
 	ErrResourceNotFound: http.StatusNotFound,
+
+	// Conflict errors (409)
+	ErrResourceConflict: http.StatusConflict,
 
 	// Server errors (500)
 	ErrOperationFailed: http.StatusInternalServerError,

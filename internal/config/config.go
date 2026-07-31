@@ -42,6 +42,8 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+const DefaultMaxFlowImportSize = 256 * 1024
+
 type Metrics struct {
 	Enabled bool   `koanf:"enabled"`
 	Path    string `koanf:"path"`
@@ -132,6 +134,7 @@ type AppConfig struct {
 	HTTPTLSKey        string         `koanf:"http_tls_key" validate:"required_if=UseTLS true"`
 	FlowsDirectory    string         `koanf:"flows_directory" validate:"required"`
 	MaxFileUploadSize int64          `koanf:"max_file_upload_size" validate:"required,min=1"`
+  MaxFlowImportSize int64  `koanf:"max_flow_import_size" validate:"min=0"`
 	PluginDir         string         `koanf:"plugin_dir"`
 	Branding          BrandingConfig `koanf:"branding"`
 }
@@ -207,6 +210,10 @@ func Load(configPath string) (Config, error) {
 		return Config{}, fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
+	if config.App.MaxFlowImportSize <= 0 {
+		config.App.MaxFlowImportSize = DefaultMaxFlowImportSize
+	}
+
 	if err := config.Validate(); err != nil {
 		return Config{}, fmt.Errorf("error validating config: %w", err)
 	}
@@ -239,6 +246,7 @@ func GetDefaultConfig() Config {
 			HTTPTLSKey:        "server_key.pem",
 			FlowsDirectory:    "flows",
 			MaxFileUploadSize: 100 * 1024 * 1024, // 100MB
+			MaxFlowImportSize: DefaultMaxFlowImportSize,
 			PluginDir:         "",
 		},
 		Keystore: KeystoreConfig{

@@ -33,6 +33,7 @@ const (
 	RBACActionUpdate     RBACAction = "update"
 	RBACActionDelete     RBACAction = "delete"
 	RBACActionCreate     RBACAction = "create"
+	RBACActionExport     RBACAction = "export"
 )
 
 type NamespaceWithRole struct {
@@ -77,7 +78,7 @@ func ValidResource(r Resource) bool {
 func ValidRBACAction(a RBACAction) bool {
 	switch a {
 	case RBACActionView, RBACActionViewConfig, RBACActionExecute, RBACActionApprove,
-		RBACActionUpdate, RBACActionDelete, RBACActionCreate:
+		RBACActionUpdate, RBACActionDelete, RBACActionCreate, RBACActionExport:
 		return true
 	default:
 		return false
