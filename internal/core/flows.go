@@ -343,7 +343,7 @@ func (c *Core) QueueFlowExecutionWithExecID(ctx context.Context, f models.Flow, 
 		}
 	}
 
-	info, err := c.queueFlow(ctx, f, input, execID, 0, userUUID, namespaceID, false, scheduledAt)
+	info, err := c.queueFlow(ctx, f, models.NewExecutionContext(input, nil), execID, 0, userUUID, namespaceID, false, scheduledAt)
 	if err != nil {
 		return "", err
 	}
@@ -368,7 +368,7 @@ func (c *Core) ResumeFlowExecution(ctx context.Context, execID string, actionID 
 		return err
 	}
 
-	if _, err := c.queueFlow(ctx, f, exec.Input, execID, actionIndex, userUUID, namespaceID, retry, nil); err != nil {
+	if _, err := c.queueFlow(ctx, f, exec.Context, execID, actionIndex, userUUID, namespaceID, retry, nil); err != nil {
 		return err
 	}
 
@@ -396,7 +396,7 @@ func (c *Core) RetryFlowExecution(ctx context.Context, execID string, userUUID s
 
 // queueFlow adds a flow to the execution queue. If the actionIndex is not zero, it is moved to a resume queue.
 // If scheduledAt is provided, the flow will be scheduled to run at that time instead of immediately.
-func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]interface{}, execID string, actionIndex int, userUUID string, namespaceID string, retry bool, scheduledAt *time.Time) (string, error) {
+func (c *Core) queueFlow(ctx context.Context, f models.Flow, execCtx models.ExecutionContext, execID string, actionIndex int, userUUID string, namespaceID string, retry bool, scheduledAt *time.Time) (string, error) {
 	// If execID is empty, it is a new flow execution
 	if execID == "" {
 		execID = uuid.NewString()
@@ -435,7 +435,7 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 		dbTriggerType = repo.TriggerTypeScheduled
 	}
 
-	overrideNodes, err := c.resolveOverrideNodes(ctx, f, input, namespaceUUID)
+	overrideNodes, err := c.resolveOverrideNodes(ctx, f, execCtx.Inputs, namespaceUUID)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve override nodes: %w", err)
 	}
@@ -443,7 +443,8 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 	// Create flow execution payload for scheduler
 	payload := scheduler.FlowExecutionPayload{
 		Workflow:          schedulerFlow,
-		Input:             input,
+		Input:             execCtx.Inputs,
+		Outputs:           execCtx.Outputs,
 		StartingActionIdx: actionIndex,
 		NamespaceID:       namespaceID,
 		TriggerType:       triggerType,
@@ -454,9 +455,9 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 	}
 
 	// Create execution log for manual flows before queuing (needed for immediate API calls)
-	inputB, err := json.Marshal(input)
+	contextB, err := json.Marshal(execCtx)
 	if err != nil {
-		return "", fmt.Errorf("could not marshal input to json: %w", err)
+		return "", fmt.Errorf("could not marshal execution context to json: %w", err)
 	}
 
 	// Convert scheduledAt to sql.NullTime for database
@@ -468,7 +469,7 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, input map[string]in
 	_, err = c.store.AddExecutionLog(ctx, repo.AddExecutionLogParams{
 		ExecID:      execID,
 		FlowID:      f.Meta.DBID,
-		Input:       inputB,
+		Context:     contextB,
 		TriggerType: dbTriggerType,
 		Uuid:        userID,
 		Uuid_2:      namespaceUUID,
@@ -652,9 +653,14 @@ func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string, n
 		}
 	}
 
+	execCtx, err := models.UnmarshalExecutionContext(e.Context)
+	if err != nil {
+		return models.ExecutionSummary{}, fmt.Errorf("could not unmarshal context for exec %s: %w", execID, err)
+	}
+
 	return models.ExecutionSummary{
 		ExecID:          execID,
-		Input:           e.Input,
+		Inputs:          execCtx.Inputs,
 		FlowName:        e.FlowName,
 		FlowID:          e.FlowSlug,
 		Status:          models.ExecutionStatus(e.Status),
@@ -670,25 +676,25 @@ func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string, n
 	}, nil
 }
 
-func (c *Core) GetInputForExec(ctx context.Context, execID string, namespaceID string) (map[string]interface{}, error) {
-	var input map[string]interface{}
+func (c *Core) GetExecutionContext(ctx context.Context, execID string, namespaceID string) (models.ExecutionContext, error) {
 	namespaceUUID, err := uuid.Parse(namespaceID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid namespace UUID: %w", err)
+		return models.ExecutionContext{}, fmt.Errorf("invalid namespace UUID: %w", err)
 	}
-	in, err := c.store.GetInputForExecByUUID(ctx, repo.GetInputForExecByUUIDParams{
+	execCtxB, err := c.store.GetExecutionContextByUUID(ctx, repo.GetExecutionContextByUUIDParams{
 		ExecID: execID,
 		Uuid:   namespaceUUID,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error getting input for %s: %w", execID, err)
+		return models.ExecutionContext{}, fmt.Errorf("error getting context for %s: %w", execID, err)
 	}
 
-	if err := json.Unmarshal(in, &input); err != nil {
-		return nil, fmt.Errorf("error unmarshaling input for %s: %w", execID, err)
+	execCtx, err := models.UnmarshalExecutionContext(execCtxB)
+	if err != nil {
+		return models.ExecutionContext{}, fmt.Errorf("error unmarshaling context for %s: %w", execID, err)
 	}
 
-	return input, nil
+	return execCtx, nil
 }
 
 func (c *Core) GetExecutionByExecID(ctx context.Context, execID string, namespaceID string) (models.Execution, error) {
@@ -704,9 +710,9 @@ func (c *Core) GetExecutionByExecID(ctx context.Context, execID string, namespac
 		return models.Execution{}, fmt.Errorf("could not get execution for exec %s: %w", execID, err)
 	}
 
-	var input map[string]interface{}
-	if err := json.Unmarshal(e.Input, &input); err != nil {
-		return models.Execution{}, fmt.Errorf("error unmarshaling input for %s: %w", execID, err)
+	execCtx, err := models.UnmarshalExecutionContext(e.Context)
+	if err != nil {
+		return models.Execution{}, fmt.Errorf("error unmarshaling context for %s: %w", execID, err)
 	}
 
 	u, err := c.store.GetUserByID(ctx, e.TriggeredBy)
@@ -717,7 +723,7 @@ func (c *Core) GetExecutionByExecID(ctx context.Context, execID string, namespac
 	return models.Execution{
 		ExecID:      e.ExecID,
 		Version:     int64(e.Version),
-		Input:       input,
+		Context:     execCtx,
 		ErrorMsg:    e.Error.String,
 		TriggeredBy: u.Uuid.String(),
 	}, nil

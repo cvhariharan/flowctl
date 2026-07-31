@@ -138,12 +138,42 @@ const (
 	ExecutionStatusErrored         ExecutionStatus = "errored"
 )
 
+// ExecutionContext is the state of an execution, stored as JSON in execution_log.context.
+type ExecutionContext struct {
+	Inputs  map[string]any `json:"inputs"`
+	Outputs map[string]any `json:"outputs"`
+}
+
+// NewExecutionContext replaces nil maps with empty ones so the stored JSON holds no nulls.
+func NewExecutionContext(inputs, outputs map[string]any) ExecutionContext {
+	if inputs == nil {
+		inputs = make(map[string]any)
+	}
+	if outputs == nil {
+		outputs = make(map[string]any)
+	}
+	return ExecutionContext{Inputs: inputs, Outputs: outputs}
+}
+
+func UnmarshalExecutionContext(b []byte) (ExecutionContext, error) {
+	if len(b) == 0 {
+		return NewExecutionContext(nil, nil), nil
+	}
+
+	var execCtx ExecutionContext
+	if err := json.Unmarshal(b, &execCtx); err != nil {
+		return ExecutionContext{}, fmt.Errorf("could not unmarshal execution context: %w", err)
+	}
+
+	return NewExecutionContext(execCtx.Inputs, execCtx.Outputs), nil
+}
+
 type ExecutionSummary struct {
 	ExecID          string
 	FlowName        string
 	FlowID          string
 	Status          ExecutionStatus
-	Input           json.RawMessage
+	Inputs          map[string]any
 	TriggerType     string
 	TriggeredByName string
 	TriggeredByID   string

@@ -16,7 +16,7 @@ import (
 const createAPIToken = `-- name: CreateAPIToken :one
 INSERT INTO api_tokens (user_id, label, token_hash)
 VALUES (
-    (SELECT id FROM users WHERE uuid = $1),
+    (SELECT id FROM users WHERE users.uuid = $1),
     $2,
     $3
 )
@@ -43,6 +43,22 @@ func (q *Queries) CreateAPIToken(ctx context.Context, arg CreateAPITokenParams) 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const deleteAPIToken = `-- name: DeleteAPIToken :exec
+DELETE FROM api_tokens
+WHERE api_tokens.uuid = $1
+  AND user_id = (SELECT id FROM users WHERE users.uuid = $2)
+`
+
+type DeleteAPITokenParams struct {
+	TokenUuid uuid.UUID `db:"token_uuid" json:"token_uuid"`
+	UserUuid  uuid.UUID `db:"user_uuid" json:"user_uuid"`
+}
+
+func (q *Queries) DeleteAPIToken(ctx context.Context, arg DeleteAPITokenParams) error {
+	_, err := q.db.ExecContext(ctx, deleteAPIToken, arg.TokenUuid, arg.UserUuid)
+	return err
 }
 
 const getAPITokenByHash = `-- name: GetAPITokenByHash :one
@@ -84,7 +100,7 @@ func (q *Queries) GetAPITokenByHash(ctx context.Context, tokenHash string) (GetA
 
 const listAPITokensByUser = `-- name: ListAPITokensByUser :many
 SELECT id, uuid, user_id, label, token_hash, last_used_at, created_at, updated_at FROM api_tokens
-WHERE user_id = (SELECT id FROM users WHERE uuid = $1)
+WHERE user_id = (SELECT id FROM users WHERE users.uuid = $1)
 ORDER BY created_at DESC
 `
 
@@ -118,22 +134,6 @@ func (q *Queries) ListAPITokensByUser(ctx context.Context, userUuid uuid.UUID) (
 		return nil, err
 	}
 	return items, nil
-}
-
-const deleteAPIToken = `-- name: DeleteAPIToken :exec
-DELETE FROM api_tokens
-WHERE uuid = $1
-  AND user_id = (SELECT id FROM users WHERE uuid = $2)
-`
-
-type DeleteAPITokenParams struct {
-	TokenUuid uuid.UUID `db:"token_uuid" json:"token_uuid"`
-	UserUuid  uuid.UUID `db:"user_uuid" json:"user_uuid"`
-}
-
-func (q *Queries) DeleteAPIToken(ctx context.Context, arg DeleteAPITokenParams) error {
-	_, err := q.db.ExecContext(ctx, deleteAPIToken, arg.TokenUuid, arg.UserUuid)
-	return err
 }
 
 const touchAPITokenLastUsed = `-- name: TouchAPITokenLastUsed :exec

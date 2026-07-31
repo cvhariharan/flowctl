@@ -18,7 +18,7 @@ INSERT INTO execution_log (
     exec_id,
     flow_id,
     version,
-    input,
+    context,
     trigger_type,
     triggered_by,
     namespace_id,
@@ -181,7 +181,7 @@ INNER JOIN users u ON el.triggered_by = u.id
 INNER JOIN flows f ON el.flow_id = f.id
 WHERE el.id = $1 AND el.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE;
 
--- name: GetInputForExecByUUID :one
+-- name: GetExecutionContextByUUID :one
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
 ), latest_execution AS (
@@ -189,10 +189,25 @@ WITH namespace_lookup AS (
     FROM execution_log
     WHERE exec_id = $1 AND namespace_id = (SELECT id FROM namespace_lookup)
 )
-SELECT input FROM execution_log
+SELECT context FROM execution_log
 WHERE execution_log.exec_id = $1
   AND execution_log.namespace_id = (SELECT id FROM namespace_lookup)
   AND execution_log.version = (SELECT max_version FROM latest_execution);
+
+-- name: UpdateExecutionOutputs :exec
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = sqlc.arg(uuid)
+), latest_version AS (
+    SELECT MAX(version) as version
+    FROM execution_log
+    WHERE exec_id = sqlc.arg(exec_id) AND namespace_id = (SELECT id FROM namespace_lookup)
+)
+UPDATE execution_log SET
+    context = jsonb_set(context, '{outputs}', sqlc.arg(outputs), true),
+    updated_at = NOW()
+WHERE execution_log.exec_id = sqlc.arg(exec_id)
+  AND version = (SELECT version FROM latest_version)
+  AND namespace_id = (SELECT id FROM namespace_lookup);
 
 
 -- name: GetExecutionsByFlowPaginated :many

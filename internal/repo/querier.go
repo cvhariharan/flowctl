@@ -86,6 +86,7 @@ type Querier interface {
 	GetExecutionByExecID(ctx context.Context, arg GetExecutionByExecIDParams) (GetExecutionByExecIDRow, error)
 	GetExecutionByExecIDWithNamespace(ctx context.Context, arg GetExecutionByExecIDWithNamespaceParams) (GetExecutionByExecIDWithNamespaceRow, error)
 	GetExecutionByID(ctx context.Context, arg GetExecutionByIDParams) (GetExecutionByIDRow, error)
+	GetExecutionContextByUUID(ctx context.Context, arg GetExecutionContextByUUIDParams) (json.RawMessage, error)
 	GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]GetExecutionsByFlowRow, error)
 	GetExecutionsByFlowPaginated(ctx context.Context, arg GetExecutionsByFlowPaginatedParams) ([]GetExecutionsByFlowPaginatedRow, error)
 	GetExecutorKV(ctx context.Context, arg GetExecutorKVParams) (ExecutorKvStore, error)
@@ -104,7 +105,6 @@ type Querier interface {
 	GetGroupByUUID(ctx context.Context, argUuid uuid.UUID) (Group, error)
 	GetGroupByUUIDWithUsers(ctx context.Context, argUuid uuid.UUID) (GroupView, error)
 	GetGroupMembersByName(ctx context.Context, name string) ([]GetGroupMembersByNameRow, error)
-	GetInputForExecByUUID(ctx context.Context, arg GetInputForExecByUUIDParams) (json.RawMessage, error)
 	GetMemberPrefixes(ctx context.Context, arg GetMemberPrefixesParams) ([]GetMemberPrefixesRow, error)
 	GetNamespaceByName(ctx context.Context, name string) (Namespace, error)
 	GetNamespaceByUUID(ctx context.Context, argUuid uuid.UUID) (Namespace, error)
@@ -174,6 +174,7 @@ type Querier interface {
 	UpdateCredential(ctx context.Context, arg UpdateCredentialParams) (Credential, error)
 	UpdateExecutionActionID(ctx context.Context, arg UpdateExecutionActionIDParams) (ExecutionLog, error)
 	UpdateExecutionActionRetries(ctx context.Context, arg UpdateExecutionActionRetriesParams) error
+	UpdateExecutionOutputs(ctx context.Context, arg UpdateExecutionOutputsParams) error
 	UpdateExecutionStartedAt(ctx context.Context, arg UpdateExecutionStartedAtParams) error
 	UpdateExecutionStatus(ctx context.Context, arg UpdateExecutionStatusParams) (ExecutionLog, error)
 	UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, error)

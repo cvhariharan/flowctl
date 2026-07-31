@@ -633,7 +633,7 @@ type ExecutionSummary struct {
 	FlowID          string          `json:"flow_id"`
 	Status          ExecutionStatus `json:"status"`
 	TriggerType     string          `json:"trigger_type"`
-	Input           json.RawMessage `json:"input,omitempty"`
+	Input           map[string]any  `json:"input,omitempty"`
 	TriggeredBy     string          `json:"triggered_by"`
 	CurrentActionID string          `json:"current_action_id"`
 	CreatedAt       string          `json:"created_at"`
@@ -664,7 +664,7 @@ func coreExecutionSummaryToExecutionSummary(e models.ExecutionSummary) Execution
 		FlowName:        e.FlowName,
 		FlowID:          e.FlowID,
 		Status:          ExecutionStatus(e.Status),
-		Input:           e.Input,
+		Input:           e.Inputs,
 		TriggerType:     e.TriggerType,
 		TriggeredBy:     e.TriggeredByName,
 		CurrentActionID: e.CurrentActionID,

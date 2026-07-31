@@ -284,7 +284,7 @@ WITH namespace_lookup AS (
 SELECT
     a.id, a.uuid, a.exec_log_id, a.action_id, a.status, a.decided_by, a.namespace_id, a.created_at, a.updated_at,
     el.exec_id,
-    el.input as exec_inputs,
+    COALESCE(el.context -> 'inputs', '{}'::jsonb)::jsonb as exec_inputs,
     f.name as flow_name,
     f.slug as flow_slug,
     u.name as requested_by,

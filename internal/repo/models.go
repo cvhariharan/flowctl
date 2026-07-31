@@ -380,7 +380,7 @@ type ExecutionLog struct {
 	ExecID          string                `db:"exec_id" json:"exec_id"`
 	FlowID          int32                 `db:"flow_id" json:"flow_id"`
 	Version         int32                 `db:"version" json:"version"`
-	Input           json.RawMessage       `db:"input" json:"input"`
+	Context         json.RawMessage       `db:"context" json:"context"`
 	Error           sql.NullString        `db:"error" json:"error"`
 	CurrentActionID sql.NullString        `db:"current_action_id" json:"current_action_id"`
 	Status          ExecutionStatus       `db:"status" json:"status"`

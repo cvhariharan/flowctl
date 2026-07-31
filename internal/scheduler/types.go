@@ -214,6 +214,7 @@ type Flow struct {
 type FlowExecutionPayload struct {
 	Workflow          Flow
 	Input             map[string]any
+	Outputs           map[string]any
 	StartingActionIdx int
 	NamespaceID       string
 	TriggerType       TriggerType

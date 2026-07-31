@@ -128,6 +128,13 @@ func (h *FlowExecutionHandler) Handle(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to unmarshal flow payload: %w", err)
 	}
 
+	if payload.Input == nil {
+		payload.Input = make(map[string]any)
+	}
+	if payload.Outputs == nil {
+		payload.Outputs = make(map[string]any)
+	}
+
 	if job.Attempt > 0 {
 		payload.Resumed = true
 	}
@@ -188,9 +195,6 @@ func (h *FlowExecutionHandler) executeFlow(ctx context.Context, execID string, p
 	}
 
 	// Apply default input values for any inputs not provided by the caller
-	if payload.Input == nil {
-		payload.Input = make(map[string]any)
-	}
 	applyDefaultInputs(payload.Workflow.Inputs, payload.Input)
 
 	// Create temporary directory for artifacts shared across all actions in this flow
@@ -225,7 +229,6 @@ func (h *FlowExecutionHandler) executeFlow(ctx context.Context, execID string, p
 	// Get flow-specific secrets
 	flowSecrets := h.getFlowSecrets(ctx, payload.Workflow.Meta.ID, payload.NamespaceID, execID)
 
-	// Initialize outputs map to accumulate results from all previous actions
 	runCtx := flowRunContext{
 		execID:        execID,
 		workflowMeta:  payload.Workflow.Meta,
@@ -234,7 +237,7 @@ func (h *FlowExecutionHandler) executeFlow(ctx context.Context, execID string, p
 		streamLogger:  streamLogger,
 		artifactDir:   artifactDir,
 		secrets:       flowSecrets,
-		outputs:       make(map[string]any),
+		outputs:       payload.Outputs,
 		namespaceID:   payload.NamespaceID,
 		userUUID:      payload.UserUUID,
 		overrideNodes: payload.OverrideNodes,
@@ -252,6 +255,10 @@ func (h *FlowExecutionHandler) executeFlow(ctx context.Context, execID string, p
 		processActionResults(res, runCtx.outputs)
 		mergeGlobals(globals, action.ID, runCtx.outputs)
 		h.logger.Debug("outputs", "results", runCtx.outputs)
+
+		if err := h.persistOutputs(ctx, execID, payload.NamespaceID, runCtx.outputs); err != nil {
+			h.logger.Error("failed to persist execution outputs", "execID", execID, "actionID", action.ID, "error", err)
+		}
 	}
 
 	// Only remove the artifact store when all actions have been executed
@@ -291,6 +298,24 @@ func (h *FlowExecutionHandler) initializeActionRetries(ctx context.Context, exec
 
 	h.logger.Debug("initialized action retries", "execID", execID, "actions", len(actions))
 	return nil
+}
+
+func (h *FlowExecutionHandler) persistOutputs(ctx context.Context, execID string, namespaceID string, outputs map[string]any) error {
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+
+	outputsJSON, err := json.Marshal(outputs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal outputs: %w", err)
+	}
+
+	return h.store.UpdateExecutionOutputs(ctx, repo.UpdateExecutionOutputsParams{
+		ExecID:  execID,
+		Outputs: outputsJSON,
+		Uuid:    namespaceUUID,
+	})
 }
 
 // getFlowSecrets retrieves flow-specific secrets or returns an empty map if unavailable
@@ -420,10 +445,12 @@ func processActionResults(results map[string]string, outputs map[string]any) {
 			keyName := parts[0]
 			nodeName := parts[1]
 
-			if _, exists := outputs[nodeName]; !exists {
-				outputs[nodeName] = make(map[string]any)
+			nodeBucket, ok := outputs[nodeName].(map[string]any)
+			if !ok {
+				nodeBucket = make(map[string]any)
+				outputs[nodeName] = nodeBucket
 			}
-			outputs[nodeName].(map[string]any)[keyName] = v
+			nodeBucket[keyName] = v
 		} else {
 			outputs[k] = v
 		}
@@ -909,9 +936,12 @@ func (h *FlowExecutionHandler) createExecutionLog(ctx context.Context, execID st
 		return fmt.Errorf("invalid user UUID: %w", err)
 	}
 
-	inputJSON, err := json.Marshal(payload.Input)
+	contextJSON, err := json.Marshal(map[string]any{
+		"inputs":  payload.Input,
+		"outputs": payload.Outputs,
+	})
 	if err != nil {
-		return fmt.Errorf("failed to marshal input: %w", err)
+		return fmt.Errorf("failed to marshal execution context: %w", err)
 	}
 
 	triggerType := repo.TriggerTypeManual
@@ -922,7 +952,7 @@ func (h *FlowExecutionHandler) createExecutionLog(ctx context.Context, execID st
 	_, err = h.store.AddExecutionLog(ctx, repo.AddExecutionLogParams{
 		ExecID:      execID,
 		FlowID:      payload.Workflow.Meta.DBID,
-		Input:       inputJSON,
+		Context:     contextJSON,
 		TriggerType: triggerType,
 		Uuid:        userUUID,
 		Uuid_2:      namespaceUUID,

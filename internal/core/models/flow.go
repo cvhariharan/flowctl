@@ -412,11 +412,11 @@ func validateType(name string, val interface{}, t InputType) error {
 }
 
 type Execution struct {
-	Input       map[string]interface{} `json:"input"`
-	ExecID      string                 `json:"exec_id"`
-	Version     int64                  `json:"version"`
-	ErrorMsg    string                 `json:"error_msg"`
-	TriggeredBy string                 `json:"triggered_by"`
+	Context     ExecutionContext `json:"context"`
+	ExecID      string           `json:"exec_id"`
+	Version     int64            `json:"version"`
+	ErrorMsg    string           `json:"error_msg"`
+	TriggeredBy string           `json:"triggered_by"`
 }
 
 // FlowFormat represents the file format for flows

@@ -90,7 +90,7 @@ WITH namespace_lookup AS (
 SELECT
     a.*,
     el.exec_id,
-    el.input as exec_inputs,
+    COALESCE(el.context -> 'inputs', '{}'::jsonb)::jsonb as exec_inputs,
     f.name as flow_name,
     f.slug as flow_slug,
     u.name as requested_by,
