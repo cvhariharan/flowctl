@@ -257,7 +257,7 @@ func (h *FlowExecutionHandler) executeFlow(ctx context.Context, execID string, p
 		h.logger.Debug("outputs", "results", runCtx.outputs)
 
 		if err := h.persistOutputs(ctx, execID, payload.NamespaceID, runCtx.outputs); err != nil {
-			h.logger.Error("failed to persist execution outputs", "execID", execID, "actionID", action.ID, "error", err)
+			return fmt.Errorf("failed to persist execution outputs after action %s: %w", action.ID, err)
 		}
 	}
 
