@@ -6,6 +6,8 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -42,6 +44,7 @@ type Handler struct {
 	version            string
 	commit             string
 	buildDate          string
+	hasThemeCSS        bool
 }
 
 func getCookie(name string, r interface{}) (*http.Cookie, error) {
@@ -91,7 +94,13 @@ func NewHandler(logger *slog.Logger, db *sql.DB, co *core.Core, cfg config.Confi
 		}
 	}()
 
-	h := &Handler{co: co, validate: validate, logger: logger, sessMgr: sessMgr, config: cfg, authconfig: make(map[string]OIDCAuthConfig), executorSigningKey: executorSigningKey, version: version, commit: commit, buildDate: buildDate}
+	hasThemeCSS := false
+	if cfg.App.Branding.BrandingDir != "" {
+		if _, err := os.Stat(filepath.Join(cfg.App.Branding.BrandingDir, "theme.css")); err == nil {
+			hasThemeCSS = true
+		}
+	}
+	h := &Handler{co: co, validate: validate, logger: logger, sessMgr: sessMgr, config: cfg, authconfig: make(map[string]OIDCAuthConfig), executorSigningKey: executorSigningKey, version: version, commit: commit, buildDate: buildDate, hasThemeCSS: hasThemeCSS}
 	if err := h.initOIDC(); err != nil {
 		return nil, fmt.Errorf("error initializing oidc config: %w", err)
 	}
@@ -103,11 +112,24 @@ func (h *Handler) HandlePing(c echo.Context) error {
 }
 
 func (h *Handler) HandleGetInfo(c echo.Context) error {
+	var branding *BrandingInfo
+	bc := h.config.App.Branding
+	if bc.AppName != "" || bc.LogoURL != "" || bc.LogoLightURL != "" || bc.FaviconURL != "" || bc.BrandingDir != "" {
+		branding = &BrandingInfo{
+			AppName:      bc.AppName,
+			LogoURL:      bc.LogoURL,
+			LogoLightURL: bc.LogoLightURL,
+			IconURL:      bc.IconURL,
+			FaviconURL:   bc.FaviconURL,
+			HasThemeCSS:  h.hasThemeCSS,
+		}
+	}
 	return c.JSON(http.StatusOK, AppInfoResponse{
 		Version:         h.version,
 		Commit:          h.commit,
 		BuildDate:       h.buildDate,
 		DefaultTimezone: h.config.Scheduler.DefaultTimezone,
+		Branding:        branding,
 	})
 }
 

@@ -5,6 +5,7 @@
 	import UsersTab from '$lib/components/settings/UsersTab.svelte';
 	import GroupsTab from '$lib/components/settings/GroupsTab.svelte';
 	import NamespacesTab from '$lib/components/settings/NamespacesTab.svelte';
+	import { appInfo } from '$lib/stores/auth';
 
 	let { data }: { data: PageData } = $props();
 
@@ -16,7 +17,7 @@
 </script>
 
 <svelte:head>
-	<title>Settings - Flowctl</title>
+	<title>Settings - {$appInfo?.branding?.app_name || "Flowctl"}</title>
 </svelte:head>
 
 <Header breadcrumbs={[{ label: "Settings" }]}>

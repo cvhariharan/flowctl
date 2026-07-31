@@ -54,10 +54,16 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<link rel="icon" href={$appInfo?.branding?.favicon_url || favicon} />
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,100..900;1,100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+	{#if $appInfo?.branding?.has_theme_css}
+		<link rel="stylesheet" href="/branding/theme.css" />
+	{/if}
+	{#if $appInfo?.branding?.app_name}
+		<title>{$appInfo.branding.app_name}</title>
+	{/if}
 </svelte:head>
 
 {@render children?.()}

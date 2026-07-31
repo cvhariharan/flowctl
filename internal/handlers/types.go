@@ -553,10 +553,20 @@ type UserProfileResponse struct {
 }
 
 type AppInfoResponse struct {
-	Version         string `json:"version"`
-	Commit          string `json:"commit"`
-	BuildDate       string `json:"build_date"`
-	DefaultTimezone string `json:"default_timezone"`
+	Version         string        `json:"version"`
+	Commit          string        `json:"commit"`
+	BuildDate       string        `json:"build_date"`
+	DefaultTimezone string        `json:"default_timezone"`
+	Branding        *BrandingInfo `json:"branding,omitempty"`
+}
+
+type BrandingInfo struct {
+	AppName      string `json:"app_name,omitempty"`
+	LogoURL      string `json:"logo_url,omitempty"`
+	LogoLightURL string `json:"logo_light_url,omitempty"`
+	IconURL      string `json:"icon_url,omitempty"`
+	FaviconURL   string `json:"favicon_url,omitempty"`
+	HasThemeCSS  bool   `json:"has_theme_css,omitempty"`
 }
 
 func coreUserInfoToUserProfile(u models.UserInfo) UserProfileResponse {

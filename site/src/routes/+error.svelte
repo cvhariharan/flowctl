@@ -2,6 +2,7 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { isAuthenticated } from '$lib/stores/auth';
+  import { appInfo } from '$lib/stores/auth';
   import { getDefaultNamespace } from '$lib/utils/navigation';
   import {
     IconLock,
@@ -77,7 +78,7 @@
 </script>
 
 <svelte:head>
-  <title>Error - Flowctl</title>
+  <title>Error - {$appInfo?.branding?.app_name || "Flowctl"}</title>
 </svelte:head>
 
 <div class="error-page vstack items-center justify-center">
