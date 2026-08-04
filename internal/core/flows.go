@@ -24,6 +24,7 @@ import (
 	"github.com/cvhariharan/flowctl/internal/scheduler"
 	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
+	"github.com/robfig/cron/v3"
 	"github.com/sqlc-dev/pqtype"
 )
 
@@ -1316,6 +1317,50 @@ func (c *Core) GetSchedule(ctx context.Context, scheduleUUID, userUUID, namespac
 		CreatedAt:     schedule.CreatedAt,
 		UpdatedAt:     schedule.UpdatedAt,
 	}, nil
+}
+
+// GetNextScheduledRuns returns the earliest upcoming run, across both system and user
+// schedules, for each of the given flow slugs that has an active schedule.
+func (c *Core) GetNextScheduledRuns(ctx context.Context, namespaceID string, flowSlugs []string) (map[string]time.Time, error) {
+	if len(flowSlugs) == 0 {
+		return map[string]time.Time{}, nil
+	}
+
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+
+	schedules, err := c.store.GetActiveCronSchedulesByFlowSlugs(ctx, repo.GetActiveCronSchedulesByFlowSlugsParams{
+		Uuid:    namespaceUUID,
+		Column2: flowSlugs,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not get active schedules for namespace %s: %w", namespaceID, err)
+	}
+
+	now := time.Now()
+	nextRuns := make(map[string]time.Time, len(schedules))
+	for _, s := range schedules {
+		schedule, err := cron.ParseStandard(s.Cron)
+		if err != nil {
+			log.Printf("skipping invalid cron expression %q for flow %s: %v", s.Cron, s.FlowSlug, err)
+			continue
+		}
+
+		loc, err := time.LoadLocation(s.Timezone)
+		if err != nil {
+			log.Printf("could not load timezone %q for flow %s, using UTC: %v", s.Timezone, s.FlowSlug, err)
+			loc = time.UTC
+		}
+
+		next := schedule.Next(now.In(loc))
+		if existing, ok := nextRuns[s.FlowSlug]; !ok || next.Before(existing) {
+			nextRuns[s.FlowSlug] = next
+		}
+	}
+
+	return nextRuns, nil
 }
 
 // ListSchedules returns a paginated list of all schedules (both user and system schedules)

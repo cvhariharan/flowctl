@@ -1874,6 +1874,10 @@ components:
           type: array
           items: { $ref: "#/components/schemas/Schedule" }
         step_count: { type: integer }
+        next_run:
+          type: string
+          format: date-time
+          description: Earliest upcoming run across all active schedules of the flow. Absent when the flow has no active schedule.
     FlowListResponse:
       type: object
       properties:

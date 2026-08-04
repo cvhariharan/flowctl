@@ -20,6 +20,16 @@ JOIN namespaces n ON f.namespace_id = n.id
 WHERE f.is_active = TRUE
 ORDER BY cs.flow_id, cs.id;
 
+-- name: GetActiveCronSchedulesByFlowSlugs :many
+SELECT f.slug AS flow_slug, cs.cron, cs.timezone
+FROM cron_schedules cs
+JOIN flows f ON cs.flow_id = f.id
+JOIN namespaces n ON f.namespace_id = n.id
+WHERE n.uuid = $1
+  AND f.slug = ANY($2::text[])
+  AND f.is_active = TRUE
+  AND cs.is_active = TRUE;
+
 -- name: CreateUserSchedule :one
 INSERT INTO cron_schedules (flow_id, cron, timezone, inputs, created_by, is_user_created, is_active)
 VALUES ($1, $2, $3, $4, (SELECT id FROM users WHERE users.uuid = $5), TRUE, TRUE)

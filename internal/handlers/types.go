@@ -382,6 +382,7 @@ type FlowListItem struct {
 	Prefix      string     `json:"prefix"`
 	Schedules   []Schedule `json:"schedules"`
 	StepCount   int        `json:"step_count"`
+	NextRun     *time.Time `json:"next_run,omitempty"`
 }
 
 type FlowInput struct {
@@ -534,6 +535,22 @@ func coreFlowToFlow(flow models.Flow) FlowListItem {
 		Schedules:   coreSchedulesToSchedules(flow.Schedules),
 		StepCount:   len(flow.Actions),
 	}
+}
+
+func attachNextRuns(items []FlowListItem, nextRuns map[string]time.Time) {
+	for i := range items {
+		if next, ok := nextRuns[items[i].Slug]; ok {
+			items[i].NextRun = &next
+		}
+	}
+}
+
+func flowSlugs(items []FlowListItem) []string {
+	slugs := make([]string, len(items))
+	for i, item := range items {
+		slugs[i] = item.Slug
+	}
+	return slugs
 }
 
 func coreFlowsToFlows(flows []models.Flow) FlowListResponse {

@@ -118,6 +118,7 @@ export interface FlowListItem {
   prefix: string;
   schedules: Schedule[];
   step_count: number;
+  next_run?: string;
 }
 
 export interface FlowInput {

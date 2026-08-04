@@ -8,6 +8,7 @@
     import SearchInput from "$lib/components/shared/SearchInput.svelte";
     import PageHeader from "$lib/components/shared/PageHeader.svelte";
     import { handleInlineError, showSuccess, showWarning } from "$lib/utils/errorHandling";
+    import { formatDateTime } from "$lib/utils";
     import type {
         TableColumn,
         TableAction,
@@ -357,6 +358,12 @@
             header: "Description",
             component: MutedTextCell,
             componentProps: { truncate: 40 },
+        },
+        {
+            key: "next_run",
+            header: "Next run",
+            component: MutedTextCell,
+            componentProps: { format: (v: any) => formatDateTime(v, "-") },
         },
     ];
 

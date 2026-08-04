@@ -63,6 +63,7 @@ type Querier interface {
 	DisableUserSchedulesForFlow(ctx context.Context, flowID int32) error
 	ExecutionExistsForFlow(ctx context.Context, arg ExecutionExistsForFlowParams) (bool, error)
 	GetAPITokenByHash(ctx context.Context, tokenHash string) (GetAPITokenByHashRow, error)
+	GetActiveCronSchedulesByFlowSlugs(ctx context.Context, arg GetActiveCronSchedulesByFlowSlugsParams) ([]GetActiveCronSchedulesByFlowSlugsRow, error)
 	GetAllCronSchedules(ctx context.Context) ([]GetAllCronSchedulesRow, error)
 	GetAllExecutionsPaginated(ctx context.Context, arg GetAllExecutionsPaginatedParams) ([]GetAllExecutionsPaginatedRow, error)
 	GetAllGroups(ctx context.Context) ([]Group, error)

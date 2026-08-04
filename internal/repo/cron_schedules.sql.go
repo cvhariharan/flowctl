@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/sqlc-dev/pqtype"
 )
 
@@ -156,6 +157,51 @@ WHERE flow_id = $1 AND is_user_created = TRUE
 func (q *Queries) DisableUserSchedulesForFlow(ctx context.Context, flowID int32) error {
 	_, err := q.db.ExecContext(ctx, disableUserSchedulesForFlow, flowID)
 	return err
+}
+
+const getActiveCronSchedulesByFlowSlugs = `-- name: GetActiveCronSchedulesByFlowSlugs :many
+SELECT f.slug AS flow_slug, cs.cron, cs.timezone
+FROM cron_schedules cs
+JOIN flows f ON cs.flow_id = f.id
+JOIN namespaces n ON f.namespace_id = n.id
+WHERE n.uuid = $1
+  AND f.slug = ANY($2::text[])
+  AND f.is_active = TRUE
+  AND cs.is_active = TRUE
+`
+
+type GetActiveCronSchedulesByFlowSlugsParams struct {
+	Uuid    uuid.UUID `db:"uuid" json:"uuid"`
+	Column2 []string  `db:"column_2" json:"column_2"`
+}
+
+type GetActiveCronSchedulesByFlowSlugsRow struct {
+	FlowSlug string `db:"flow_slug" json:"flow_slug"`
+	Cron     string `db:"cron" json:"cron"`
+	Timezone string `db:"timezone" json:"timezone"`
+}
+
+func (q *Queries) GetActiveCronSchedulesByFlowSlugs(ctx context.Context, arg GetActiveCronSchedulesByFlowSlugsParams) ([]GetActiveCronSchedulesByFlowSlugsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getActiveCronSchedulesByFlowSlugs, arg.Uuid, pq.Array(arg.Column2))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetActiveCronSchedulesByFlowSlugsRow
+	for rows.Next() {
+		var i GetActiveCronSchedulesByFlowSlugsRow
+		if err := rows.Scan(&i.FlowSlug, &i.Cron, &i.Timezone); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getAllCronSchedules = `-- name: GetAllCronSchedules :many

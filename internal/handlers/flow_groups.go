@@ -63,6 +63,12 @@ func (h *Handler) HandleGetFlowGroup(c echo.Context) error {
 		flowItems[i] = coreFlowToFlow(flow)
 	}
 
+	nextRuns, err := h.co.GetNextScheduledRuns(c.Request().Context(), namespace, flowSlugs(flowItems))
+	if err != nil {
+		return wrapError(ErrOperationFailed, "could not get next scheduled runs", err, nil)
+	}
+	attachNextRuns(flowItems, nextRuns)
+
 	return c.JSON(http.StatusOK, FlowListResponse{Flows: flowItems})
 }
 
