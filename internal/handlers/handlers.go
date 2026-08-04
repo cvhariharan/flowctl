@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -45,6 +44,7 @@ type Handler struct {
 	commit             string
 	buildDate          string
 	hasThemeCSS        bool
+	brandingRoot       *os.Root
 }
 
 func getCookie(name string, r interface{}) (*http.Cookie, error) {
@@ -94,13 +94,32 @@ func NewHandler(logger *slog.Logger, db *sql.DB, co *core.Core, cfg config.Confi
 		}
 	}()
 
+	brandingRoot, err := openBrandingRoot(cfg.App.Branding.BrandingDir)
+	if err != nil {
+		return nil, fmt.Errorf("could not open branding directory: %w", err)
+	}
+
 	hasThemeCSS := false
-	if cfg.App.Branding.BrandingDir != "" {
-		if _, err := os.Stat(filepath.Join(cfg.App.Branding.BrandingDir, "theme.css")); err == nil {
+	if brandingRoot != nil {
+		if _, err := brandingRoot.Stat("theme.css"); err == nil {
 			hasThemeCSS = true
 		}
 	}
-	h := &Handler{co: co, validate: validate, logger: logger, sessMgr: sessMgr, config: cfg, authconfig: make(map[string]OIDCAuthConfig), executorSigningKey: executorSigningKey, version: version, commit: commit, buildDate: buildDate, hasThemeCSS: hasThemeCSS}
+
+	h := &Handler{
+		co:                 co,
+		validate:           validate,
+		sessMgr:            sessMgr,
+		authconfig:         make(map[string]OIDCAuthConfig),
+		logger:             logger,
+		config:             cfg,
+		executorSigningKey: executorSigningKey,
+		version:            version,
+		commit:             commit,
+		buildDate:          buildDate,
+		hasThemeCSS:        hasThemeCSS,
+		brandingRoot:       brandingRoot,
+	}
 	if err := h.initOIDC(); err != nil {
 		return nil, fmt.Errorf("error initializing oidc config: %w", err)
 	}
