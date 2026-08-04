@@ -23,11 +23,9 @@ Flowctl supports custom branding to match your organization's identity. Configur
 | `favicon_url` | Favicon (local path or URL) | Embedded favicon |
 | `branding_dir` | Local directory to serve at `/branding/` | Not set |
 
-Each field is optional and independent — configure only what you need, the rest falls back to defaults.
+## Custom Theme
 
-## Custom Theme (colors)
-
-Place a `theme.css` file in the branding directory to override CSS variables. It loads after the bundled CSS, so standard cascade rules apply:
+Place a `theme.css` file in the branding directory to override CSS variables. It loads after the bundled CSS:
 
 ```css
 /* /app/branding/theme.css */
@@ -35,7 +33,7 @@ Place a `theme.css` file in the branding directory to override CSS variables. It
 :root[data-theme="dark"], body[data-theme="dark"] { --primary: #ff5a4d; }
 ```
 
-The two selectors mirror what `app.css` uses. See all available variables in [app.css](../../site/src/app.css).
+See all available variables in [app.css](https://github.com/cvhariharan/flowctl/blob/master/site/src/app.css).
 
 ## Environment Variables
 
@@ -48,18 +46,3 @@ FLOWCTL_APP__BRANDING__ICON_URL="/branding/icon.svg"
 FLOWCTL_APP__BRANDING__FAVICON_URL="https://example.com/favicon.png"
 FLOWCTL_APP__BRANDING__BRANDING_DIR="/app/branding"
 ```
-
-## Docker/Podman Setup
-
-```yaml
-volumes:
-  - ./branding:/app/branding:ro
-environment:
-  FLOWCTL_APP__BRANDING__APP_NAME: "ACME Flowctl"
-  FLOWCTL_APP__BRANDING__LOGO_URL: "/branding/logo.svg"
-  FLOWCTL_APP__BRANDING__LOGO_LIGHT_URL: "/branding/logo-light.svg"
-  FLOWCTL_APP__BRANDING__ICON_URL: "/branding/icon.svg"
-  FLOWCTL_APP__BRANDING__BRANDING_DIR: "/app/branding"
-```
-
-The branding directory should contain your custom assets (logos, favicon, `theme.css`). Files are served at `/branding/` and can be referenced in the config using that path.

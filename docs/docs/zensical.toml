@@ -12,6 +12,7 @@ nav = [
     { "Flow Groups" = "general/flow-groups.md" },
     { "Nodes and Executors" = "general/nodes-and-executors.md" },
     { "Access Control" = "general/access-control.md" },
+    { "Custom Branding" = "general/branding.md" },
   ] },
   { "Development" = [
     { "Architecture" = "development/architecture.md" },
