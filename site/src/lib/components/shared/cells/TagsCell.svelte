@@ -7,7 +7,7 @@
 {#if tags.length > 0}
   <div class="hstack gap-1" style="flex-wrap:wrap">
     {#each tags as tag}
-      <span class="badge">{tag}</span>
+      <span class="badge primary">{tag}</span>
     {/each}
   </div>
 {:else}

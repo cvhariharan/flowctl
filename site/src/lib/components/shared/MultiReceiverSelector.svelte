@@ -225,7 +225,7 @@
     {#if selectedItems.length > 0}
         <div class="hstack" style="flex-wrap: wrap; gap: 0.5rem">
             {#each selectedItems as item, index (item.value)}
-                <span class="badge hstack gap-1">
+                <span class="badge primary hstack gap-1">
                     {#if item.type === "user"}
                         <IconUser size={12} />
                     {:else}

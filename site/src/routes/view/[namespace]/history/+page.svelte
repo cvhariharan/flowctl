@@ -108,7 +108,7 @@
 			header: 'Trigger Type',
 			sortable: true,
 			component: BadgeCell,
-			componentProps: { variant: (row: ExecutionSummary) => row.trigger_type === 'manual' ? '' : 'success' }
+			componentProps: { variant: (row: ExecutionSummary) => row.trigger_type === 'manual' ? 'primary' : 'success' }
 		}
 	];
 

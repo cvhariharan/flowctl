@@ -2,7 +2,7 @@
   let {
     row,
     value,
-    variant = '',
+    variant = 'primary',
     label
   }: {
     row: any;

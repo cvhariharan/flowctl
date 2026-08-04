@@ -30,7 +30,7 @@
       <div class="hstack gap-3 items-center">
         <h1 style="font-size: var(--text-4); margin: 0">{flowName}</h1>
         {#if triggerType}
-          <span class="badge {triggerType === 'manual' ? '' : 'success'}">
+          <span class="badge {triggerType === 'manual' ? 'primary' : 'success'}">
             {triggerType}
           </span>
         {/if}

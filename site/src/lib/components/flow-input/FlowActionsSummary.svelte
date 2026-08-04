@@ -24,7 +24,7 @@
             {index + 1}
           </div>
           <div class="text-sm action-name">{action.name}</div>
-          <span class="badge shrink-0">
+          <span class="badge primary shrink-0">
             {action.executor}
           </span>
         </div>

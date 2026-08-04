@@ -185,7 +185,7 @@
             key: "trigger_type",
             header: "Trigger Type",
             component: BadgeCell,
-            componentProps: { variant: (row: any) => row.trigger_type === "manual" ? "" : "success" }
+            componentProps: { variant: (row: any) => row.trigger_type === "manual" ? "primary" : "success" }
         },
     ];
 

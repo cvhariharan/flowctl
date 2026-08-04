@@ -179,6 +179,10 @@ dialog > form > footer {
 }
 
 /* ── Extra badge variants (oat only provides success/warning/danger) ── */
+.badge.primary {
+  color: var(--primary);
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+}
 .badge.info {
   color: var(--info);
   background-color: color-mix(in srgb, var(--info) 10%, transparent);
@@ -186,6 +190,10 @@ dialog > form > footer {
 .badge.neutral {
   color: var(--neutral);
   background-color: color-mix(in srgb, var(--neutral) 10%, transparent);
+}
+
+[data-theme="dark"] .badge.primary {
+  background-color: color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
 [data-theme="dark"] .badge.info {

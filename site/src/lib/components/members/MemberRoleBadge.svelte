@@ -4,10 +4,10 @@
   function getRoleClass(role: string) {
     switch (role) {
       case 'user': return 'success';
-      case 'operator': return '';
+      case 'operator': return 'primary';
       case 'reviewer': return 'warning';
       case 'admin': return 'danger';
-      default: return '';
+      default: return 'primary';
     }
   }
 

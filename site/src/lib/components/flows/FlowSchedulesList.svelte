@@ -152,7 +152,7 @@
               </td>
               <td>
                 {#if schedule.is_user_created}
-                  <span class="badge {schedule.is_active ? 'success' : ''}">
+                  <span class="badge {schedule.is_active ? 'success' : 'primary'}">
                     {schedule.is_active ? 'Active' : 'Inactive'}
                   </span>
                 {:else}

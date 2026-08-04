@@ -31,9 +31,9 @@
 
 	<ot-tabs onot-tab-change={handleTabChange}>
 		<div role="tablist">
-			<button role="tab">Namespaces <span class="badge">{data.namespacesTotalCount}</span></button>
-			<button role="tab" aria-selected="true">Users <span class="badge">{data.usersTotalCount}</span></button>
-			<button role="tab">Groups <span class="badge">{data.groupsTotalCount}</span></button>
+			<button role="tab">Namespaces <span class="badge primary">{data.namespacesTotalCount}</span></button>
+			<button role="tab" aria-selected="true">Users <span class="badge primary">{data.usersTotalCount}</span></button>
+			<button role="tab">Groups <span class="badge primary">{data.groupsTotalCount}</span></button>
 		</div>
 		<div role="tabpanel">
 			<NamespacesTab

@@ -46,7 +46,7 @@
     >
       {tab.label}
       {#if tab.badge != null}
-        <span class="badge">{tab.badge}</span>
+        <span class="badge primary">{tab.badge}</span>
       {/if}
     </button>
   {/each}

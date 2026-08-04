@@ -682,7 +682,7 @@
             <div class="hstack nowrap gap-4">
                 <span class="font-medium">{flowName || "Loading..."}</span>
                 {#if data.executionSummary?.trigger_type}
-                    <span class="badge {data.executionSummary.trigger_type === 'manual' ? '' : 'success'}">{data.executionSummary.trigger_type}</span>
+                    <span class="badge {data.executionSummary.trigger_type === 'manual' ? 'primary' : 'success'}">{data.executionSummary.trigger_type}</span>
                 {/if}
                 {#if startTime}
                     <span class="text-light">Started {startTime}</span>

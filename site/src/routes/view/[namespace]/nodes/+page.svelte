@@ -120,7 +120,7 @@
 			sortable: true,
 			component: BadgeCell,
 			componentProps: {
-				variant: (row: NodeResp) => row.connection_type === 'qssh' ? 'success' : '',
+				variant: (row: NodeResp) => row.connection_type === 'qssh' ? 'success' : 'primary',
 				label: (row: NodeResp) => row.connection_type?.toUpperCase() || 'N/A'
 			}
 		},

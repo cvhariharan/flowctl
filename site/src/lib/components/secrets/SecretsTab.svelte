@@ -245,7 +245,7 @@
 							<p class="text-lighter secret-desc">{secret.description}</p>
 						{/if}
 					</div>
-					<span class="badge">namespace</span>
+					<span class="badge primary">namespace</span>
 				</div>
 			{/each}
 		</div>

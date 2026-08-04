@@ -22,7 +22,7 @@
       case 'rejected':
         return 'danger';
       default:
-        return '';
+        return 'primary';
     }
   };
 </script>

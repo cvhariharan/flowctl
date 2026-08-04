@@ -246,7 +246,7 @@
             {/if}
           </span>
         {:else}
-          <span class="badge hstack gap-1">
+          <span class="badge primary hstack gap-1">
             {nodeName}
             {#if !disabled}
               <button type="button" onclick={() => removeNode(nodeName)} aria-label="Remove {nodeName}" style="all: unset; cursor: pointer; display: flex">
