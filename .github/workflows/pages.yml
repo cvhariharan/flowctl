@@ -2,10 +2,8 @@ name: Deploy site to Pages
 
 on:
   push:
-    branches:
-      - master
-    paths:
-      - 'docs/**'
+    tags:
+      - '*'
   workflow_dispatch:
 
 permissions:
