@@ -135,6 +135,11 @@ func (h *FlowExecutionHandler) Handle(ctx context.Context, job Job) error {
 		payload.Outputs = make(map[string]any)
 	}
 
+	// Apply default input values before the execution log is written so the
+	// stored context reflects the inputs the flow actually runs with. Cron
+	// payloads carry only explicitly configured inputs.
+	applyDefaultInputs(payload.Workflow.Inputs, payload.Input)
+
 	if job.Attempt > 0 {
 		payload.Resumed = true
 	}
@@ -193,9 +198,6 @@ func (h *FlowExecutionHandler) executeFlow(ctx context.Context, execID string, p
 	if payload.StartingActionIdx > len(payload.Workflow.Actions) {
 		payload.StartingActionIdx = len(payload.Workflow.Actions)
 	}
-
-	// Apply default input values for any inputs not provided by the caller
-	applyDefaultInputs(payload.Workflow.Inputs, payload.Input)
 
 	// Create temporary directory for artifacts shared across all actions in this flow
 	artifactDir := filepath.Join(os.TempDir(), fmt.Sprintf("artifacts-store-%s", execID))
