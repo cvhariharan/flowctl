@@ -170,9 +170,9 @@ Configure SMTP settings to enable email notifications for flow events. Email not
 - **`ssl`** (required): SSL/TLS mode - `none`, `tls` (implicit TLS), or `starttls` (explicit TLS).
 
 !!! note
-      SMTP configuration is required for email notifications to work. See the [Flows
-      documentation](/docs/general/flows#notifications) for how to configure
-      notifications in your flows.
+      SMTP configuration is required for email notifications to work. See the [Flow
+      Notifications documentation](/docs/general/flow-notifications) for how to
+      configure notifications in your flows.
 
 ### Webhook Notifications
 

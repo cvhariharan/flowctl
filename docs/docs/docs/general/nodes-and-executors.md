@@ -189,5 +189,5 @@ In the UI, type `tag:` followed by the tag name to search by tag. You can either
 
 ## Next Steps
 
-- Learn about [Flow Secrets](/docs/general/flows#flow-secrets) for secure credential management
+- Learn about [Flow Secrets](/docs/general/flow-actions#flow-secrets) for secure credential management
 - Review [Access Control](/docs/general/access-control) for multi-user environments

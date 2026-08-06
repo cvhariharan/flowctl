@@ -8,7 +8,12 @@ edit_uri = "edit/master/docs/docs/docs/"
 nav = [
   { "Home" = "index.md" },
   { "General" = [
-    { "Flows" = "general/flows.md" },
+    { "Flows" = [
+      { "Overview" = "general/flows.md" },
+      { "Inputs" = "general/flow-inputs.md" },
+      { "Actions" = "general/flow-actions.md" },
+      { "Notifications" = "general/flow-notifications.md" },
+    ] },
     { "Flow Groups" = "general/flow-groups.md" },
     { "Nodes and Executors" = "general/nodes-and-executors.md" },
     { "Access Control" = "general/access-control.md" },
