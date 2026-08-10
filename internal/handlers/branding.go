@@ -1,10 +1,14 @@
 package handlers
 
 import (
+	"crypto/sha256"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -23,29 +27,43 @@ var brandingAssetExtensions = map[string]struct{}{
 
 func (h *Handler) HandleGetBrandingAsset(c echo.Context) error {
 	if h.brandingRoot == nil {
-		return echo.NewHTTPError(http.StatusNotFound)
+		return wrapError(ErrResourceNotFound, "branding asset not found", fmt.Errorf("branding directory is not configured"), nil)
 	}
 
 	name := c.Param("file")
 	if name != filepath.Base(name) {
-		return echo.NewHTTPError(http.StatusNotFound)
+		return wrapError(ErrResourceNotFound, "branding asset not found", fmt.Errorf("branding asset name is not a bare file name: %s", name), nil)
 	}
 	if _, ok := brandingAssetExtensions[strings.ToLower(filepath.Ext(name))]; !ok {
-		return echo.NewHTTPError(http.StatusNotFound)
+		return wrapError(ErrResourceNotFound, "branding asset not found", fmt.Errorf("branding asset type is not allowed: %s", name), nil)
 	}
 
 	f, err := h.brandingRoot.Open(name)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound)
+		return wrapError(ErrResourceNotFound, "branding asset not found", err, nil)
 	}
 	defer f.Close()
 
 	info, err := f.Stat()
-	if err != nil || info.IsDir() {
-		return echo.NewHTTPError(http.StatusNotFound)
+	if err != nil {
+		return wrapError(ErrResourceNotFound, "branding asset not found", err, nil)
+	}
+	if info.IsDir() {
+		return wrapError(ErrResourceNotFound, "branding asset not found", fmt.Errorf("branding asset is a directory: %s", name), nil)
 	}
 
-	http.ServeContent(c.Response(), c.Request(), name, info.ModTime(), f)
+	sum := sha256.New()
+	if _, err := io.Copy(sum, f); err != nil {
+		return wrapError(ErrOperationFailed, "could not read branding asset", err, nil)
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return wrapError(ErrOperationFailed, "could not read branding asset", err, nil)
+	}
+
+	c.Response().Header().Set("ETag", fmt.Sprintf(`"%x"`, sum.Sum(nil)))
+	c.Response().Header().Set("Cache-Control", "no-cache")
+
+	http.ServeContent(c.Response(), c.Request(), name, time.Time{}, f)
 	return nil
 }
 
