@@ -1,0 +1,2 @@
+ALTER TABLE cron_schedules
+    ADD COLUMN name VARCHAR(150) NOT NULL DEFAULT '';

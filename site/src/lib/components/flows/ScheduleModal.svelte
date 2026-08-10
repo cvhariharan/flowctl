@@ -30,6 +30,7 @@
   function getInitialFormData() {
     if (isEditMode && schedule) {
       return {
+        name: schedule.name,
         cron: schedule.cron,
         timezone: schedule.timezone,
         is_active: schedule.is_active,
@@ -44,6 +45,7 @@
       }
     });
     return {
+      name: '',
       cron: '',
       timezone: get(appInfo)?.default_timezone ?? 'UTC',
       is_active: true,
@@ -108,6 +110,19 @@
 
     <section>
       <div data-field>
+        <label for="schedule-name">Name</label>
+        <input
+          id="schedule-name"
+          type="text"
+          bind:value={formData.name}
+          maxlength="150"
+          placeholder="Cron name"
+          use:autofocus
+        />
+        <p class="text-lighter text-xs" style="margin-top: 0.25rem">Up to 150 characters</p>
+      </div>
+
+      <div data-field>
         <label for="cron-expr">Cron Expression *</label>
         <input
           id="cron-expr"
@@ -117,7 +132,6 @@
           aria-invalid={cronError ? 'true' : undefined}
           placeholder="0 2 * * *"
           required
-          use:autofocus
         />
         {#if cronError}
           <p style="color: var(--danger); margin-top: 0.25rem" class="text-sm">{cronError}</p>

@@ -54,6 +54,7 @@ type CreateFlowTxParams struct {
 	Namespace   string
 	PrefixID    sql.NullInt32
 	Schedules   []struct {
+		Name     string
 		Cron     string
 		Timezone string
 	}
@@ -69,6 +70,7 @@ type UpdateFlowTxParams struct {
 	PrefixID        sql.NullInt32
 	UserSchedulable bool
 	Schedules       []struct {
+		Name     string
 		Cron     string
 		Timezone string
 	}
@@ -339,6 +341,7 @@ func (p *PostgresStore) CreateFlowTx(ctx context.Context, params CreateFlowTxPar
 	for _, sched := range params.Schedules {
 		_, err = q.CreateCronSchedule(ctx, CreateCronScheduleParams{
 			FlowID:   flow.ID,
+			Name:     sched.Name,
 			Cron:     sched.Cron,
 			Timezone: sched.Timezone,
 		})
@@ -395,6 +398,7 @@ func (p *PostgresStore) UpdateFlowTx(ctx context.Context, params UpdateFlowTxPar
 	for _, sched := range params.Schedules {
 		_, err = q.CreateCronSchedule(ctx, CreateCronScheduleParams{
 			FlowID:   flow.ID,
+			Name:     sched.Name,
 			Cron:     sched.Cron,
 			Timezone: sched.Timezone,
 		})

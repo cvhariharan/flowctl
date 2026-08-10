@@ -599,6 +599,7 @@ func ConvertToSchedulerFlow(ctx context.Context, f Flow, namespaceUUID uuid.UUID
 	var schedules []scheduler.Scheduling
 	for _, sched := range f.Schedules {
 		schedules = append(schedules, scheduler.Scheduling{
+			Name:     sched.Name,
 			Cron:     sched.Cron,
 			Timezone: sched.Timezone,
 		})

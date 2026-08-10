@@ -704,6 +704,7 @@ func (h *Handler) HandleCreateFlow(c echo.Context) error {
 	var schedules []models.Schedule
 	for _, sched := range req.Meta.Schedules {
 		schedules = append(schedules, models.Schedule{
+			Name:     sched.Name,
 			Cron:     sched.Cron,
 			Timezone: sched.Timezone,
 		})
@@ -758,6 +759,7 @@ func (h *Handler) HandleUpdateFlow(c echo.Context) error {
 	var schedules []models.Schedule
 	for _, sched := range req.Schedules {
 		schedules = append(schedules, models.Schedule{
+			Name:     sched.Name,
 			Cron:     sched.Cron,
 			Timezone: sched.Timezone,
 		})
@@ -819,6 +821,7 @@ func (h *Handler) HandleGetFlowConfig(c echo.Context) error {
 	schedules := make([]Schedule, 0)
 	for _, s := range f.Schedules {
 		schedules = append(schedules, Schedule{
+			Name:     s.Name,
 			Cron:     s.Cron,
 			Timezone: s.Timezone,
 		})

@@ -55,7 +55,7 @@
         if (!metadata.schedules) {
             metadata.schedules = [];
         }
-        metadata.schedules.push({ cron: "", timezone: get(appInfo)?.default_timezone ?? "UTC" });
+        metadata.schedules.push({ name: "", cron: "", timezone: get(appInfo)?.default_timezone ?? "UTC" });
     }
 
     function removeSchedule(index: number) {
@@ -67,6 +67,13 @@
             metadata.schedules = [];
         }
         metadata.schedules[index].cron = value;
+    }
+
+    function updateScheduleName(index: number, value: string) {
+        if (!metadata.schedules) {
+            metadata.schedules = [];
+        }
+        metadata.schedules[index].name = value;
     }
 
     function updateScheduleTimezone(index: number, value: string) {
@@ -184,6 +191,17 @@
                         <div class="hstack gap-2 items-start">
                             <div class="schedule-grid">
                                 <div data-field>
+                                    <label for="schedule-name-{index}">Name</label>
+                                    <input
+                                        id="schedule-name-{index}"
+                                        type="text"
+                                        value={schedule.name || ''}
+                                        oninput={(e) => updateScheduleName(index, e.currentTarget.value)}
+                                        maxlength="150"
+                                        placeholder="Cron name"
+                                    />
+                                </div>
+                                <div data-field>
                                     <label>Cron Expression</label>
                                     <input
                                         type="text"
@@ -217,16 +235,21 @@
                                 </div>
                             </div>
                             {#if !disabled}
-                                <button
-                                    type="button"
-                                    data-variant="danger"
-                                    class="remove-schedule-btn"
-                                    onclick={() => removeSchedule(index)}
-                                >
-                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
+                                <div class="remove-schedule-field">
+                                    <span class="label-spacer" aria-hidden="true">&nbsp;</span>
+                                    <button
+                                        type="button"
+                                        data-variant="danger"
+                                        class="ghost icon remove-schedule-btn"
+                                        title="Remove schedule"
+                                        aria-label="Remove schedule"
+                                        onclick={() => removeSchedule(index)}
+                                    >
+                                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
                             {/if}
                         </div>
                     </div>
@@ -339,7 +362,7 @@
     .schedule-grid {
         flex: 1;
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 0.75rem;
     }
     @media (max-width: 768px) {
@@ -347,12 +370,19 @@
             grid-template-columns: 1fr;
         }
     }
-    .remove-schedule-btn {
-        margin-top: 1.5rem;
-        padding: 0.25rem;
-        border: none;
-        background: none;
+    .remove-schedule-field {
+        display: flex;
+        flex-direction: column;
         flex-shrink: 0;
+    }
+    .label-spacer {
+        font-size: var(--text-7);
+        line-height: var(--leading-normal);
+    }
+    .remove-schedule-btn {
+        /* Same height as an input: line box + padding + borders. */
+        height: calc(var(--text-7) * var(--leading-normal) + var(--space-2) * 2 + 2px);
+        margin-block-start: var(--space-1);
     }
     .icon-sm {
         width: 1.25rem;

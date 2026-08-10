@@ -864,11 +864,14 @@ type FlowListItem struct {
 	Name        *string `json:"name,omitempty"`
 
 	// NextRun Earliest upcoming run across all active schedules of the flow. Absent when the flow has no active schedule.
-	NextRun   *time.Time  `json:"next_run,omitempty"`
-	Prefix    *string     `json:"prefix,omitempty"`
-	Schedules *[]Schedule `json:"schedules,omitempty"`
-	Slug      *string     `json:"slug,omitempty"`
-	StepCount *int        `json:"step_count,omitempty"`
+	NextRun *time.Time `json:"next_run,omitempty"`
+
+	// NextRunName Name of the schedule that produces next_run. Absent when the schedule is unnamed.
+	NextRunName *string     `json:"next_run_name,omitempty"`
+	Prefix      *string     `json:"prefix,omitempty"`
+	Schedules   *[]Schedule `json:"schedules,omitempty"`
+	Slug        *string     `json:"slug,omitempty"`
+	StepCount   *int        `json:"step_count,omitempty"`
 }
 
 // FlowListResponse defines model for FlowListResponse.
@@ -1129,6 +1132,7 @@ type SSOProvider struct {
 // Schedule defines model for Schedule.
 type Schedule struct {
 	Cron     *string `json:"cron,omitempty"`
+	Name     *string `json:"name,omitempty"`
 	Timezone *string `json:"timezone,omitempty"`
 }
 
@@ -1137,6 +1141,7 @@ type ScheduleCreateReq struct {
 	// Cron Standard cron expression.
 	Cron   string                 `json:"cron"`
 	Inputs map[string]interface{} `json:"inputs"`
+	Name   *string                `json:"name,omitempty"`
 
 	// Timezone IANA timezone name.
 	Timezone string `json:"timezone"`
@@ -1152,6 +1157,7 @@ type ScheduleResp struct {
 	Inputs        *map[string]interface{} `json:"inputs,omitempty"`
 	IsActive      *bool                   `json:"is_active,omitempty"`
 	IsUserCreated *bool                   `json:"is_user_created,omitempty"`
+	Name          *string                 `json:"name,omitempty"`
 	Timezone      *string                 `json:"timezone,omitempty"`
 	UpdatedAt     *time.Time              `json:"updated_at,omitempty"`
 	UUID          *openapi_types.UUID     `json:"uuid,omitempty"`
@@ -1162,6 +1168,7 @@ type ScheduleUpdateReq struct {
 	Cron     string                 `json:"cron"`
 	Inputs   map[string]interface{} `json:"inputs"`
 	IsActive *bool                  `json:"is_active,omitempty"`
+	Name     *string                `json:"name,omitempty"`
 	Timezone string                 `json:"timezone"`
 }
 

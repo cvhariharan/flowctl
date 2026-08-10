@@ -4,6 +4,7 @@
 
   interface UpcomingRun {
     type: 'cron' | 'scheduled';
+    name?: string;
     label: string;
     scheduledAt: Date;
     execId?: string;
@@ -33,6 +34,7 @@
       if (nextRun) {
         runs.push({
           type: 'cron',
+          name: cron.name,
           label: cron.cron,
           scheduledAt: nextRun
         });
@@ -68,6 +70,7 @@
       <table>
         <thead>
           <tr>
+            <th>Name</th>
             <th>Type</th>
             <th>Scheduled Time</th>
             <th>Exec ID</th>
@@ -76,6 +79,9 @@
         <tbody>
           {#each upcomingRuns as run}
             <tr>
+              <td class="name-col">
+                <span class="schedule-name" title={run.name || undefined}>{run.name || '-'}</span>
+              </td>
               <td>
                 {#if run.type === 'cron'}
                   <code>{run.label}</code>
@@ -102,3 +108,15 @@
     </div>
   </article>
 {/if}
+
+<style>
+  .name-col {
+    max-width: 14rem;
+  }
+  .schedule-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+</style>

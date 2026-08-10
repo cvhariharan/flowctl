@@ -1010,14 +1010,17 @@ func (c *Core) importFlowFromFile(ctx context.Context, flowFilePath, namespaceNa
 	}
 
 	var schedules []struct {
+		Name     string
 		Cron     string
 		Timezone string
 	}
 	for _, sched := range f.Schedules {
 		schedules = append(schedules, struct {
+			Name     string
 			Cron     string
 			Timezone string
 		}{
+			Name:     sched.Name,
 			Cron:     sched.Cron,
 			Timezone: sched.Timezone,
 		})
@@ -1201,9 +1204,14 @@ func (c *Core) SyncScheduledFlowJobs(ctx context.Context) ([]scheduler.Scheduled
 			OverrideNodes:     overrideNodes,
 		}
 
+		jobName := fmt.Sprintf("%s (%s)", flow.Name, flow.Cron)
+		if flow.ScheduleName != "" {
+			jobName = flow.ScheduleName
+		}
+
 		jobs = append(jobs, scheduler.ScheduledJob{
 			ID:          fmt.Sprintf("schedule_%d", flow.ScheduleID),
-			Name:        fmt.Sprintf("%s (%s)", flow.Name, flow.Cron),
+			Name:        jobName,
 			Cron:        flow.Cron,
 			Timezone:    flow.Timezone,
 			PayloadType: scheduler.PayloadTypeFlowExecution,
@@ -1214,7 +1222,7 @@ func (c *Core) SyncScheduledFlowJobs(ctx context.Context) ([]scheduler.Scheduled
 	return jobs, nil
 }
 
-func (c *Core) CreateSchedule(ctx context.Context, flowID, cron, timezone string, inputs map[string]interface{}, userUUID, namespaceID string) (models.Schedule, error) {
+func (c *Core) CreateSchedule(ctx context.Context, flowID, name, cron, timezone string, inputs map[string]interface{}, userUUID, namespaceID string) (models.Schedule, error) {
 	flow, err := c.GetFlowByID(flowID, namespaceID)
 	if err != nil {
 		return models.Schedule{}, fmt.Errorf("flow not found: %w", err)
@@ -1247,6 +1255,7 @@ func (c *Core) CreateSchedule(ctx context.Context, flowID, cron, timezone string
 
 	schedule, err := c.store.CreateUserSchedule(ctx, repo.CreateUserScheduleParams{
 		FlowID:   flow.Meta.DBID,
+		Name:     name,
 		Cron:     cron,
 		Timezone: timezone,
 		Inputs:   pqtype.NullRawMessage{RawMessage: inputsJSON, Valid: inputsJSON != nil},
@@ -1260,6 +1269,7 @@ func (c *Core) CreateSchedule(ctx context.Context, flowID, cron, timezone string
 		UUID:          schedule.Uuid.String(),
 		FlowSlug:      flow.Meta.ID,
 		FlowName:      flow.Meta.Name,
+		Name:          schedule.Name,
 		Cron:          schedule.Cron,
 		Timezone:      schedule.Timezone,
 		Inputs:        inputs,
@@ -1307,6 +1317,7 @@ func (c *Core) GetSchedule(ctx context.Context, scheduleUUID, userUUID, namespac
 		UUID:          schedule.Uuid.String(),
 		FlowSlug:      schedule.FlowSlug,
 		FlowName:      schedule.FlowName,
+		Name:          schedule.Name,
 		Cron:          schedule.Cron,
 		Timezone:      schedule.Timezone,
 		Inputs:        inputs,
@@ -1321,9 +1332,9 @@ func (c *Core) GetSchedule(ctx context.Context, scheduleUUID, userUUID, namespac
 
 // GetNextScheduledRuns returns the earliest upcoming run, across both system and user
 // schedules, for each of the given flow slugs that has an active schedule.
-func (c *Core) GetNextScheduledRuns(ctx context.Context, namespaceID string, flowSlugs []string) (map[string]time.Time, error) {
+func (c *Core) GetNextScheduledRuns(ctx context.Context, namespaceID string, flowSlugs []string) (map[string]models.NextScheduledRun, error) {
 	if len(flowSlugs) == 0 {
-		return map[string]time.Time{}, nil
+		return map[string]models.NextScheduledRun{}, nil
 	}
 
 	namespaceUUID, err := uuid.Parse(namespaceID)
@@ -1340,7 +1351,7 @@ func (c *Core) GetNextScheduledRuns(ctx context.Context, namespaceID string, flo
 	}
 
 	now := time.Now()
-	nextRuns := make(map[string]time.Time, len(schedules))
+	nextRuns := make(map[string]models.NextScheduledRun, len(schedules))
 	for _, s := range schedules {
 		schedule, err := cron.ParseStandard(s.Cron)
 		if err != nil {
@@ -1355,8 +1366,8 @@ func (c *Core) GetNextScheduledRuns(ctx context.Context, namespaceID string, flo
 		}
 
 		next := schedule.Next(now.In(loc))
-		if existing, ok := nextRuns[s.FlowSlug]; !ok || next.Before(existing) {
-			nextRuns[s.FlowSlug] = next
+		if existing, ok := nextRuns[s.FlowSlug]; !ok || next.Before(existing.At) {
+			nextRuns[s.FlowSlug] = models.NextScheduledRun{At: next, Name: s.Name}
 		}
 	}
 
@@ -1410,6 +1421,7 @@ func (c *Core) ListSchedules(ctx context.Context, flowSlug, userUUID, namespaceI
 			UUID:          s.Uuid.String(),
 			FlowSlug:      s.FlowSlug,
 			FlowName:      s.FlowName,
+			Name:          s.Name,
 			Cron:          s.Cron,
 			Timezone:      s.Timezone,
 			Inputs:        inputs,
@@ -1428,7 +1440,9 @@ func (c *Core) ListSchedules(ctx context.Context, flowSlug, userUUID, namespaceI
 	return result, pageCount, totalCount, nil
 }
 
-func (c *Core) UpdateSchedule(ctx context.Context, scheduleUUID, cron, timezone string, inputs map[string]interface{}, isActive bool, userUUID, namespaceID string) (models.Schedule, error) {
+// UpdateSchedule updates a user-created schedule. A nil name leaves the
+// existing name untouched; an empty non-nil name clears it.
+func (c *Core) UpdateSchedule(ctx context.Context, scheduleUUID string, name *string, cron, timezone string, inputs map[string]interface{}, isActive bool, userUUID, namespaceID string) (models.Schedule, error) {
 	userID, err := uuid.Parse(userUUID)
 	if err != nil {
 		return models.Schedule{}, fmt.Errorf("invalid user UUID: %w", err)
@@ -1471,8 +1485,14 @@ func (c *Core) UpdateSchedule(ctx context.Context, scheduleUUID, cron, timezone 
 		return models.Schedule{}, fmt.Errorf("could not marshal inputs: %w", err)
 	}
 
+	scheduleName := existing.Name
+	if name != nil {
+		scheduleName = *name
+	}
+
 	updated, err := c.store.UpdateUserScheduleByUUID(ctx, repo.UpdateUserScheduleByUUIDParams{
 		Uuid:     schedID,
+		Name:     scheduleName,
 		Cron:     cron,
 		Timezone: timezone,
 		Inputs:   pqtype.NullRawMessage{RawMessage: inputsJSON, Valid: inputsJSON != nil},
@@ -1488,6 +1508,7 @@ func (c *Core) UpdateSchedule(ctx context.Context, scheduleUUID, cron, timezone 
 		UUID:          updated.Uuid.String(),
 		FlowSlug:      existing.FlowSlug,
 		FlowName:      existing.FlowName,
+		Name:          updated.Name,
 		Cron:          updated.Cron,
 		Timezone:      updated.Timezone,
 		Inputs:        inputs,

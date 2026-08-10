@@ -1664,7 +1664,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
-        name: { type: string }
+        name: { type: string, maxLength: 150 }
         role: { type: string }
         groups:
           type: array
@@ -1784,6 +1784,7 @@ components:
     Schedule:
       type: object
       properties:
+        name: { type: string, maxLength: 150 }
         cron: { type: string }
         timezone: { type: string }
     Notify:
@@ -1878,6 +1879,10 @@ components:
           type: string
           format: date-time
           description: Earliest upcoming run across all active schedules of the flow. Absent when the flow has no active schedule.
+        next_run_name:
+          type: string
+          maxLength: 150
+          description: Name of the schedule that produces next_run. Absent when the schedule is unnamed.
     FlowListResponse:
       type: object
       properties:
@@ -2095,6 +2100,7 @@ components:
       type: object
       required: [cron, timezone, inputs]
       properties:
+        name: { type: string, maxLength: 150 }
         cron: { type: string, description: Standard cron expression. }
         timezone: { type: string, description: IANA timezone name. }
         inputs:
@@ -2104,6 +2110,10 @@ components:
       type: object
       required: [cron, timezone, inputs]
       properties:
+        name:
+          type: string
+          maxLength: 150
+          description: Omit to keep the current name; send an empty string to clear it.
         cron: { type: string }
         timezone: { type: string }
         inputs:
@@ -2116,6 +2126,7 @@ components:
         uuid: { type: string, format: uuid }
         flow_slug: { type: string }
         flow_name: { type: string }
+        name: { type: string, maxLength: 150 }
         cron: { type: string }
         timezone: { type: string }
         inputs:

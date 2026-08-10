@@ -363,7 +363,11 @@
             key: "next_run",
             header: "Next run",
             component: MutedTextCell,
-            componentProps: { format: (v: any) => formatDateTime(v, "-") },
+            componentProps: {
+                format: (v: any) => formatDateTime(v, "-"),
+                tooltip: (_v: any, row: FlowTableRow) =>
+                    row._kind === "flow" ? row.next_run_name : undefined,
+            },
         },
     ];
 

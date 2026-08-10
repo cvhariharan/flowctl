@@ -60,6 +60,7 @@ export interface GroupWithUsers extends Group {
 
 // Flow types
 export interface Schedule {
+  name?: string;
   cron: string;
   timezone: string;
 }
@@ -68,6 +69,7 @@ export interface UserSchedule {
   uuid: string;
   flow_slug: string;
   flow_name: string;
+  name: string;
   cron: string;
   timezone: string;
   inputs: Record<string, any>;
@@ -79,6 +81,7 @@ export interface UserSchedule {
 }
 
 export interface ScheduleCreateReq {
+  name?: string;
   cron: string;
   timezone: string;
   inputs: Record<string, any>;
@@ -86,6 +89,7 @@ export interface ScheduleCreateReq {
 }
 
 export interface ScheduleUpdateReq {
+  name?: string;
   cron?: string;
   timezone?: string;
   inputs?: Record<string, any>;
@@ -119,6 +123,7 @@ export interface FlowListItem {
   schedules: Schedule[];
   step_count: number;
   next_run?: string;
+  next_run_name?: string;
 }
 
 export interface FlowInput {

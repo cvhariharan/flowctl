@@ -193,7 +193,7 @@ SELECT COUNT(*) FROM flows f
 WHERE f.prefix_id = $1 AND f.is_active = TRUE;
 
 -- name: GetScheduledFlows :many
-SELECT f.*, n.uuid AS namespace_uuid, cs.id AS schedule_id, cs.cron, cs.timezone, cs.inputs, cs.created_by, cs.is_user_created
+SELECT f.*, n.uuid AS namespace_uuid, cs.id AS schedule_id, cs.name AS schedule_name, cs.cron, cs.timezone, cs.inputs, cs.created_by, cs.is_user_created
 FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
 JOIN cron_schedules cs ON cs.flow_id = f.id

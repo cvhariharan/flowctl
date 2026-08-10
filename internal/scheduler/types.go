@@ -141,6 +141,7 @@ type Action struct {
 }
 
 type Scheduling struct {
+	Name     string `yaml:"name,omitempty" json:"name,omitempty"`
 	Cron     string `yaml:"cron" json:"cron"`
 	Timezone string `yaml:"timezone" json:"timezone"`
 }

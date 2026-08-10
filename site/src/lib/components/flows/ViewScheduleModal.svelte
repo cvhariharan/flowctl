@@ -26,6 +26,12 @@ import type { UserSchedule } from '$lib/types';
 	<section>
 		<!-- Schedule Info Box -->
 		<article class="card p-4 mb-4" style="background: var(--faint)">
+			{#if schedule.name}
+				<div style="margin-bottom: 1rem">
+					<div class="text-xs font-medium text-lighter" style="text-transform: uppercase; margin-bottom: 0.25rem">Name</div>
+					<div>{schedule.name}</div>
+				</div>
+			{/if}
 			<div class="row">
 				<div class="col-6">
 					<div class="text-xs font-medium text-lighter" style="text-transform: uppercase; margin-bottom: 0.25rem">Cron Expression</div>

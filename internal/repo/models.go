@@ -373,6 +373,7 @@ type CronSchedule struct {
 	CreatedBy     int32                 `db:"created_by" json:"created_by"`
 	IsUserCreated bool                  `db:"is_user_created" json:"is_user_created"`
 	IsActive      bool                  `db:"is_active" json:"is_active"`
+	Name          string                `db:"name" json:"name"`
 }
 
 type ExecutionLog struct {

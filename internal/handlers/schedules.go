@@ -40,7 +40,7 @@ func (h *Handler) HandleCreateSchedule(c echo.Context) error {
 		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
-	schedule, err := h.co.CreateSchedule(c.Request().Context(), req.FlowID, req.Cron, req.Timezone, req.Inputs, user.ID, namespace)
+	schedule, err := h.co.CreateSchedule(c.Request().Context(), req.FlowID, req.Name, req.Cron, req.Timezone, req.Inputs, user.ID, namespace)
 	if err != nil {
 		if valErr := scheduleInputError(err); valErr != nil {
 			return valErr
@@ -142,7 +142,7 @@ func (h *Handler) HandleUpdateSchedule(c echo.Context) error {
 		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
-	schedule, err := h.co.UpdateSchedule(c.Request().Context(), req.ScheduleID, req.Cron, req.Timezone, req.Inputs, req.IsActive, user.ID, namespace)
+	schedule, err := h.co.UpdateSchedule(c.Request().Context(), req.ScheduleID, req.Name, req.Cron, req.Timezone, req.Inputs, req.IsActive, user.ID, namespace)
 	if err != nil {
 		if valErr := scheduleInputError(err); valErr != nil {
 			return valErr

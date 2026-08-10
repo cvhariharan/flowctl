@@ -1,6 +1,6 @@
 -- name: CreateCronSchedule :one
-INSERT INTO cron_schedules (flow_id, cron, timezone)
-VALUES ($1, $2, $3)
+INSERT INTO cron_schedules (flow_id, name, cron, timezone)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetCronSchedulesByFlowID :many
@@ -21,7 +21,7 @@ WHERE f.is_active = TRUE
 ORDER BY cs.flow_id, cs.id;
 
 -- name: GetActiveCronSchedulesByFlowSlugs :many
-SELECT f.slug AS flow_slug, cs.cron, cs.timezone
+SELECT f.slug AS flow_slug, cs.name, cs.cron, cs.timezone
 FROM cron_schedules cs
 JOIN flows f ON cs.flow_id = f.id
 JOIN namespaces n ON f.namespace_id = n.id
@@ -31,8 +31,8 @@ WHERE n.uuid = $1
   AND cs.is_active = TRUE;
 
 -- name: CreateUserSchedule :one
-INSERT INTO cron_schedules (flow_id, cron, timezone, inputs, created_by, is_user_created, is_active)
-VALUES ($1, $2, $3, $4, (SELECT id FROM users WHERE users.uuid = $5), TRUE, TRUE)
+INSERT INTO cron_schedules (flow_id, name, cron, timezone, inputs, created_by, is_user_created, is_active)
+VALUES ($1, $2, $3, $4, $5, (SELECT id FROM users WHERE users.uuid = $6), TRUE, TRUE)
 RETURNING *;
 
 -- SELECT
@@ -159,7 +159,7 @@ WITH user_namespaces AS (
     FROM namespaces n
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN users u ON nm.user_id = u.id
-    WHERE u.uuid = $6
+    WHERE u.uuid = $7
 
     UNION
 
@@ -169,22 +169,23 @@ WITH user_namespaces AS (
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN groups g ON nm.group_id = g.id
     JOIN group_memberships gm ON g.id = gm.group_id
-    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $6)
+    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $7)
 )
 UPDATE cron_schedules cs
 SET
-    cron = $2,
-    timezone = $3,
-    inputs = $4,
-    is_active = $5,
+    name = $2,
+    cron = $3,
+    timezone = $4,
+    inputs = $5,
+    is_active = $6,
     updated_at = NOW()
 FROM flows f
 WHERE cs.uuid = $1
   AND cs.flow_id = f.id
   AND cs.is_user_created = TRUE
-  AND f.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $7)
-  AND (cs.created_by = (SELECT id FROM users WHERE users.uuid = $6)
-        OR EXISTS (SELECT id FROM users WHERE  users.uuid = $6 AND users.role='superuser')
+  AND f.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $8)
+  AND (cs.created_by = (SELECT id FROM users WHERE users.uuid = $7)
+        OR EXISTS (SELECT id FROM users WHERE  users.uuid = $7 AND users.role='superuser')
         OR EXISTS (SELECT user_namespaces.uuid FROM user_namespaces WHERE user_namespaces.role='admin')
   )
 RETURNING cs.*;

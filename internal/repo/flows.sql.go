@@ -291,7 +291,7 @@ func (q *Queries) GetFlowsByPrefix(ctx context.Context, arg GetFlowsByPrefixPara
 }
 
 const getScheduledFlows = `-- name: GetScheduledFlows :many
-SELECT f.id, f.slug, f.name, f.checksum, f.description, f.file_path, f.namespace_id, f.is_active, f.created_at, f.updated_at, f.prefix_id, n.uuid AS namespace_uuid, cs.id AS schedule_id, cs.cron, cs.timezone, cs.inputs, cs.created_by, cs.is_user_created
+SELECT f.id, f.slug, f.name, f.checksum, f.description, f.file_path, f.namespace_id, f.is_active, f.created_at, f.updated_at, f.prefix_id, n.uuid AS namespace_uuid, cs.id AS schedule_id, cs.name AS schedule_name, cs.cron, cs.timezone, cs.inputs, cs.created_by, cs.is_user_created
 FROM flows f
 JOIN namespaces n ON f.namespace_id = n.id
 JOIN cron_schedules cs ON cs.flow_id = f.id
@@ -312,6 +312,7 @@ type GetScheduledFlowsRow struct {
 	PrefixID      sql.NullInt32         `db:"prefix_id" json:"prefix_id"`
 	NamespaceUuid uuid.UUID             `db:"namespace_uuid" json:"namespace_uuid"`
 	ScheduleID    int32                 `db:"schedule_id" json:"schedule_id"`
+	ScheduleName  string                `db:"schedule_name" json:"schedule_name"`
 	Cron          string                `db:"cron" json:"cron"`
 	Timezone      string                `db:"timezone" json:"timezone"`
 	Inputs        pqtype.NullRawMessage `db:"inputs" json:"inputs"`
@@ -342,6 +343,7 @@ func (q *Queries) GetScheduledFlows(ctx context.Context) ([]GetScheduledFlowsRow
 			&i.PrefixID,
 			&i.NamespaceUuid,
 			&i.ScheduleID,
+			&i.ScheduleName,
 			&i.Cron,
 			&i.Timezone,
 			&i.Inputs,

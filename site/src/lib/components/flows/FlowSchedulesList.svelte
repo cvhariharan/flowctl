@@ -36,7 +36,7 @@
   let canCreateSchedule = $derived(userSchedulable);
 
   function canEdit(schedule: UserSchedule): boolean {
-    return canUpdateFlow || (schedule.is_user_created && schedule.created_by === user.id);
+    return schedule.is_user_created && (canUpdateFlow || schedule.created_by === user.id);
   }
 
   async function handleSave(data: ScheduleCreateReq | ScheduleUpdateReq) {
@@ -60,6 +60,7 @@
   async function toggleActive(schedule: UserSchedule) {
     try {
       await apiClient.flows.schedules.update(namespace, flowId, schedule.uuid, {
+        name: schedule.name,
         cron: schedule.cron,
         timezone: schedule.timezone,
         inputs: schedule.inputs,
@@ -131,6 +132,7 @@
       <table>
         <thead>
           <tr>
+            <th>Name</th>
             <th>Cron</th>
             <th>Timezone</th>
             <th>Type</th>
@@ -141,6 +143,11 @@
         <tbody>
           {#each schedules as schedule}
             <tr>
+              <td class="name-col">
+                <span class="schedule-name" title={schedule.name || undefined}>
+                  {schedule.name || '-'}
+                </span>
+              </td>
               <td>
                 <code>{schedule.cron}</code>
               </td>
@@ -180,8 +187,6 @@
                       </div>
                     </ot-dropdown>
                   </div>
-                {:else}
-                  <span class="text-lighter">-</span>
                 {/if}
               </td>
             </tr>
@@ -207,7 +212,7 @@
 {#if showDelete && deleteSchedule}
   <DeleteModal
     title="Delete Schedule"
-    itemName={`${deleteSchedule.cron} (${deleteSchedule.timezone})`}
+    itemName={deleteSchedule.name || `${deleteSchedule.cron} (${deleteSchedule.timezone})`}
     onConfirm={handleDelete}
     onClose={() => { showDelete = false; deleteSchedule = null; }}
   />
@@ -229,6 +234,15 @@
   .actions-col {
     text-align: right;
     width: 5rem;
+  }
+  .name-col {
+    max-width: 14rem;
+  }
+  .schedule-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .actions-wrapper {
     display: inline-flex;

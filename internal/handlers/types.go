@@ -330,6 +330,7 @@ func coreNamespaceArrayToNamespaceRespArray(namespaces []models.Namespace) []Nam
 
 // Schedule represents a cron schedule with timezone
 type Schedule struct {
+	Name     string `json:"name" validate:"max=150"`
 	Cron     string `json:"cron"`
 	Timezone string `json:"timezone"`
 }
@@ -383,6 +384,7 @@ type FlowListItem struct {
 	Schedules   []Schedule `json:"schedules"`
 	StepCount   int        `json:"step_count"`
 	NextRun     *time.Time `json:"next_run,omitempty"`
+	NextRunName string     `json:"next_run_name,omitempty"`
 }
 
 type FlowInput struct {
@@ -438,6 +440,7 @@ func coreSchedulesToSchedules(schedules []models.Schedule) []Schedule {
 	resp := make([]Schedule, len(schedules))
 	for i, s := range schedules {
 		resp[i] = Schedule{
+			Name:     s.Name,
 			Cron:     s.Cron,
 			Timezone: s.Timezone,
 		}
@@ -537,10 +540,11 @@ func coreFlowToFlow(flow models.Flow) FlowListItem {
 	}
 }
 
-func attachNextRuns(items []FlowListItem, nextRuns map[string]time.Time) {
+func attachNextRuns(items []FlowListItem, nextRuns map[string]models.NextScheduledRun) {
 	for i := range items {
 		if next, ok := nextRuns[items[i].Slug]; ok {
-			items[i].NextRun = &next
+			items[i].NextRun = &next.At
+			items[i].NextRunName = next.Name
 		}
 	}
 }
@@ -951,18 +955,21 @@ type FlowCancellationResp struct {
 
 type ScheduleCreateReq struct {
 	FlowID   string                 `param:"flowID" validate:"required"`
+	Name     string                 `json:"name" validate:"max=150"`
 	Cron     string                 `json:"cron" validate:"required,cron"`
 	Timezone string                 `json:"timezone" validate:"required,timezone"`
 	Inputs   map[string]interface{} `json:"inputs" validate:"required"`
 }
 
 type ScheduleUpdateReq struct {
-	FlowID     string                 `param:"flowID" validate:"required"`
-	ScheduleID string                 `param:"schedule_id" validate:"required,uuid4"`
-	Cron       string                 `json:"cron" validate:"required,cron"`
-	Timezone   string                 `json:"timezone" validate:"required,timezone"`
-	Inputs     map[string]interface{} `json:"inputs" validate:"required"`
-	IsActive   bool                   `json:"is_active"`
+	FlowID     string `param:"flowID" validate:"required"`
+	ScheduleID string `param:"schedule_id" validate:"required,uuid4"`
+	// Name is optional: when the key is absent the existing name is kept.
+	Name     *string                `json:"name" validate:"omitempty,max=150"`
+	Cron     string                 `json:"cron" validate:"required,cron"`
+	Timezone string                 `json:"timezone" validate:"required,timezone"`
+	Inputs   map[string]interface{} `json:"inputs" validate:"required"`
+	IsActive bool                   `json:"is_active"`
 }
 
 type ScheduleGetReq struct {
@@ -984,6 +991,7 @@ type ScheduleResp struct {
 	UUID          string                 `json:"uuid"`
 	FlowSlug      string                 `json:"flow_slug"`
 	FlowName      string                 `json:"flow_name"`
+	Name          string                 `json:"name"`
 	Cron          string                 `json:"cron"`
 	Timezone      string                 `json:"timezone"`
 	Inputs        map[string]interface{} `json:"inputs"`
@@ -1005,6 +1013,7 @@ func coreScheduleToScheduleResp(s models.Schedule) ScheduleResp {
 		UUID:          s.UUID,
 		FlowSlug:      s.FlowSlug,
 		FlowName:      s.FlowName,
+		Name:          s.Name,
 		Cron:          s.Cron,
 		Timezone:      s.Timezone,
 		Inputs:        s.Inputs,
