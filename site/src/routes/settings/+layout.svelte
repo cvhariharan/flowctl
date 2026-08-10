@@ -1,5 +1,6 @@
 <script lang="ts">
   import Sidebar from '$lib/components/shared/Sidebar.svelte';
+  import Footer from '$lib/components/shared/Footer.svelte';
   import { selectedNamespace } from '$lib/stores/namespace';
 
   let { children, data } = $props();
@@ -13,5 +14,6 @@
   <Sidebar namespace={$selectedNamespace} />
   <main class="app-content">
     {@render children()}
+    <Footer />
   </main>
 </div>

@@ -10,6 +10,7 @@
   import Logo from '$lib/components/shared/Logo.svelte';
   import LoginCard from '$lib/components/login/LoginCard.svelte';
   import ThemeToggle from '$lib/components/shared/ThemeToggle.svelte';
+  import Footer from '$lib/components/shared/Footer.svelte';
 
   let username = $state('');
   let password = $state('');
@@ -66,9 +67,7 @@
       bind:password
       {redirectUrl}
     />
-    <footer class="mt-6 align-center">
-      <p class="text-lighter text-sm">Need help? Contact your system administrator</p>
-    </footer>
+    <Footer />
   </section>
   <div class="theme-toggle-pos">
     <ThemeToggle collapsed={true} />
@@ -89,6 +88,10 @@
   .login-container {
     width: 100%;
     max-width: 28rem;
+  }
+
+  .login-container :global(.app-footer) {
+    text-align: center;
   }
 
   .theme-toggle-pos {

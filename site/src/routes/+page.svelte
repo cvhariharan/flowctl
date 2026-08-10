@@ -3,6 +3,7 @@
   import { isAuthenticated, isLoading } from '$lib/stores/auth';
   import { getDefaultNamespace } from '$lib/utils/navigation';
   import Logo from '$lib/components/shared/Logo.svelte';
+  import Footer from '$lib/components/shared/Footer.svelte';
 
   // Wait for auth loading to complete
   $effect(() => {
@@ -26,18 +27,23 @@
 </svelte:head>
 
 <div class="loading-page">
-  <div class="vstack items-center gap-6">
+  <div class="loading-body vstack items-center gap-6">
     <Logo height="4rem" />
     <div class="hstack justify-center gap-4" aria-busy="true">Loading...</div>
   </div>
+  <Footer />
 </div>
 
 <style>
   .loading-page {
     min-height: 100vh;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
     background: var(--card);
+  }
+
+  .loading-body {
+    flex: 1;
+    justify-content: center;
   }
 </style>

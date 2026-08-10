@@ -88,6 +88,15 @@ svg.icon-tabler {
 main.app-content {
   padding-block-start: 0;
   background: var(--muted);
+  display: flex;
+  flex-direction: column;
+}
+main.app-content > * {
+  flex-shrink: 0;
+}
+main.app-content > .app-footer {
+  margin-block-start: auto;
+  padding-inline: var(--space-12);
 }
 
 /* ── Dialog form layout: scrollable content with sticky footer ── */
