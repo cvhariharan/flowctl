@@ -23,6 +23,7 @@ type Querier interface {
 	AssignGroupPrefixAccess(ctx context.Context, arg AssignGroupPrefixAccessParams) error
 	AssignUserNamespaceRole(ctx context.Context, arg AssignUserNamespaceRoleParams) (NamespaceMember, error)
 	AssignUserPrefixAccess(ctx context.Context, arg AssignUserPrefixAccessParams) error
+	CancelExecution(ctx context.Context, arg CancelExecutionParams) (ExecutionLog, error)
 	CancelTasksByExecID(ctx context.Context, execID string) error
 	CreateAPIToken(ctx context.Context, arg CreateAPITokenParams) (ApiToken, error)
 	CreateCredential(ctx context.Context, arg CreateCredentialParams) (Credential, error)

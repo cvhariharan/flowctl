@@ -24,6 +24,9 @@ info:
     - Timestamps are RFC 3339 (`2025-06-04T10:00:00Z`).
     - Errors use a uniform JSON envelope (see `Error` schema).
     - Pagination endpoints return `page_count` and `total_count` next to the page slice.
+    - Request bodies must be `application/json`, except for flow triggers and flow import
+      which take `multipart/form-data` or `application/x-www-form-urlencoded`. Any other
+      content type is rejected with `415`, on every endpoint and every method.
 
 servers:
   - url: https://flowctl.example.com
@@ -767,6 +770,9 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlowCancellationResp" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/v1/{namespace}/flows/executions/{execID}/retry:
     parameters:
@@ -776,12 +782,14 @@ paths:
       operationId: RetryExecution
       tags: [Flows]
       summary: Retry an execution (re-queue with the same inputs)
+      description: >
+        Requires execute access to the execution's own flow, which for prefixed flows means an
+        explicit prefix grant. Namespace-wide execution update permission alone is not sufficient.
       responses:
-        "200":
+        "201":
           description: Queued
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlowTriggerResp" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/{namespace}/flows/{flowID}/executions:
     parameters:
@@ -1099,16 +1107,24 @@ paths:
       operationId: GetSchedule
       tags: [Schedules]
       summary: Get a schedule
+      description: >
+        The schedule must belong to the flow named in the path; a schedule_id belonging to a
+        different flow is reported as not found.
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ScheduleResp" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
     put:
       operationId: UpdateSchedule
       tags: [Schedules]
       summary: Update a schedule
+      description: >
+        The schedule must belong to the flow named in the path. Only the schedule's creator, a
+        namespace admin, or a superuser may update it; other callers get 404.
       requestBody:
         required: true
         content:
@@ -1120,12 +1136,19 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ScheduleResp" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
     delete:
       operationId: DeleteSchedule
       tags: [Schedules]
       summary: Delete a schedule
+      description: >
+        The schedule must belong to the flow named in the path. Only the schedule's creator, a
+        namespace admin, or a superuser may delete it; other callers get 404.
       responses:
         "200": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------- Nodes ----------------
   /api/v1/{namespace}/nodes:
@@ -1588,6 +1611,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     NotFound:
       description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Resource is not in a state that permits the requested action
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

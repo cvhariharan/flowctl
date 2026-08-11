@@ -91,6 +91,56 @@ func (q *Queries) AddExecutionLog(ctx context.Context, arg AddExecutionLogParams
 	return i, err
 }
 
+const cancelExecution = `-- name: CancelExecution :one
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+), latest_version AS (
+    SELECT MAX(version) AS version
+    FROM execution_log
+    WHERE execution_log.exec_id = $1
+      AND namespace_id = (SELECT id FROM namespace_lookup)
+)
+UPDATE execution_log SET
+    status = 'cancelled',
+    updated_at = NOW(),
+    completed_at = NOW()
+WHERE execution_log.exec_id = $1
+  AND version = (SELECT version FROM latest_version)
+  AND namespace_id = (SELECT id FROM namespace_lookup)
+  AND status IN ('pending', 'running', 'pending_approval')
+RETURNING id, exec_id, flow_id, version, context, error, current_action_id, status, trigger_type, triggered_by, namespace_id, created_at, updated_at, completed_at, action_retries, scheduled_at, started_at
+`
+
+type CancelExecutionParams struct {
+	ExecID string    `db:"exec_id" json:"exec_id"`
+	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
+}
+
+func (q *Queries) CancelExecution(ctx context.Context, arg CancelExecutionParams) (ExecutionLog, error) {
+	row := q.db.QueryRowContext(ctx, cancelExecution, arg.ExecID, arg.Uuid)
+	var i ExecutionLog
+	err := row.Scan(
+		&i.ID,
+		&i.ExecID,
+		&i.FlowID,
+		&i.Version,
+		&i.Context,
+		&i.Error,
+		&i.CurrentActionID,
+		&i.Status,
+		&i.TriggerType,
+		&i.TriggeredBy,
+		&i.NamespaceID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+		&i.ActionRetries,
+		&i.ScheduledAt,
+		&i.StartedAt,
+	)
+	return i, err
+}
+
 const executionExistsForFlow = `-- name: ExecutionExistsForFlow :one
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2

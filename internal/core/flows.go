@@ -29,8 +29,10 @@ import (
 )
 
 var (
-	ErrFlowNotFound = errors.New("flow not found")
-	ErrFlowExists   = errors.New("flow already exists")
+	ErrFlowNotFound          = errors.New("flow not found")
+	ErrFlowExists            = errors.New("flow already exists")
+	ErrScheduleNotFound      = errors.New("schedule not found")
+	ErrInvalidExecutionState = errors.New("invalid execution state")
 )
 
 // resolveOverrideNodes finds a node-typed input in the flow and resolves its selected
@@ -502,20 +504,20 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, execCtx models.Exec
 	return execID, nil
 }
 
-// CancelFlowExecution cancels the given execution using the scheduler
-func (c *Core) CancelFlowExecution(ctx context.Context, execID string, namespaceID string) error {
+func (c *Core) CancelFlowExecution(ctx context.Context, execID, namespaceID string) error {
 	namespaceUUID, err := uuid.Parse(namespaceID)
 	if err != nil {
 		return fmt.Errorf("invalid namespace UUID: %w", err)
 	}
 
-	// Update execution status to cancelled in the database
-	_, err = c.store.UpdateExecutionStatus(ctx, repo.UpdateExecutionStatusParams{
-		Status: repo.ExecutionStatusCancelled,
+	_, err = c.store.CancelExecution(ctx, repo.CancelExecutionParams{
 		ExecID: execID,
 		Uuid:   namespaceUUID,
 	})
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: execution is not cancellable", ErrInvalidExecutionState)
+		}
 		return fmt.Errorf("failed to update execution status: %w", err)
 	}
 
@@ -1281,7 +1283,7 @@ func (c *Core) CreateSchedule(ctx context.Context, flowID, name, cron, timezone 
 	}, nil
 }
 
-func (c *Core) GetSchedule(ctx context.Context, scheduleUUID, userUUID, namespaceID string) (models.Schedule, error) {
+func (c *Core) GetSchedule(ctx context.Context, flowSlug, scheduleUUID, userUUID, namespaceID string) (models.Schedule, error) {
 	userID, err := uuid.Parse(userUUID)
 	if err != nil {
 		return models.Schedule{}, fmt.Errorf("invalid user UUID: %w", err)
@@ -1301,8 +1303,12 @@ func (c *Core) GetSchedule(ctx context.Context, scheduleUUID, userUUID, namespac
 		Uuid:   schedID,
 		Uuid_2: userID,
 		Uuid_3: namespaceUUID,
+		Slug:   flowSlug,
 	})
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.Schedule{}, ErrScheduleNotFound
+		}
 		return models.Schedule{}, fmt.Errorf("schedule not found: %w", err)
 	}
 
@@ -1442,7 +1448,7 @@ func (c *Core) ListSchedules(ctx context.Context, flowSlug, userUUID, namespaceI
 
 // UpdateSchedule updates a user-created schedule. A nil name leaves the
 // existing name untouched; an empty non-nil name clears it.
-func (c *Core) UpdateSchedule(ctx context.Context, scheduleUUID string, name *string, cron, timezone string, inputs map[string]interface{}, isActive bool, userUUID, namespaceID string) (models.Schedule, error) {
+func (c *Core) UpdateSchedule(ctx context.Context, flowSlug, scheduleUUID string, name *string, cron, timezone string, inputs map[string]interface{}, isActive bool, userUUID, namespaceID string) (models.Schedule, error) {
 	userID, err := uuid.Parse(userUUID)
 	if err != nil {
 		return models.Schedule{}, fmt.Errorf("invalid user UUID: %w", err)
@@ -1462,8 +1468,12 @@ func (c *Core) UpdateSchedule(ctx context.Context, scheduleUUID string, name *st
 		Uuid:   schedID,
 		Uuid_2: userID,
 		Uuid_3: namespaceUUID,
+		Slug:   flowSlug,
 	})
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.Schedule{}, ErrScheduleNotFound
+		}
 		return models.Schedule{}, fmt.Errorf("schedule not found: %w", err)
 	}
 
@@ -1499,8 +1509,12 @@ func (c *Core) UpdateSchedule(ctx context.Context, scheduleUUID string, name *st
 		IsActive: isActive,
 		Uuid_2:   userID,
 		Uuid_3:   namespaceUUID,
+		Slug:     flowSlug,
 	})
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.Schedule{}, ErrScheduleNotFound
+		}
 		return models.Schedule{}, fmt.Errorf("could not update schedule: %w", err)
 	}
 
@@ -1518,7 +1532,7 @@ func (c *Core) UpdateSchedule(ctx context.Context, scheduleUUID string, name *st
 	}, nil
 }
 
-func (c *Core) DeleteSchedule(ctx context.Context, scheduleUUID, userUUID, namespaceID string) error {
+func (c *Core) DeleteSchedule(ctx context.Context, flowSlug, scheduleUUID, userUUID, namespaceID string) error {
 	userID, err := uuid.Parse(userUUID)
 	if err != nil {
 		return fmt.Errorf("invalid user UUID: %w", err)
@@ -1538,13 +1552,14 @@ func (c *Core) DeleteSchedule(ctx context.Context, scheduleUUID, userUUID, names
 		Uuid:   schedID,
 		Uuid_2: userID,
 		Uuid_3: namespaceUUID,
+		Slug:   flowSlug,
 	})
 	if err != nil {
 		return fmt.Errorf("could not delete schedule: %w", err)
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("schedule not found or permission denied")
+		return ErrScheduleNotFound
 	}
 
 	return nil

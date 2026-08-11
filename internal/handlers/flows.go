@@ -954,6 +954,9 @@ func (h *Handler) HandleCancelExecution(c echo.Context) error {
 
 	err = h.co.CancelFlowExecution(c.Request().Context(), execID, namespace)
 	if err != nil {
+		if errors.Is(err, core.ErrInvalidExecutionState) {
+			return wrapError(ErrResourceConflict, "execution is not cancellable", err, nil)
+		}
 		return wrapError(ErrOperationFailed, "failed to cancel execution", err, nil)
 	}
 

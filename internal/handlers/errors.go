@@ -30,6 +30,9 @@ const (
 	// Conflict errors (409)
 	ErrResourceConflict = "RESOURCE_CONFLICT"
 
+	// Unsupported media type errors (415)
+	ErrUnsupportedMediaType = "UNSUPPORTED_MEDIA_TYPE"
+
 	// Server errors (500)
 	ErrOperationFailed = "OPERATION_FAILED"
 	ErrInternalError   = "INTERNAL_ERROR"
@@ -56,6 +59,9 @@ var errorCodeToHTTPStatus = map[string]int{
 
 	// Conflict errors (409)
 	ErrResourceConflict: http.StatusConflict,
+
+	// Unsupported media type errors (415)
+	ErrUnsupportedMediaType: http.StatusUnsupportedMediaType,
 
 	// Server errors (500)
 	ErrOperationFailed: http.StatusInternalServerError,

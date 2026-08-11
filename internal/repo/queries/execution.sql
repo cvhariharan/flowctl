@@ -48,6 +48,25 @@ WHERE execution_log.exec_id = $3
   AND namespace_id = (SELECT id FROM namespace_lookup)
 RETURNING *;
 
+-- name: CancelExecution :one
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+), latest_version AS (
+    SELECT MAX(version) AS version
+    FROM execution_log
+    WHERE execution_log.exec_id = $1
+      AND namespace_id = (SELECT id FROM namespace_lookup)
+)
+UPDATE execution_log SET
+    status = 'cancelled',
+    updated_at = NOW(),
+    completed_at = NOW()
+WHERE execution_log.exec_id = $1
+  AND version = (SELECT version FROM latest_version)
+  AND namespace_id = (SELECT id FROM namespace_lookup)
+  AND status IN ('pending', 'running', 'pending_approval')
+RETURNING *;
+
 -- name: UpdateExecutionActionID :one
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $3

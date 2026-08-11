@@ -133,12 +133,12 @@ type GroupsPaginateResponse struct {
 }
 
 type ApprovalActionReq struct {
-	ApprovalID string `param:"approvalID" validate:"required,uuid4"`
+	ApprovalID string `param:"approvalID" json:"-" validate:"required,uuid4"`
 	Action     string `json:"action" validate:"required,oneof=approve reject"`
 }
 
 type ApprovalGetReq struct {
-	ApprovalID string `param:"approvalID" validate:"required,uuid4"`
+	ApprovalID string `param:"approvalID" json:"-" validate:"required,uuid4"`
 }
 
 type ApprovalActionResp struct {
@@ -259,7 +259,7 @@ type CredentialReq struct {
 }
 
 type CredentialGetReq struct {
-	CredID string `param:"credID" validate:"required,uuid4"`
+	CredID string `param:"credID" json:"-" validate:"required,uuid4"`
 }
 
 type CredentialUpdateReq struct {
@@ -750,15 +750,15 @@ type FlowCreateResp struct {
 }
 
 type FlowGetReq struct {
-	FlowID string `param:"flowID" validate:"required"`
+	FlowID string `param:"flowID" json:"-" validate:"required"`
 }
 
 type LogStreamingReq struct {
-	LogID string `param:"logID" validate:"required,uuid4"`
+	LogID string `param:"logID" json:"-" validate:"required,uuid4"`
 }
 
 type ExecutionGetReq struct {
-	ExecID string `param:"execID" validate:"required,uuid4"`
+	ExecID string `param:"execID" json:"-" validate:"required,uuid4"`
 }
 
 type FlowUpdateReq struct {
@@ -876,7 +876,7 @@ func convertFlowActionsToActionsReq(actions []models.Action) []FlowActionReq {
 }
 
 type FlowSecretReq struct {
-	FlowID      string `param:"flowID" validate:"required"`
+	FlowID      string `param:"flowID" json:"-" validate:"required"`
 	Key         string `json:"key" validate:"required,min=1,max=150,alphanum_underscore"`
 	Value       string `json:"value" validate:"required"`
 	Description string `json:"description" validate:"max=255"`
@@ -891,7 +891,7 @@ type FlowSecretResp struct {
 }
 
 type FlowSecretGetReq struct {
-	SecretID string `param:"secretID" validate:"required"`
+	SecretID string `param:"secretID" json:"-" validate:"required"`
 }
 
 type FlowSecretUpdateReq struct {
@@ -901,7 +901,7 @@ type FlowSecretUpdateReq struct {
 }
 
 type FlowSecretsListReq struct {
-	FlowID string `param:"flowID" validate:"required"`
+	FlowID string `param:"flowID" json:"-" validate:"required"`
 }
 
 func coreFlowSecretToFlowSecretResp(secret models.FlowSecret) FlowSecretResp {
@@ -929,7 +929,7 @@ type NamespaceSecretResp struct {
 }
 
 type NamespaceSecretGetReq struct {
-	SecretID string `param:"secretID" validate:"required"`
+	SecretID string `param:"secretID" json:"-" validate:"required"`
 }
 
 type NamespaceSecretUpdateReq struct {
@@ -954,7 +954,7 @@ type FlowCancellationResp struct {
 }
 
 type ScheduleCreateReq struct {
-	FlowID   string                 `param:"flowID" validate:"required"`
+	FlowID   string                 `param:"flowID" json:"-" validate:"required"`
 	Name     string                 `json:"name" validate:"max=150"`
 	Cron     string                 `json:"cron" validate:"required,cron"`
 	Timezone string                 `json:"timezone" validate:"required,timezone"`
@@ -962,8 +962,8 @@ type ScheduleCreateReq struct {
 }
 
 type ScheduleUpdateReq struct {
-	FlowID     string `param:"flowID" validate:"required"`
-	ScheduleID string `param:"schedule_id" validate:"required,uuid4"`
+	FlowID     string `param:"flowID" json:"-" validate:"required"`
+	ScheduleID string `param:"schedule_id" json:"-" validate:"required,uuid4"`
 	// Name is optional: when the key is absent the existing name is kept.
 	Name     *string                `json:"name" validate:"omitempty,max=150"`
 	Cron     string                 `json:"cron" validate:"required,cron"`
@@ -973,12 +973,12 @@ type ScheduleUpdateReq struct {
 }
 
 type ScheduleGetReq struct {
-	FlowID     string `param:"flowID" validate:"required"`
-	ScheduleID string `param:"schedule_id" validate:"required,uuid4"`
+	FlowID     string `param:"flowID" json:"-" validate:"required"`
+	ScheduleID string `param:"schedule_id" json:"-" validate:"required,uuid4"`
 }
 
 type ScheduleListReq struct {
-	FlowID string `param:"flowID" validate:"required"`
+	FlowID string `param:"flowID" json:"-" validate:"required"`
 	Page   int    `query:"page"`
 	Count  int    `query:"count_per_page"`
 }

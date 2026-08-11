@@ -469,6 +469,16 @@
                 "Flow cancellation signal has been sent",
             );
         } catch (error) {
+            // The execution can finish between this page rendering the Stop button and
+            // the click landing, in which case there is nothing left to cancel.
+            if (error instanceof ApiError && error.status === 409) {
+                await updateExecutionStatus();
+                showInfo(
+                    "Nothing to Cancel",
+                    "This execution had already finished.",
+                );
+                return;
+            }
             handleInlineError(error, "Unable to Cancel Flow");
         }
     };

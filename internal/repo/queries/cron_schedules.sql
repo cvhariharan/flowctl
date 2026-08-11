@@ -55,7 +55,7 @@ WITH user_namespaces AS (
     FROM namespaces n
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN users u ON nm.user_id = u.id
-    WHERE u.uuid = $2
+    WHERE u.uuid = $2 AND n.uuid = $3
 
     UNION
 
@@ -65,7 +65,7 @@ WITH user_namespaces AS (
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN groups g ON nm.group_id = g.id
     JOIN group_memberships gm ON g.id = gm.group_id
-    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $2)
+    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $2) AND n.uuid = $3
 )
 SELECT
     cs.*,
@@ -78,6 +78,7 @@ JOIN flows f ON cs.flow_id = f.id
 INNER JOIN users u ON cs.created_by = u.id
 WHERE cs.uuid = $1
   AND f.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $3)
+  AND f.slug = $4
   AND (cs.created_by = (SELECT id FROM users WHERE users.uuid = $2)
         OR EXISTS (SELECT id FROM users WHERE  users.uuid = $2 AND users.role='superuser')
         OR EXISTS (SELECT user_namespaces.uuid FROM user_namespaces WHERE user_namespaces.role='admin')
@@ -159,7 +160,7 @@ WITH user_namespaces AS (
     FROM namespaces n
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN users u ON nm.user_id = u.id
-    WHERE u.uuid = $7
+    WHERE u.uuid = $7 AND n.uuid = $8
 
     UNION
 
@@ -169,7 +170,7 @@ WITH user_namespaces AS (
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN groups g ON nm.group_id = g.id
     JOIN group_memberships gm ON g.id = gm.group_id
-    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $7)
+    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $7) AND n.uuid = $8
 )
 UPDATE cron_schedules cs
 SET
@@ -184,6 +185,7 @@ WHERE cs.uuid = $1
   AND cs.flow_id = f.id
   AND cs.is_user_created = TRUE
   AND f.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $8)
+  AND f.slug = $9
   AND (cs.created_by = (SELECT id FROM users WHERE users.uuid = $7)
         OR EXISTS (SELECT id FROM users WHERE  users.uuid = $7 AND users.role='superuser')
         OR EXISTS (SELECT user_namespaces.uuid FROM user_namespaces WHERE user_namespaces.role='admin')
@@ -205,7 +207,7 @@ WITH user_namespaces AS (
     FROM namespaces n
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN users u ON nm.user_id = u.id
-    WHERE u.uuid = $2
+    WHERE u.uuid = $2 AND n.uuid = $3
 
     UNION
 
@@ -215,7 +217,7 @@ WITH user_namespaces AS (
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN groups g ON nm.group_id = g.id
     JOIN group_memberships gm ON g.id = gm.group_id
-    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $2)
+    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $2) AND n.uuid = $3
 )
 DELETE FROM cron_schedules cs
 USING flows f
@@ -223,6 +225,7 @@ WHERE cs.uuid = $1
   AND cs.flow_id = f.id
   AND cs.is_user_created = TRUE
   AND f.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $3)
+  AND f.slug = $4
   AND (cs.created_by = (SELECT id FROM users WHERE users.uuid = $2)
         OR EXISTS (SELECT id FROM users WHERE  users.uuid = $2 AND users.role='superuser')
         OR EXISTS (SELECT user_namespaces.uuid FROM user_namespaces WHERE user_namespaces.role='admin')

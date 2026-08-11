@@ -1168,8 +1168,10 @@ type ScheduleUpdateReq struct {
 	Cron     string                 `json:"cron"`
 	Inputs   map[string]interface{} `json:"inputs"`
 	IsActive *bool                  `json:"is_active,omitempty"`
-	Name     *string                `json:"name,omitempty"`
-	Timezone string                 `json:"timezone"`
+
+	// Name Omit to keep the current name; send an empty string to clear it.
+	Name     *string `json:"name,omitempty"`
+	Timezone string  `json:"timezone"`
 }
 
 // SchedulesPaginateResponse defines model for SchedulesPaginateResponse.
@@ -1247,6 +1249,9 @@ type Page = int
 
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
+
+// Conflict defines model for Conflict.
+type Conflict = Error
 
 // Forbidden defines model for Forbidden.
 type Forbidden = Error
@@ -9462,6 +9467,9 @@ type CancelExecutionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *FlowCancellationResp
+	JSON403      *Forbidden
+	JSON404      *NotFound
+	JSON409      *Conflict
 }
 
 // Status returns HTTPResponse.Status
@@ -9491,7 +9499,8 @@ func (r CancelExecutionResponse) ContentType() string {
 type RetryExecutionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *FlowTriggerResp
+	JSON403      *Forbidden
+	JSON404      *NotFound
 }
 
 // Status returns HTTPResponse.Status
@@ -9998,6 +10007,8 @@ func (r CreateScheduleResponse) ContentType() string {
 type DeleteScheduleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON403      *Forbidden
+	JSON404      *NotFound
 }
 
 // Status returns HTTPResponse.Status
@@ -10028,6 +10039,8 @@ type GetScheduleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ScheduleResp
+	JSON403      *Forbidden
+	JSON404      *NotFound
 }
 
 // Status returns HTTPResponse.Status
@@ -10058,6 +10071,8 @@ type UpdateScheduleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ScheduleResp
+	JSON403      *Forbidden
+	JSON404      *NotFound
 }
 
 // Status returns HTTPResponse.Status
@@ -13273,6 +13288,27 @@ func ParseCancelExecutionResponse(rsp *http.Response) (*CancelExecutionResponse,
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
 	}
 
 	return response, nil
@@ -13292,12 +13328,19 @@ func ParseRetryExecutionResponse(rsp *http.Response) (*RetryExecutionResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest FlowTriggerResp
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -13703,6 +13746,23 @@ func ParseDeleteScheduleResponse(rsp *http.Response) (*DeleteScheduleResponse, e
 		HTTPResponse: rsp,
 	}
 
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
 	return response, nil
 }
 
@@ -13726,6 +13786,20 @@ func ParseGetScheduleResponse(rsp *http.Response) (*GetScheduleResponse, error) 
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -13752,6 +13826,20 @@ func ParseUpdateScheduleResponse(rsp *http.Response) (*UpdateScheduleResponse, e
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 

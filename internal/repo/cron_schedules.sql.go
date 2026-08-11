@@ -112,7 +112,7 @@ WITH user_namespaces AS (
     FROM namespaces n
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN users u ON nm.user_id = u.id
-    WHERE u.uuid = $2
+    WHERE u.uuid = $2 AND n.uuid = $3
 
     UNION
 
@@ -122,7 +122,7 @@ WITH user_namespaces AS (
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN groups g ON nm.group_id = g.id
     JOIN group_memberships gm ON g.id = gm.group_id
-    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $2)
+    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $2) AND n.uuid = $3
 )
 DELETE FROM cron_schedules cs
 USING flows f
@@ -130,6 +130,7 @@ WHERE cs.uuid = $1
   AND cs.flow_id = f.id
   AND cs.is_user_created = TRUE
   AND f.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $3)
+  AND f.slug = $4
   AND (cs.created_by = (SELECT id FROM users WHERE users.uuid = $2)
         OR EXISTS (SELECT id FROM users WHERE  users.uuid = $2 AND users.role='superuser')
         OR EXISTS (SELECT user_namespaces.uuid FROM user_namespaces WHERE user_namespaces.role='admin')
@@ -140,6 +141,7 @@ type DeleteUserScheduleByUUIDParams struct {
 	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
 	Uuid_2 uuid.UUID `db:"uuid_2" json:"uuid_2"`
 	Uuid_3 uuid.UUID `db:"uuid_3" json:"uuid_3"`
+	Slug   string    `db:"slug" json:"slug"`
 }
 
 // DELETE FROM cron_schedules cs
@@ -151,7 +153,12 @@ type DeleteUserScheduleByUUIDParams struct {
 //	AND f.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $3)
 //	AND cs.created_by = (SELECT id FROM users WHERE users.uuid = $2);
 func (q *Queries) DeleteUserScheduleByUUID(ctx context.Context, arg DeleteUserScheduleByUUIDParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteUserScheduleByUUID, arg.Uuid, arg.Uuid_2, arg.Uuid_3)
+	result, err := q.db.ExecContext(ctx, deleteUserScheduleByUUID,
+		arg.Uuid,
+		arg.Uuid_2,
+		arg.Uuid_3,
+		arg.Slug,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -377,7 +384,7 @@ WITH user_namespaces AS (
     FROM namespaces n
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN users u ON nm.user_id = u.id
-    WHERE u.uuid = $2
+    WHERE u.uuid = $2 AND n.uuid = $3
 
     UNION
 
@@ -387,7 +394,7 @@ WITH user_namespaces AS (
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN groups g ON nm.group_id = g.id
     JOIN group_memberships gm ON g.id = gm.group_id
-    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $2)
+    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $2) AND n.uuid = $3
 )
 SELECT
     cs.id, cs.flow_id, cs.cron, cs.timezone, cs.created_at, cs.updated_at, cs.uuid, cs.inputs, cs.created_by, cs.is_user_created, cs.is_active, cs.name,
@@ -400,6 +407,7 @@ JOIN flows f ON cs.flow_id = f.id
 INNER JOIN users u ON cs.created_by = u.id
 WHERE cs.uuid = $1
   AND f.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $3)
+  AND f.slug = $4
   AND (cs.created_by = (SELECT id FROM users WHERE users.uuid = $2)
         OR EXISTS (SELECT id FROM users WHERE  users.uuid = $2 AND users.role='superuser')
         OR EXISTS (SELECT user_namespaces.uuid FROM user_namespaces WHERE user_namespaces.role='admin')
@@ -410,6 +418,7 @@ type GetUserScheduleByUUIDParams struct {
 	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
 	Uuid_2 uuid.UUID `db:"uuid_2" json:"uuid_2"`
 	Uuid_3 uuid.UUID `db:"uuid_3" json:"uuid_3"`
+	Slug   string    `db:"slug" json:"slug"`
 }
 
 type GetUserScheduleByUUIDRow struct {
@@ -447,7 +456,12 @@ type GetUserScheduleByUUIDRow struct {
 //	AND f.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $3)
 //	AND (cs.created_by = (SELECT id FROM users WHERE users.uuid = $2) OR cs.is_user_created = FALSE);
 func (q *Queries) GetUserScheduleByUUID(ctx context.Context, arg GetUserScheduleByUUIDParams) (GetUserScheduleByUUIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserScheduleByUUID, arg.Uuid, arg.Uuid_2, arg.Uuid_3)
+	row := q.db.QueryRowContext(ctx, getUserScheduleByUUID,
+		arg.Uuid,
+		arg.Uuid_2,
+		arg.Uuid_3,
+		arg.Slug,
+	)
 	var i GetUserScheduleByUUIDRow
 	err := row.Scan(
 		&i.ID,
@@ -610,7 +624,7 @@ WITH user_namespaces AS (
     FROM namespaces n
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN users u ON nm.user_id = u.id
-    WHERE u.uuid = $7
+    WHERE u.uuid = $7 AND n.uuid = $8
 
     UNION
 
@@ -620,7 +634,7 @@ WITH user_namespaces AS (
     JOIN namespace_members nm ON n.id = nm.namespace_id
     JOIN groups g ON nm.group_id = g.id
     JOIN group_memberships gm ON g.id = gm.group_id
-    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $7)
+    WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $7) AND n.uuid = $8
 )
 UPDATE cron_schedules cs
 SET
@@ -635,6 +649,7 @@ WHERE cs.uuid = $1
   AND cs.flow_id = f.id
   AND cs.is_user_created = TRUE
   AND f.namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $8)
+  AND f.slug = $9
   AND (cs.created_by = (SELECT id FROM users WHERE users.uuid = $7)
         OR EXISTS (SELECT id FROM users WHERE  users.uuid = $7 AND users.role='superuser')
         OR EXISTS (SELECT user_namespaces.uuid FROM user_namespaces WHERE user_namespaces.role='admin')
@@ -651,6 +666,7 @@ type UpdateUserScheduleByUUIDParams struct {
 	IsActive bool                  `db:"is_active" json:"is_active"`
 	Uuid_2   uuid.UUID             `db:"uuid_2" json:"uuid_2"`
 	Uuid_3   uuid.UUID             `db:"uuid_3" json:"uuid_3"`
+	Slug     string                `db:"slug" json:"slug"`
 }
 
 // UPDATE cron_schedules cs
@@ -681,6 +697,7 @@ func (q *Queries) UpdateUserScheduleByUUID(ctx context.Context, arg UpdateUserSc
 		arg.IsActive,
 		arg.Uuid_2,
 		arg.Uuid_3,
+		arg.Slug,
 	)
 	var i CronSchedule
 	err := row.Scan(
