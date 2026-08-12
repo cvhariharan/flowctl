@@ -26,9 +26,9 @@ func TestFileLogger_BasicOperations(t *testing.T) {
 	}
 
 	actionID := "action-456"
-	logger.SetActionID(actionID)
+	nodeLogger := NewNodeContextLogger(logger, actionID, "", 0)
 	testData := "test log data\n"
-	n, err := logger.Write([]byte(testData))
+	n, err := nodeLogger.Write([]byte(testData))
 	if err != nil {
 		t.Fatalf("Write() error = %v", err)
 	}

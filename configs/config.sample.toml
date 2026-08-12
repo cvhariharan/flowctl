@@ -107,6 +107,10 @@ workers = 20
 flow_execution_timeout = "1h"
 # (required) Default IANA timezone used as the UI pre-fill whenever a schedule timezone isn't set
 default_timezone = "UTC"
+# Terminal executions older than this are removed with their event history and approvals.
+# Configure logger.retention_time separately to remove their log files.
+execution_retention_time = "0s"
+execution_retention_interval = "1h"
 
 [db]
 # (required) Database name

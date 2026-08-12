@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/cvhariharan/flowctl/internal/core/execstate"
 )
 
 type LogMessage struct {
@@ -138,7 +140,7 @@ const (
 	ExecutionStatusErrored         ExecutionStatus = "errored"
 )
 
-// ExecutionContext is the state of an execution, stored as JSON in execution_log.context.
+// ExecutionContext is the inputs and outputs of an execution.
 type ExecutionContext struct {
 	Inputs  map[string]any `json:"inputs"`
 	Outputs map[string]any `json:"outputs"`
@@ -183,6 +185,7 @@ type ExecutionSummary struct {
 	CompletedAt     time.Time
 	ScheduledAt     time.Time
 	ActionRetries   map[string]int
+	ActionStates    map[string]execstate.ActionState
 }
 
 type ScheduledExecution struct {

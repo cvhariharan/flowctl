@@ -22,6 +22,8 @@
             namespace: string;
             allow_overlap: boolean;
             user_schedulable: boolean;
+            execution_mode?: string;
+            max_parallel?: number;
         };
         namespace: string;
         inputs?: any[];
@@ -47,6 +49,10 @@
 
     function updateDescription(value: string) {
         metadata.description = value;
+    }
+
+    function setDAGMode(enabled: boolean) {
+        metadata.execution_mode = enabled ? "dag" : "sequential";
     }
 
     const timezones = getTimezones();
@@ -117,6 +123,44 @@
             ></textarea>
         </div>
         <FlowGroupSelector {namespace} bind:value={metadata.prefix} />
+    </div>
+
+    <!-- Execution Subsection -->
+    <div class="scheduling-section mt-6">
+        <h3>Execution</h3>
+
+        <div class="mb-4">
+            <label class="hstack gap-2 checkbox-label">
+                <input
+                    type="checkbox"
+                    checked={metadata.execution_mode === "dag"}
+                    onchange={(e) =>
+                        setDAGMode(e.currentTarget.checked)}
+                />
+                <span>Run Actions as a Dependency Graph</span>
+            </label>
+            <p class="text-lighter hint indent">
+                Actions declare which other actions they depend on and run as
+                soon as those finish, so independent actions run at the same
+                time. When off, actions run one after another in listed order.
+            </p>
+        </div>
+
+        {#if metadata.execution_mode === "dag"}
+            <div data-field class="mb-4 indent">
+                <label for="max-parallel">Maximum Parallel Actions</label>
+                <input
+                    type="number"
+                    id="max-parallel"
+                    min="0"
+                    max="64"
+                    bind:value={metadata.max_parallel}
+                />
+                <p class="text-lighter hint">
+                    Most actions to run at the same time. Set to 0 for no limit.
+                </p>
+            </div>
+        {/if}
     </div>
 
     <!-- Scheduling Subsection -->

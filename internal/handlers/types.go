@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cvhariharan/flowctl/internal/core/execstate"
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/gosimple/slug"
 )
@@ -434,6 +435,8 @@ type FlowMeta struct {
 	AllowOverlap    bool       `json:"allow_overlap"`
 	UserSchedulable bool       `json:"user_schedulable"`
 	MaxRetries      int        `json:"max_retries" validate:"omitempty,min=0,max=10"`
+	ExecutionMode   string     `json:"execution_mode" validate:"omitempty,oneof=sequential dag"`
+	MaxParallel     int        `json:"max_parallel" validate:"omitempty,min=0,max=64"`
 }
 
 func coreSchedulesToSchedules(schedules []models.Schedule) []Schedule {
@@ -459,6 +462,8 @@ func coreFlowMetatoFlowMeta(m models.Metadata, schedules []models.Schedule) Flow
 		AllowOverlap:    m.AllowOverlap,
 		UserSchedulable: m.UserSchedulable,
 		MaxRetries:      m.MaxRetries,
+		ExecutionMode:   string(m.ExecutionMode),
+		MaxParallel:     m.MaxParallel,
 	}
 }
 
@@ -469,6 +474,7 @@ type FlowAction struct {
 	Approval          bool     `json:"approval"`
 	AllowNodeOverride bool     `json:"allow_node_override"`
 	On                []string `json:"on"`
+	Needs             []string `json:"needs,omitempty"`
 }
 
 func coreFlowActiontoFlowAction(a models.Action) FlowAction {
@@ -479,6 +485,7 @@ func coreFlowActiontoFlowAction(a models.Action) FlowAction {
 		Approval:          a.Approval,
 		AllowNodeOverride: a.AllowNodeOverride,
 		On:                a.On,
+		Needs:             a.Needs,
 	}
 }
 
@@ -659,19 +666,47 @@ const (
 )
 
 type ExecutionSummary struct {
-	ID              string          `json:"id"`
-	FlowName        string          `json:"flow_name"`
-	FlowID          string          `json:"flow_id"`
-	Status          ExecutionStatus `json:"status"`
-	TriggerType     string          `json:"trigger_type"`
-	Input           map[string]any  `json:"input,omitempty"`
-	TriggeredBy     string          `json:"triggered_by"`
-	CurrentActionID string          `json:"current_action_id"`
-	CreatedAt       string          `json:"created_at"`
-	StartedAt       string          `json:"started_at"`
-	CompletedAt     string          `json:"completed_at"`
-	ScheduledAt     string          `json:"scheduled_at,omitempty"`
-	ActionRetries   map[string]int  `json:"action_retries,omitempty"`
+	ID              string                 `json:"id"`
+	FlowName        string                 `json:"flow_name"`
+	FlowID          string                 `json:"flow_id"`
+	Status          ExecutionStatus        `json:"status"`
+	TriggerType     string                 `json:"trigger_type"`
+	Input           map[string]any         `json:"input,omitempty"`
+	TriggeredBy     string                 `json:"triggered_by"`
+	CurrentActionID string                 `json:"current_action_id"`
+	CreatedAt       string                 `json:"created_at"`
+	StartedAt       string                 `json:"started_at"`
+	CompletedAt     string                 `json:"completed_at"`
+	ScheduledAt     string                 `json:"scheduled_at,omitempty"`
+	ActionRetries   map[string]int         `json:"action_retries,omitempty"`
+	ActionStates    map[string]ActionState `json:"action_states,omitempty"`
+}
+
+type ActionState struct {
+	Status     string `json:"status"`
+	Attempt    int32  `json:"attempt,omitempty"`
+	StartedAt  string `json:"started_at,omitempty"`
+	FinishedAt string `json:"finished_at,omitempty"`
+	Error      string `json:"error,omitempty"`
+}
+
+func coreActionStatesToActionStates(states map[string]execstate.ActionState) map[string]ActionState {
+	if len(states) == 0 {
+		return nil
+	}
+
+	out := make(map[string]ActionState, len(states))
+	for id, s := range states {
+		state := ActionState{Status: string(s.Status), Attempt: s.Attempt, Error: s.Error}
+		if s.StartedAt != nil {
+			state.StartedAt = s.StartedAt.Format(TimeFormat)
+		}
+		if s.FinishedAt != nil {
+			state.FinishedAt = s.FinishedAt.Format(TimeFormat)
+		}
+		out[id] = state
+	}
+	return out
 }
 
 func coreExecutionSummaryToExecutionSummary(e models.ExecutionSummary) ExecutionSummary {
@@ -704,6 +739,7 @@ func coreExecutionSummaryToExecutionSummary(e models.ExecutionSummary) Execution
 		CompletedAt:     completedAt,
 		ScheduledAt:     scheduledAt,
 		ActionRetries:   e.ActionRetries,
+		ActionStates:    coreActionStatesToActionStates(e.ActionStates),
 	}
 }
 
@@ -743,6 +779,7 @@ type FlowActionReq struct {
 	Variables         []map[string]any `json:"variables"`
 	Condition         string           `json:"condition"`
 	On                []string         `json:"on"`
+	Needs             []string         `json:"needs"`
 }
 
 type FlowCreateResp struct {
@@ -769,6 +806,8 @@ type FlowUpdateReq struct {
 	UserSchedulable bool            `json:"user_schedulable"`
 	MaxRetries      int             `json:"max_retries" validate:"omitempty,min=0,max=10"`
 	Description     string          `json:"description" validate:"max=255,no_html"`
+	ExecutionMode   string          `json:"execution_mode" validate:"omitempty,oneof=sequential dag"`
+	MaxParallel     int             `json:"max_parallel" validate:"omitempty,min=0,max=64"`
 	Inputs          []FlowInputReq  `json:"inputs" validate:"required,dive"`
 	Actions         []FlowActionReq `json:"actions" validate:"required,dive"`
 }
@@ -819,6 +858,7 @@ func convertFlowActionsReqToActions(actionsReq []FlowActionReq) []models.Action 
 			AllowNodeOverride: action.AllowNodeOverride,
 			Variables:         variables,
 			On:                action.On,
+			Needs:             action.Needs,
 		}
 	}
 	return actions
@@ -870,6 +910,7 @@ func convertFlowActionsToActionsReq(actions []models.Action) []FlowActionReq {
 			AllowNodeOverride: action.AllowNodeOverride,
 			Variables:         variables,
 			On:                action.On,
+			Needs:             action.Needs,
 		}
 	}
 	return actionsReq

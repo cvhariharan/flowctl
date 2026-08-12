@@ -199,6 +199,7 @@ func initializeSharedComponents() *SharedComponents {
 		WithWorkerCount(appConfig.Scheduler.WorkerCount).
 		WithCronSyncInterval(appConfig.Scheduler.CronSyncInterval).
 		WithRetryOptions(scheduler.DefaultRetryOptions()).
+		WithExecutionRetention(appConfig.Scheduler.ExecutionRetentionTime, appConfig.Scheduler.ExecutionRetentionInterval, s.DeleteExpiredExecutionsTx).
 		Build()
 	if err != nil {
 		log.Fatal(err)

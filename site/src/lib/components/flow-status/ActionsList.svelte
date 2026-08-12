@@ -7,14 +7,17 @@
     IconCircle,
     IconMinus,
     IconSearch,
+    IconArrowRight,
+    IconPlayerSkipForward,
   } from '@tabler/icons-svelte';
-
-  type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'awaiting_approval' | 'cancelled';
+  import type { StepStatus } from '$lib/utils/dag';
 
   type Action = {
     id: string;
     name: string;
     status: StepStatus;
+    level?: number;
+    needs?: string[];
   };
 
   type Props = {
@@ -37,6 +40,24 @@
     )
   );
 
+  // Actions carry a level only in dag mode, where actions sharing one run together.
+  const groups = $derived.by(() => {
+    if (filteredActions.every(a => a.level === undefined)) {
+      return [{ level: undefined, actions: filteredActions }];
+    }
+
+    const byLevel = new Map<number, Action[]>();
+    for (const action of filteredActions) {
+      const level = action.level ?? 0;
+      byLevel.set(level, [...(byLevel.get(level) ?? []), action]);
+    }
+    return [...byLevel.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([level, actions]) => ({ level, actions }));
+  });
+
+  const nameById = $derived(new Map(actions.map(a => [a.id, a.name])));
+
   const getStatusClass = (status: StepStatus) => {
     switch (status) {
       case 'failed': return 'status-failed';
@@ -44,6 +65,7 @@
       case 'running': return 'status-running';
       case 'awaiting_approval': return 'status-waiting';
       case 'cancelled': return 'status-cancelled';
+      case 'skipped': return 'status-skipped';
       default: return 'status-pending';
     }
   };
@@ -55,6 +77,7 @@
       case 'running': return IconPlayerPlay;
       case 'awaiting_approval': return IconClockPause;
       case 'cancelled': return IconCircle;
+      case 'skipped': return IconPlayerSkipForward;
       default: return IconMinus;
     }
   };
@@ -86,20 +109,36 @@
       </div>
     {:else}
       <div class="vstack gap-1">
-        {#each filteredActions as action (action.id)}
-          <button
-            type="button"
-            onclick={() => handleActionClick(action.id)}
-            class="action-item {getStatusClass(action.status)}"
-            class:selected={selectedActionId === action.id}
-          >
-            <div class="hstack gap-2 justify-between">
-              <div class="action-name">{action.name}</div>
-              <div class="status-icon {getStatusClass(action.status)}">
-                <svelte:component this={getIcon(action.status)} size={14} />
-              </div>
+        {#each groups as group (group.level ?? 'all')}
+          {#if group.level !== undefined}
+            <div class="level-label text-lighter">
+              Step {group.level + 1}
+              {#if group.actions.length > 1}
+                <span>· {group.actions.length} in parallel</span>
+              {/if}
             </div>
-          </button>
+          {/if}
+          {#each group.actions as action (action.id)}
+            <button
+              type="button"
+              onclick={() => handleActionClick(action.id)}
+              class="action-item {getStatusClass(action.status)}"
+              class:selected={selectedActionId === action.id}
+            >
+              <div class="hstack gap-2 justify-between">
+                <div class="action-name">{action.name}</div>
+                <div class="status-icon {getStatusClass(action.status)}">
+                  <svelte:component this={getIcon(action.status)} size={14} />
+                </div>
+              </div>
+              {#if action.needs && action.needs.length > 0}
+                <div class="action-needs text-lighter">
+                  <IconArrowRight size={11} />
+                  {action.needs.map((id) => nameById.get(id) ?? id).join(', ')}
+                </div>
+              {/if}
+            </button>
+          {/each}
         {/each}
       </div>
     {/if}
@@ -226,6 +265,30 @@
   .status-pending.status-icon {
     background: #6b7280;
     color: white;
+  }
+  .status-skipped {
+    background: var(--faint);
+    color: var(--muted-foreground);
+  }
+  .status-skipped.status-icon {
+    background: #9ca3af;
+    color: white;
+  }
+  .level-label {
+    font-size: var(--text-8);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: var(--space-2) var(--space-2) var(--space-1);
+  }
+  .action-needs {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: var(--text-8);
+    margin-top: 0.15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   @keyframes pulse {
     0%, 100% { opacity: 1; }

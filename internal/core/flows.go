@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cvhariharan/flowctl/internal/core/execstate"
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/repo"
 	"github.com/cvhariharan/flowctl/internal/scheduler"
@@ -346,7 +347,7 @@ func (c *Core) QueueFlowExecutionWithExecID(ctx context.Context, f models.Flow, 
 		}
 	}
 
-	info, err := c.queueFlow(ctx, f, models.NewExecutionContext(input, nil), execID, 0, userUUID, namespaceID, false, scheduledAt)
+	info, err := c.queueFlow(ctx, f, models.NewExecutionContext(input, nil), execID, userUUID, namespaceID, false, scheduledAt)
 	if err != nil {
 		return "", err
 	}
@@ -366,20 +367,14 @@ func (c *Core) ResumeFlowExecution(ctx context.Context, execID string, actionID 
 		return err
 	}
 
-	actionIndex, err := f.GetActionIndexByID(actionID)
-	if err != nil {
-		return err
-	}
-
-	if _, err := c.queueFlow(ctx, f, exec.Context, execID, actionIndex, userUUID, namespaceID, retry, nil); err != nil {
+	if _, err := c.queueFlow(ctx, f, exec.Context, execID, userUUID, namespaceID, true, nil); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// RetryFlowExecution retries a failed or cancelled execution from the point of failure.
-// It automatically detects the retry point from CurrentActionID and resumes execution from there.
+// RetryFlowExecution retries a failed or cancelled execution.
 func (c *Core) RetryFlowExecution(ctx context.Context, execID string, userUUID string, namespaceID string) error {
 	exec, err := c.GetExecutionSummaryByExecID(ctx, execID, namespaceID)
 	if err != nil {
@@ -390,16 +385,11 @@ func (c *Core) RetryFlowExecution(ctx context.Context, execID string, userUUID s
 		return fmt.Errorf("execution must be in errored or cancelled state to retry, current status: %s", exec.Status)
 	}
 
-	if exec.CurrentActionID == "" {
-		return fmt.Errorf("cannot determine retry point - no current action ID")
-	}
-
-	return c.ResumeFlowExecution(ctx, execID, exec.CurrentActionID, userUUID, namespaceID, true)
+	return c.ResumeFlowExecution(ctx, execID, "", userUUID, namespaceID, true)
 }
 
-// queueFlow adds a flow to the execution queue. If the actionIndex is not zero, it is moved to a resume queue.
-// If scheduledAt is provided, the flow will be scheduled to run at that time instead of immediately.
-func (c *Core) queueFlow(ctx context.Context, f models.Flow, execCtx models.ExecutionContext, execID string, actionIndex int, userUUID string, namespaceID string, retry bool, scheduledAt *time.Time) (string, error) {
+// queueFlow creates or requeues an execution and its job atomically.
+func (c *Core) queueFlow(ctx context.Context, f models.Flow, execCtx models.ExecutionContext, execID string, userUUID string, namespaceID string, retry bool, scheduledAt *time.Time) (string, error) {
 	// If execID is empty, it is a new flow execution
 	if execID == "" {
 		execID = uuid.NewString()
@@ -445,20 +435,17 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, execCtx models.Exec
 
 	// Create flow execution payload for scheduler
 	payload := scheduler.FlowExecutionPayload{
-		Workflow:          schedulerFlow,
-		Input:             execCtx.Inputs,
-		Outputs:           execCtx.Outputs,
-		StartingActionIdx: actionIndex,
-		NamespaceID:       namespaceID,
-		TriggerType:       triggerType,
-		UserUUID:          userUUID,
-		FlowDirectory:     filepath.Dir(fl.FilePath),
-		OverrideNodes:     overrideNodes,
-		Resumed:           retry,
+		Workflow:      schedulerFlow,
+		Input:         execCtx.Inputs,
+		Outputs:       execCtx.Outputs,
+		NamespaceID:   namespaceID,
+		TriggerType:   triggerType,
+		UserUUID:      userUUID,
+		FlowDirectory: filepath.Dir(fl.FilePath),
+		OverrideNodes: overrideNodes,
 	}
 
-	// Create execution log for manual flows before queuing (needed for immediate API calls)
-	contextB, err := json.Marshal(execCtx)
+	inputs, err := json.Marshal(execCtx.Inputs)
 	if err != nil {
 		return "", fmt.Errorf("could not marshal execution context to json: %w", err)
 	}
@@ -468,37 +455,38 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, execCtx models.Exec
 	if scheduledAt != nil {
 		scheduledAtDB = sql.NullTime{Time: *scheduledAt, Valid: true}
 	}
-
-	_, err = c.store.AddExecutionLog(ctx, repo.AddExecutionLogParams{
-		ExecID:      execID,
-		FlowID:      f.Meta.DBID,
-		Context:     contextB,
-		TriggerType: dbTriggerType,
-		Uuid:        userID,
-		Uuid_2:      namespaceUUID,
-		ScheduledAt: scheduledAtDB,
-	})
+	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
-		return "", fmt.Errorf("could not add entry to execution log: %w", err)
+		return "", fmt.Errorf("could not marshal execution job: %w", err)
+	}
+	job := repo.ExecutionJob{
+		PayloadType: string(scheduler.PayloadTypeFlowExecution),
+		Payload:     payloadJSON,
+		CreatedAt:   time.Now(),
+		MaxRetries:  int32(f.Meta.MaxRetries),
+	}
+	if scheduledAt != nil {
+		if scheduledAt.Before(time.Now()) {
+			return "", fmt.Errorf("scheduled_at must be in the future")
+		}
+		job.ScheduledAt = scheduledAt.Truncate(time.Minute)
 	}
 
-	// Queue the task using the scheduler
-	maxRetries := f.Meta.MaxRetries
-	if scheduledAt != nil {
-		if maxRetries > 0 {
-			_, err = c.scheduler.QueueScheduledTaskWithRetries(ctx, scheduler.PayloadTypeFlowExecution, execID, payload, *scheduledAt, maxRetries)
-		} else {
-			_, err = c.scheduler.QueueScheduledTask(ctx, scheduler.PayloadTypeFlowExecution, execID, payload, *scheduledAt)
+	if retry {
+		if _, err := c.store.RequeueExecutionAndJobTx(ctx, repo.RequeueExecutionParams{ExecID: execID, Uuid: namespaceUUID}, job); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return "", fmt.Errorf("%w: execution is not resumable", ErrInvalidExecutionState)
+			}
+			return "", fmt.Errorf("could not requeue execution: %w", err)
 		}
 	} else {
-		if maxRetries > 0 {
-			_, err = c.scheduler.QueueTaskWithRetries(ctx, scheduler.PayloadTypeFlowExecution, execID, payload, maxRetries)
-		} else {
-			_, err = c.scheduler.QueueTask(ctx, scheduler.PayloadTypeFlowExecution, execID, payload)
+		_, err = c.store.QueueExecutionTx(ctx, repo.AddExecutionParams{
+			ExecID: execID, FlowID: f.Meta.DBID, Inputs: inputs, TriggerType: dbTriggerType,
+			Uuid: userID, Uuid_2: namespaceUUID, ScheduledAt: scheduledAtDB,
+		}, execCtx.Outputs, job)
+		if err != nil {
+			return "", fmt.Errorf("could not add execution: %w", err)
 		}
-	}
-	if err != nil {
-		return "", err
 	}
 
 	return execID, nil
@@ -510,7 +498,7 @@ func (c *Core) CancelFlowExecution(ctx context.Context, execID, namespaceID stri
 		return fmt.Errorf("invalid namespace UUID: %w", err)
 	}
 
-	_, err = c.store.CancelExecution(ctx, repo.CancelExecutionParams{
+	_, err = c.store.CancelExecutionTx(ctx, repo.CancelExecutionParams{
 		ExecID: execID,
 		Uuid:   namespaceUUID,
 	})
@@ -550,13 +538,6 @@ func (c *Core) GetExecutionSummaryPaginated(ctx context.Context, f models.Flow, 
 	var pageCount, totalCount int64
 
 	for _, v := range execs {
-		actionRetries := make(map[string]int)
-		if v.ActionRetries.Valid {
-			if err := json.Unmarshal(v.ActionRetries.RawMessage, &actionRetries); err != nil {
-				log.Printf("failed to unmarshal action_retries: %v", err)
-			}
-		}
-
 		m = append(m, models.ExecutionSummary{
 			ExecID:          v.ExecID,
 			FlowName:        v.FlowName,
@@ -568,8 +549,6 @@ func (c *Core) GetExecutionSummaryPaginated(ctx context.Context, f models.Flow, 
 			Status:          models.ExecutionStatus(v.Status),
 			TriggeredByName: v.TriggeredByName,
 			TriggeredByID:   v.TriggeredByUuid.String(),
-			CurrentActionID: v.CurrentActionID.String,
-			ActionRetries:   actionRetries,
 			ScheduledAt:     v.ScheduledAt.Time,
 		})
 		pageCount = v.PageCount
@@ -605,13 +584,6 @@ func (c *Core) GetAllExecutionSummaryPaginated(ctx context.Context, namespaceID 
 	var pageCount, totalCount int64
 
 	for _, v := range execs {
-		actionRetries := make(map[string]int)
-		if v.ActionRetries.Valid {
-			if err := json.Unmarshal(v.ActionRetries.RawMessage, &actionRetries); err != nil {
-				log.Printf("failed to unmarshal action_retries: %v", err)
-			}
-		}
-
 		m = append(m, models.ExecutionSummary{
 			ExecID:          v.ExecID,
 			FlowName:        v.FlowName,
@@ -623,8 +595,6 @@ func (c *Core) GetAllExecutionSummaryPaginated(ctx context.Context, namespaceID 
 			Status:          models.ExecutionStatus(v.Status),
 			TriggeredByName: v.TriggeredByName,
 			TriggeredByID:   v.TriggeredByUuid.String(),
-			CurrentActionID: v.CurrentActionID.String,
-			ActionRetries:   actionRetries,
 			ScheduledAt:     v.ScheduledAt.Time,
 		})
 		pageCount = v.PageCount
@@ -647,23 +617,22 @@ func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string, n
 		return models.ExecutionSummary{}, fmt.Errorf("could not get exec %s by exec id: %w", execID, err)
 	}
 
-	// Parse action_retries JSONB
-	actionRetries := make(map[string]int)
-	if e.ActionRetries.Valid {
-		if err := json.Unmarshal(e.ActionRetries.RawMessage, &actionRetries); err != nil {
-			// Log error but don't fail - this is non-critical
-			log.Printf("failed to unmarshal action_retries for exec %s: %v", execID, err)
-		}
-	}
-
-	execCtx, err := models.UnmarshalExecutionContext(e.Context)
+	state, err := c.loadExecutionState(ctx, execID)
 	if err != nil {
-		return models.ExecutionSummary{}, fmt.Errorf("could not unmarshal context for exec %s: %w", execID, err)
+		return models.ExecutionSummary{}, fmt.Errorf("could not load execution state for %s: %w", execID, err)
+	}
+	inputs := make(map[string]any)
+	if err := json.Unmarshal(e.Inputs, &inputs); err != nil {
+		return models.ExecutionSummary{}, fmt.Errorf("could not unmarshal inputs for exec %s: %w", execID, err)
+	}
+	actionRetries := make(map[string]int, len(state.Actions))
+	for id, action := range state.Actions {
+		actionRetries[id] = int(action.Attempt)
 	}
 
 	return models.ExecutionSummary{
 		ExecID:          execID,
-		Inputs:          execCtx.Inputs,
+		Inputs:          inputs,
 		FlowName:        e.FlowName,
 		FlowID:          e.FlowSlug,
 		Status:          models.ExecutionStatus(e.Status),
@@ -673,10 +642,15 @@ func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string, n
 		TriggerType:     string(e.TriggerType),
 		TriggeredByName: e.TriggeredByName,
 		TriggeredByID:   e.TriggeredByUuid.String(),
-		CurrentActionID: e.CurrentActionID.String,
+		CurrentActionID: state.CurrentActionID,
 		ActionRetries:   actionRetries,
+		ActionStates:    state.Actions,
 		ScheduledAt:     e.ScheduledAt.Time,
 	}, nil
+}
+
+func (c *Core) loadExecutionState(ctx context.Context, execID string) (execstate.ExecutionState, error) {
+	return execstate.LoadState(ctx, c.store, execID)
 }
 
 func (c *Core) GetExecutionContext(ctx context.Context, execID string, namespaceID string) (models.ExecutionContext, error) {
@@ -713,22 +687,18 @@ func (c *Core) GetExecutionByExecID(ctx context.Context, execID string, namespac
 		return models.Execution{}, fmt.Errorf("could not get execution for exec %s: %w", execID, err)
 	}
 
-	execCtx, err := models.UnmarshalExecutionContext(e.Context)
-	if err != nil {
-		return models.Execution{}, fmt.Errorf("error unmarshaling context for %s: %w", execID, err)
+	var inputs, outputs map[string]any
+	if err := json.Unmarshal(e.Inputs, &inputs); err != nil {
+		return models.Execution{}, fmt.Errorf("error unmarshaling inputs for %s: %w", execID, err)
 	}
-
-	u, err := c.store.GetUserByID(ctx, e.TriggeredBy)
-	if err != nil {
-		return models.Execution{}, fmt.Errorf("could not get trigger person for %s: %w", execID, err)
+	if err := json.Unmarshal(e.Outputs, &outputs); err != nil {
+		return models.Execution{}, fmt.Errorf("error unmarshaling outputs for %s: %w", execID, err)
 	}
 
 	return models.Execution{
-		ExecID:      e.ExecID,
-		Version:     int64(e.Version),
-		Context:     execCtx,
-		ErrorMsg:    e.Error.String,
-		TriggeredBy: u.Uuid.String(),
+		ExecID:   e.ExecID,
+		Context:  models.NewExecutionContext(inputs, outputs),
+		ErrorMsg: e.Error.String,
 	}, nil
 }
 
@@ -1196,14 +1166,13 @@ func (c *Core) SyncScheduledFlowJobs(ctx context.Context) ([]scheduler.Scheduled
 		}
 
 		payload := scheduler.FlowExecutionPayload{
-			Workflow:          schedulerFlow,
-			Input:             input,
-			StartingActionIdx: 0,
-			NamespaceID:       namespace.Uuid.String(),
-			TriggerType:       scheduler.TriggerTypeScheduled,
-			UserUUID:          userUUID,
-			FlowDirectory:     filepath.Dir(flow.FilePath),
-			OverrideNodes:     overrideNodes,
+			Workflow:      schedulerFlow,
+			Input:         input,
+			NamespaceID:   namespace.Uuid.String(),
+			TriggerType:   scheduler.TriggerTypeScheduled,
+			UserUUID:      userUUID,
+			FlowDirectory: filepath.Dir(flow.FilePath),
+			OverrideNodes: overrideNodes,
 		}
 
 		jobName := fmt.Sprintf("%s (%s)", flow.Name, flow.Cron)

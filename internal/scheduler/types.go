@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cvhariharan/flowctl/internal/core/execstate"
 	"github.com/quic-go/quic-go"
 )
 
@@ -20,9 +21,34 @@ const (
 	TaskStatusCancelled = "cancelled"
 )
 
+// ExecutionMode decides how a flow's actions are scheduled
+type ExecutionMode string
+
+const (
+	ExecutionModeSequential ExecutionMode = "sequential"
+	ExecutionModeDAG        ExecutionMode = "dag"
+)
+
+type ActionStatus = execstate.ActionStatus
+
+const (
+	ActionStatusPending   = execstate.ActionStatusPending
+	ActionStatusRunning   = execstate.ActionStatusRunning
+	ActionStatusCompleted = execstate.ActionStatusCompleted
+	ActionStatusFailed    = execstate.ActionStatusFailed
+	ActionStatusSkipped   = execstate.ActionStatusSkipped
+	ActionStatusBlocked   = execstate.ActionStatusBlocked
+	ActionStatusCancelled = execstate.ActionStatusCancelled
+)
+
+type ActionState = execstate.ActionState
+
 var (
-	ErrPendingApproval    = errors.New("pending approval")
-	ErrExecutionCancelled = errors.New("execution cancelled")
+	ErrPendingApproval    = execstate.ErrPendingApproval
+	ErrExecutionCancelled = execstate.ErrExecutionCancelled
+	// ErrApprovalRejected is terminal: a rejection is final for the execution, so the job must not
+	// be retried.
+	ErrApprovalRejected = errors.New("approval request rejected")
 )
 
 type TriggerType string
@@ -138,6 +164,7 @@ type Action struct {
 	AllowNodeOverride bool           `yaml:"allow_node_override"`
 	Variables         []Variable     `yaml:"variables"`
 	On                []Node         `yaml:"on"`
+	Needs             []string       `yaml:"needs"`
 }
 
 type Scheduling struct {
@@ -147,13 +174,15 @@ type Scheduling struct {
 }
 
 type Metadata struct {
-	ID          string `yaml:"id" validate:"required,alphanum_underscore"`
-	DBID        int32  `yaml:"-"`
-	Name        string `yaml:"name" validate:"required"`
-	Description string `yaml:"description"`
-	SrcDir      string `yaml:"-"`
-	Namespace   string `yaml:"namespace"`
-	MaxRetries  int    `yaml:"max_retries"`
+	ID            string        `yaml:"id" validate:"required,alphanum_underscore"`
+	DBID          int32         `yaml:"-"`
+	Name          string        `yaml:"name" validate:"required"`
+	Description   string        `yaml:"description"`
+	SrcDir        string        `yaml:"-"`
+	Namespace     string        `yaml:"namespace"`
+	MaxRetries    int           `yaml:"max_retries"`
+	ExecutionMode ExecutionMode `yaml:"execution_mode"`
+	MaxParallel   int           `yaml:"max_parallel"`
 }
 
 type Variable map[string]any
@@ -213,18 +242,14 @@ type Flow struct {
 }
 
 type FlowExecutionPayload struct {
-	Workflow          Flow
-	Input             map[string]any
-	Outputs           map[string]any
-	StartingActionIdx int
-	NamespaceID       string
-	TriggerType       TriggerType
-	UserUUID          string
-	FlowDirectory     string
-	OverrideNodes     []Node
-
-	// Resumed should be set to true if resuming an existing execution (after approval or retry)
-	Resumed bool
+	Workflow      Flow
+	Input         map[string]any
+	Outputs       map[string]any
+	NamespaceID   string
+	TriggerType   TriggerType
+	UserUUID      string
+	FlowDirectory string
+	OverrideNodes []Node
 }
 
 // Hook function types for flow execution

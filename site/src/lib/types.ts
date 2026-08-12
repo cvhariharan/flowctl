@@ -161,7 +161,11 @@ export interface FlowMeta {
   allow_overlap: boolean;
   user_schedulable: boolean;
   max_retries: number;
+  execution_mode?: ExecutionMode;
+  max_parallel?: number;
 }
+
+export type ExecutionMode = "sequential" | "dag";
 
 export interface FlowAction {
   id: string;
@@ -170,6 +174,7 @@ export interface FlowAction {
   approval: boolean;
   allow_node_override?: boolean;
   on: string[];
+  needs?: string[];
 }
 
 export interface ScheduledExecution {
@@ -348,6 +353,23 @@ export interface ExecutionSummary {
   duration: string;
   scheduled_at?: string;
   action_retries?: Record<string, number>;
+  action_states?: Record<string, ActionState>;
+}
+
+export type ActionStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "skipped"
+  | "blocked"
+  | "cancelled";
+
+export interface ActionState {
+  status: ActionStatus;
+  started_at?: string;
+  finished_at?: string;
+  error?: string;
 }
 
 // Pagination types
@@ -541,6 +563,8 @@ export interface FlowMetaReq {
   schedules?: Schedule[];
   allow_overlap?: boolean;
   max_retries?: number;
+  execution_mode?: ExecutionMode;
+  max_parallel?: number;
 }
 
 export interface RemoteOptionsReq {
@@ -582,6 +606,7 @@ export interface FlowActionReq {
   artifacts?: string[];
   condition?: string;
   on?: string[];
+  needs?: string[];
 }
 
 export interface FlowCreateResp {
@@ -595,6 +620,8 @@ export interface FlowUpdateReq {
   user_schedulable?: boolean;
   max_retries?: number;
   description?: string;
+  execution_mode?: ExecutionMode;
+  max_parallel?: number;
   inputs: FlowInputReq[];
   actions: FlowActionReq[];
   outputs?: Record<string, any>[];

@@ -3,11 +3,41 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/sqlc-dev/pqtype"
 )
+
+var (
+	ErrSuperseded = errors.New("execution attempt superseded")
+	ErrStaleJob   = errors.New("execution is not dispatchable")
+)
+
+type Event struct {
+	ExecID    string
+	Attempt   int32
+	ActionID  string
+	Type      ExecutionEventType
+	Error     string
+	Outputs   map[string]any
+	CreatedAt time.Time
+}
+
+type ExecutionJob struct {
+	PayloadType string
+	Payload     json.RawMessage
+	CreatedAt   time.Time
+	// ScheduledAt is the zero time for jobs that run immediately. The job queue reader scans this
+	// column into a time.Time, so it must never be NULL.
+	ScheduledAt time.Time
+	MaxRetries  int32
+	Attempt     int32
+}
 
 type RequestApprovalParam struct {
 	ID string
@@ -29,11 +59,10 @@ type UpdateUserTxParams struct {
 }
 
 type ApprovalDecisionTxParams struct {
-	ApprovalUUID     uuid.UUID
-	NamespaceUUID    uuid.UUID
-	DecidedByUserID  int32
-	Status           ApprovalStatus
-	CancellationNote string
+	ApprovalUUID    uuid.UUID
+	NamespaceUUID   uuid.UUID
+	DecidedByUserID int32
+	Status          ApprovalStatus
 }
 
 type ApprovalDecisionResult struct {
@@ -41,7 +70,6 @@ type ApprovalDecisionResult struct {
 	Status      ApprovalStatus
 	ActionID    string
 	RequestedBy string
-	ExecLogID   int32
 	ExecID      string
 }
 
@@ -78,12 +106,70 @@ type UpdateFlowTxParams struct {
 
 type Store interface {
 	Querier
+	AppendEvent(ctx context.Context, event Event) error
+	LoadEvents(ctx context.Context, execID string) ([]Event, error)
+	BeginExecutionAttempt(ctx context.Context, execID string) (int32, error)
+	AddExecutionTx(ctx context.Context, params AddExecutionParams, outputs map[string]any) (Execution, error)
+	QueueExecutionTx(ctx context.Context, params AddExecutionParams, outputs map[string]any, job ExecutionJob) (Execution, error)
+	CancelExecutionTx(ctx context.Context, params CancelExecutionParams) (Execution, error)
+	RequeueExecutionTx(ctx context.Context, params RequeueExecutionParams) (int32, error)
+	RequeueExecutionAndJobTx(ctx context.Context, params RequeueExecutionParams, job ExecutionJob) (int32, error)
+	DeleteExpiredExecutionsTx(ctx context.Context, cutoff time.Time, batchSize int) (int, error)
 	RequestApprovalTx(ctx context.Context, execID string, namespaceUUID uuid.UUID, action RequestApprovalParam) (AddApprovalRequestRow, error)
 	CreateUserTx(ctx context.Context, params CreateUserTxParams) (UserView, error)
 	UpdateUserTx(ctx context.Context, params UpdateUserTxParams) (UserView, error)
 	ProcessApprovalDecisionTx(ctx context.Context, params ApprovalDecisionTxParams) (ApprovalDecisionResult, error)
 	CreateFlowTx(ctx context.Context, params CreateFlowTxParams) (Flow, error)
 	UpdateFlowTx(ctx context.Context, params UpdateFlowTxParams) (Flow, error)
+}
+
+func (p *PostgresStore) AddExecutionTx(ctx context.Context, params AddExecutionParams, outputs map[string]any) (Execution, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Execution{}, err
+	}
+	defer tx.Rollback()
+	q := &Queries{db: tx}
+	exec, err := q.AddExecution(ctx, params)
+	if err != nil {
+		return Execution{}, err
+	}
+	if err := appendEvent(ctx, q, Event{
+		ExecID: exec.ExecID, Attempt: exec.Attempt, Type: ExecutionEventTypeQueued, Outputs: outputs,
+	}); err != nil {
+		return Execution{}, err
+	}
+	return exec, tx.Commit()
+}
+
+func (p *PostgresStore) QueueExecutionTx(ctx context.Context, params AddExecutionParams, outputs map[string]any, job ExecutionJob) (Execution, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Execution{}, err
+	}
+	defer tx.Rollback()
+	q := &Queries{db: tx}
+	exec, err := q.AddExecution(ctx, params)
+	if err != nil {
+		return Execution{}, err
+	}
+	if err := appendEvent(ctx, q, Event{
+		ExecID: exec.ExecID, Attempt: exec.Attempt, Type: ExecutionEventTypeQueued, Outputs: outputs,
+	}); err != nil {
+		return Execution{}, err
+	}
+	if err := insertExecutionJob(ctx, tx, exec.ExecID, job); err != nil {
+		return Execution{}, err
+	}
+	return exec, tx.Commit()
+}
+
+func insertExecutionJob(ctx context.Context, tx *sql.Tx, execID string, job ExecutionJob) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO job_queue (exec_id, payload_type, payload, created_at, scheduled_at, max_retries, attempt)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, execID, job.PayloadType, job.Payload, job.CreatedAt, job.ScheduledAt, job.MaxRetries, job.Attempt)
+	return err
 }
 
 type PostgresStore struct {
@@ -98,6 +184,172 @@ func NewPostgresStore(db *sqlx.DB) Store {
 	}
 }
 
+func (p *PostgresStore) AppendEvent(ctx context.Context, event Event) error {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := appendEvent(ctx, &Queries{db: tx}, event); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func appendEvent(ctx context.Context, q *Queries, event Event) error {
+	var outputs pqtype.NullRawMessage
+	if event.Outputs != nil {
+		raw, err := json.Marshal(event.Outputs)
+		if err != nil {
+			return err
+		}
+		outputs = pqtype.NullRawMessage{RawMessage: raw, Valid: true}
+	}
+	createdAt := event.CreatedAt
+	if createdAt.IsZero() {
+		createdAt = time.Now()
+	}
+	params := InsertExecutionEventParams{
+		ExecID:    event.ExecID,
+		Attempt:   event.Attempt,
+		ActionID:  sql.NullString{String: event.ActionID, Valid: event.ActionID != ""},
+		EventType: event.Type,
+		Error:     sql.NullString{String: event.Error, Valid: event.Error != ""},
+		Outputs:   outputs,
+		CreatedAt: sql.NullTime{Time: createdAt, Valid: true},
+	}
+	n, err := q.InsertExecutionEvent(ctx, params)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrSuperseded
+	}
+	result, err := q.ProjectExecutionEvent(ctx, ProjectExecutionEventParams{
+		EventType: params.EventType,
+		Error:     params.Error,
+		Outputs:   params.Outputs,
+		CreatedAt: params.CreatedAt,
+		ExecID:    params.ExecID,
+		Attempt:   params.Attempt,
+	})
+	if err != nil {
+		return err
+	}
+	n, err = result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrSuperseded
+	}
+	return nil
+}
+
+func (p *PostgresStore) LoadEvents(ctx context.Context, execID string) ([]Event, error) {
+	rows, err := p.LoadExecutionEvents(ctx, execID)
+	if err != nil {
+		return nil, err
+	}
+	events := make([]Event, 0, len(rows))
+	for _, row := range rows {
+		event := Event{
+			ExecID: row.ExecID, Attempt: row.Attempt, ActionID: row.ActionID.String,
+			Type: row.Type, Error: row.Error.String, CreatedAt: row.CreatedAt,
+		}
+		if row.Outputs.Valid {
+			if err := json.Unmarshal(row.Outputs.RawMessage, &event.Outputs); err != nil {
+				return nil, err
+			}
+		}
+		events = append(events, event)
+	}
+	return events, nil
+}
+
+func (p *PostgresStore) BeginExecutionAttempt(ctx context.Context, execID string) (int32, error) {
+	attempt, err := p.BeginAttempt(ctx, execID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrStaleJob
+	}
+	return attempt, err
+}
+
+func (p *PostgresStore) CancelExecutionTx(ctx context.Context, params CancelExecutionParams) (Execution, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Execution{}, err
+	}
+	defer tx.Rollback()
+	q := &Queries{db: tx}
+	exec, err := q.CancelExecution(ctx, params)
+	if err != nil {
+		return Execution{}, err
+	}
+	if err := appendEvent(ctx, q, Event{ExecID: exec.ExecID, Attempt: exec.Attempt, Type: ExecutionEventTypeCancelled}); err != nil {
+		return Execution{}, err
+	}
+	return exec, tx.Commit()
+}
+
+func (p *PostgresStore) RequeueExecutionTx(ctx context.Context, params RequeueExecutionParams) (int32, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	q := &Queries{db: tx}
+	attempt, err := q.RequeueExecution(ctx, params)
+	if err != nil {
+		return 0, err
+	}
+	if err := appendEvent(ctx, q, Event{ExecID: params.ExecID, Attempt: attempt, Type: ExecutionEventTypeQueued}); err != nil {
+		return 0, err
+	}
+	return attempt, tx.Commit()
+}
+
+func (p *PostgresStore) RequeueExecutionAndJobTx(ctx context.Context, params RequeueExecutionParams, job ExecutionJob) (int32, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	q := &Queries{db: tx}
+	attempt, err := q.RequeueExecution(ctx, params)
+	if err != nil {
+		return 0, err
+	}
+	if err := appendEvent(ctx, q, Event{ExecID: params.ExecID, Attempt: attempt, Type: ExecutionEventTypeQueued}); err != nil {
+		return 0, err
+	}
+	if err := insertExecutionJob(ctx, tx, params.ExecID, job); err != nil {
+		return 0, err
+	}
+	return attempt, tx.Commit()
+}
+
+func (p *PostgresStore) DeleteExpiredExecutionsTx(ctx context.Context, cutoff time.Time, batchSize int) (int, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	q := &Queries{db: tx}
+	ids, err := q.DeleteExpiredExecutions(ctx, DeleteExpiredExecutionsParams{
+		Cutoff: sql.NullTime{Time: cutoff, Valid: true}, BatchSize: int32(batchSize),
+	})
+	if err != nil {
+		return 0, err
+	}
+	if len(ids) > 0 {
+		if err := q.DeleteExecutionEventsByExecIDs(ctx, ids); err != nil {
+			return 0, err
+		}
+	}
+	return len(ids), tx.Commit()
+}
+
 func (p *PostgresStore) RequestApprovalTx(ctx context.Context, execID string, namespaceUUID uuid.UUID, action RequestApprovalParam) (AddApprovalRequestRow, error) {
 	tx, err := p.db.Begin()
 	if err != nil {
@@ -107,18 +359,10 @@ func (p *PostgresStore) RequestApprovalTx(ctx context.Context, execID string, na
 
 	q := Queries{db: tx}
 
-	e, err := q.GetExecutionByExecID(ctx, GetExecutionByExecIDParams{
-		ExecID: execID,
-		Uuid:   namespaceUUID,
-	})
-	if err != nil {
-		return AddApprovalRequestRow{}, fmt.Errorf("could not get exec details for %s: %w", execID, err)
-	}
-
 	a, err := q.AddApprovalRequest(ctx, AddApprovalRequestParams{
-		ExecLogID: e.ID,
-		ActionID:  action.ID,
-		Uuid:      namespaceUUID,
+		ExecID:   execID,
+		ActionID: action.ID,
+		Uuid:     namespaceUUID,
 	})
 	if err != nil {
 		return AddApprovalRequestRow{}, fmt.Errorf("could not create approval request: %w", err)
@@ -253,7 +497,7 @@ func (p *PostgresStore) ProcessApprovalDecisionTx(ctx context.Context, params Ap
 			Status:      a.Status,
 			ActionID:    a.ActionID,
 			RequestedBy: a.RequestedBy,
-			ExecLogID:   a.ExecLogID,
+			ExecID:      a.ExecID,
 		}
 	} else if params.Status == ApprovalStatusRejected {
 		a, err := q.RejectRequestByUUID(ctx, RejectRequestByUUIDParams{
@@ -270,42 +514,11 @@ func (p *PostgresStore) ProcessApprovalDecisionTx(ctx context.Context, params Ap
 			Status:      a.Status,
 			ActionID:    a.ActionID,
 			RequestedBy: a.RequestedBy,
-			ExecLogID:   a.ExecLogID,
-		}
-
-		// If rejected, update execution status to cancelled
-		if params.CancellationNote != "" {
-			exec, err := q.GetExecutionByID(ctx, GetExecutionByIDParams{
-				ID:   a.ExecLogID,
-				Uuid: params.NamespaceUUID,
-			})
-			if err != nil {
-				return ApprovalDecisionResult{}, fmt.Errorf("could not get execution: %w", err)
-			}
-
-			_, err = q.UpdateExecutionStatus(ctx, UpdateExecutionStatusParams{
-				Status: ExecutionStatusCancelled,
-				Error:  sql.NullString{String: params.CancellationNote, Valid: true},
-				ExecID: exec.ExecID,
-				Uuid:   params.NamespaceUUID,
-			})
-			if err != nil {
-				return ApprovalDecisionResult{}, fmt.Errorf("could not update execution status: %w", err)
-			}
+			ExecID:      a.ExecID,
 		}
 	} else {
 		return ApprovalDecisionResult{}, fmt.Errorf("invalid approval status: %s", params.Status)
 	}
-
-	// Get execution info to include in result
-	exec, err := q.GetExecutionByID(ctx, GetExecutionByIDParams{
-		ID:   approval.ExecLogID,
-		Uuid: params.NamespaceUUID,
-	})
-	if err != nil {
-		return ApprovalDecisionResult{}, fmt.Errorf("could not get execution info: %w", err)
-	}
-	approval.ExecID = exec.ExecID
 
 	if err := tx.Commit(); err != nil {
 		return ApprovalDecisionResult{}, fmt.Errorf("could not commit transaction: %w", err)

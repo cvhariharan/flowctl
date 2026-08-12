@@ -52,18 +52,12 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 		return fmt.Errorf("invalid namespace UUID: %w", err)
 	}
 
-	var cancellationNote string
-	if status == models.ApprovalStatusRejected {
-		cancellationNote = fmt.Sprintf("Flow execution cancelled due to approval rejection by %s", user.Name)
-	}
-
 	// Process approval decision
 	result, err := c.store.ProcessApprovalDecisionTx(ctx, repo.ApprovalDecisionTxParams{
-		ApprovalUUID:     uid,
-		NamespaceUUID:    namespaceUUID,
-		DecidedByUserID:  user.ID,
-		Status:           repo.ApprovalStatus(status),
-		CancellationNote: cancellationNote,
+		ApprovalUUID:    uid,
+		NamespaceUUID:   namespaceUUID,
+		DecidedByUserID: user.ID,
+		Status:          repo.ApprovalStatus(status),
 	})
 	if err != nil {
 		return fmt.Errorf("could not process approval decision for %s: %w", approvalUUID, err)
@@ -77,9 +71,10 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 		RequestedBy: result.RequestedBy,
 	}
 
-	// If approved, move to resume queue
-	if status == models.ApprovalStatusApproved {
-		if err := c.ResumeFlowExecution(ctx, result.ExecID, approval.ActionID, decidedBy, namespaceID, true); err != nil {
+	// A dag execution can still be running other actions, in which case it is not resumable yet. The
+	// worker requeues it once it settles into pending_approval.
+	if err := c.ResumeFlowExecution(ctx, result.ExecID, approval.ActionID, decidedBy, namespaceID, true); err != nil {
+		if !errors.Is(err, ErrInvalidExecutionState) {
 			return fmt.Errorf("could not resume task %s: %w", result.ExecID, err)
 		}
 	}
@@ -115,7 +110,6 @@ func (c *Core) RequestApproval(ctx context.Context, execID string, action models
 }
 
 // GetApprovalsRequestsForExec returns approval requests for a given execution
-//
 func (c *Core) GetApprovalsRequestsForExec(ctx context.Context, execID string, namespaceID string) (models.ApprovalRequest, error) {
 	namespaceUUID, err := uuid.Parse(namespaceID)
 	if err != nil {
@@ -145,6 +139,36 @@ func (c *Core) GetApprovalsRequestsForExec(ctx context.Context, execID string, n
 	return existingReq, nil
 }
 
+// GetApprovalRequestsForExec returns every approval request for an execution. A dag execution can
+// wait on more than one approval at a time.
+func (c *Core) GetApprovalRequestsForExec(ctx context.Context, execID string, namespaceID string) ([]models.ApprovalRequest, error) {
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid namespace UUID: %w", err)
+	}
+
+	areqs, err := c.store.GetApprovalRequestsForExec(ctx, repo.GetApprovalRequestsForExecParams{
+		ExecID: execID,
+		Uuid:   namespaceUUID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not get approval requests from DB for exec %s: %w", execID, err)
+	}
+
+	requests := make([]models.ApprovalRequest, 0, len(areqs))
+	for _, areq := range areqs {
+		requests = append(requests, models.ApprovalRequest{
+			UUID:        areq.Uuid.String(),
+			Status:      models.ApprovalType(areq.Status),
+			ActionID:    areq.ActionID,
+			ExecID:      execID,
+			RequestedBy: areq.RequestedBy,
+		})
+	}
+
+	return requests, nil
+}
+
 // GetApprovalRequest returns an approval request using the approval UUID and namespace UUID
 func (c *Core) GetApprovalRequest(ctx context.Context, approvalUUID string, namespaceID string) (models.ApprovalRequest, error) {
 	uid, err := uuid.Parse(approvalUUID)
@@ -168,19 +192,11 @@ func (c *Core) GetApprovalRequest(ctx context.Context, approvalUUID string, name
 		return models.ApprovalRequest{}, fmt.Errorf("error getting approval from store: %w", err)
 	}
 
-	exec, err := c.store.GetExecutionByID(ctx, repo.GetExecutionByIDParams{
-		ID:   areq.ExecLogID,
-		Uuid: namespaceUUID,
-	})
-	if err != nil {
-		return models.ApprovalRequest{}, fmt.Errorf("error getting execution: %w", err)
-	}
-
 	approval := models.ApprovalRequest{
 		UUID:        areq.Uuid.String(),
 		Status:      models.ApprovalType(areq.Status),
 		ActionID:    areq.ActionID,
-		ExecID:      exec.ExecID,
+		ExecID:      areq.ExecID,
 		RequestedBy: areq.RequestedBy,
 	}
 
@@ -250,13 +266,13 @@ func (c *Core) GetApprovalsPaginated(ctx context.Context, namespaceID, status, f
 	for _, approval := range approvals {
 		details = append(details, models.ApprovalPaginationDetails{
 			ApprovalRequest: models.ApprovalRequest{
-				UUID: approval.Uuid.String(),
-				ActionID: approval.ActionID,
-				ExecID: approval.ExecID,
-				Status: models.ApprovalType(approval.Status),
+				UUID:        approval.Uuid.String(),
+				ActionID:    approval.ActionID,
+				ExecID:      approval.ExecID,
+				Status:      models.ApprovalType(approval.Status),
 				RequestedBy: approval.RequestedBy,
 			},
-			FlowName: approval.FlowName,
+			FlowName:  approval.FlowName,
 			CreatedAt: approval.CreatedAt.Format(TimeFormat),
 			UpdatedAt: approval.UpdatedAt.Format(TimeFormat),
 		})

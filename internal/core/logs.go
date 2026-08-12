@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -11,37 +10,22 @@ import (
 	"encoding/json"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
-	"github.com/cvhariharan/flowctl/internal/repo"
-	"github.com/google/uuid"
 )
 
 const (
 	ExecutionLogPendingTimeout = 30 * time.Second
 )
 
-// getActionRetries loads the action retries map for an execution
 func (c *Core) getActionRetries(ctx context.Context, execID string, namespaceID string) map[string]int32 {
-	namespaceUUID, err := uuid.Parse(namespaceID)
+	state, err := c.loadExecutionState(ctx, execID)
 	if err != nil {
-		log.Printf("invalid namespace UUID for exec %s: %v", execID, err)
+		log.Printf("failed to load action state for exec %s, using empty map: %v", execID, err)
 		return make(map[string]int32)
 	}
 
-	actionRetriesRaw, err := c.store.GetExecutionActionRetries(ctx, repo.GetExecutionActionRetriesParams{
-		ExecID: execID,
-		Uuid:   namespaceUUID,
-	})
-	if err != nil {
-		log.Printf("failed to get action retries for exec %s, using empty map: %v", execID, err)
-		return make(map[string]int32)
-	}
-
-	actionRetries := make(map[string]int32)
-	if actionRetriesRaw.Valid && len(actionRetriesRaw.RawMessage) > 0 {
-		if err := json.Unmarshal(actionRetriesRaw.RawMessage, &actionRetries); err != nil {
-			log.Printf("failed to parse action retries for exec %s, using empty map: %v", execID, err)
-			return make(map[string]int32)
-		}
+	actionRetries := make(map[string]int32, len(state.Actions))
+	for id, action := range state.Actions {
+		actionRetries[id] = action.Attempt
 	}
 
 	return actionRetries
@@ -181,21 +165,41 @@ func (c *Core) checkApprovalRequests(ctx context.Context, execID string, namespa
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
+		// send reports false once the consumer is gone, so a dag execution with several pending
+		// approvals cannot block this goroutine forever.
+		send := func(msg models.StreamMessage) bool {
+			select {
+			case ch <- msg:
+				return true
+			case <-ctx.Done():
+				return false
+			}
+		}
+
 		for {
-			a, err := c.GetApprovalsRequestsForExec(ctx, execID, namespaceID)
-			if err != nil && !errors.Is(err, ErrNil) {
+			approvals, err := c.GetApprovalRequestsForExec(ctx, execID, namespaceID)
+			if err != nil {
 				log.Println(err)
-				ch <- models.StreamMessage{MType: models.ErrMessageType, Val: err.Error()}
+				send(models.StreamMessage{MType: models.ErrMessageType, Val: err.Error()})
 				return
 			}
 
-			switch a.Status {
-			case "pending":
-				ch <- models.StreamMessage{MType: models.ApprovalMessageType, Val: a.UUID}
-			case "approved":
-				return
-			case "rejected":
-				ch <- models.StreamMessage{MType: models.ErrMessageType, Val: "approval request has been rejected"}
+			var pending bool
+			for _, a := range approvals {
+				switch a.Status {
+				case models.ApprovalStatusPending:
+					pending = true
+					if !send(models.StreamMessage{MType: models.ApprovalMessageType, Val: a.UUID}) {
+						return
+					}
+				case models.ApprovalStatusRejected:
+					send(models.StreamMessage{MType: models.ErrMessageType, Val: "approval request has been rejected"})
+					return
+				}
+			}
+
+			// Every request has been decided and none were rejected
+			if len(approvals) > 0 && !pending {
 				return
 			}
 

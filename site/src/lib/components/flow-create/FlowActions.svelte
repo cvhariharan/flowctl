@@ -7,6 +7,8 @@
     import CodeEditor from "$lib/components/shared/CodeEditor.svelte";
     import KeyValueEditor from "$lib/components/shared/KeyValueEditor.svelte";
     import NodeSelector from "$lib/components/shared/NodeSelector.svelte";
+    import PipelineGraph from "$lib/components/flow-status/PipelineGraph.svelte";
+    import { descendants } from "$lib/utils/dag";
     import type { NodeResp } from "$lib/types";
 
     let {
@@ -16,6 +18,7 @@
         availableExecutors,
         executorConfigs = $bindable(),
         disabled = false,
+        isDAG = false,
     }: {
         namespace: string;
         actions: any[];
@@ -23,8 +26,41 @@
         availableExecutors: Array<{ name: string; capabilities: string[] }>;
         executorConfigs: Record<string, any>;
         disabled?: boolean;
+        isDAG?: boolean;
     } = $props();
     let draggedIndex: number | null = null;
+
+    // Unnamed actions have no ID yet, so they cannot be placed in the graph.
+    const namedActions = $derived(
+        actions
+            .filter((a) => a.id)
+            .map((a) => ({
+                id: a.id,
+                name: a.name || a.id,
+                executor: a.executor,
+                needs: a.needs ?? [],
+            })),
+    );
+
+    function dependencyOptions(action: any) {
+        const blocked = descendants(actions, action.id);
+        return actions
+            .filter(
+                (a) =>
+                    a.id &&
+                    a.id !== action.id &&
+                    a.tempId !== action.tempId &&
+                    !blocked.has(a.id),
+            )
+            .map((a) => ({ value: a.id, label: a.name || a.id }));
+    }
+
+    function toggleDependency(action: any, id: string, checked: boolean) {
+        const needs: string[] = action.needs ?? [];
+        action.needs = checked
+            ? [...needs, id]
+            : needs.filter((n) => n !== id);
+    }
 
     function executorHasCapability(executorName: string, capability: string): boolean {
         const exec = availableExecutors.find(e => e.name === executorName);
@@ -56,9 +92,21 @@
     }
 
     function updateActionName(action: any, value: string) {
+        const previousId = action.id;
         action.name = value;
         // Auto-generate ID from name
         action.id = createSlug(value);
+
+        // Dependencies reference action IDs, so a rename has to be carried into them or they would
+        // point at an action that no longer exists.
+        if (previousId && previousId !== action.id) {
+            for (const other of actions) {
+                if (!other.needs?.includes(previousId)) continue;
+                other.needs = other.needs.map((id: string) =>
+                    id === previousId ? action.id : id,
+                );
+            }
+        }
     }
 
     async function onExecutorChange(action: any) {
@@ -161,6 +209,22 @@
             </button>
         {/if}
     </div>
+
+    {#if isDAG && actions.length > 0}
+        <p class="text-lighter dag-note">
+            Dependencies decide the order actions run in. Reordering this list only changes
+            which action goes first when several are ready at the same time.
+        </p>
+
+        {#if namedActions.length > 1}
+            <div class="graph-preview card">
+                <div class="graph-preview-header">
+                    <h4>Pipeline Preview</h4>
+                </div>
+                <PipelineGraph actions={namedActions} />
+            </div>
+        {/if}
+    {/if}
 
     <div class="vstack gap-4">
         {#each actions as action, index (action.tempId)}
@@ -268,6 +332,37 @@
                                     {disabled}
                                 />
                                 <label>Allow node override from flow inputs</label>
+                            </div>
+                        {/if}
+
+                        {#if isDAG}
+                            {@const options = dependencyOptions(action)}
+                            <div data-field>
+                                <label>Depends On</label>
+                                {#if options.length === 0}
+                                    <p class="text-lighter field-hint">
+                                        Name another action first to depend on it. With no
+                                        dependencies this action starts immediately.
+                                    </p>
+                                {:else}
+                                    <div class="needs-list">
+                                        {#each options as option (option.value)}
+                                            <label class="hstack gap-2 needs-item">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={action.needs?.includes(option.value) ?? false}
+                                                    onchange={(e) => toggleDependency(action, option.value, e.currentTarget.checked)}
+                                                    {disabled}
+                                                />
+                                                <span>{option.label}</span>
+                                            </label>
+                                        {/each}
+                                    </div>
+                                    <p class="text-lighter field-hint">
+                                        Runs once every selected action has completed. Actions that
+                                        depend on this one are hidden to keep the graph acyclic.
+                                    </p>
+                                {/if}
                             </div>
                         {/if}
 
@@ -551,6 +646,35 @@
     .field-hint {
         font-size: 0.75rem;
         margin-top: 0.25rem;
+    }
+    .needs-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1rem;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-medium);
+    }
+    .needs-item {
+        font-size: 0.875rem;
+        cursor: pointer;
+    }
+    .dag-note {
+        font-size: 0.8125rem;
+        margin-bottom: 1rem;
+    }
+    .graph-preview {
+        padding: 0;
+        margin-bottom: 1rem;
+        overflow: hidden;
+    }
+    .graph-preview-header {
+        padding: 0.5rem 1rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .graph-preview-header h4 {
+        margin: 0;
+        font-size: 0.875rem;
     }
     .empty-state {
         text-align: center;

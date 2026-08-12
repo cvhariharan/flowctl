@@ -109,11 +109,13 @@ func (db DBConfig) ConnectionString() string {
 }
 
 type SchedulerConfig struct {
-	WorkerCount          int           `koanf:"workers" validate:"min=1"`
-	Backend              string        `koanf:"backend"`
-	CronSyncInterval     time.Duration `koanf:"cron_sync_interval" validate:"min=1s"`
-	FlowExecutionTimeout time.Duration `koanf:"flow_execution_timeout" validate:"min=1s"`
-	DefaultTimezone      string        `koanf:"default_timezone" validate:"required,timezone"`
+	WorkerCount                int           `koanf:"workers" validate:"min=1"`
+	Backend                    string        `koanf:"backend"`
+	CronSyncInterval           time.Duration `koanf:"cron_sync_interval" validate:"min=1s"`
+	FlowExecutionTimeout       time.Duration `koanf:"flow_execution_timeout" validate:"min=1s"`
+	DefaultTimezone            string        `koanf:"default_timezone" validate:"required,timezone"`
+	ExecutionRetentionTime     time.Duration `koanf:"execution_retention_time" validate:"min=0"`
+	ExecutionRetentionInterval time.Duration `koanf:"execution_retention_interval" validate:"omitempty,min=1m"`
 }
 
 type Logger struct {
@@ -134,7 +136,7 @@ type AppConfig struct {
 	HTTPTLSKey        string         `koanf:"http_tls_key" validate:"required_if=UseTLS true"`
 	FlowsDirectory    string         `koanf:"flows_directory" validate:"required"`
 	MaxFileUploadSize int64          `koanf:"max_file_upload_size" validate:"required,min=1"`
-  MaxFlowImportSize int64  `koanf:"max_flow_import_size" validate:"min=0"`
+	MaxFlowImportSize int64          `koanf:"max_flow_import_size" validate:"min=0"`
 	PluginDir         string         `koanf:"plugin_dir"`
 	Branding          BrandingConfig `koanf:"branding"`
 }
@@ -213,6 +215,9 @@ func Load(configPath string) (Config, error) {
 	if config.App.MaxFlowImportSize <= 0 {
 		config.App.MaxFlowImportSize = DefaultMaxFlowImportSize
 	}
+	if config.Scheduler.ExecutionRetentionInterval == 0 {
+		config.Scheduler.ExecutionRetentionInterval = time.Hour
+	}
 
 	if err := config.Validate(); err != nil {
 		return Config{}, fmt.Errorf("error validating config: %w", err)
@@ -260,10 +265,12 @@ func GetDefaultConfig() Config {
 			},
 		},
 		Scheduler: SchedulerConfig{
-			WorkerCount:          runtime.NumCPU(),
-			CronSyncInterval:     5 * time.Minute,
-			FlowExecutionTimeout: time.Hour,
-			DefaultTimezone:      "UTC",
+			WorkerCount:                runtime.NumCPU(),
+			CronSyncInterval:           5 * time.Minute,
+			FlowExecutionTimeout:       time.Hour,
+			DefaultTimezone:            "UTC",
+			ExecutionRetentionTime:     0,
+			ExecutionRetentionInterval: time.Hour,
 		},
 		Logger: Logger{
 			Backend:       "file",

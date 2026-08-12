@@ -10,20 +10,20 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
 )
 
 type Querier interface {
 	AccessCredential(ctx context.Context, arg AccessCredentialParams) (Credential, error)
 	AddApprovalRequest(ctx context.Context, arg AddApprovalRequestParams) (AddApprovalRequestRow, error)
-	AddExecutionLog(ctx context.Context, arg AddExecutionLogParams) (ExecutionLog, error)
+	AddExecution(ctx context.Context, arg AddExecutionParams) (Execution, error)
 	AddGroupToUserByUUID(ctx context.Context, arg AddGroupToUserByUUIDParams) error
 	ApproveRequestByUUID(ctx context.Context, arg ApproveRequestByUUIDParams) (ApproveRequestByUUIDRow, error)
 	AssignGroupNamespaceRole(ctx context.Context, arg AssignGroupNamespaceRoleParams) (NamespaceMember, error)
 	AssignGroupPrefixAccess(ctx context.Context, arg AssignGroupPrefixAccessParams) error
 	AssignUserNamespaceRole(ctx context.Context, arg AssignUserNamespaceRoleParams) (NamespaceMember, error)
 	AssignUserPrefixAccess(ctx context.Context, arg AssignUserPrefixAccessParams) error
-	CancelExecution(ctx context.Context, arg CancelExecutionParams) (ExecutionLog, error)
+	BeginAttempt(ctx context.Context, execID string) (int32, error)
+	CancelExecution(ctx context.Context, arg CancelExecutionParams) (Execution, error)
 	CancelTasksByExecID(ctx context.Context, execID string) error
 	CreateAPIToken(ctx context.Context, arg CreateAPITokenParams) (ApiToken, error)
 	CreateCredential(ctx context.Context, arg CreateCredentialParams) (Credential, error)
@@ -42,8 +42,10 @@ type Querier interface {
 	DeleteAPIToken(ctx context.Context, arg DeleteAPITokenParams) error
 	DeleteAllFlows(ctx context.Context) error
 	DeleteCredential(ctx context.Context, arg DeleteCredentialParams) error
+	DeleteExecutionEventsByExecIDs(ctx context.Context, execIds []string) error
 	DeleteExecutorKV(ctx context.Context, arg DeleteExecutorKVParams) error
 	DeleteExecutorKVByBucket(ctx context.Context, bucket string) error
+	DeleteExpiredExecutions(ctx context.Context, arg DeleteExpiredExecutionsParams) ([]string, error)
 	DeleteFlow(ctx context.Context, arg DeleteFlowParams) error
 	DeleteFlowPrefix(ctx context.Context, arg DeleteFlowPrefixParams) error
 	DeleteFlowSecret(ctx context.Context, arg DeleteFlowSecretParams) error
@@ -76,6 +78,7 @@ type Querier interface {
 	GetApprovalByUUID(ctx context.Context, arg GetApprovalByUUIDParams) (GetApprovalByUUIDRow, error)
 	GetApprovalRequestForActionAndExec(ctx context.Context, arg GetApprovalRequestForActionAndExecParams) (Approval, error)
 	GetApprovalRequestForExec(ctx context.Context, arg GetApprovalRequestForExecParams) (GetApprovalRequestForExecRow, error)
+	GetApprovalRequestsForExec(ctx context.Context, arg GetApprovalRequestsForExecParams) ([]GetApprovalRequestsForExecRow, error)
 	GetApprovalWithInputsByUUID(ctx context.Context, arg GetApprovalWithInputsByUUIDParams) (GetApprovalWithInputsByUUIDRow, error)
 	GetApprovalsPaginated(ctx context.Context, arg GetApprovalsPaginatedParams) ([]GetApprovalsPaginatedRow, error)
 	GetCredentialByID(ctx context.Context, arg GetCredentialByIDParams) (GetCredentialByIDRow, error)
@@ -84,11 +87,11 @@ type Querier interface {
 	// Used internally for execution - returns all secrets for a namespace
 	GetDecryptedNamespaceSecrets(ctx context.Context, argUuid uuid.UUID) ([]GetDecryptedNamespaceSecretsRow, error)
 	GetDistinctPrefixes(ctx context.Context, argUuid uuid.UUID) ([]GetDistinctPrefixesRow, error)
-	GetExecutionActionRetries(ctx context.Context, arg GetExecutionActionRetriesParams) (pqtype.NullRawMessage, error)
 	GetExecutionByExecID(ctx context.Context, arg GetExecutionByExecIDParams) (GetExecutionByExecIDRow, error)
 	GetExecutionByExecIDWithNamespace(ctx context.Context, arg GetExecutionByExecIDWithNamespaceParams) (GetExecutionByExecIDWithNamespaceRow, error)
 	GetExecutionByID(ctx context.Context, arg GetExecutionByIDParams) (GetExecutionByIDRow, error)
 	GetExecutionContextByUUID(ctx context.Context, arg GetExecutionContextByUUIDParams) (json.RawMessage, error)
+	GetExecutionProjection(ctx context.Context, execID string) (Execution, error)
 	GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFlowParams) ([]GetExecutionsByFlowRow, error)
 	GetExecutionsByFlowPaginated(ctx context.Context, arg GetExecutionsByFlowPaginatedParams) ([]GetExecutionsByFlowPaginatedRow, error)
 	GetExecutorKV(ctx context.Context, arg GetExecutorKVParams) (ExecutorKvStore, error)
@@ -145,8 +148,9 @@ type Querier interface {
 	//   AND (cs.created_by = (SELECT id FROM users WHERE users.uuid = $2) OR cs.is_user_created = FALSE);
 	GetUserScheduleByUUID(ctx context.Context, arg GetUserScheduleByUUIDParams) (GetUserScheduleByUUIDRow, error)
 	GetUsersByRole(ctx context.Context, role UserRoleType) ([]User, error)
-	IncrementActionRetry(ctx context.Context, arg IncrementActionRetryParams) (IncrementActionRetryRow, error)
+	InsertExecutionEvent(ctx context.Context, arg InsertExecutionEventParams) (int64, error)
 	ListAPITokensByUser(ctx context.Context, userUuid uuid.UUID) ([]ApiToken, error)
+	ListExecutionIDs(ctx context.Context) ([]string, error)
 	ListExecutorKVByBucket(ctx context.Context, bucket string) ([]ExecutorKvStore, error)
 	ListFlowPrefixes(ctx context.Context, argUuid uuid.UUID) ([]FlowPrefix, error)
 	ListFlowSecrets(ctx context.Context, arg ListFlowSecretsParams) ([]ListFlowSecretsRow, error)
@@ -156,11 +160,14 @@ type Querier interface {
 	ListNamespaceSecrets(ctx context.Context, argUuid uuid.UUID) ([]ListNamespaceSecretsRow, error)
 	ListNamespaces(ctx context.Context, arg ListNamespacesParams) ([]ListNamespacesRow, error)
 	ListSchedules(ctx context.Context, arg ListSchedulesParams) ([]ListSchedulesRow, error)
+	LoadExecutionEvents(ctx context.Context, execID string) ([]ExecutionEvent, error)
 	MarkAllFlowsInactiveForNamespace(ctx context.Context, argUuid uuid.UUID) error
 	MarkFlowActive(ctx context.Context, arg MarkFlowActiveParams) error
+	ProjectExecutionEvent(ctx context.Context, arg ProjectExecutionEventParams) (sql.Result, error)
 	RejectRequestByUUID(ctx context.Context, arg RejectRequestByUUIDParams) (RejectRequestByUUIDRow, error)
 	RemoveAllGroupsForUserByUUID(ctx context.Context, userUuid uuid.UUID) error
 	RemoveNamespaceMember(ctx context.Context, arg RemoveNamespaceMemberParams) (NamespaceMember, error)
+	RequeueExecution(ctx context.Context, arg RequeueExecutionParams) (int32, error)
 	RevokeAllMemberPrefixAccess(ctx context.Context, arg RevokeAllMemberPrefixAccessParams) error
 	RevokeGroupPrefixAccess(ctx context.Context, arg RevokeGroupPrefixAccessParams) error
 	RevokeUserPrefixAccess(ctx context.Context, arg RevokeUserPrefixAccessParams) error
@@ -174,11 +181,7 @@ type Querier interface {
 	TouchAPITokenLastUsed(ctx context.Context, id int32) error
 	UpdateApprovalStatusByUUID(ctx context.Context, arg UpdateApprovalStatusByUUIDParams) (UpdateApprovalStatusByUUIDRow, error)
 	UpdateCredential(ctx context.Context, arg UpdateCredentialParams) (Credential, error)
-	UpdateExecutionActionID(ctx context.Context, arg UpdateExecutionActionIDParams) (ExecutionLog, error)
-	UpdateExecutionActionRetries(ctx context.Context, arg UpdateExecutionActionRetriesParams) error
-	UpdateExecutionOutputs(ctx context.Context, arg UpdateExecutionOutputsParams) error
-	UpdateExecutionStartedAt(ctx context.Context, arg UpdateExecutionStartedAtParams) error
-	UpdateExecutionStatus(ctx context.Context, arg UpdateExecutionStatusParams) (ExecutionLog, error)
+	UpdateExecutionProjection(ctx context.Context, arg UpdateExecutionProjectionParams) error
 	UpdateFlow(ctx context.Context, arg UpdateFlowParams) (Flow, error)
 	UpdateFlowPrefix(ctx context.Context, arg UpdateFlowPrefixParams) (FlowPrefix, error)
 	UpdateFlowSecret(ctx context.Context, arg UpdateFlowSecretParams) (FlowSecret, error)

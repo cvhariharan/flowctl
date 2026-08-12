@@ -449,10 +449,6 @@ func (f *FileLogManager) deleteFiles(ctx context.Context, files []string, l *slo
 type FileLogger struct {
 	// ExecID is the execution ID of the associated flow
 	ExecID string
-	// actionID is used to track the current action
-	actionID atomic.Value
-	// Retry is the retry count for the current action
-	Retry atomic.Int32
 	// buffer stores the messages from executions
 	buffer    *bytes.Buffer
 	bufferMut sync.RWMutex
@@ -482,8 +478,6 @@ func newFileLogger(execID string, logDirPath string, syncInterval time.Duration,
 		buffer:      new(bytes.Buffer),
 		maxSize:     maxSize,
 	}
-
-	fl.actionID.Store("")
 
 	if err := fl.rotateFile(); err != nil {
 		return nil, err
@@ -533,35 +527,20 @@ func (fl *FileLogger) GetID() string {
 	return fl.ExecID
 }
 
-// SetActionID sets the action ID
-func (fl *FileLogger) SetActionID(id string) {
-	fl.actionID.Store(id)
-}
-
-// SetRetry sets the retry count for the current action
-func (fl *FileLogger) SetRetry(retry int32) {
-	fl.Retry.Store(retry)
-}
-
 func (fl *FileLogger) Write(p []byte) (int, error) {
-	currentActionID := fl.actionID.Load().(string)
-	if err := fl.Checkpoint(currentActionID, "", p, LogMessageType); err != nil {
+	if err := fl.Checkpoint("", "", p, LogMessageType, 0); err != nil {
 		return 0, err
 	}
 	return len(p), nil
 }
 
 // Checkpoint can be used to set checkpoints for an action on a node like resuls, logs, errors etc.
-func (fl *FileLogger) Checkpoint(id string, nodeID string, val interface{}, mtype MessageType) error {
+func (fl *FileLogger) Checkpoint(id string, nodeID string, val interface{}, mtype MessageType, retry int32) error {
 	var sm StreamMessage
-	if id == "" {
-		sm.ActionID = fl.actionID.Load().(string)
-	} else {
-		sm.ActionID = id
-	}
+	sm.ActionID = id
 	sm.NodeID = nodeID
 	sm.Timestamp = time.Now().Format(time.RFC3339)
-	sm.Retry = fl.Retry.Load()
+	sm.Retry = retry
 	switch mtype {
 	case ErrMessageType:
 		e, ok := val.(string)

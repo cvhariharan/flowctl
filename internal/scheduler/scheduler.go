@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cvhariharan/flowctl/internal/scheduler/storage"
@@ -27,6 +28,8 @@ type TaskScheduler interface {
 	Stop(ctx context.Context) error
 }
 
+type RetentionSweepFn func(context.Context, time.Time, int) (int, error)
+
 // Scheduler implements TaskScheduler
 type Scheduler struct {
 	jobStore         storage.Storage
@@ -42,12 +45,17 @@ type Scheduler struct {
 	scheduledJobs map[string]ScheduledJob
 	scheduledMu   sync.RWMutex
 
-	taskTicker     *time.Ticker
-	periodicTicker *time.Ticker
-	cronSyncTicker *time.Ticker
-	stopCh         chan struct{}
-	stopped        bool
-	logger         *slog.Logger
+	taskTicker      *time.Ticker
+	periodicTicker  *time.Ticker
+	cronSyncTicker  *time.Ticker
+	retentionTicker *time.Ticker
+	retentionTime   time.Duration
+	retentionEvery  time.Duration
+	retentionSweep  RetentionSweepFn
+	retentionActive atomic.Bool
+	stopCh          chan struct{}
+	stopped         bool
+	logger          *slog.Logger
 }
 
 // SchedulerBuilder provides an interface for building schedulers
@@ -59,6 +67,9 @@ type SchedulerBuilder struct {
 	cronSyncInterval time.Duration
 	jobSyncer        JobSyncerFn
 	retryOptions     *RetryOptions
+	retentionTime    time.Duration
+	retentionEvery   time.Duration
+	retentionSweep   RetentionSweepFn
 	logger           *slog.Logger
 }
 
@@ -105,6 +116,13 @@ func (b *SchedulerBuilder) WithRetryOptions(opts RetryOptions) *SchedulerBuilder
 	return b
 }
 
+func (b *SchedulerBuilder) WithExecutionRetention(retention, interval time.Duration, sweep RetentionSweepFn) *SchedulerBuilder {
+	b.retentionTime = retention
+	b.retentionEvery = interval
+	b.retentionSweep = sweep
+	return b
+}
+
 // Build creates the scheduler instance
 func (b *SchedulerBuilder) Build() (*Scheduler, error) {
 	if b.jobStore == nil {
@@ -119,6 +137,10 @@ func (b *SchedulerBuilder) Build() (*Scheduler, error) {
 	cronInterval := b.cronSyncInterval
 	if cronInterval == 0 {
 		cronInterval = 5 * time.Minute
+	}
+	retentionEvery := b.retentionEvery
+	if retentionEvery <= 0 {
+		retentionEvery = time.Hour
 	}
 
 	retryOpts := DefaultRetryOptions()
@@ -138,6 +160,9 @@ func (b *SchedulerBuilder) Build() (*Scheduler, error) {
 		scheduledJobs:    make(map[string]ScheduledJob),
 		stopCh:           make(chan struct{}),
 		logger:           b.logger,
+		retentionTime:    b.retentionTime,
+		retentionEvery:   retentionEvery,
+		retentionSweep:   b.retentionSweep,
 	}, nil
 }
 
@@ -179,6 +204,9 @@ func (s *Scheduler) Start(ctx context.Context) error {
 
 	// Sync crons from DB every 5 minutes
 	s.cronSyncTicker = time.NewTicker(s.cronSyncInterval)
+	if s.retentionTime > 0 && s.retentionSweep != nil {
+		s.retentionTicker = time.NewTicker(s.retentionEvery)
+	}
 
 	if err := s.syncScheduledJobs(ctx); err != nil {
 		s.logger.Error("failed to perform initial sync of scheduled jobs", "error", err)
@@ -206,6 +234,9 @@ func (s *Scheduler) Stop(ctx context.Context) error {
 	}
 	if s.cronSyncTicker != nil {
 		s.cronSyncTicker.Stop()
+	}
+	if s.retentionTicker != nil {
+		s.retentionTicker.Stop()
 	}
 
 	for _, cancel := range s.cancelFuncs {
@@ -306,6 +337,10 @@ func (s *Scheduler) CancelTask(ctx context.Context, execID string) error {
 
 // processLoop runs the main processing loop
 func (s *Scheduler) processLoop(ctx context.Context) {
+	var retention <-chan time.Time
+	if s.retentionTicker != nil {
+		retention = s.retentionTicker.C
+	}
 	for {
 		select {
 		case <-s.taskTicker.C:
@@ -320,12 +355,52 @@ func (s *Scheduler) processLoop(ctx context.Context) {
 			if err := s.syncScheduledJobs(ctx); err != nil {
 				s.logger.Error("error syncing scheduled jobs", "error", err)
 			}
+		case <-retention:
+			// The sweep drains the whole backlog, so it runs off the loop to keep dispatch responsive
+			if !s.retentionActive.CompareAndSwap(false, true) {
+				s.logger.Debug("skipping execution retention, previous sweep still running")
+				continue
+			}
+			go func() {
+				defer s.retentionActive.Store(false)
+				if err := s.runRetention(ctx); err != nil {
+					s.logger.Error("error running execution retention", "error", err)
+				}
+			}()
 		case <-s.stopCh:
 			return
 		case <-ctx.Done():
 			return
 		}
 	}
+}
+
+func (s *Scheduler) runRetention(ctx context.Context) error {
+	const batchSize = 500
+	cutoff := time.Now().Add(-s.retentionTime)
+	total := 0
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		select {
+		case <-s.stopCh:
+			return nil
+		default:
+		}
+		count, err := s.retentionSweep(ctx, cutoff, batchSize)
+		if err != nil {
+			return err
+		}
+		total += count
+		if count == 0 {
+			break
+		}
+	}
+	if total > 0 {
+		s.logger.Info("deleted expired executions", "count", total)
+	}
+	return nil
 }
 
 // processPendingTasks gets pending tasks and executes them with weighted distribution

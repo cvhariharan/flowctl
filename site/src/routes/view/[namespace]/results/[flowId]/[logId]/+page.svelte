@@ -4,9 +4,20 @@
     import Header from "$lib/components/shared/Header.svelte";
     import StatusBadge from "$lib/components/shared/StatusBadge.svelte";
     import ActionsList from "$lib/components/flow-status/ActionsList.svelte";
+    import PipelineGraph from "$lib/components/flow-status/PipelineGraph.svelte";
     import LogsView from "$lib/components/flow-status/LogsView.svelte";
     import ExecutionOutputTable from "$lib/components/flow-status/ExecutionOutputTable.svelte";
-    import type { FlowMetaResp, ExecutionSummary } from "$lib/types";
+    import type {
+        FlowMetaResp,
+        ExecutionSummary,
+        ActionState,
+        ActionStatus,
+    } from "$lib/types";
+    import {
+        actionLevels,
+        actionStatusToStepStatus,
+        type StepStatus,
+    } from "$lib/utils/dag";
     import { apiClient, ApiError } from "$lib/apiClient";
     import {
         handleInlineError,
@@ -15,7 +26,13 @@
         showWarning,
     } from "$lib/utils/errorHandling";
     import { formatDateTime, getStartTime } from "$lib/utils";
-    import { IconPlayerStop, IconRefresh, IconRepeat } from "@tabler/icons-svelte";
+    import {
+        IconPlayerStop,
+        IconRefresh,
+        IconRepeat,
+        IconHierarchy2,
+        IconList,
+    } from "@tabler/icons-svelte";
 
     let {
         data,
@@ -129,6 +146,12 @@
     let logId = $derived(data.logId);
     let actions = $derived(data.flowMeta?.actions || []);
     let flowHasAutoRetry = $derived((data.flowMeta?.meta?.max_retries ?? 0) > 0);
+    let isDAG = $derived(data.flowMeta?.meta?.execution_mode === "dag");
+
+    // Per-action state from the server. Executions that predate this being recorded fall back to
+    // inferring progress from the position of current_action_id in the list.
+    let actionStates = $state<Record<string, ActionState>>({});
+    let hasActionStates = $derived(Object.keys(actionStates).length > 0);
 
     // Transform actions into list items with status
     let actionsList = $derived(
@@ -136,8 +159,40 @@
             id: action.id,
             name: action.name || `Action ${index + 1}`,
             status: getActionStatus(index),
+            level: isDAG ? levelByActionId[action.id] : undefined,
+            needs: action.needs ?? [],
         })),
     );
+
+    let activeActionId = $derived(
+        hasActionStates
+            ? (actions.find((a) => actionStates[a.id]?.status === "running")?.id ??
+                  "")
+            : currentActionIndex !== -1
+              ? (actions[currentActionIndex]?.id ?? "")
+              : "",
+    );
+
+    let levelByActionId = $derived.by(() => {
+        const map: Record<string, number> = {};
+        actionLevels(actions).forEach((level, index) => {
+            for (const action of level) map[action.id] = index;
+        });
+        return map;
+    });
+
+    // The graph only says something a plain list does not once actions have dependencies.
+    let canShowGraph = $derived(
+        actions.length > 1 && actions.some((a) => (a.needs?.length ?? 0) > 0),
+    );
+    let viewMode = $state<"graph" | "list" | null>(null);
+    let showGraph = $derived(canShowGraph && (viewMode ?? "graph") === "graph");
+
+    let graphStatuses = $derived.by(() => {
+        const map: Record<string, StepStatus> = {};
+        for (const action of actionsList) map[action.id] = action.status;
+        return map;
+    });
 
     const updateExecutionStatus = async () => {
         if (!logId) return;
@@ -191,7 +246,8 @@
 
         // Update status and reconstruct progress
         status = newStatus;
-        if (executionSummary.current_action_id) {
+        actionStates = executionSummary.action_states ?? {};
+        if (!hasActionStates && executionSummary.current_action_id) {
             reconstructProgress(
                 executionSummary.current_action_id,
                 executionSummary.status,
@@ -291,7 +347,9 @@
     };
 
     const processMessage = (msg: any) => {
-        if (msg.action_id) {
+        // With action states the server reports progress directly. Inferring it from the order
+        // messages arrive in is only correct for a single sequential run.
+        if (msg.action_id && !hasActionStates) {
             const actionIndex = actions.findIndex(
                 (a) => a.id === msg.action_id,
             );
@@ -394,15 +452,10 @@
         goto(`/view/${encodeURIComponent(namespace)}/flows`);
     };
 
-    const getActionStatus = (
-        index: number,
-    ):
-        | "pending"
-        | "running"
-        | "completed"
-        | "failed"
-        | "awaiting_approval"
-        | "cancelled" => {
+    const getActionStatus = (index: number): StepStatus => {
+        const state = actionStates[actions[index]?.id];
+        if (state) return actionStatusToStepStatus(state.status);
+
         // Handle completed actions - they should always stay green
         if (completedActions.includes(index)) return "completed";
 
@@ -502,13 +555,13 @@
             // Stop current status polling
             stopStatusPolling();
 
-            // Capture current retry counts before calling retry
+            // Capture current retry counts before calling retry. A dag execution can retry several
+            // actions at once, so compare the total rather than one action's count.
             const preRetryState = await apiClient.executions.getById(namespace, logId);
-            const preRetryCount = preRetryState.action_retries?.[preRetryState.current_action_id] || 0;
 
             await apiClient.executions.retry(namespace, logId);
             showInfo("Execution Retry", "Retrying execution...");
-            startRetryPolling(preRetryState.current_action_id, preRetryCount);
+            startRetryPolling(totalRetries(preRetryState));
 
         } catch (error) {
             isRetrying = false;
@@ -516,7 +569,10 @@
         }
     };
 
-    const startRetryPolling = (actionId: string, baselineRetryCount: number) => {
+    const totalRetries = (state: ExecutionSummary) =>
+        Object.values(state.action_retries ?? {}).reduce((sum, n) => sum + n, 0);
+
+    const startRetryPolling = (baselineRetryCount: number) => {
         let pollAttempts = 0;
         const maxPollAttempts = 15; // 30 seconds
 
@@ -536,9 +592,9 @@
                     return;
                 }
 
-                // Check if retry count for the action has increased
-                const currentRetryCount = currentState.action_retries?.[actionId] || 0;
-                const hasRetried = currentRetryCount > baselineRetryCount;
+                // Check if any action has been retried
+                const hasRetried =
+                    totalRetries(currentState) > baselineRetryCount;
 
                 if (hasRetried) {
                     stopRetryPolling();
@@ -549,6 +605,7 @@
                     completedActions = [];
                     failedActionIndex = -1;
                     currentActionIndex = -1;
+                    actionStates = {};
                     showApproval = false;
                     approvalID = null;
                     hasReceivedMessages = false;
@@ -597,11 +654,7 @@
 
         // Set default selected action (first action or current running action)
         if (actions.length > 0) {
-            if (currentActionIndex !== -1 && actions[currentActionIndex]) {
-                selectedActionId = actions[currentActionIndex].id;
-            } else {
-                selectedActionId = actions[0].id;
-            }
+            selectedActionId = activeActionId || actions[0].id;
         }
 
         if (!eventSource) {
@@ -610,10 +663,11 @@
         startStatusPolling();
     });
 
-    // Auto-select running action when it changes
+    // Auto-select running action when it changes. Depending on the id rather than the whole state
+    // map keeps a poll that changed nothing from pulling the user off the action they picked.
     $effect(() => {
-        if (currentActionIndex !== -1 && actions[currentActionIndex]) {
-            selectedActionId = actions[currentActionIndex].id;
+        if (activeActionId) {
+            selectedActionId = activeActionId;
         }
     });
 
@@ -728,15 +782,40 @@
             </div>
         {/if}
 
-        <!-- Split Panel: Actions + Terminal (fills remaining height) -->
-        <div class="split-panel">
-            <div class="panel-left">
-                <ActionsList
-                    actions={actionsList}
+        <!-- Pipeline graph: stages left to right, dependencies as connectors -->
+        {#if showGraph}
+            <div class="graph-panel card">
+                <div class="graph-header hstack justify-between">
+                    <h5>Pipeline</h5>
+                    <button
+                        type="button"
+                        class="ghost small"
+                        onclick={() => (viewMode = "list")}
+                    >
+                        <IconList size={14} /> List view
+                    </button>
+                </div>
+                <PipelineGraph
+                    actions={actions}
+                    statuses={graphStatuses}
+                    retries={data.executionSummary?.action_retries ?? {}}
                     bind:selectedActionId
                     onActionSelect={handleActionSelect}
                 />
             </div>
+        {/if}
+
+        <!-- Split Panel: Actions + Terminal (fills remaining height) -->
+        <div class="split-panel" class:graph-mode={showGraph}>
+            {#if !showGraph}
+                <div class="panel-left">
+                    <ActionsList
+                        actions={actionsList}
+                        bind:selectedActionId
+                        onActionSelect={handleActionSelect}
+                    />
+                </div>
+            {/if}
 
             <div class="panel-right">
                 <div class="card logs-card" style="padding: 0;">
@@ -748,6 +827,15 @@
                                 Action Logs
                             {/if}
                         </h5>
+                        {#if canShowGraph && !showGraph}
+                            <button
+                                type="button"
+                                class="ghost small"
+                                onclick={() => (viewMode = "graph")}
+                            >
+                                <IconHierarchy2 size={14} /> Graph view
+                            </button>
+                        {/if}
                     </div>
                     <div class="logs-body">
                         <LogsView
@@ -780,7 +868,9 @@
         flex: 1;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
+        /* Scrolls rather than squeezing the logs once the graph and outputs need the space */
+        overflow-y: auto;
+        min-height: 0;
     }
 
     .info-bar {
@@ -807,15 +897,44 @@
         font-weight: var(--font-semibold);
     }
 
+    /* A long output table scrolls inside its own box so the logs stay in view */
+    .collapsible-sections details > pre,
+    .collapsible-sections details > div {
+        max-height: 16rem;
+        overflow: auto;
+    }
+
+    .graph-panel {
+        flex-shrink: 0;
+        margin: var(--space-2) var(--space-3) 0;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .graph-header {
+        padding: var(--space-2) var(--space-4);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .graph-header h5 {
+        margin: 0;
+    }
+
     .split-panel {
         flex: 1;
         display: grid;
         grid-template-columns: 280px 1fr;
-        min-height: 0;
+        /* Keeps the logs readable instead of collapsing when the page runs out of room */
+        min-height: 24rem;
         margin: var(--space-2) var(--space-3);
         border: 1px solid var(--border);
         border-radius: var(--radius-medium);
         overflow: hidden;
+    }
+
+    /* The graph replaces the action list, so the logs take the full width */
+    .split-panel.graph-mode {
+        grid-template-columns: 1fr;
     }
 
     @media (max-width: 768px) {

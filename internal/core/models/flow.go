@@ -30,6 +30,13 @@ const (
 	INPUT_TYPE_NODE     InputType = "node"
 )
 
+type ExecutionMode = scheduler.ExecutionMode
+
+const (
+	ExecutionModeSequential = scheduler.ExecutionModeSequential
+	ExecutionModeDAG        = scheduler.ExecutionModeDAG
+)
+
 type RemoteOptions struct {
 	URL     string            `yaml:"url" huml:"url" json:"url"`
 	Method  string            `yaml:"method,omitempty" huml:"method" json:"method,omitempty"`
@@ -79,6 +86,8 @@ type Action struct {
 	AllowNodeOverride bool           `yaml:"allow_node_override" huml:"allow_node_override" json:"allow_node_override"`
 	Variables         []Variable     `yaml:"variables" huml:"variables"`
 	On                []string       `yaml:"on" huml:"on"`
+	// Needs lists action IDs this action depends on. Only used when the flow's execution mode is dag.
+	Needs []string `yaml:"needs,omitempty" huml:"needs" json:"needs,omitempty"`
 }
 
 func SchedulerActionToAction(a scheduler.Action) Action {
@@ -101,20 +110,27 @@ func SchedulerActionToAction(a scheduler.Action) Action {
 		Approval:          a.Approval,
 		AllowNodeOverride: a.AllowNodeOverride,
 		Variables:         variables,
+		Needs:             a.Needs,
 	}
 }
 
 type Metadata struct {
-	ID              string `yaml:"id" huml:"id" validate:"required,alphanum_underscore"`
-	DBID            int32  `yaml:"-" huml:"-"`
-	Name            string `yaml:"name" huml:"name" validate:"required,alphanum_whitespace,min=1,max=150"`
-	Description     string `yaml:"description" huml:"description" validate:"max=255,no_html"`
-	SrcDir          string `yaml:"-" huml:"-"`
-	Namespace       string `yaml:"namespace" huml:"namespace"`
-	Prefix          string `yaml:"prefix" huml:"prefix" validate:"omitempty,alphanum_underscore,max=100"`
-	AllowOverlap    bool   `yaml:"allow_overlap" huml:"allow_overlap"`
-	UserSchedulable bool   `yaml:"user_schedulable" huml:"user_schedulable"`
-	MaxRetries      int    `yaml:"max_retries" huml:"max_retries" validate:"omitempty,min=0,max=10"`
+	ID              string        `yaml:"id" huml:"id" validate:"required,alphanum_underscore"`
+	DBID            int32         `yaml:"-" huml:"-"`
+	Name            string        `yaml:"name" huml:"name" validate:"required,alphanum_whitespace,min=1,max=150"`
+	Description     string        `yaml:"description" huml:"description" validate:"max=255,no_html"`
+	SrcDir          string        `yaml:"-" huml:"-"`
+	Namespace       string        `yaml:"namespace" huml:"namespace"`
+	Prefix          string        `yaml:"prefix" huml:"prefix" validate:"omitempty,alphanum_underscore,max=100"`
+	AllowOverlap    bool          `yaml:"allow_overlap" huml:"allow_overlap"`
+	UserSchedulable bool          `yaml:"user_schedulable" huml:"user_schedulable"`
+	MaxRetries      int           `yaml:"max_retries" huml:"max_retries" validate:"omitempty,min=0,max=10"`
+	ExecutionMode   ExecutionMode `yaml:"execution_mode,omitempty" huml:"execution_mode" validate:"omitempty,oneof=sequential dag"`
+	MaxParallel     int           `yaml:"max_parallel,omitempty" huml:"max_parallel" validate:"omitempty,min=0,max=64"`
+}
+
+func (m Metadata) IsDAG() bool {
+	return m.ExecutionMode == ExecutionModeDAG
 }
 
 type Variable map[string]any
@@ -236,6 +252,10 @@ func (f Flow) Validate() error {
 		actionsIDs[action.ID] = 1
 	}
 
+	if err := f.validateDependencies(); err != nil {
+		return err
+	}
+
 	nodeInputCount := 0
 	for _, input := range f.Inputs {
 		if input.Type == INPUT_TYPE_NODE {
@@ -272,6 +292,31 @@ func (f Flow) Validate() error {
 	}
 
 	return validate.Struct(f)
+}
+
+// validateDependencies rejects "needs" outside dag mode and builds the graph to surface missing
+// references, self-references and cycles.
+func (f Flow) validateDependencies() error {
+	if !f.Meta.IsDAG() {
+		for _, action := range f.Actions {
+			if len(action.Needs) > 0 {
+				return fmt.Errorf("action %s declares needs, which requires metadata.execution_mode to be %q", action.ID, ExecutionModeDAG)
+			}
+		}
+		return nil
+	}
+
+	_, err := f.Graph()
+	return err
+}
+
+// Graph builds the action dependency graph for the flow.
+func (f Flow) Graph() (*scheduler.Graph, error) {
+	actions := make([]scheduler.Action, 0, len(f.Actions))
+	for _, a := range f.Actions {
+		actions = append(actions, scheduler.Action{ID: a.ID, Needs: a.Needs})
+	}
+	return scheduler.BuildGraph(actions)
 }
 
 func (f Flow) GetActionIndexByID(id string) (int, error) {
@@ -412,11 +457,9 @@ func validateType(name string, val interface{}, t InputType) error {
 }
 
 type Execution struct {
-	Context     ExecutionContext `json:"context"`
-	ExecID      string           `json:"exec_id"`
-	Version     int64            `json:"version"`
-	ErrorMsg    string           `json:"error_msg"`
-	TriggeredBy string           `json:"triggered_by"`
+	Context  ExecutionContext `json:"context"`
+	ExecID   string           `json:"exec_id"`
+	ErrorMsg string           `json:"error_msg"`
 }
 
 // FlowFormat represents the file format for flows
@@ -586,6 +629,7 @@ func ConvertToSchedulerFlow(ctx context.Context, f Flow, namespaceUUID uuid.UUID
 			AllowNodeOverride: act.AllowNodeOverride,
 			Variables:         variables,
 			On:                NodesToScheduler(nodes),
+			Needs:             act.Needs,
 		})
 	}
 
@@ -621,13 +665,15 @@ func ConvertToSchedulerFlow(ctx context.Context, f Flow, namespaceUUID uuid.UUID
 
 	return scheduler.Flow{
 		Meta: scheduler.Metadata{
-			ID:          f.Meta.ID,
-			DBID:        f.Meta.DBID,
-			Name:        f.Meta.Name,
-			Description: f.Meta.Description,
-			SrcDir:      f.Meta.SrcDir,
-			Namespace:   f.Meta.Namespace,
-			MaxRetries:  f.Meta.MaxRetries,
+			ID:            f.Meta.ID,
+			DBID:          f.Meta.DBID,
+			Name:          f.Meta.Name,
+			Description:   f.Meta.Description,
+			SrcDir:        f.Meta.SrcDir,
+			Namespace:     f.Meta.Namespace,
+			MaxRetries:    f.Meta.MaxRetries,
+			ExecutionMode: f.Meta.ExecutionMode,
+			MaxParallel:   f.Meta.MaxParallel,
 		},
 		Inputs:    inputs,
 		Actions:   actions,

@@ -119,9 +119,12 @@ func (p *PostgresStorage) GetByPayloadType(ctx context.Context, payloadType stri
 	}
 
 	// Select and lock the oldest pending job of this payload type
-	// Only return jobs that are ready to run (scheduled_at is NULL or <= NOW())
+	// Only return jobs that are ready to run (scheduled_at is NULL or <= NOW()). A NULL
+	// scheduled_at means "run immediately", which Job.ScheduledAt represents as the zero time.
 	selectQuery := `
-		SELECT id, exec_id, payload_type, payload, created_at, scheduled_at, max_retries, attempt
+		SELECT id, exec_id, payload_type, payload, created_at,
+		       COALESCE(scheduled_at, TIMESTAMPTZ '0001-01-01 00:00:00+00') AS scheduled_at,
+		       max_retries, attempt
 		FROM job_queue
 		WHERE payload_type = $1
 		  AND (scheduled_at IS NULL OR scheduled_at <= NOW())

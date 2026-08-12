@@ -10,13 +10,8 @@ import (
 type Logger interface {
 	io.Writer
 	GetID() string
-	// SetActionID is a global value that is used in Write calls
-	SetActionID(id string)
-	// SetRetry sets the retry count for the current action
-	SetRetry(retry int32)
-	// Checkpoint is an underlying function to log different message types. Used by Write calls too. If the id is set, it will
-	// override the global action ID
-	Checkpoint(id string, nodeID string, val interface{}, mtype MessageType) error
+	// Checkpoint is an underlying function to log different message types. Used by Write calls too.
+	Checkpoint(id string, nodeID string, val interface{}, mtype MessageType, retry int32) error
 
 	Close() error
 }
@@ -49,25 +44,27 @@ type StreamMessage struct {
 	Retry     int32       `json:"retry"`
 }
 
-// NodeContextLogger wraps a Logger to provide node context for concurrent execution
+// NodeContextLogger wraps a Logger to provide action and node context for concurrent execution
 type NodeContextLogger struct {
 	logger   Logger
 	actionID string
 	nodeID   string
+	retry    int32
 }
 
 // NewNodeContextLogger creates a new NodeContextLogger.
-func NewNodeContextLogger(logger Logger, actionID, nodeID string) *NodeContextLogger {
+func NewNodeContextLogger(logger Logger, actionID, nodeID string, retry int32) *NodeContextLogger {
 	return &NodeContextLogger{
 		logger:   logger,
 		actionID: actionID,
 		nodeID:   nodeID,
+		retry:    retry,
 	}
 }
 
 // Write implements io.Writer by delegating to Checkpoint with node context.
 func (n *NodeContextLogger) Write(p []byte) (int, error) {
-	if err := n.logger.Checkpoint(n.actionID, n.nodeID, p, LogMessageType); err != nil {
+	if err := n.logger.Checkpoint(n.actionID, n.nodeID, p, LogMessageType, n.retry); err != nil {
 		return 0, err
 	}
 	return len(p), nil
@@ -78,26 +75,16 @@ func (n *NodeContextLogger) GetID() string {
 	return n.logger.GetID()
 }
 
-// SetActionID updates the action ID for this node context.
-func (n *NodeContextLogger) SetActionID(id string) {
-	n.actionID = id
-}
-
-// SetRetry delegates to the underlying logger.
-func (n *NodeContextLogger) SetRetry(retry int32) {
-	n.logger.SetRetry(retry)
-}
-
 // Checkpoint delegates to the underlying logger with node context.
 // If id is empty, uses the stored actionID.
-func (n *NodeContextLogger) Checkpoint(id string, nodeID string, val interface{}, mtype MessageType) error {
+func (n *NodeContextLogger) Checkpoint(id string, nodeID string, val interface{}, mtype MessageType, retry int32) error {
 	if id == "" {
 		id = n.actionID
 	}
 	if nodeID == "" {
 		nodeID = n.nodeID
 	}
-	return n.logger.Checkpoint(id, nodeID, val, mtype)
+	return n.logger.Checkpoint(id, nodeID, val, mtype, retry)
 }
 
 // Close delegates to the underlying logger.

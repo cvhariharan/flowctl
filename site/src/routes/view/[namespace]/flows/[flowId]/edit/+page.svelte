@@ -16,7 +16,9 @@
         FlowInputReq,
         FlowActionReq,
         Schedule,
+        ExecutionMode,
     } from "$lib/types.js";
+    import { needsForMode } from "$lib/utils/dag";
     import { goto } from "$app/navigation";
     import { handleInlineError, showSuccess } from "$lib/utils/errorHandling";
 
@@ -37,6 +39,8 @@
             allow_overlap: false,
             user_schedulable: false,
             max_retries: 0,
+            execution_mode: "" as "" | ExecutionMode,
+            max_parallel: 0,
         },
         inputs: [] as any[],
         actions: [] as any[],
@@ -114,6 +118,8 @@
                 allow_overlap: config.metadata.allow_overlap || false,
                 user_schedulable: config.metadata.user_schedulable || false,
                 max_retries: config.metadata.max_retries || 0,
+                execution_mode: config.metadata.execution_mode || "",
+                max_parallel: config.metadata.max_parallel || 0,
             };
 
             // Transform inputs
@@ -144,6 +150,7 @@
                     : [],
                 artifacts: action.artifacts || [],
                 selectedNodes: action.on || [],
+                needs: action.needs || [],
                 approval: action.approval ?? false,
                 allow_node_override: action.allow_node_override ?? false,
                 collapsed: false,
@@ -200,6 +207,7 @@
             allow_node_override: false,
             artifacts: [],
             condition: "",
+            needs: [] as string[],
             collapsed: false,
         });
     }
@@ -260,6 +268,11 @@
                 allow_overlap: flow.metadata.allow_overlap,
                 user_schedulable: flow.metadata.user_schedulable,
                 max_retries: flow.metadata.max_retries || 0,
+                execution_mode: flow.metadata.execution_mode || undefined,
+                max_parallel:
+                    flow.metadata.execution_mode === "dag"
+                        ? flow.metadata.max_parallel || 0
+                        : undefined,
                 description: flow.metadata.description || undefined,
                 inputs: flow.inputs
                     .filter((i) => i.name)
@@ -314,6 +327,10 @@
                             on: action.selectedNodes?.length
                                 ? action.selectedNodes
                                 : undefined,
+                            needs: needsForMode(
+                                action.needs,
+                                flow.metadata.execution_mode,
+                            ),
                         }),
                     ),
                 notify: flow.notifications
@@ -415,6 +432,7 @@
                                         {availableExecutors}
                                         bind:executorConfigs
                                         disabled={readonly}
+                                        isDAG={flow.metadata.execution_mode === "dag"}
                                     />
                                 </fieldset>
                             </div>

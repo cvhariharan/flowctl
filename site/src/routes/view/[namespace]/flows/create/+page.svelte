@@ -16,7 +16,9 @@
         FlowInputReq,
         FlowActionReq,
         Schedule,
+        ExecutionMode,
     } from "$lib/types.js";
+    import { needsForMode } from "$lib/utils/dag";
     import { goto } from "$app/navigation";
     import { handleInlineError, showSuccess } from "$lib/utils/errorHandling";
     import { IconInfoCircle } from "@tabler/icons-svelte";
@@ -36,6 +38,8 @@
             allow_overlap: false,
             user_schedulable: false,
             max_retries: 0,
+            execution_mode: "" as "" | ExecutionMode,
+            max_parallel: 0,
         },
         inputs: [] as any[],
         actions: [] as any[],
@@ -121,6 +125,7 @@
             allow_node_override: false,
             artifacts: [],
             condition: "",
+            needs: [] as string[],
             collapsed: false,
         });
     }
@@ -185,6 +190,11 @@
                     allow_overlap: flow.metadata.allow_overlap || false,
                     user_schedulable: flow.metadata.user_schedulable || false,
                     max_retries: flow.metadata.max_retries || 0,
+                    execution_mode: flow.metadata.execution_mode || undefined,
+                    max_parallel:
+                        flow.metadata.execution_mode === "dag"
+                            ? flow.metadata.max_parallel || 0
+                            : undefined,
                 },
                 inputs: flow.inputs
                     .filter((i) => i.name)
@@ -239,6 +249,10 @@
                             on: action.selectedNodes?.length
                                 ? action.selectedNodes
                                 : undefined,
+                            needs: needsForMode(
+                                action.needs,
+                                flow.metadata.execution_mode,
+                            ),
                         }),
                     ),
                 notify: flow.notifications
@@ -317,6 +331,7 @@
                                 {addAction}
                                 {availableExecutors}
                                 bind:executorConfigs
+                                isDAG={flow.metadata.execution_mode === "dag"}
                             />
                         </div>
                         <div role="tabpanel">
