@@ -16,7 +16,7 @@
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
 	import Header from '$lib/components/shared/Header.svelte';
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
-	import { formatDateTime, getStartTime } from '$lib/utils';
+	import { formatDateTime, formatDuration, getStartTime } from '$lib/utils';
 	import { IconHistory } from '@tabler/icons-svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -145,27 +145,6 @@
 		fetchExecutions('', currentPage);
 	}
 
-	function formatDuration(startedAt: string, completedAt?: string): string {
-		if (!startedAt) return 'Unknown';
-
-		const start = new Date(startedAt);
-		const end = completedAt ? new Date(completedAt) : new Date();
-		const durationMs = end.getTime() - start.getTime();
-
-		if (durationMs < 1000) return '<1s';
-
-		const seconds = Math.floor(durationMs / 1000);
-		const minutes = Math.floor(seconds / 60);
-		const hours = Math.floor(minutes / 60);
-
-		if (hours > 0) {
-			return `${hours}h ${minutes % 60}m`;
-		} else if (minutes > 0) {
-			return `${minutes}m ${seconds % 60}s`;
-		} else {
-			return `${seconds}s`;
-		}
-	}
 </script>
 
 <svelte:head>

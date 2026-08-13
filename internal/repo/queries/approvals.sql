@@ -9,6 +9,11 @@ FROM inserted_approval a
 JOIN executions el ON a.exec_id = el.exec_id
 JOIN users u ON el.triggered_by = u.id;
 
+-- name: DeleteApprovalsForExecActions :exec
+DELETE FROM approvals
+WHERE exec_id = sqlc.arg(exec_id)
+  AND action_id = ANY(sqlc.arg(action_ids)::varchar[]);
+
 -- name: ApproveRequestByUUID :one
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $3

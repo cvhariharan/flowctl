@@ -22,6 +22,7 @@ const (
 	EventActionBlocked   EventType = "action_blocked"
 	EventActionSkipped   EventType = "action_skipped"
 	EventActionCancelled EventType = "action_cancelled"
+	EventActionReset     EventType = "action_reset"
 )
 
 type ActionStatus string
@@ -117,6 +118,10 @@ func Fold(events []Event) ExecutionState {
 				action.Status = ActionStatusCancelled
 				t := event.CreatedAt
 				action.FinishedAt = &t
+			case EventActionReset:
+				action.Status = ActionStatusPending
+				action.StartedAt = nil
+				action.FinishedAt = nil
 			}
 			state.Actions[event.ActionID] = action
 			activeSeq[event.ActionID] = seq

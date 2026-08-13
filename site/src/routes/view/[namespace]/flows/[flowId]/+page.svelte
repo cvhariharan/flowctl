@@ -16,7 +16,7 @@
     import type { TableColumn, ScheduledExecution } from "$lib/types";
     import { DEFAULT_PAGE_SIZE } from "$lib/constants";
     import { permissionChecker } from "$lib/utils/permissions";
-    import { formatDateTime, getStartTime } from "$lib/utils";
+    import { formatDateTime, formatDuration, getStartTime } from "$lib/utils";
     import { apiClient } from "$lib/apiClient";
     import { IconPencil, IconEye, IconInfoCircle, IconX } from "@tabler/icons-svelte";
     import LinkCell from "$lib/components/shared/cells/LinkCell.svelte";
@@ -116,28 +116,6 @@
 
     const handleHistoryPageChange = (event: CustomEvent<{ page: number }>) => {
         goToHistoryPage(event.detail.page);
-    };
-
-    const formatDuration = (startedAt: string, completedAt?: string) => {
-        if (!startedAt) return "Unknown";
-
-        const start = new Date(startedAt);
-        const end = completedAt ? new Date(completedAt) : new Date();
-        const durationMs = end.getTime() - start.getTime();
-
-        if (durationMs < 1000) return "<1s";
-
-        const seconds = Math.floor(durationMs / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const hours = Math.floor(minutes / 60);
-
-        if (hours > 0) {
-            return `${hours}h ${minutes % 60}m`;
-        } else if (minutes > 0) {
-            return `${minutes}m ${seconds % 60}s`;
-        } else {
-            return `${seconds}s`;
-        }
     };
 
     // Watch for tab changes and load history when needed

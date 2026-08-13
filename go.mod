@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/casbin/casbin/v2 v2.110.0
+	github.com/coder/websocket v1.8.15
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/cvhariharan/qssh v0.1.0
 	github.com/docker/docker v28.3.3+incompatible
@@ -25,7 +26,6 @@ require (
 	github.com/labstack/echo/v4 v4.15.1
 	github.com/lib/pq v1.10.9
 	github.com/memwey/casbin-sqlx-adapter v0.3.0
-	github.com/nxadm/tail v1.4.11
 	github.com/oapi-codegen/runtime v1.4.1
 	github.com/pkg/sftp v1.13.9
 	github.com/prometheus/client_golang v1.23.2
@@ -95,6 +95,7 @@ require (
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/oapi-codegen/oapi-codegen/v2 v2.7.1 // indirect
 	github.com/oasdiff/yaml v0.1.1 // indirect
 	github.com/oasdiff/yaml3 v0.0.14 // indirect
@@ -135,7 +136,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/api v0.242.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
-	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
 )
 

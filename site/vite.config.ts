@@ -20,6 +20,7 @@ export default defineConfig({
         target: `http://${backendHost}`,
         changeOrigin: true,
         secure: false,
+        ws: true,
       },
       "/sso-providers": {
         target: `http://${backendHost}`,

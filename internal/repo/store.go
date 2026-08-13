@@ -114,6 +114,7 @@ type Store interface {
 	CancelExecutionTx(ctx context.Context, params CancelExecutionParams) (Execution, error)
 	RequeueExecutionTx(ctx context.Context, params RequeueExecutionParams) (int32, error)
 	RequeueExecutionAndJobTx(ctx context.Context, params RequeueExecutionParams, job ExecutionJob) (int32, error)
+	ResetActionsAndRequeueTx(ctx context.Context, params RequeueExecutionParams, actionIDs []string, job ExecutionJob) (int32, error)
 	DeleteExpiredExecutionsTx(ctx context.Context, cutoff time.Time, batchSize int) (int, error)
 	RequestApprovalTx(ctx context.Context, execID string, namespaceUUID uuid.UUID, action RequestApprovalParam) (AddApprovalRequestRow, error)
 	CreateUserTx(ctx context.Context, params CreateUserTxParams) (UserView, error)
@@ -321,6 +322,43 @@ func (p *PostgresStore) RequeueExecutionAndJobTx(ctx context.Context, params Req
 		return 0, err
 	}
 	if err := appendEvent(ctx, q, Event{ExecID: params.ExecID, Attempt: attempt, Type: ExecutionEventTypeQueued}); err != nil {
+		return 0, err
+	}
+	if err := insertExecutionJob(ctx, tx, params.ExecID, job); err != nil {
+		return 0, err
+	}
+	return attempt, tx.Commit()
+}
+
+// ResetActionsAndRequeueTx resets the given actions and requeues the execution in one transaction.
+func (p *PostgresStore) ResetActionsAndRequeueTx(ctx context.Context, params RequeueExecutionParams, actionIDs []string, job ExecutionJob) (int32, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	q := &Queries{db: tx}
+	attempt, err := q.RequeueExecutionForReset(ctx, RequeueExecutionForResetParams{
+		ExecID: params.ExecID,
+		Uuid:   params.Uuid,
+	})
+	if err != nil {
+		return 0, err
+	}
+	for _, actionID := range actionIDs {
+		if err := appendEvent(ctx, q, Event{
+			ExecID: params.ExecID, Attempt: attempt, ActionID: actionID, Type: ExecutionEventTypeActionReset,
+		}); err != nil {
+			return 0, err
+		}
+	}
+	if err := appendEvent(ctx, q, Event{ExecID: params.ExecID, Attempt: attempt, Type: ExecutionEventTypeQueued}); err != nil {
+		return 0, err
+	}
+	if err := q.DeleteApprovalsForExecActions(ctx, DeleteApprovalsForExecActionsParams{
+		ExecID: params.ExecID, ActionIds: actionIDs,
+	}); err != nil {
 		return 0, err
 	}
 	if err := insertExecutionJob(ctx, tx, params.ExecID, job); err != nil {

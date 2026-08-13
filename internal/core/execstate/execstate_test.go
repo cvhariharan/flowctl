@@ -40,6 +40,59 @@ func TestFold(t *testing.T) {
 	}
 }
 
+func TestFoldActionReset(t *testing.T) {
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	events := []Event{
+		{ActionID: "deploy", Type: EventActionStarted, CreatedAt: t0},
+		{ActionID: "deploy", Type: EventActionFailed, Error: "wrong target", CreatedAt: t0.Add(time.Second)},
+		{ActionID: "deploy", Type: EventActionReset, CreatedAt: t0.Add(2 * time.Second)},
+	}
+
+	state := Fold(events)
+	action := state.Actions["deploy"]
+	if action.Status != ActionStatusPending {
+		t.Errorf("status = %q, want pending", action.Status)
+	}
+	if action.Attempt != 1 {
+		t.Errorf("attempt = %d, want 1", action.Attempt)
+	}
+	if action.StartedAt != nil || action.FinishedAt != nil || action.Error != "" {
+		t.Errorf("reset action kept run state: %+v", action)
+	}
+	if state.CurrentActionID != "" {
+		t.Errorf("current action = %q, want empty", state.CurrentActionID)
+	}
+
+	events = append(events,
+		Event{ActionID: "deploy", Type: EventActionStarted, CreatedAt: t0.Add(3 * time.Second)},
+		Event{ActionID: "deploy", Type: EventActionCompleted, CreatedAt: t0.Add(4 * time.Second)},
+	)
+	action = Fold(events).Actions["deploy"]
+	if action.Status != ActionStatusCompleted || action.Attempt != 2 {
+		t.Errorf("rerun action = %+v, want completed attempt 2", action)
+	}
+}
+
+func TestRecorderRunnableAfterActionReset(t *testing.T) {
+	store := &fakeEventStore{events: []Event{
+		{ActionID: "build", Type: EventActionStarted},
+		{ActionID: "build", Type: EventActionCompleted},
+		{ActionID: "deploy", Type: EventActionStarted},
+		{ActionID: "deploy", Type: EventActionCompleted},
+		{ActionID: "deploy", Type: EventActionReset},
+	}}
+	recorder, err := newRecorder(context.Background(), store, "exec")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Runnable("build") {
+		t.Error("completed sibling is runnable")
+	}
+	if !recorder.Runnable("deploy") {
+		t.Error("reset action is not runnable")
+	}
+}
+
 func TestRecorderCrashRecovery(t *testing.T) {
 	store := &fakeEventStore{
 		attempt: 1,

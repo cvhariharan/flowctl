@@ -31,7 +31,6 @@ const (
 	LogMessageType       MessageType = "log"
 	ErrMessageType       MessageType = "error"
 	ResultMessageType    MessageType = "result"
-	StateMessageType     MessageType = "state"
 	CancelledMessageType MessageType = "cancelled"
 )
 

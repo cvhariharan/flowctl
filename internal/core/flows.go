@@ -33,6 +33,7 @@ var (
 	ErrFlowNotFound          = errors.New("flow not found")
 	ErrFlowExists            = errors.New("flow already exists")
 	ErrScheduleNotFound      = errors.New("schedule not found")
+	ErrActionNotFound        = errors.New("action not found")
 	ErrInvalidExecutionState = errors.New("invalid execution state")
 )
 
@@ -347,7 +348,7 @@ func (c *Core) QueueFlowExecutionWithExecID(ctx context.Context, f models.Flow, 
 		}
 	}
 
-	info, err := c.queueFlow(ctx, f, models.NewExecutionContext(input, nil), execID, userUUID, namespaceID, false, scheduledAt)
+	info, err := c.queueFlow(ctx, f, models.NewExecutionContext(input, nil), execID, userUUID, namespaceID, false, nil, scheduledAt)
 	if err != nil {
 		return "", err
 	}
@@ -367,7 +368,7 @@ func (c *Core) ResumeFlowExecution(ctx context.Context, execID string, actionID 
 		return err
 	}
 
-	if _, err := c.queueFlow(ctx, f, exec.Context, execID, userUUID, namespaceID, true, nil); err != nil {
+	if _, err := c.queueFlow(ctx, f, exec.Context, execID, userUUID, namespaceID, true, nil, nil); err != nil {
 		return err
 	}
 
@@ -382,14 +383,78 @@ func (c *Core) RetryFlowExecution(ctx context.Context, execID string, userUUID s
 	}
 
 	if exec.Status != models.ExecutionStatus(repo.ExecutionStatusErrored) && exec.Status != models.ExecutionStatus(repo.ExecutionStatusCancelled) {
-		return fmt.Errorf("execution must be in errored or cancelled state to retry, current status: %s", exec.Status)
+		return fmt.Errorf("%w: execution must be in errored or cancelled state to retry, current status: %s", ErrInvalidExecutionState, exec.Status)
 	}
 
 	return c.ResumeFlowExecution(ctx, execID, "", userUUID, namespaceID, true)
 }
 
+// RerunFlowExecutionFromAction re-runs an execution from fromActionID, resetting that action and
+// everything downstream of it.
+func (c *Core) RerunFlowExecutionFromAction(ctx context.Context, execID, fromActionID, userUUID, namespaceID string) error {
+	execSummary, err := c.GetExecutionSummaryByExecID(ctx, execID, namespaceID)
+	if err != nil {
+		return fmt.Errorf("could not get exec %s: %w", execID, err)
+	}
+
+	f, err := c.GetFlowFromLogID(execID, namespaceID)
+	if err != nil {
+		return err
+	}
+	resetSet, err := resetActionIDs(f, fromActionID)
+	if err != nil {
+		return err
+	}
+
+	switch execSummary.Status {
+	case models.ExecutionStatus(repo.ExecutionStatusCompleted),
+		models.ExecutionStatus(repo.ExecutionStatusErrored),
+		models.ExecutionStatus(repo.ExecutionStatusCancelled):
+	default:
+		return fmt.Errorf("%w: execution must be terminal to rerun from an action, current status: %s", ErrInvalidExecutionState, execSummary.Status)
+	}
+
+	// Absence is already the pending state, so only append reset events for actions with history.
+	resetActions := make([]string, 0, len(resetSet))
+	for _, actionID := range resetSet {
+		if _, ok := execSummary.ActionStates[actionID]; ok {
+			resetActions = append(resetActions, actionID)
+		}
+	}
+
+	exec, err := c.GetExecutionByExecID(ctx, execID, namespaceID)
+	if err != nil {
+		return fmt.Errorf("could not get exec %s: %w", execID, err)
+	}
+	if _, err := c.queueFlow(ctx, f, exec.Context, execID, userUUID, namespaceID, true, resetActions, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+func resetActionIDs(f models.Flow, fromActionID string) ([]string, error) {
+	idx, err := f.GetActionIndexByID(fromActionID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrActionNotFound, fromActionID)
+	}
+
+	if !f.Meta.IsDAG() {
+		ids := make([]string, 0, len(f.Actions)-idx)
+		for _, action := range f.Actions[idx:] {
+			ids = append(ids, action.ID)
+		}
+		return ids, nil
+	}
+
+	graph, err := f.Graph()
+	if err != nil {
+		return nil, fmt.Errorf("could not build flow graph: %w", err)
+	}
+	return append([]string{fromActionID}, graph.Descendants(fromActionID)...), nil
+}
+
 // queueFlow creates or requeues an execution and its job atomically.
-func (c *Core) queueFlow(ctx context.Context, f models.Flow, execCtx models.ExecutionContext, execID string, userUUID string, namespaceID string, retry bool, scheduledAt *time.Time) (string, error) {
+func (c *Core) queueFlow(ctx context.Context, f models.Flow, execCtx models.ExecutionContext, execID string, userUUID string, namespaceID string, retry bool, resetActions []string, scheduledAt *time.Time) (string, error) {
 	// If execID is empty, it is a new flow execution
 	if execID == "" {
 		execID = uuid.NewString()
@@ -472,7 +537,14 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, execCtx models.Exec
 		job.ScheduledAt = scheduledAt.Truncate(time.Minute)
 	}
 
-	if retry {
+	if resetActions != nil {
+		if _, err := c.store.ResetActionsAndRequeueTx(ctx, repo.RequeueExecutionParams{ExecID: execID, Uuid: namespaceUUID}, resetActions, job); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return "", fmt.Errorf("%w: execution is not resettable", ErrInvalidExecutionState)
+			}
+			return "", fmt.Errorf("could not reset and requeue execution: %w", err)
+		}
+	} else if retry {
 		if _, err := c.store.RequeueExecutionAndJobTx(ctx, repo.RequeueExecutionParams{ExecID: execID, Uuid: namespaceUUID}, job); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return "", fmt.Errorf("%w: execution is not resumable", ErrInvalidExecutionState)

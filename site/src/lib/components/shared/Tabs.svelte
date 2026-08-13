@@ -51,3 +51,10 @@
     </button>
   {/each}
 </div>
+
+<style>
+  [role="tab"] .badge {
+    padding: 0 var(--space-2);
+    line-height: 1.5;
+  }
+</style>

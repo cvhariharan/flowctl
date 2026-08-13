@@ -4,11 +4,12 @@
     IconCheck,
     IconPlayerPlay,
     IconClockPause,
-    IconCircle,
     IconMinus,
-    IconSearch,
-    IconArrowRight,
     IconPlayerSkipForward,
+    IconSearch,
+    IconCircle,
+    IconCircleCheck,
+    IconRefresh,
   } from '@tabler/icons-svelte';
   import type { StepStatus } from '$lib/utils/dag';
 
@@ -18,32 +19,35 @@
     status: StepStatus;
     level?: number;
     needs?: string[];
-  };
-
-  type Props = {
-    actions: Action[];
-    selectedActionId?: string;
-    onActionSelect: (actionId: string) => void;
+    duration?: string;
+    approval?: boolean;
   };
 
   let {
     actions,
     selectedActionId = $bindable(),
-    onActionSelect
-  }: Props = $props();
+    onActionSelect,
+    canRerun = false,
+    onRerun,
+  }: {
+    actions: Action[];
+    selectedActionId?: string;
+    onActionSelect: (actionId: string) => void;
+    canRerun?: boolean;
+    onRerun?: (actionId: string) => void;
+  } = $props();
 
   let searchQuery = $state('');
 
   const filteredActions = $derived(
-    actions.filter(action =>
-      action.name.toLowerCase().includes(searchQuery.toLowerCase())
+    actions.filter((action) =>
+      action.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
     )
   );
 
-  // Actions carry a level only in dag mode, where actions sharing one run together.
   const groups = $derived.by(() => {
-    if (filteredActions.every(a => a.level === undefined)) {
-      return [{ level: undefined, actions: filteredActions }];
+    if (filteredActions.every((action) => action.level === undefined)) {
+      return filteredActions.map((action, index) => ({ level: index, actions: [action] }));
     }
 
     const byLevel = new Map<number, Action[]>();
@@ -53,22 +57,10 @@
     }
     return [...byLevel.entries()]
       .sort(([a], [b]) => a - b)
-      .map(([level, actions]) => ({ level, actions }));
+      .map(([level, groupedActions]) => ({ level, actions: groupedActions }));
   });
 
-  const nameById = $derived(new Map(actions.map(a => [a.id, a.name])));
-
-  const getStatusClass = (status: StepStatus) => {
-    switch (status) {
-      case 'failed': return 'status-failed';
-      case 'completed': return 'status-completed';
-      case 'running': return 'status-running';
-      case 'awaiting_approval': return 'status-waiting';
-      case 'cancelled': return 'status-cancelled';
-      case 'skipped': return 'status-skipped';
-      default: return 'status-pending';
-    }
-  };
+  const statusClass = (status: StepStatus) => `status-${status}`;
 
   const getIcon = (status: StepStatus) => {
     switch (status) {
@@ -81,214 +73,222 @@
       default: return IconMinus;
     }
   };
-
-  const handleActionClick = (actionId: string) => {
-    onActionSelect(actionId);
-  };
 </script>
 
-<div class="actions-panel card" style="padding: 0;">
-  <!-- Header with Search -->
+<aside class="actions-panel" aria-label="Execution actions">
   <div class="panel-header">
-    <h2>Actions</h2>
     <fieldset class="group">
       <legend><IconSearch size={16} /></legend>
-      <input
-        type="search"
-        bind:value={searchQuery}
-        placeholder="Search actions..."
-      />
+      <input type="search" bind:value={searchQuery} placeholder="Filter actions" />
     </fieldset>
   </div>
 
-  <!-- Actions List -->
   <div class="actions-list">
     {#if filteredActions.length === 0}
       <div class="empty-msg text-lighter">
-        {searchQuery ? 'No actions found' : 'No actions available'}
+        {searchQuery ? 'No matching actions' : 'No actions available'}
       </div>
     {:else}
-      <div class="vstack gap-1">
-        {#each groups as group (group.level ?? 'all')}
-          {#if group.level !== undefined}
-            <div class="level-label text-lighter">
-              Step {group.level + 1}
-              {#if group.actions.length > 1}
-                <span>· {group.actions.length} in parallel</span>
-              {/if}
-            </div>
+      {#each groups as group (group.level)}
+        <div class="step-label">
+          Step {group.level + 1}
+          {#if group.actions.length > 1}
+            <span class="parallel">{group.actions.length} parallel</span>
           {/if}
-          {#each group.actions as action (action.id)}
+        </div>
+        {#each group.actions as action (action.id)}
+          {@const Icon = getIcon(action.status)}
+          <div class="action-row">
             <button
               type="button"
-              onclick={() => handleActionClick(action.id)}
-              class="action-item {getStatusClass(action.status)}"
+              onclick={() => onActionSelect(action.id)}
+              class="action-item"
               class:selected={selectedActionId === action.id}
+              aria-current={selectedActionId === action.id ? 'true' : undefined}
             >
-              <div class="hstack gap-2 justify-between">
-                <div class="action-name">{action.name}</div>
-                <div class="status-icon {getStatusClass(action.status)}">
-                  <svelte:component this={getIcon(action.status)} size={14} />
-                </div>
-              </div>
-              {#if action.needs && action.needs.length > 0}
-                <div class="action-needs text-lighter">
-                  <IconArrowRight size={11} />
-                  {action.needs.map((id) => nameById.get(id) ?? id).join(', ')}
-                </div>
+              <span class="status-dot {statusClass(action.status)}" title={action.status.replace('_', ' ')}>
+                <Icon size={11} stroke={3} />
+              </span>
+              <span class="action-name">{action.name}</span>
+              {#if action.duration}
+                <span class="action-time">{action.duration}</span>
+              {/if}
+              {#if action.approval}
+                <span
+                  class="approval"
+                  role="img"
+                  aria-label="Approval required"
+                  data-tooltip="Approval required"
+                ><IconCircleCheck size={15} /></span>
               {/if}
             </button>
-          {/each}
+            {#if canRerun}
+              <button
+                type="button"
+                class="rerun-action"
+                onclick={() => onRerun?.(action.id)}
+                aria-label={`Re-run from ${action.name}`}
+                title="Re-run from here"
+              >
+                <IconRefresh size={15} />
+              </button>
+            {/if}
+          </div>
         {/each}
-      </div>
+      {/each}
     {/if}
   </div>
-</div>
+</aside>
 
 <style>
   .actions-panel {
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-height: 0;
     overflow: hidden;
+    background: var(--card);
   }
   .panel-header {
+    display: flex;
+    align-items: center;
     flex-shrink: 0;
-    position: sticky;
-    top: 0;
+    height: var(--space-12);
+    padding-inline: var(--space-3);
     background: var(--card);
     border-bottom: 1px solid var(--border);
-    padding: var(--space-3) var(--space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    z-index: 10;
-  }
-  .panel-header h2 {
-    font-size: var(--text-6);
-    font-weight: 600;
-    color: var(--foreground);
-    margin: 0;
   }
   .panel-header fieldset {
+    width: 100%;
     margin: 0;
   }
+  .panel-header input {
+    margin: 0;
+    padding-block: var(--space-1);
+  }
   .actions-list {
-    overflow-y: auto;
-    padding: var(--space-2);
     flex: 1;
     min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-2);
   }
   .empty-msg {
+    padding: var(--space-6) var(--space-2);
     text-align: center;
-    padding: var(--space-4) 0;
     font-size: var(--text-7);
+  }
+  .step-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-2) var(--space-1);
+    color: var(--muted-foreground);
+    font-size: var(--text-8);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .step-label:first-child { padding-top: var(--space-1); }
+  .parallel {
+    padding: 0 0.35rem;
+    border-radius: var(--radius-full);
+    background: var(--faint);
+    letter-spacing: 0;
   }
   .action-item {
     all: unset;
-    display: block;
     box-sizing: border-box;
-    width: 100%;
-    padding: var(--space-3) var(--space-3);
-    border-radius: var(--radius-medium);
-    border: 2px solid var(--border);
-    background: var(--card);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-2);
+    border-inline-start: 2px solid transparent;
+    border-radius: var(--radius-small);
     color: var(--foreground);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background-color var(--transition-fast);
   }
-  .action-item.selected {
-    border-color: var(--primary);
+  .action-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
   }
-  .action-name {
-    font-weight: 500;
-    font-size: var(--text-7);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-    flex: 1;
-  }
-  .status-icon {
-    border-radius: 9999px;
-    padding: 0.25rem;
-    flex-shrink: 0;
+  .rerun-action {
+    all: unset;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--radius-small);
+    color: var(--muted-foreground);
+    cursor: pointer;
   }
-  .status-failed {
-    background: color-mix(in srgb, var(--danger) 10%, transparent);
-    color: var(--danger);
-  }
-  .status-failed.status-icon {
-    background: var(--danger);
-    color: white;
-  }
-  .status-completed {
-    background: color-mix(in srgb, var(--success) 10%, transparent);
-    color: var(--success);
-  }
-  .status-completed.status-icon {
-    background: var(--success);
-    color: white;
-  }
-  .status-running {
-    background: color-mix(in srgb, var(--primary) 10%, transparent);
-    color: var(--primary);
-  }
-  .status-running.status-icon {
-    background: var(--primary);
-    color: white;
-    animation: pulse 2s infinite;
-  }
-  .status-waiting {
-    background: color-mix(in srgb, var(--warning) 10%, transparent);
-    color: var(--warning);
-  }
-  .status-waiting.status-icon {
-    background: var(--warning);
-    color: white;
-  }
-  .status-cancelled {
-    background: var(--faint);
+  .rerun-action:hover {
+    background: var(--muted);
     color: var(--foreground);
   }
-  .status-cancelled.status-icon {
-    background: #9ca3af;
-    color: white;
+  .rerun-action:focus-visible {
+    outline: 2px solid var(--ring);
   }
-  .status-pending {
-    background: var(--faint);
-    color: var(--muted-foreground);
+  .action-item:hover { background: var(--muted); }
+  .action-item.selected {
+    background: var(--accent);
+    border-inline-start-color: var(--primary);
   }
-  .status-pending.status-icon {
-    background: #6b7280;
-    color: white;
+  .action-item:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
   }
-  .status-skipped {
-    background: var(--faint);
-    color: var(--muted-foreground);
-  }
-  .status-skipped.status-icon {
-    background: #9ca3af;
-    color: white;
-  }
-  .level-label {
-    font-size: var(--text-8);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: var(--space-2) var(--space-2) var(--space-1);
-  }
-  .action-needs {
+  .status-dot {
     display: flex;
     align-items: center;
-    gap: 0.2rem;
-    font-size: var(--text-8);
-    margin-top: 0.15rem;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: var(--radius-full);
+    color: var(--background);
+  }
+  .status-completed { background: var(--success); }
+  .status-failed { background: var(--danger); }
+  .status-running { background: var(--primary); animation: pulse 2s infinite; }
+  .status-awaiting_approval { background: var(--warning); }
+  .status-cancelled,
+  .status-skipped,
+  .status-pending { background: var(--faint-foreground); }
+  .action-name {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: var(--text-7);
+    font-weight: var(--font-medium);
+  }
+  .action-time {
+    flex-shrink: 0;
+    color: var(--muted-foreground);
+    font-size: var(--text-8);
+    font-variant-numeric: tabular-nums;
+  }
+  .approval {
+    display: flex;
+    flex-shrink: 0;
+    color: var(--warning);
+  }
+  .approval[data-tooltip]::before,
+  .approval[data-tooltip]::after {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    transform: translateY(4px);
+  }
+  .approval[data-tooltip]:hover::before,
+  .approval[data-tooltip]:hover::after {
+    transform: translateY(0);
   }
   @keyframes pulse {
     0%, 100% { opacity: 1; }

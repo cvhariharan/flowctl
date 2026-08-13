@@ -798,6 +798,10 @@ type ExecutionGetReq struct {
 	ExecID string `param:"execID" json:"-" validate:"required,uuid4"`
 }
 
+type RetryExecutionReq struct {
+	FromAction string `json:"from_action,omitempty"`
+}
+
 type FlowUpdateReq struct {
 	Prefix          string          `json:"prefix" validate:"omitempty,max=100,alphanum_underscore"`
 	Schedules       []Schedule      `json:"schedules" validate:"omitempty,dive"`

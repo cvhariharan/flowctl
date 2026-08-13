@@ -58,7 +58,7 @@
     {/if}
   </div>
 
-  <div class="hstack gap-4 nowrap">
+  <div class="header-actions hstack gap-4 nowrap">
     {#if children}
       {@render children()}
     {/if}
@@ -66,7 +66,7 @@
     {#each actions as action}
       <button
         onclick={action.onClick}
-        title={action.tooltip || ''}
+        data-tooltip={action.tooltip || undefined}
         data-variant={action.variant === 'danger' ? 'danger' : action.variant === 'secondary' ? 'secondary' : action.variant === 'ghost' ? 'ghost' : undefined}
         class="hstack gap-2"
       >
@@ -82,6 +82,8 @@
 
 <style>
   .header-bar {
+    position: relative;
+    z-index: 10;
     background: var(--card);
     border-bottom: 1px solid var(--border);
     padding: var(--space-3) var(--space-6);
@@ -89,6 +91,31 @@
     align-items: center;
     align-content: center;
     flex-wrap: nowrap;
+    overflow: visible;
+  }
+
+  .header-actions > button[data-tooltip]::after {
+    inset-block-start: calc(100% + 10px);
+    inset-block-end: auto;
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    transform: translateY(-4px);
+  }
+
+  .header-actions > button[data-tooltip]::before {
+    inset-block-start: calc(100% - 5px);
+    inset-block-end: auto;
+    border-top-color: transparent;
+    border-bottom-color: var(--foreground);
+    transform: translate(-50%) translateY(-4px);
+  }
+
+  .header-actions > button[data-tooltip]:is(:hover, :focus-visible)::after {
+    transform: translateY(0);
+  }
+
+  .header-actions > button[data-tooltip]:is(:hover, :focus-visible)::before {
+    transform: translate(-50%) translateY(0);
   }
 
   .breadcrumb-link {

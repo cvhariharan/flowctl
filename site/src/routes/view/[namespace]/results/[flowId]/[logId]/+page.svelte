@@ -3,19 +3,22 @@
     import { goto } from "$app/navigation";
     import Header from "$lib/components/shared/Header.svelte";
     import StatusBadge from "$lib/components/shared/StatusBadge.svelte";
+    import Tabs from "$lib/components/shared/Tabs.svelte";
     import ActionsList from "$lib/components/flow-status/ActionsList.svelte";
     import PipelineGraph from "$lib/components/flow-status/PipelineGraph.svelte";
+    import RerunFromActionModal from "$lib/components/flow-status/RerunFromActionModal.svelte";
     import LogsView from "$lib/components/flow-status/LogsView.svelte";
     import ExecutionOutputTable from "$lib/components/flow-status/ExecutionOutputTable.svelte";
     import type {
         FlowMetaResp,
         ExecutionSummary,
         ActionState,
-        ActionStatus,
     } from "$lib/types";
     import {
         actionLevels,
+        actionStages,
         actionStatusToStepStatus,
+        descendants,
         type StepStatus,
     } from "$lib/utils/dag";
     import { apiClient, ApiError } from "$lib/apiClient";
@@ -25,13 +28,19 @@
         showSuccess,
         showWarning,
     } from "$lib/utils/errorHandling";
-    import { formatDateTime, getStartTime } from "$lib/utils";
+    import { formatDateTime, formatDuration, getStartTime } from "$lib/utils";
+    import {
+        createLogStream,
+        type LogMessage,
+        type LogStream,
+    } from "$lib/logStream";
     import {
         IconPlayerStop,
         IconRefresh,
         IconRepeat,
-        IconHierarchy2,
-        IconList,
+        IconCopy,
+        IconAlertTriangle,
+        IconDownload,
     } from "@tabler/icons-svelte";
 
     let {
@@ -54,91 +63,33 @@
     let currentActionIndex = $state(-1);
     let completedActions = $state<number[]>([]);
     let failedActionIndex = $state(-1);
-    let logOutput = $state("");
-    let logMessages = $state<
-        Array<{
-            action_id: string;
-            message_type: string;
-            node_id: string;
-            value: string;
-            timestamp: string;
-        }>
-    >([]);
+    let logMessages = $state<LogMessage[]>([]);
     let results = $state<Record<string, any>>({});
     let showApproval = $state(false);
     let approvalID = $state<string | null>(null);
     let selectedActionId = $state<string>("");
-    let startTime = $state("");
-    let flowName = $state("");
+    let activeTab = $state("logs");
+    let showTimestamps = $state(true);
+    let followLogs = $state(true);
+    let now = $state(Date.now());
 
-    // SSE connection
-    let eventSource: EventSource | null = null;
-    let hasReceivedMessages = $state(false);
-    let manuallyClosed = $state(false);
+    let stream: LogStream | null = null;
 
     // Retry state
     let isRetrying = $state(false);
+    let rerunTargetId = $state<string | null>(null);
     let retryPollingInterval: ReturnType<typeof setInterval> | null = null;
 
-    // Message batching for performance
-    let messageBuffer: Array<{
-        action_id: string;
-        message_type: string;
-        node_id: string;
-        value: string;
-        timestamp: string;
-    }> = [];
-    let logOutputBuffer: string[] = [];
-    let rafId: number | null = null;
-
-    const flushMessageBuffer = () => {
-        rafId = null;
-        if (messageBuffer.length === 0 && logOutputBuffer.length === 0) return;
-
-        if (messageBuffer.length > 0) {
-            const newMessages = [...messageBuffer];
-            messageBuffer = [];
-            logMessages = logMessages.concat(newMessages);
-        }
-
-        if (logOutputBuffer.length > 0) {
-            const newOutput = logOutputBuffer.join("");
-            logOutputBuffer = [];
-            logOutput = logOutput + newOutput;
-        }
-    };
-
-    const scheduleFlush = () => {
-        if (rafId === null) {
-            rafId = requestAnimationFrame(flushMessageBuffer);
-        }
-    };
-
-    const addLogMessage = (msg: {
-        action_id: string;
-        message_type: string;
-        node_id: string;
-        value: string;
-        timestamp: string;
-    }) => {
-        messageBuffer.push(msg);
-        logOutputBuffer.push((msg.value || "") + "\n");
-        scheduleFlush();
-    };
-
     const resetLogState = () => {
-        if (rafId !== null) {
-            cancelAnimationFrame(rafId);
-            rafId = null;
-        }
-        messageBuffer = [];
-        logOutputBuffer = [];
         logMessages = [];
-        logOutput = "";
+        results = {};
+        showApproval = false;
+        approvalID = null;
     };
 
     // Polling for execution status updates
     let statusPollingInterval: NodeJS.Timeout | null = null;
+    let elapsedInterval: ReturnType<typeof setInterval> | null = null;
 
     // Derived values
     let namespace = $derived(data.namespace);
@@ -147,13 +98,54 @@
     let actions = $derived(data.flowMeta?.actions || []);
     let flowHasAutoRetry = $derived((data.flowMeta?.meta?.max_retries ?? 0) > 0);
     let isDAG = $derived(data.flowMeta?.meta?.execution_mode === "dag");
+    let canRerunFromAction = $derived(
+        (status === "completed" || status === "errored" || status === "cancelled")
+        && !isRetrying,
+    );
+    let rerunTarget = $derived(
+        actions.find((action) => action.id === rerunTargetId),
+    );
+    let rerunAffectedActions = $derived.by(() => {
+        if (!rerunTargetId) return [];
+        if (!isDAG) {
+            const index = actions.findIndex((action) => action.id === rerunTargetId);
+            return index === -1 ? [] : actions.slice(index);
+        }
+        const downstream = descendants(actions, rerunTargetId);
+        downstream.add(rerunTargetId);
+        return actions.filter((action) => downstream.has(action.id));
+    });
+    let flowName = $derived(
+        data.executionSummary?.flow_name || data.flowMeta?.meta?.name || "",
+    );
+    let startedAt = $derived(
+        data.executionSummary ? getStartTime(data.executionSummary) : undefined,
+    );
+    let startTime = $derived(formatDateTime(startedAt, "—"));
 
     // Per-action state from the server. Executions that predate this being recorded fall back to
     // inferring progress from the position of current_action_id in the list.
     let actionStates = $state<Record<string, ActionState>>({});
     let hasActionStates = $derived(Object.keys(actionStates).length > 0);
 
-    // Transform actions into list items with status
+    const durationForState = (state?: ActionState) => {
+        if (!state?.started_at) return "";
+        const finishedAt = state.finished_at
+            ?? (state.status === "running" ? new Date(now).toISOString() : undefined);
+        if (!finishedAt) return "";
+        return formatDuration(state.started_at, finishedAt, "");
+    };
+
+    let actionDurations = $derived.by(() => {
+        const durations: Record<string, string> = {};
+        for (const action of actions) {
+            const duration = durationForState(actionStates[action.id]);
+            if (duration) durations[action.id] = duration;
+        }
+        return durations;
+    });
+
+    // Transform actions into the compact execution rail.
     let actionsList = $derived(
         actions.map((action, index) => ({
             id: action.id,
@@ -161,6 +153,8 @@
             status: getActionStatus(index),
             level: isDAG ? levelByActionId[action.id] : undefined,
             needs: action.needs ?? [],
+            duration: actionDurations[action.id],
+            approval: action.approval,
         })),
     );
 
@@ -181,27 +175,53 @@
         return map;
     });
 
-    // The graph only says something a plain list does not once actions have dependencies.
-    let canShowGraph = $derived(
-        actions.length > 1 && actions.some((a) => (a.needs?.length ?? 0) > 0),
-    );
-    let viewMode = $state<"graph" | "list" | null>(null);
-    let showGraph = $derived(canShowGraph && (viewMode ?? "graph") === "graph");
-
     let graphStatuses = $derived.by(() => {
         const map: Record<string, StepStatus> = {};
         for (const action of actionsList) map[action.id] = action.status;
         return map;
     });
 
-    const updateExecutionStatus = async () => {
+    let selectedAction = $derived(
+        actionsList.find((action) => action.id === selectedActionId),
+    );
+    let completedCount = $derived(
+        actionsList.filter((action) => action.status === "completed").length,
+    );
+    let stageCount = $derived(actionStages(actions, isDAG ? "dag" : "sequential").length);
+    let outputCount = $derived(Object.keys(results).length);
+    let workspaceTabs = $derived([
+        { id: "logs", label: "Logs" },
+        { id: "pipeline", label: "Pipeline" },
+        { id: "output", label: "Outputs", badge: outputCount },
+        { id: "input", label: "Inputs" },
+    ]);
+    let selectedLogLineCount = $derived(
+        logMessages
+            .filter((message) =>
+                message.action_id === selectedActionId && message.message_type === "log"
+            )
+            .reduce(
+                (count, message) =>
+                    count + message.value.split("\n").filter((line) => line.trim()).length,
+                0,
+            ),
+    );
+    let elapsed = $derived.by(() => {
+        if (!startedAt) return "—";
+        const completedAt = status === "running" || status === "awaiting_approval"
+            ? new Date(now).toISOString()
+            : data.executionSummary?.completed_at;
+        return formatDuration(startedAt, completedAt, "—");
+    });
+
+    const updateExecutionStatus = async (allowStreamReconnect = true) => {
         if (!logId) return;
         try {
             const executionSummary = await apiClient.executions.getById(
                 namespace,
                 logId,
             );
-            updateStatusFromSummary(executionSummary);
+            updateStatusFromSummary(executionSummary, allowStreamReconnect);
         } catch (error) {
             // Silently handle errors during polling to avoid spam
             console.error("Failed to fetch execution summary:", error);
@@ -224,7 +244,10 @@
         }
     };
 
-    const updateStatusFromSummary = (executionSummary: ExecutionSummary) => {
+    const updateStatusFromSummary = (
+        executionSummary: ExecutionSummary,
+        allowStreamReconnect = true,
+    ) => {
         const execStatus = executionSummary.status;
         let newStatus: typeof status;
 
@@ -265,45 +288,39 @@
             startStatusPolling();
         }
 
-        // Reconnect SSE if status changed to running but not connected (scheduler retry)
-        if (newStatus === "running" && !eventSource) {
+        if (allowStreamReconnect && newStatus === "running" && !stream) {
             resetLogState();
-            connectSSE();
+            connectLogStream();
         }
     };
 
-    const connectSSE = () => {
-        const sseUrl = `/api/v1/${encodeURIComponent(namespace)}/logs/${logId}`;
-        eventSource = new EventSource(sseUrl);
-
-        eventSource.onmessage = (event) => {
-            hasReceivedMessages = true;
-            let msg = {};
-            try {
-                msg = JSON.parse(event.data);
-            } catch (e) {
-                handleInlineError(e, "SSE Message Parse Error");
-            }
-            processMessage(msg);
-        };
-
-        eventSource.addEventListener("end", () => {
-            if (eventSource) {
-                eventSource.close();
-                eventSource = null;
-            }
-            updateExecutionStatus();
+    const connectLogStream = () => {
+        stream?.close();
+        let nextStream: LogStream;
+        nextStream = createLogStream({
+            namespace,
+            logId,
+            onReset: resetLogState,
+            onMessages: (messages) => {
+                const appended: LogMessage[] = [];
+                for (const message of messages) processMessage(message, appended);
+                if (appended.length > 0) {
+                    logMessages = logMessages.concat(appended);
+                }
+            },
+            onEnd: async (reason) => {
+                await updateExecutionStatus(false);
+                const active = status === "running" || status === "awaiting_approval";
+                if (reason === "timeout" && active) return true;
+                if (stream === nextStream) stream = null;
+                return false;
+            },
+            onFatal: (error) => {
+                if (stream === nextStream) stream = null;
+                handleInlineError(error, "Unable to Stream Logs");
+            },
         });
-
-        eventSource.onerror = () => {
-            if (manuallyClosed) {
-                return;
-            }
-
-            if (eventSource?.readyState === EventSource.CLOSED) {
-                updateExecutionStatus();
-            }
-        };
+        stream = nextStream;
     };
 
     const reconstructProgress = (
@@ -346,7 +363,7 @@
         }
     };
 
-    const processMessage = (msg: any) => {
+    const processMessage = (msg: LogMessage, appended: LogMessage[]) => {
         // With action states the server reports progress directly. Inferring it from the order
         // messages arrive in is only correct for a single sequential run.
         if (msg.action_id && !hasActionStates) {
@@ -373,83 +390,40 @@
 
         switch (msg.message_type) {
             case "log":
-                addLogMessage({
-                    action_id: msg.action_id || "",
-                    message_type: msg.message_type,
-                    node_id: msg.node_id || "",
-                    value: msg.value || "",
-                    timestamp: msg.timestamp || "",
-                });
+                appended.push(msg);
                 break;
             case "result":
                 results = { ...results, ...(msg.results || {}) };
                 break;
             case "error":
-                flushMessageBuffer();
-                if (msg.value && msg.value.includes("cancelled")) {
-                    status = "cancelled";
-                } else {
-                    handleInlineError(
-                        new ApiError(500, "Flow execution failed", {
-                            error: msg.value || "An error occurred.",
-                            code: "OPERATION_FAILED",
-                        }),
-                        "Flow Execution Error",
-                    );
-                    status = "errored";
-                }
+                handleInlineError(
+                    new ApiError(500, "Flow execution failed", {
+                        error: msg.value || "An error occurred.",
+                        code: "OPERATION_FAILED",
+                    }),
+                    "Flow Execution Error",
+                );
+                status = "errored";
                 if (currentActionIndex !== -1) {
                     failedActionIndex = currentActionIndex;
                 }
                 stopStatusPolling();
                 break;
             case "approval":
-                flushMessageBuffer();
                 approvalID = msg.value;
                 showApproval = true;
                 status = "awaiting_approval";
                 stopStatusPolling();
                 break;
-            case "completed":
-                flushMessageBuffer();
-                status = "completed";
-                if (eventSource) {
-                    eventSource.close();
-                    eventSource = null;
-                }
-                stopStatusPolling();
-                updateExecutionStatus();
-                break;
             case "cancelled":
-                flushMessageBuffer();
                 status = "cancelled";
-                addLogMessage({
-                    action_id: msg.action_id || "",
-                    message_type: msg.message_type,
-                    node_id: msg.node_id || "",
+                appended.push({
+                    ...msg,
                     value: msg.value || "Flow execution was cancelled",
-                    timestamp: msg.timestamp || "",
                 });
-                flushMessageBuffer();
-                if (eventSource) {
-                    eventSource.close();
-                    eventSource = null;
-                }
                 stopStatusPolling();
                 break;
-            default:
-                addLogMessage({
-                    action_id: msg.action_id || "",
-                    message_type: msg.message_type,
-                    node_id: msg.node_id || "",
-                    value: msg.value || "",
-                    timestamp: msg.timestamp || "",
-                });
         }
-    };
-
-    const goBack = () => {
-        goto(`/view/${encodeURIComponent(namespace)}/flows`);
     };
 
     const getActionStatus = (index: number): StepStatus => {
@@ -498,12 +472,27 @@
         return "pending";
     };
 
-    const dismissApproval = () => {
-        showApproval = false;
-    };
-
     const handleActionSelect = (actionId: string) => {
         selectedActionId = actionId;
+        activeTab = "logs";
+    };
+
+    const copyExecutionId = async () => {
+        try {
+            await navigator.clipboard.writeText(logId);
+            showSuccess("Copied", "Execution ID copied to clipboard");
+        } catch (error) {
+            handleInlineError(error, "Unable to Copy Execution ID");
+        }
+    };
+
+    const downloadLogs = () => {
+        const link = document.createElement("a");
+        link.href = `/api/v1/${encodeURIComponent(namespace)}/logs/${logId}/download`;
+        link.download = `${logId}.log`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
     };
 
     const stopFlow = async () => {
@@ -512,10 +501,8 @@
 
             status = "cancelled";
 
-            manuallyClosed = true;
-            if (eventSource) {
-                eventSource.close();
-            }
+            stream?.close();
+            stream = null;
 
             showWarning(
                 "Flow Cancellation",
@@ -540,17 +527,14 @@
         goto(`/view/${encodeURIComponent(namespace)}/flows/${flowId}?rerun_from=${logId}`);
     };
 
-    const handleRetry = async () => {
-        if (isRetrying) return;
+    const retryExecution = async (fromAction?: string): Promise<boolean> => {
+        if (isRetrying) return false;
 
         try {
             isRetrying = true;
 
-            // Close current SSE connection to stop old logs
-            if (eventSource) {
-                eventSource.close();
-                eventSource = null;
-            }
+            stream?.close();
+            stream = null;
 
             // Stop current status polling
             stopStatusPolling();
@@ -559,13 +543,45 @@
             // actions at once, so compare the total rather than one action's count.
             const preRetryState = await apiClient.executions.getById(namespace, logId);
 
-            await apiClient.executions.retry(namespace, logId);
-            showInfo("Execution Retry", "Retrying execution...");
+            const resetActionIds = fromAction
+                ? rerunAffectedActions.map((action) => action.id)
+                : [];
+            await apiClient.executions.retry(namespace, logId, fromAction);
+
+            if (resetActionIds.length > 0) {
+                actionStates = { ...actionStates };
+                for (const actionId of resetActionIds) {
+                    const previous = actionStates[actionId];
+                    actionStates[actionId] = { ...previous, status: "pending", error: undefined };
+                }
+            }
+            status = "running";
+            showInfo(
+                fromAction ? "Actions Queued" : "Execution Retry",
+                fromAction ? `Re-running from ${fromAction}...` : "Retrying execution...",
+            );
             startRetryPolling(totalRetries(preRetryState));
+            return true;
 
         } catch (error) {
             isRetrying = false;
             handleInlineError(error, "Unable to Retry Execution");
+            return false;
+        }
+    };
+
+    const handleRetry = () => {
+        void retryExecution();
+    };
+
+    const openRerunConfirmation = (actionId: string) => {
+        rerunTargetId = actionId;
+    };
+
+    const confirmActionRerun = async () => {
+        if (!rerunTargetId) return;
+        if (await retryExecution(rerunTargetId)) {
+            rerunTargetId = null;
         }
     };
 
@@ -600,7 +616,6 @@
                     stopRetryPolling();
 
                     logMessages = [];
-                    logOutput = "";
                     results = {};
                     completedActions = [];
                     failedActionIndex = -1;
@@ -608,11 +623,8 @@
                     actionStates = {};
                     showApproval = false;
                     approvalID = null;
-                    hasReceivedMessages = false;
-                    manuallyClosed = false;
-
-                    updateStatusFromSummary(currentState);
-                    connectSSE();
+                    updateStatusFromSummary(currentState, false);
+                    connectLogStream();
                     startStatusPolling();
 
                     isRetrying = false;
@@ -632,24 +644,10 @@
         }
     };
 
-    let scheduledTime = $state("");
-
     // Initialize component
     onMount(() => {
         if (data.executionSummary) {
             updateStatusFromSummary(data.executionSummary);
-            const execStartTime = getStartTime(data.executionSummary);
-            startTime = formatDateTime(execStartTime);
-            if (data.executionSummary.scheduled_at) {
-                scheduledTime = formatDateTime(data.executionSummary.scheduled_at);
-            }
-            flowName =
-                data.executionSummary.flow_name ||
-                data.flowMeta?.meta?.name ||
-                "";
-        } else {
-            flowName = data.flowMeta?.meta?.name || "";
-            startTime = formatDateTime(new Date().toISOString());
         }
 
         // Set default selected action (first action or current running action)
@@ -657,10 +655,11 @@
             selectedActionId = activeActionId || actions[0].id;
         }
 
-        if (!eventSource) {
-            connectSSE();
+        if (!stream) {
+            connectLogStream();
         }
         startStatusPolling();
+        elapsedInterval = setInterval(() => (now = Date.now()), 1000);
     });
 
     // Auto-select running action when it changes. Depending on the id rather than the whole state
@@ -672,16 +671,11 @@
     });
 
     onDestroy(() => {
-        if (eventSource) {
-            eventSource.close();
-        }
+        stream?.close();
+        stream = null;
         stopStatusPolling();
         stopRetryPolling();
-        if (rafId !== null) {
-            cancelAnimationFrame(rafId);
-            rafId = null;
-        }
-        flushMessageBuffer();
+        if (elapsedInterval) clearInterval(elapsedInterval);
     });
 </script>
 
@@ -704,285 +698,377 @@
             ]}
             actions={[
                 ...(status === "running"
-                    ? [
-                          {
-                              label: "Stop",
-                              onClick: stopFlow,
-                              variant: "danger" as const,
-                              icon: IconPlayerStop,
-                          },
-                      ]
+                    ? [{ label: "Stop", onClick: stopFlow, variant: "danger" as const, icon: IconPlayerStop }]
                     : []),
                 ...((status === "errored" || status === "cancelled") && !flowHasAutoRetry
-                    ? [
-                          {
-                              label: isRetrying ? "Retrying..." : "Retry",
-                              onClick: handleRetry,
-                              variant: "primary" as const,
-                              icon: IconRefresh,
-                              tooltip: "Retry execution from the failed action",
-                          },
-                      ]
+                    ? [{
+                          label: isRetrying ? "Retrying..." : "Retry",
+                          onClick: handleRetry,
+                          variant: "primary" as const,
+                          icon: IconRefresh,
+                          tooltip: "Retry execution from the failed action",
+                      }]
                     : []),
                 {
                     label: "Rerun",
                     onClick: handleRerun,
                     variant: "secondary" as const,
                     icon: IconRepeat,
-                    tooltip: "Create a new execution with same inputs"
+                    tooltip: "Create a new execution with the same inputs",
                 },
             ]}
-        >
-            {#snippet children()}
-                <div class="hstack gap-2 items-center">
-                    <span class="text-lighter text-sm">Status:</span>
-                    <StatusBadge value={status} />
+        />
+
+        <section class="execution-bar" aria-label="Execution summary">
+            <StatusBadge value={status === "awaiting_approval" ? "pending_approval" : status} />
+            <h1>{flowName || "Loading..."}</h1>
+
+            <div class="progress-ribbon" aria-label={`${completedCount} of ${actions.length} actions complete`}>
+                {#each actionsList as action (action.id)}
+                    <span class="ribbon-{action.status}" title={`${action.name}: ${action.status.replace('_', ' ')}`}></span>
+                {/each}
+            </div>
+
+            <dl class="execution-meta">
+                <div>
+                    <dt>Progress</dt>
+                    <dd>{completedCount} / {actions.length} actions</dd>
                 </div>
-            {/snippet}
-        </Header>
-
-        <!-- Compact info bar -->
-        <div class="info-bar hstack nowrap justify-between text-sm">
-            <div class="hstack nowrap gap-4">
-                <span class="font-medium">{flowName || "Loading..."}</span>
-                {#if data.executionSummary?.trigger_type}
-                    <span class="badge {data.executionSummary.trigger_type === 'manual' ? 'primary' : 'success'}">{data.executionSummary.trigger_type}</span>
-                {/if}
-                {#if startTime}
-                    <span class="text-light">Started {startTime}</span>
-                {/if}
-                {#if data.executionSummary?.triggered_by}
-                    <span class="text-light">by <strong>{data.executionSummary.triggered_by.replace(/<.*>/, '').trim()}</strong></span>
-                {/if}
-            </div>
-            <div class="hstack nowrap gap-2 shrink-0">
-                <span class="text-light">ID</span>
-                <code class="text-xs">{logId}</code>
-            </div>
-        </div>
-
-        <!-- Collapsible sections -->
-        {#if data.executionSummary?.input || Object.keys(results).length > 0}
-            <div class="collapsible-sections">
-                {#if data.executionSummary?.input}
-                    <details>
-                        <summary>Inputs</summary>
-                        <pre><code>{JSON.stringify(data.executionSummary.input, null, 2)}</code></pre>
-                    </details>
-                {/if}
-
-                {#if Object.keys(results).length > 0}
-                    <details open>
-                        <summary>Outputs</summary>
-                        <div>
-                            <ExecutionOutputTable {results} />
-                        </div>
-                    </details>
-                {/if}
-            </div>
-        {/if}
-
-        <!-- Pipeline graph: stages left to right, dependencies as connectors -->
-        {#if showGraph}
-            <div class="graph-panel card">
-                <div class="graph-header hstack justify-between">
-                    <h5>Pipeline</h5>
-                    <button
-                        type="button"
-                        class="ghost small"
-                        onclick={() => (viewMode = "list")}
-                    >
-                        <IconList size={14} /> List view
-                    </button>
+                <div>
+                    <dt>Elapsed</dt>
+                    <dd>{elapsed}</dd>
                 </div>
-                <PipelineGraph
-                    actions={actions}
-                    statuses={graphStatuses}
-                    retries={data.executionSummary?.action_retries ?? {}}
+                <div>
+                    <dt>Started</dt>
+                    <dd>{startTime || "—"}</dd>
+                </div>
+                <div>
+                    <dt>Trigger</dt>
+                    <dd>
+                        {data.executionSummary?.trigger_type || "Unknown"}
+                        {#if data.executionSummary?.triggered_by}
+                            · {data.executionSummary.triggered_by.replace(/<.*>/, "").trim()}
+                        {/if}
+                    </dd>
+                </div>
+            </dl>
+
+            <div class="execution-id">
+                <code title={logId}>{logId.length > 14 ? `${logId.slice(0, 8)}…${logId.slice(-4)}` : logId}</code>
+                <button class="ghost icon small" type="button" title="Copy execution ID" onclick={copyExecutionId}>
+                    <IconCopy size={15} />
+                </button>
+            </div>
+        </section>
+
+        <div class="workspace">
+            <div class="action-rail">
+                <ActionsList
+                    actions={actionsList}
                     bind:selectedActionId
                     onActionSelect={handleActionSelect}
+                    canRerun={canRerunFromAction}
+                    onRerun={openRerunConfirmation}
                 />
             </div>
-        {/if}
 
-        <!-- Split Panel: Actions + Terminal (fills remaining height) -->
-        <div class="split-panel" class:graph-mode={showGraph}>
-            {#if !showGraph}
-                <div class="panel-left">
-                    <ActionsList
-                        actions={actionsList}
-                        bind:selectedActionId
-                        onActionSelect={handleActionSelect}
-                    />
-                </div>
-            {/if}
+            <section class="canvas" aria-label="Execution details">
+                <div class="canvas-header">
+                    <Tabs tabs={workspaceTabs} bind:activeTab />
 
-            <div class="panel-right">
-                <div class="card logs-card" style="padding: 0;">
-                    <div class="logs-header hstack justify-between">
-                        <h5>
-                            {#if selectedActionId}
-                                {actionsList.find((a) => a.id === selectedActionId)?.name || "Action Logs"}
-                            {:else}
-                                Action Logs
+                    {#if activeTab === "logs"}
+                        <div class="canvas-tools">
+                            <label><input type="checkbox" bind:checked={showTimestamps} /> Timestamps</label>
+                            <label><input type="checkbox" bind:checked={followLogs} /> Follow</label>
+                            {#if status !== "running"}
+                                <button class="ghost small" type="button" onclick={downloadLogs}>
+                                    <IconDownload size={14} /> Download
+                                </button>
                             {/if}
-                        </h5>
-                        {#if canShowGraph && !showGraph}
-                            <button
-                                type="button"
-                                class="ghost small"
-                                onclick={() => (viewMode = "graph")}
-                            >
-                                <IconHierarchy2 size={14} /> Graph view
-                            </button>
+                        </div>
+                    {/if}
+                </div>
+
+                {#if activeTab === "logs"}
+                    <div role="tabpanel" class="workspace-panel logs-panel">
+                        <div class="action-context">
+                            <strong>{selectedAction?.name || "Action logs"}</strong>
+                            {#if selectedActionId}
+                                <span class="separator">·</span>
+                                <span class="fact">{actions.find((action) => action.id === selectedActionId)?.executor || "no executor"}</span>
+                                {#if selectedAction?.duration}
+                                    <span class="separator">·</span>
+                                    <span class="fact">{selectedAction.duration}</span>
+                                {/if}
+                            {/if}
+                            <span class="fact line-count">{selectedLogLineCount} lines</span>
+                        </div>
+
+                        {#if selectedActionId && actionStates[selectedActionId]?.error}
+                            <div class="action-error" role="alert" data-variant="danger">
+                                <IconAlertTriangle size={16} />
+                                <span>{actionStates[selectedActionId].error}</span>
+                            </div>
+                        {/if}
+
+                        <div class="logs-body">
+                            <LogsView
+                                {logMessages}
+                                isRunning={status === "running"}
+                                theme="dark"
+                                bind:autoScroll={followLogs}
+                                bind:showTimestamp={showTimestamps}
+                                showControls={false}
+                                filterByActionId={selectedActionId}
+                                {logId}
+                                {namespace}
+                            />
+                        </div>
+                    </div>
+                {:else if activeTab === "pipeline"}
+                    <div role="tabpanel" class="workspace-panel pipeline-panel">
+                        <div class="graph-body">
+                            <PipelineGraph
+                                actions={actions}
+                                statuses={graphStatuses}
+                                retries={data.executionSummary?.action_retries ?? {}}
+                                durations={actionDurations}
+                                executionMode={isDAG ? "dag" : "sequential"}
+                                bind:selectedActionId
+                                onActionSelect={handleActionSelect}
+                                canRerun={canRerunFromAction}
+                                onRerun={openRerunConfirmation}
+                            />
+                        </div>
+                    </div>
+                {:else if activeTab === "output"}
+                    <div role="tabpanel" class="workspace-panel data-panel">
+                        {#if outputCount > 0}
+                            <ExecutionOutputTable {results} />
+                        {:else}
+                            <div class="empty-state text-lighter">No outputs have been produced.</div>
                         {/if}
                     </div>
-                    <div class="logs-body">
-                        <LogsView
-                            bind:logs={logOutput}
-                            {logMessages}
-                            isRunning={status === "running"}
-                            height="h-full"
-                            theme="dark"
-                            autoScroll={true}
-                            showCursor={true}
-                            filterByActionId={selectedActionId}
-                            {logId}
-                            {namespace}
-                        />
+                {:else}
+                    <div role="tabpanel" class="workspace-panel data-panel">
+                        {#if data.executionSummary?.input}
+                            <pre><code>{JSON.stringify(data.executionSummary.input, null, 2)}</code></pre>
+                        {:else}
+                            <div class="empty-state text-lighter">This execution has no inputs.</div>
+                        {/if}
                     </div>
-                </div>
-            </div>
+                {/if}
+            </section>
         </div>
     </div>
 </div>
 
+{#if rerunTargetId && rerunTarget}
+    <RerunFromActionModal
+        target={rerunTarget}
+        affectedActions={rerunAffectedActions}
+        onConfirm={confirmActionRerun}
+        onClose={() => (rerunTargetId = null)}
+    />
+{/if}
+
 <style>
-    .results-layout {
+    :global(main.app-content:has(.results-layout)) {
+        overflow: hidden;
+        background: var(--background);
+    }
+    :global(main.app-content:has(.results-layout) > .app-footer) { display: none; }
+
+    .results-layout,
+    .results-main {
         display: flex;
         flex: 1 1 auto;
         min-height: 0;
+        width: 100%;
     }
-
     .results-main {
-        flex: 1;
-        display: flex;
         flex-direction: column;
-        /* Scrolls rather than squeezing the logs once the graph and outputs need the space */
-        overflow-y: auto;
-        min-height: 0;
+        background: var(--card);
     }
 
-    .info-bar {
-        padding: var(--space-2) var(--space-4);
+    .execution-bar {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        flex-shrink: 0;
+        min-width: 0;
+        padding: var(--space-3) var(--space-6);
+        background: var(--background);
         border-bottom: 1px solid var(--border);
-        background: var(--card);
-        flex-shrink: 0;
     }
-
-    .collapsible-sections {
-        flex-shrink: 0;
-        padding: var(--space-2) var(--space-3);
-    }
-
-    .collapsible-sections details {
+    .execution-bar h1 {
+        max-width: 22rem;
         margin: 0;
-        background: var(--card);
+        overflow: hidden;
+        font-size: var(--text-5);
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
+    .progress-ribbon {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        flex-shrink: 0;
+    }
+    .progress-ribbon span {
+        width: 0.6rem;
+        height: 1.1rem;
+        border-radius: var(--radius-small);
+        background: var(--faint);
+    }
+    .progress-ribbon .ribbon-completed { background: var(--success); }
+    .progress-ribbon .ribbon-failed { background: var(--danger); }
+    .progress-ribbon .ribbon-running { background: var(--primary); animation: pulse 2s infinite; }
+    .progress-ribbon .ribbon-awaiting_approval { background: var(--warning); }
+    .progress-ribbon .ribbon-cancelled,
+    .progress-ribbon .ribbon-skipped { background: var(--faint-foreground); }
 
-    .collapsible-sections summary {
-        padding: var(--space-2) var(--space-3);
+    .execution-meta {
+        display: flex;
+        align-items: center;
+        gap: var(--space-6);
+        min-width: 0;
+        margin: 0;
+        padding-inline-start: var(--space-2);
+        overflow: hidden;
+        border-inline-start: 1px solid var(--border);
+    }
+    .execution-meta > div { min-width: 0; }
+    .execution-meta dt {
+        color: var(--muted-foreground);
+        font-size: var(--text-8);
+        line-height: 1.3;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .execution-meta dd {
+        margin: 0;
+        overflow: hidden;
         font-size: var(--text-7);
-        color: var(--foreground);
-        font-weight: var(--font-semibold);
+        font-weight: var(--font-medium);
+        line-height: 1.3;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
-
-    /* A long output table scrolls inside its own box so the logs stay in view */
-    .collapsible-sections details > pre,
-    .collapsible-sections details > div {
-        max-height: 16rem;
-        overflow: auto;
-    }
-
-    .graph-panel {
+    .execution-id {
+        display: flex;
+        align-items: center;
+        gap: var(--space-1);
         flex-shrink: 0;
-        margin: var(--space-2) var(--space-3) 0;
-        padding: 0;
-        overflow: hidden;
+        margin-inline-start: auto;
+    }
+    .execution-id code {
+        color: var(--muted-foreground);
+        font-size: var(--text-8);
     }
 
-    .graph-header {
-        padding: var(--space-2) var(--space-4);
-        border-bottom: 1px solid var(--border);
-    }
-
-    .graph-header h5 {
-        margin: 0;
-    }
-
-    .split-panel {
-        flex: 1;
+    .workspace {
         display: grid;
-        grid-template-columns: 280px 1fr;
-        /* Keeps the logs readable instead of collapsing when the page runs out of room */
-        min-height: 24rem;
-        margin: var(--space-2) var(--space-3);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-medium);
-        overflow: hidden;
+        grid-template-columns: 17rem minmax(0, 1fr);
+        flex: 1;
+        min-height: 0;
+        background: var(--card);
     }
-
-    /* The graph replaces the action list, so the logs take the full width */
-    .split-panel.graph-mode {
-        grid-template-columns: 1fr;
-    }
-
-    @media (max-width: 768px) {
-        .split-panel {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .panel-left {
+    .action-rail {
         min-height: 0;
         overflow: hidden;
-        border-right: 1px solid var(--border);
+        border-inline-end: 1px solid var(--border);
     }
-
-    .panel-left :global(.actions-panel) {
-        border: none;
-        border-radius: 0;
-        box-shadow: none;
-    }
-
-    .panel-right {
-        min-height: 0;
-        overflow: hidden;
-    }
-
-    .logs-card {
-        height: 100%;
+    .canvas {
         display: flex;
         flex-direction: column;
-        overflow: hidden;
-        border: none;
-        border-radius: 0;
-        box-shadow: none;
+        min-width: 0;
+        min-height: 0;
+        background: var(--card);
     }
-
-    .logs-header {
-        padding: var(--space-2) var(--space-4);
-        border-bottom: 1px solid var(--border);
+    .canvas-header {
+        display: flex;
+        align-items: center;
         flex-shrink: 0;
+        height: var(--space-12);
+        padding-inline: var(--space-4);
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
     }
-
-    .logs-header h5 {
+    .canvas-tools {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        margin-inline-start: auto;
+        color: var(--muted-foreground);
+    }
+    .canvas-tools label {
         margin: 0;
+        font-size: var(--text-8);
+        font-weight: var(--font-normal);
+    }
+    .workspace-panel {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-height: 0;
+        padding: 0;
+    }
+    .action-context {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        flex-shrink: 0;
+        min-width: 0;
+        padding: var(--space-2) var(--space-4);
+        overflow: hidden;
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        font-size: var(--text-7);
+        white-space: nowrap;
+    }
+    .action-context strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .action-context .fact { color: var(--muted-foreground); }
+    .separator { color: var(--border); }
+    .line-count,
+    .graph-help { margin-inline-start: auto; }
+    .action-error {
+        flex-shrink: 0;
+        margin: 0;
+        padding: var(--space-3) var(--space-4);
+        border: none;
+        border-bottom: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+        border-radius: 0;
+    }
+    .logs-body,
+    .graph-body {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+    .logs-body :global(.log-container) { border-radius: 0; }
+    .data-panel {
+        overflow: auto;
+        padding: var(--space-4);
+    }
+    .data-panel pre { margin: 0; }
+    .empty-state {
+        display: grid;
+        flex: 1;
+        place-items: center;
+        font-size: var(--text-7);
     }
 
-    .logs-body {
-        flex: 1;
-        overflow: hidden;
-        padding: var(--space-2);
+    @media (max-width: 1100px) {
+        .execution-meta { gap: var(--space-3); }
+        .execution-meta > div:nth-child(3) { display: none; }
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
 </style>

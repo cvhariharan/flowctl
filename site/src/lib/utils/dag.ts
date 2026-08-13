@@ -1,4 +1,4 @@
-import type { ActionStatus } from '$lib/types';
+import type { ActionStatus, ExecutionMode } from '$lib/types';
 
 export type StepStatus =
   | 'pending'
@@ -77,6 +77,17 @@ export function actionLevels<T extends HasNeeds>(actions: T[]): T[][] {
   }
 
   return unresolved.length === actions.length && actions.length > 0 ? [actions] : levels;
+}
+
+/**
+ * Returns the stages shown by an execution pipeline. DAG actions are grouped
+ * by dependency depth; sequential actions always occupy one stage each.
+ */
+export function actionStages<T extends HasNeeds>(
+  actions: T[],
+  executionMode: ExecutionMode = 'dag'
+): T[][] {
+  return executionMode === 'dag' ? actionLevels(actions) : actions.map((action) => [action]);
 }
 
 function walk<T extends HasNeeds>(

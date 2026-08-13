@@ -26,33 +26,31 @@
     };
 
     type Props = {
-        logs: string;
         logMessages?: LogMessage[];
         isRunning?: boolean;
         height?: string;
-        showCursor?: boolean;
         autoScroll?: boolean;
-        showLineNumbers?: boolean;
         theme?: "dark" | "light";
         fontSize?: "xs" | "sm" | "base";
         filterByActionId?: string;
         logId?: string;
         namespace?: string;
+        showControls?: boolean;
+        showTimestamp?: boolean;
     };
 
     let {
-        logs = $bindable(),
         logMessages = [],
         isRunning = false,
         height = "h-96",
-        showCursor = true,
-        autoScroll = true,
-        showLineNumbers = false,
+        autoScroll = $bindable(true),
         theme = "dark",
         fontSize = "sm",
         filterByActionId,
         logId,
         namespace,
+        showControls = true,
+        showTimestamp = $bindable(false),
     }: Props = $props();
 
     const canDownload = $derived(!isRunning && !!logId && !!namespace);
@@ -67,7 +65,6 @@
         document.body.removeChild(a);
     };
 
-    let showTimestamp = $state(false);
     let scrollContainer: HTMLDivElement | undefined;
 
     const ITEM_HEIGHT = 20;
@@ -97,16 +94,6 @@
         return nodeColorMap.get(nodeId)!;
     };
 
-    const formatLogsWithLineNumbers = (logText: string) => {
-        if (!showLineNumbers) return logText;
-        return logText
-            .split("\n")
-            .map((line, index) => `${(index + 1).toString().padStart(4, " ")} | ${line}`)
-            .join("\n");
-    };
-
-    const hasStructuredLogs = $derived(logMessages && logMessages.length > 0);
-
     const filteredMessages = $derived(
         filterByActionId
             ? logMessages.filter((msg) => msg.action_id === filterByActionId)
@@ -135,13 +122,6 @@
             }
         }
         return result;
-    });
-
-    const processedRawLogs = $derived(formatLogsWithLineNumbers(logs));
-    const rawLogsHasAnsi = $derived(containsAnsi(processedRawLogs));
-    const processedRawLogsHtml = $derived.by(() => {
-        if (!rawLogsHasAnsi) return '';
-        return processedRawLogs.split('\n').map(line => ansiToHtml(line)).join('\n');
     });
 
     const totalHeight = $derived(processedLogs.length * ITEM_HEIGHT);
@@ -185,7 +165,7 @@
 </script>
 
 <div class="vstack gap-2" style="height: 100%;">
-    {#if (logMessages && logMessages.length > 0) || canDownload}
+    {#if showControls && ((logMessages && logMessages.length > 0) || canDownload)}
         <div class="hstack toolbar">
             <div class="hstack gap-4">
                 {#if logMessages && logMessages.length > 0}
@@ -235,16 +215,12 @@
                     {/each}
                 </div>
             </div>
-        {:else if logs.length > 0}
-            <div class="raw-logs">
-                {#if rawLogsHasAnsi}{@html processedRawLogsHtml}{:else}{processedRawLogs}{/if}
-                {#if isRunning && showCursor}
-                    <div class="cursor-block">
-                        <span class="cursor-char">&#x2588;</span>
-                        <span class="cursor-blink">_</span>
-                    </div>
-                {/if}
-            </div>
+            {#if isRunning}
+                <div class="cursor-block">
+                    <span class="cursor-char">&#x2588;</span>
+                    <span class="cursor-blink">_</span>
+                </div>
+            {/if}
         {:else}
             <div class="centered-msg text-lighter">
                 {#if isRunning}
@@ -282,8 +258,8 @@
         overflow-x: auto;
     }
     .theme-dark {
-        background: #030712;
-        color: #d1d5db;
+        background: var(--background);
+        color: var(--foreground);
     }
     .theme-light {
         background: var(--faint);
@@ -302,19 +278,16 @@
     .node-id {
         font-weight: 600;
     }
-    .node-blue { color: #60a5fa; }
-    .node-green { color: #34d399; }
-    .node-yellow { color: #fbbf24; }
-    .node-purple { color: #a78bfa; }
-    .node-pink { color: #f472b6; }
-    .node-cyan { color: #22d3ee; }
-    .node-orange { color: #fb923c; }
-    .node-teal { color: #2dd4bf; }
-    .node-indigo { color: #818cf8; }
-    .node-rose { color: #fb7185; }
-    .raw-logs {
-        white-space: pre;
-    }
+    .node-blue,
+    .node-indigo { color: var(--primary); }
+    .node-green,
+    .node-teal { color: var(--success); }
+    .node-yellow,
+    .node-orange { color: var(--warning); }
+    .node-purple,
+    .node-pink { color: var(--danger); }
+    .node-cyan { color: var(--info); }
+    .node-rose { color: var(--neutral); }
     .centered-msg {
         display: flex;
         align-items: center;

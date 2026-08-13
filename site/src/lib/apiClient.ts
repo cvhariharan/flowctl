@@ -486,9 +486,10 @@ export const apiClient = {
       baseFetch<{message: string; execID: string}>(`/api/v1/${encodeURIComponent(namespace)}/flows/executions/${execId}/cancel`, {
         method: 'POST',
       }),
-    retry: (namespace: string, execId: string) =>
+    retry: (namespace: string, execId: string, fromAction?: string) =>
       baseFetch<void>(`/api/v1/${encodeURIComponent(namespace)}/flows/executions/${execId}/retry`, {
         method: 'POST',
+        ...(fromAction ? { body: JSON.stringify({ from_action: fromAction }) } : {}),
       }),
   },
 

@@ -255,7 +255,7 @@ func TestSeedActionStates(t *testing.T) {
 
 	prev := map[string]ActionState{
 		"done":        {Status: ActionStatusCompleted},
-		"failed":      {Status: ActionStatusFailed, Error: "boom"},
+		"failed":      {Status: ActionStatusFailed, Attempt: 2, Error: "boom"},
 		"blocked":     {Status: ActionStatusBlocked},
 		"skipped":     {Status: ActionStatusSkipped},
 		"interrupted": {Status: ActionStatusRunning},
@@ -290,6 +290,9 @@ func TestSeedActionStates(t *testing.T) {
 	}
 	if got := seedActionStates(actions, prev)["failed"].Error; got != "" {
 		t.Errorf("reset action kept its error %q", got)
+	}
+	if got := seedActionStates(actions, prev)["failed"].Attempt; got != 2 {
+		t.Errorf("reset action attempt = %d, want 2", got)
 	}
 }
 

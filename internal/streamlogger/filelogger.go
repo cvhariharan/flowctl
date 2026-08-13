@@ -17,11 +17,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/nxadm/tail"
 )
 
-const FileSyncInterval = 100 * time.Millisecond
+const (
+	FileSyncInterval = 100 * time.Millisecond
+	LogPollInterval  = 100 * time.Millisecond
+)
 
 // extractFileIndex extracts the numeric index from a log filename
 func extractFileIndex(filename string) int {
@@ -126,27 +127,18 @@ func (f *FileLogManager) StreamLogs(ctx context.Context, execID string, actionRe
 	logger, exists := f.loggers[execID]
 	f.loggerMut.RUnlock()
 
+	closed := make(chan struct{})
+	if fl, ok := logger.(*FileLogger); exists && ok {
+		closed = fl.syncCh
+	} else {
+		close(closed)
+	}
+
 	go func() {
 		defer close(logCh)
 
-		select {
-		case <-ctx.Done():
-			log.Printf("stream logs for exec %s: error %v", execID, ctx.Err())
-		default:
-			var err error
-			if exists {
-				if fl, ok := logger.(*FileLogger); ok && !fl.IsClosed() {
-					err = f.streamRealtimeLogs(ctx, execID, fl, actionRetries, logCh)
-				} else {
-					err = f.streamAllLogs(ctx, execID, actionRetries, logCh)
-				}
-			} else {
-				err = f.streamAllLogs(ctx, execID, actionRetries, logCh)
-			}
-
-			if err != nil {
-				log.Println(err)
-			}
+		if err := f.followLogs(ctx, execID, closed, actionRetries, logCh); err != nil && ctx.Err() == nil {
+			log.Printf("stream logs for exec %s: %v", execID, err)
 		}
 	}()
 
@@ -175,85 +167,97 @@ func (f *FileLogManager) getLogFiles(execID string) ([]string, error) {
 	return logFiles, nil
 }
 
-// streamAllLogs streams log lines from all log files for the given exec ID.
-// This is used for executions that are not currently running.
-// It filters logs to show only the highest retry attempt for each action.
-func (f *FileLogManager) streamAllLogs(ctx context.Context, execID string, actionRetries map[string]int32, logCh chan<- string) error {
-	logFiles, err := f.getLogFiles(execID)
-	if err != nil {
-		return err
-	}
-
-	if len(logFiles) == 0 {
-		return nil
-	}
-
-	// Stream from each file in order with retry filtering
-	for _, filename := range logFiles {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			filePath := filepath.Join(f.cfg.LogDir, filename)
-			if err := f.streamFromFile(ctx, filePath, actionRetries, logCh); err != nil {
-				return fmt.Errorf("failed to stream from file %s: %w", filename, err)
-			}
-		}
-	}
-
-	return nil
-}
-
-// streamRealtimeLogs streams all archived logs plus active logs from the current file
-// This is used for currently running executions.
-// It filters logs to show only the highest retry attempt for each action.
-func (f *FileLogManager) streamRealtimeLogs(ctx context.Context, execID string, fl *FileLogger, actionRetries map[string]int32, logCh chan<- string) error {
-	// First stream all archived logs with retry filtering
-	nextIndex := fl.nextFileIndex.Load()
-	for i := int32(0); i < nextIndex-1; i++ {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			filename := fmt.Sprintf("%s.%d", execID, i)
-			filePath := filepath.Join(f.cfg.LogDir, filename)
-
-			if _, err := os.Stat(filePath); err == nil {
-				if err := f.streamFromFile(ctx, filePath, actionRetries, logCh); err != nil {
-					return fmt.Errorf("failed to stream from archived file %s: %w", filename, err)
-				}
-			}
-		}
-	}
-
-	activeFilename := fmt.Sprintf("%s.%d", execID, nextIndex-1)
-	activeFilePath := filepath.Join(f.cfg.LogDir, activeFilename)
-
-	return f.followActiveFile(ctx, activeFilePath, fl.syncCh, actionRetries, logCh)
-}
-
-// streamFromFile reads all lines from a file and filters by retry attempt
-func (f *FileLogManager) streamFromFile(ctx context.Context, filePath string, actionRetries map[string]int32, logCh chan<- string) error {
+// readCompleteLines reads from offset and returns the number of bytes belonging to complete
+// newline-terminated records. A trailing partial record is deliberately left unread so the next
+// poll can retry it after the writer flushes the remainder.
+func (f *FileLogManager) readCompleteLines(ctx context.Context, filePath string, offset int64, actionRetries map[string]int32, logCh chan<- string) (int64, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
+	if _, err := file.Seek(offset, io.SeekStart); err != nil {
+		return 0, err
+	}
+
+	reader := bufio.NewReader(file)
+	var consumed int64
+	for {
+		line, readErr := reader.ReadString('\n')
+		if strings.HasSuffix(line, "\n") {
+			consumed += int64(len(line))
+			line = strings.TrimSuffix(line, "\n")
+			line = strings.TrimSuffix(line, "\r")
+			if f.shouldStreamLogLine(line, actionRetries) {
+				select {
+				case logCh <- line:
+				case <-ctx.Done():
+					return consumed, ctx.Err()
+				}
+			}
+		}
+
+		if readErr != nil {
+			if readErr == io.EOF {
+				return consumed, nil
+			}
+			return consumed, readErr
+		}
+	}
+}
+
+// followLogs polls file offsets and follows segment rotation until the logger closes. The same
+// path is used for active and completed executions; a completed execution supplies an already
+// closed channel and is replayed from segment zero.
+func (f *FileLogManager) followLogs(ctx context.Context, execID string, closed <-chan struct{}, actionRetries map[string]int32, logCh chan<- string) error {
+	index := 0
+	var offset int64
+	finalPass := false
+	ticker := time.NewTicker(LogPollInterval)
+	defer ticker.Stop()
+
+	for {
+		filePath := filepath.Join(f.cfg.LogDir, fmt.Sprintf("%s.%d", execID, index))
+		consumed, err := f.readCompleteLines(ctx, filePath, offset, actionRetries, logCh)
+		if err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to read log segment %d: %w", index, err)
+		}
+		offset += consumed
+
+		nextPath := filepath.Join(f.cfg.LogDir, fmt.Sprintf("%s.%d", execID, index+1))
+		if _, err := os.Stat(nextPath); err == nil {
+			index++
+			offset = 0
+			finalPass = false
+			continue
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to inspect next log segment: %w", err)
+		}
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		default:
-			line := scanner.Text()
-			if f.shouldStreamLogLine(line, actionRetries) {
-				logCh <- line
+		case <-closed:
+			// Closing flushes before signalling. Repeat once so a rotation that raced the
+			// previous stat and every last buffered record are observed.
+			if finalPass {
+				return nil
 			}
+			finalPass = true
+			continue
+		default:
+			finalPass = false
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-closed:
+			finalPass = true
+		case <-ticker.C:
 		}
 	}
-
-	return scanner.Err()
 }
 
 // shouldStreamLogLine checks if a log line should be streamed based on retry filtering
@@ -277,41 +281,6 @@ func (f *FileLogManager) shouldStreamLogLine(line string, actionRetries map[stri
 	}
 
 	return logRetry == maxRetry
-}
-
-// followActiveFile follows an active file and filters by retry attempt
-func (f *FileLogManager) followActiveFile(ctx context.Context, filePath string, syncCh <-chan struct{}, actionRetries map[string]int32, logCh chan<- string) error {
-	tailConfig := tail.Config{
-		Follow:    true,
-		ReOpen:    true,
-		MustExist: false,
-		Location:  &tail.SeekInfo{Offset: 0, Whence: 0}, // Start from beginning
-	}
-
-	t, err := tail.TailFile(filePath, tailConfig)
-	if err != nil {
-		return fmt.Errorf("failed to tail file %s: %w", filePath, err)
-	}
-	defer t.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-syncCh:
-			// logger is closed, drain remaining lines with filtering
-			for line := range t.Lines {
-				if f.shouldStreamLogLine(line.Text, actionRetries) {
-					logCh <- line.Text
-				}
-			}
-			return nil
-		case line := <-t.Lines:
-			if f.shouldStreamLogLine(line.Text, actionRetries) {
-				logCh <- line.Text
-			}
-		}
-	}
 }
 
 // GetRawLogs writes all raw log file segments for the given execID to w, in order.

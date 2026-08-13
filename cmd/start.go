@@ -405,7 +405,7 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 	namespaceGroup.DELETE("/flows/:flowID/schedules/:schedule_id", h.HandleDeleteSchedule, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionExecute))
 
 	namespaceGroup.POST("/trigger/:flow", h.HandleFlowTrigger, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionExecute))
-	namespaceGroup.GET("/logs/:logID", h.HandleLogStreaming, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionView))
+	namespaceGroup.GET("/logs/:logID/stream", h.HandleLogStream, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionView))
 	namespaceGroup.GET("/logs/:logID/download", h.HandleLogDownload, h.AuthorizeNamespaceAction(models.ResourceExecution, models.RBACActionView))
 
 	namespaceGroup.GET("/nodes", h.HandleListNodes, h.AuthorizeNamespaceAction(models.ResourceNode, models.RBACActionView))

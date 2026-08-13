@@ -71,6 +71,16 @@ WHERE exec_id = $1
   AND status IN ('errored', 'cancelled', 'pending_approval')
 RETURNING attempt;
 
+-- name: RequeueExecutionForReset :one
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+)
+UPDATE executions SET status = 'pending', updated_at = NOW()
+WHERE exec_id = $1
+  AND namespace_id = (SELECT id FROM namespace_lookup)
+  AND status IN ('completed', 'errored', 'cancelled')
+RETURNING attempt;
+
 -- name: CancelExecution :one
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2

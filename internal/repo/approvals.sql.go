@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const addApprovalRequest = `-- name: AddApprovalRequest :one
@@ -116,6 +117,22 @@ func (q *Queries) ApproveRequestByUUID(ctx context.Context, arg ApproveRequestBy
 		&i.RequestedBy,
 	)
 	return i, err
+}
+
+const deleteApprovalsForExecActions = `-- name: DeleteApprovalsForExecActions :exec
+DELETE FROM approvals
+WHERE exec_id = $1
+  AND action_id = ANY($2::varchar[])
+`
+
+type DeleteApprovalsForExecActionsParams struct {
+	ExecID    string   `db:"exec_id" json:"exec_id"`
+	ActionIds []string `db:"action_ids" json:"action_ids"`
+}
+
+func (q *Queries) DeleteApprovalsForExecActions(ctx context.Context, arg DeleteApprovalsForExecActionsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteApprovalsForExecActions, arg.ExecID, pq.Array(arg.ActionIds))
+	return err
 }
 
 const getApprovalByUUID = `-- name: GetApprovalByUUID :one

@@ -130,6 +130,33 @@ export function formatTime(dateString: string | null | undefined, fallback: stri
 }
 
 /**
+ * Formats the elapsed time between two timestamps. When the end timestamp is
+ * omitted, the current time is used so this also works for active executions.
+ */
+export function formatDuration(
+  startedAt: string | null | undefined,
+  completedAt?: string | null,
+  fallback: string = 'Unknown'
+): string {
+  if (!startedAt) return fallback;
+
+  const start = new Date(startedAt).getTime();
+  const end = completedAt ? new Date(completedAt).getTime() : Date.now();
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return fallback;
+
+  const durationMs = Math.max(0, end - start);
+  if (durationMs < 1000) return '<1s';
+
+  const seconds = Math.floor(durationMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+  return `${seconds}s`;
+}
+
+/**
  * Gets the start time from an execution object, falling back to created_at if started_at is not available
  * @param execution - Object with started_at and created_at properties
  * @returns The start time string

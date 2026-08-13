@@ -41,6 +41,7 @@ type Querier interface {
 	CreateUserSchedule(ctx context.Context, arg CreateUserScheduleParams) (CronSchedule, error)
 	DeleteAPIToken(ctx context.Context, arg DeleteAPITokenParams) error
 	DeleteAllFlows(ctx context.Context) error
+	DeleteApprovalsForExecActions(ctx context.Context, arg DeleteApprovalsForExecActionsParams) error
 	DeleteCredential(ctx context.Context, arg DeleteCredentialParams) error
 	DeleteExecutionEventsByExecIDs(ctx context.Context, execIds []string) error
 	DeleteExecutorKV(ctx context.Context, arg DeleteExecutorKVParams) error
@@ -168,6 +169,7 @@ type Querier interface {
 	RemoveAllGroupsForUserByUUID(ctx context.Context, userUuid uuid.UUID) error
 	RemoveNamespaceMember(ctx context.Context, arg RemoveNamespaceMemberParams) (NamespaceMember, error)
 	RequeueExecution(ctx context.Context, arg RequeueExecutionParams) (int32, error)
+	RequeueExecutionForReset(ctx context.Context, arg RequeueExecutionForResetParams) (int32, error)
 	RevokeAllMemberPrefixAccess(ctx context.Context, arg RevokeAllMemberPrefixAccessParams) error
 	RevokeGroupPrefixAccess(ctx context.Context, arg RevokeGroupPrefixAccessParams) error
 	RevokeUserPrefixAccess(ctx context.Context, arg RevokeUserPrefixAccessParams) error

@@ -157,6 +157,7 @@ const (
 	ExecutionEventTypeActionBlocked   ExecutionEventType = "action_blocked"
 	ExecutionEventTypeActionSkipped   ExecutionEventType = "action_skipped"
 	ExecutionEventTypeActionCancelled ExecutionEventType = "action_cancelled"
+	ExecutionEventTypeActionReset     ExecutionEventType = "action_reset"
 )
 
 func (e *ExecutionEventType) Scan(src interface{}) error {

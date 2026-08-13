@@ -1,4 +1,5 @@
-import { actionLevels } from './dag';
+import type { ExecutionMode } from '$lib/types';
+import { actionStages } from './dag';
 
 export const NODE_WIDTH = 190;
 export const NODE_HEIGHT = 54;
@@ -61,12 +62,15 @@ function orderStages<T extends HasNeeds>(levels: T[][]): T[][] {
   return levels;
 }
 
-export function pipelineLayout<T extends HasNeeds>(actions: T[]): PipelineLayout<T> {
+export function pipelineLayout<T extends HasNeeds>(
+  actions: T[],
+  executionMode: ExecutionMode = 'dag'
+): PipelineLayout<T> {
   if (actions.length === 0) {
     return { stages: [], edges: [], width: 0, height: 0 };
   }
 
-  const levels = orderStages(actionLevels(actions));
+  const levels = orderStages(actionStages(actions, executionMode));
   const tallest = Math.max(...levels.map((l) => l.length));
   const columnHeight = (rows: number) => rows * NODE_HEIGHT + (rows - 1) * GAP_Y;
   const fullHeight = columnHeight(tallest);
@@ -87,11 +91,17 @@ export function pipelineLayout<T extends HasNeeds>(actions: T[]): PipelineLayout
   });
 
   const edges: Edge[] = [];
-  for (const action of actions) {
+  for (const [actionIndex, action] of actions.entries()) {
     const to = position.get(action.id);
     if (!to) continue;
 
-    for (const dep of action.needs ?? []) {
+    const dependencies = executionMode === 'dag'
+      ? (action.needs ?? [])
+      : actionIndex > 0
+        ? [actions[actionIndex - 1].id]
+        : [];
+
+    for (const dep of dependencies) {
       const from = position.get(dep);
       if (!from) continue;
 

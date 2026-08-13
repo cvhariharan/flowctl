@@ -1,14 +1,7 @@
 <script lang="ts">
-  import {
-    IconX,
-    IconCheck,
-    IconPlayerPlay,
-    IconClockPause,
-    IconCircle,
-    IconMinus,
-    IconPlayerSkipForward,
-  } from '@tabler/icons-svelte';
   import { dependencyPath, type StepStatus } from '$lib/utils/dag';
+  import type { ExecutionMode } from '$lib/types';
+  import { IconRefresh } from '@tabler/icons-svelte';
   import {
     pipelineLayout,
     NODE_WIDTH,
@@ -27,32 +20,40 @@
     actions,
     statuses = {},
     retries = {},
+    durations = {},
+    executionMode = 'dag',
     selectedActionId = $bindable(),
     onActionSelect,
+    canRerun = false,
+    onRerun,
   }: {
     actions: GraphAction[];
     statuses?: Record<string, StepStatus>;
     retries?: Record<string, number>;
+    durations?: Record<string, string>;
+    executionMode?: ExecutionMode;
     selectedActionId?: string;
     onActionSelect?: (actionId: string) => void;
+    canRerun?: boolean;
+    onRerun?: (actionId: string) => void;
   } = $props();
 
   let hoveredId = $state<string | null>(null);
 
-  const layout = $derived(pipelineLayout(actions));
-
-  const MAX_VIEWPORT = 380;
-  const SCROLL_PADDING = 40;
-
-  // Fit short pipelines, cap tall ones so the logs below stay on screen.
-  const viewportHeight = $derived(
-    Math.min(layout.height + SCROLL_PADDING, MAX_VIEWPORT)
-  );
+  const layout = $derived(pipelineLayout(actions, executionMode));
 
   // Dim everything outside the hovered action's dependency path, the way a pipeline view narrows
   // down to the chain you are pointing at.
+  const pathActions = $derived(
+    executionMode === 'dag'
+      ? actions
+      : actions.map((action, index) => ({
+          ...action,
+          needs: index > 0 ? [actions[index - 1].id] : [],
+        }))
+  );
   const highlighted = $derived(
-    hoveredId ? dependencyPath(actions, hoveredId) : null
+    hoveredId ? dependencyPath(pathActions, hoveredId) : null
   );
 
   const statusOf = (id: string): StepStatus => statuses[id] ?? 'pending';
@@ -69,18 +70,6 @@
     }
   };
 
-  const getIcon = (status: StepStatus) => {
-    switch (status) {
-      case 'failed': return IconX;
-      case 'completed': return IconCheck;
-      case 'running': return IconPlayerPlay;
-      case 'awaiting_approval': return IconClockPause;
-      case 'cancelled': return IconCircle;
-      case 'skipped': return IconPlayerSkipForward;
-      default: return IconMinus;
-    }
-  };
-
   const edgeClass = (from: string, to: string) => {
     const status = statusOf(from);
     if (status === 'completed') return 'edge-done';
@@ -93,7 +82,7 @@
 </script>
 
 {#if actions.length > 0}
-  <div class="graph-scroll" style="height: {viewportHeight}px;">
+  <div class="graph-scroll">
     <div
       class="graph-canvas"
       style="width: {layout.width}px; height: {layout.height}px;"
@@ -130,7 +119,6 @@
         {#each stage.nodes as node (node.action.id)}
           {@const status = statusOf(node.action.id)}
           {@const attempts = retries[node.action.id] ?? 0}
-          {@const Icon = getIcon(status)}
           <button
             type="button"
             class="node {getStatusClass(status)}"
@@ -146,19 +134,31 @@
               ? ` — needs ${node.action.needs.join(', ')}`
               : ''}"
           >
-            <span class="node-icon {getStatusClass(status)}">
-              <Icon size={13} />
-            </span>
             <span class="node-text">
               <span class="node-name">{node.action.name}</span>
               <span class="node-meta text-lighter">
                 {node.action.executor || 'no executor'}
+                {#if durations[node.action.id]}
+                  · {durations[node.action.id]}
+                {/if}
                 {#if attempts > 1}
                   · attempt {attempts}
                 {/if}
               </span>
             </span>
           </button>
+          {#if canRerun}
+            <button
+              type="button"
+              class="rerun-node"
+              style="left: {node.x + NODE_WIDTH - 29}px; top: {node.y + 5}px;"
+              onclick={() => onRerun?.(node.action.id)}
+              aria-label={`Re-run from ${node.action.name}`}
+              title="Re-run from here"
+            >
+              <IconRefresh size={14} />
+            </button>
+          {/if}
         {/each}
       {/each}
     </div>
@@ -167,14 +167,12 @@
 
 <style>
   .graph-scroll {
-    /* A wide pipeline scrolls sideways rather than being clipped */
-    overflow-x: auto;
-    overflow-y: auto;
-    /* Height comes from the content, capped inline. No max-height, so dragging the bottom edge can
-       open a big graph up past the cap. */
-    resize: vertical;
-    min-height: 7rem;
-    padding: var(--space-3) var(--space-4) var(--space-4);
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--space-6) var(--space-4);
   }
   .graph-canvas {
     position: relative;
@@ -236,7 +234,7 @@
     box-sizing: border-box;
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    justify-content: center;
     padding: 0 var(--space-3);
     border: 2px solid var(--border);
     border-radius: var(--radius-medium);
@@ -249,7 +247,7 @@
       box-shadow 0.15s;
   }
   .node:hover {
-    box-shadow: 0 1px 6px rgb(0 0 0 / 0.12);
+    box-shadow: var(--shadow-small);
   }
   .node:focus-visible {
     outline: 2px solid var(--primary);
@@ -261,21 +259,33 @@
   .node.dimmed {
     opacity: 0.35;
   }
-
-  .node-icon {
-    flex-shrink: 0;
-    width: 1.25rem;
-    height: 1.25rem;
-    border-radius: 999px;
+  .rerun-node {
+    all: unset;
+    position: absolute;
+    z-index: 2;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--radius-small);
+    color: var(--muted-foreground);
+    cursor: pointer;
   }
+  .rerun-node:hover {
+    background: var(--muted);
+    color: var(--foreground);
+  }
+  .rerun-node:focus-visible {
+    outline: 2px solid var(--primary);
+  }
+
   .node-text {
     min-width: 0;
     display: flex;
     flex-direction: column;
+    align-items: center;
     line-height: 1.25;
   }
   .node-name {
@@ -292,51 +302,19 @@
     white-space: nowrap;
   }
 
-  .status-completed.node-icon {
-    background: var(--success);
-  }
   .status-completed.node {
     border-color: color-mix(in srgb, var(--success) 45%, var(--border));
-  }
-  .status-failed.node-icon {
-    background: var(--danger);
   }
   .status-failed.node {
     border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
   }
-  .status-running.node-icon {
-    background: var(--primary);
-    animation: pulse 2s infinite;
-  }
   .status-running.node {
     border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
-  }
-  .status-waiting.node-icon {
-    background: var(--warning);
   }
   .status-waiting.node {
     border-color: color-mix(in srgb, var(--warning) 55%, var(--border));
   }
-  .status-cancelled.node-icon {
-    background: #9ca3af;
-  }
-  .status-skipped.node-icon {
-    background: #9ca3af;
-  }
   .status-skipped.node {
     border-style: dashed;
-  }
-  .status-pending.node-icon {
-    background: #6b7280;
-  }
-
-  @keyframes pulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
   }
 </style>

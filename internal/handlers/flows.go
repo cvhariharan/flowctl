@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -229,118 +228,12 @@ func (h *Handler) HandleFlowTrigger(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
-func (h *Handler) HandleLogStreaming(c echo.Context) error {
-	namespace, ok := c.Get("namespace").(string)
-	if !ok {
-		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
-	}
-
-	req := LogStreamingReq{LogID: c.Param("logID")}
-	if err := h.validate.Struct(req); err != nil {
-		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
-	}
-
-	logID := req.LogID
-
-	execSummary, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), logID, namespace)
-	if err != nil {
-		return wrapError(ErrResourceNotFound, "execution not found", err, nil)
-	}
-
-	streamUser, err := h.getUserInfo(c)
-	if err != nil {
-		return wrapError(ErrForbidden, "could not get user info", err, nil)
-	}
-
-	restricted, err := h.isUserOnly(c.Request().Context(), streamUser.ID, namespace)
-	if err != nil {
-		return wrapError(ErrOperationFailed, "could not determine user role", err, nil)
-	}
-	if restricted && execSummary.TriggeredByID != streamUser.ID {
-		return wrapError(ErrForbidden, "insufficient permissions", nil, nil)
-	}
-
-	c.Response().Header().Set("Content-Type", "text/event-stream")
-	c.Response().Header().Set("Cache-Control", "no-cache")
-	c.Response().Header().Set("Connection", "keep-alive")
-	c.Response().Header().Set("X-Accel-Buffering", "no")
-	c.Response().WriteHeader(http.StatusOK)
-
-	h.logger.Debug("SSE connection created", "logID", logID)
-
-	msgCh, err := h.co.StreamLogs(c.Request().Context(), logID, namespace)
-	if err != nil {
-		h.logger.Error("log msg ch", "error", err)
+func (h *Handler) HandleLogDownload(c echo.Context) error {
+	if _, err := h.authorizeExecutionAccess(c); err != nil {
 		return err
 	}
-
-	heartbeatTicker := time.NewTicker(5 * time.Second)
-	defer heartbeatTicker.Stop()
-
-	for {
-		select {
-		case <-c.Request().Context().Done():
-			h.logger.Debug("SSE client disconnected", "logID", logID)
-			return nil
-		case <-heartbeatTicker.C:
-			if _, err := fmt.Fprintf(c.Response(), ": heartbeat\n\n"); err != nil {
-				h.logger.Error("SSE heartbeat error", "error", err, "logID", logID)
-				return nil
-			}
-			if flusher, ok := c.Response().Unwrap().(http.Flusher); ok {
-				flusher.Flush()
-			}
-		case msg, ok := <-msgCh:
-			if !ok {
-				h.logger.Debug("SSE message channel closed", "logID", logID)
-				if _, err := fmt.Fprintf(c.Response(), "event: end\ndata: {}\n\n"); err != nil {
-					h.logger.Error("SSE end event error", "error", err)
-					return err
-				}
-				if flusher, ok := c.Response().Unwrap().(http.Flusher); ok {
-					flusher.Flush()
-				}
-				h.logger.Debug("SSE streaming completed", "logID", logID)
-				return nil
-			}
-			if err := h.handleLogStreaming(msg, c.Response()); err != nil {
-				h.logger.Error("SSE streaming error", "error", err, "logID", logID)
-				return nil
-			}
-		}
-	}
-}
-
-func (h *Handler) HandleLogDownload(c echo.Context) error {
-	namespace, ok := c.Get("namespace").(string)
-	if !ok {
-		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
-	}
-
-	req := LogStreamingReq{LogID: c.Param("logID")}
-	if err := h.validate.Struct(req); err != nil {
-		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
-	}
-
-	logID := req.LogID
-
-	execSummary, err := h.co.GetExecutionSummaryByExecID(c.Request().Context(), logID, namespace)
-	if err != nil {
-		return wrapError(ErrResourceNotFound, "execution not found", err, nil)
-	}
-
-	downloadUser, err := h.getUserInfo(c)
-	if err != nil {
-		return wrapError(ErrForbidden, "could not get user info", err, nil)
-	}
-
-	restricted, err := h.isUserOnly(c.Request().Context(), downloadUser.ID, namespace)
-	if err != nil {
-		return wrapError(ErrOperationFailed, "could not determine user role", err, nil)
-	}
-	if restricted && execSummary.TriggeredByID != downloadUser.ID {
-		return wrapError(ErrForbidden, "insufficient permissions", nil, nil)
-	}
+	namespace := c.Get("namespace").(string)
+	logID := c.Param("logID")
 
 	c.Response().Header().Set("Content-Type", "application/octet-stream")
 	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.log"`, logID))
@@ -349,50 +242,6 @@ func (h *Handler) HandleLogDownload(c echo.Context) error {
 	if err := h.co.DownloadLogs(c.Request().Context(), logID, namespace, c.Response()); err != nil {
 		h.logger.Error("log download error", "logID", logID, "error", err)
 		return err
-	}
-
-	return nil
-}
-
-func (h *Handler) handleLogStreaming(msg models.StreamMessage, w http.ResponseWriter) error {
-	var response FlowLogResp
-
-	switch msg.MType {
-	case models.ResultMessageType:
-		var res map[string]string
-		if err := json.Unmarshal([]byte(msg.Val), &res); err != nil {
-			return fmt.Errorf("could not decode results: %w", err)
-		}
-
-		response = FlowLogResp{
-			ActionID:  msg.ActionID,
-			MType:     string(msg.MType),
-			Results:   res,
-			NodeID:    msg.NodeID,
-			Timestamp: msg.Timestamp,
-		}
-	default:
-		h.logger.Debug("Default message", "type", msg.MType, "value", msg.Val)
-		response = FlowLogResp{
-			ActionID:  msg.ActionID,
-			MType:     string(msg.MType),
-			NodeID:    msg.NodeID,
-			Value:     msg.Val,
-			Timestamp: msg.Timestamp,
-		}
-	}
-
-	jsonData, err := json.Marshal(response)
-	if err != nil {
-		return fmt.Errorf("could not marshal response: %w", err)
-	}
-
-	if _, err := fmt.Fprintf(w, "data: %s\n\n", jsonData); err != nil {
-		return err
-	}
-
-	if flusher, ok := w.(http.Flusher); ok {
-		flusher.Flush()
 	}
 
 	return nil
@@ -983,6 +832,13 @@ func (h *Handler) HandleRetryExecution(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "execution ID is required", nil, nil)
 	}
 
+	var req RetryExecutionReq
+	if c.Request().ContentLength != 0 {
+		if err := c.Bind(&req); err != nil && !errors.Is(err, io.EOF) {
+			return wrapError(ErrInvalidInput, "invalid request", err, nil)
+		}
+	}
+
 	user, err := h.getUserInfo(c)
 	if err != nil {
 		return wrapError(ErrAuthenticationFailed, "could not get user details", err, nil)
@@ -1001,8 +857,18 @@ func (h *Handler) HandleRetryExecution(c echo.Context) error {
 		return wrapError(ErrForbidden, "insufficient permissions", nil, nil)
 	}
 
-	err = h.co.RetryFlowExecution(c.Request().Context(), execID, user.ID, namespace)
+	if req.FromAction == "" {
+		err = h.co.RetryFlowExecution(c.Request().Context(), execID, user.ID, namespace)
+	} else {
+		err = h.co.RerunFlowExecutionFromAction(c.Request().Context(), execID, req.FromAction, user.ID, namespace)
+	}
 	if err != nil {
+		if errors.Is(err, core.ErrActionNotFound) {
+			return wrapError(ErrInvalidInput, err.Error(), err, nil)
+		}
+		if errors.Is(err, core.ErrInvalidExecutionState) {
+			return wrapError(ErrResourceConflict, "execution is not retryable", err, nil)
+		}
 		return wrapError(ErrOperationFailed, err.Error(), err, nil)
 	}
 

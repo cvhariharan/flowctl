@@ -550,6 +550,156 @@ func TestFileLogManager_StreamLogs_ActiveLogger(t *testing.T) {
 	}
 }
 
+func TestFileLogManager_StreamLogs_FollowsRotation(t *testing.T) {
+	tmpDir := t.TempDir()
+	execID := "test-exec-live-rotation"
+	manager := NewFileLogManager(FileLogManagerCfg{
+		LogDir:       tmpDir,
+		ScanInterval: time.Hour,
+		MaxSizeBytes: 1,
+	}).(*FileLogManager)
+
+	logger, err := manager.NewLogger(execID)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	fl := logger.(*FileLogger)
+	defer logger.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	logCh, err := manager.StreamLogs(ctx, execID, nil)
+	if err != nil {
+		t.Fatalf("StreamLogs() error = %v", err)
+	}
+
+	if _, err := logger.Write([]byte("before rotation\n")); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	if err := fl.filesync(); err != nil {
+		t.Fatalf("filesync() error = %v", err)
+	}
+	assertStreamValue(t, logCh, "before rotation\n")
+
+	if _, err := logger.Write([]byte("after rotation\n")); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	if err := fl.filesync(); err != nil {
+		t.Fatalf("rotating filesync() error = %v", err)
+	}
+	assertStreamValue(t, logCh, "after rotation\n")
+}
+
+func TestFileLogManager_StreamLogs_HoldsPartialLine(t *testing.T) {
+	tmpDir := t.TempDir()
+	execID := "test-exec-partial"
+	manager := NewFileLogManager(FileLogManagerCfg{LogDir: tmpDir, ScanInterval: time.Hour}).(*FileLogManager)
+	closed := make(chan struct{})
+	logCh := make(chan string)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		defer close(logCh)
+		if err := manager.followLogs(ctx, execID, closed, nil, logCh); err != nil && ctx.Err() == nil {
+			t.Errorf("followLogs() error = %v", err)
+		}
+	}()
+
+	path := filepath.Join(tmpDir, execID+".0")
+	message := `{"action_id":"a1","message_type":"log","node_id":"n1","value":"complete","timestamp":"2026-08-12T10:04:11Z","retry":1}`
+	split := len(message) / 2
+	if err := os.WriteFile(path, []byte(message[:split]), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	select {
+	case got := <-logCh:
+		t.Fatalf("received partial line %q", got)
+	case <-time.After(2 * LogPollInterval):
+	}
+
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatalf("OpenFile() error = %v", err)
+	}
+	if _, err := f.WriteString(message[split:] + "\n"); err != nil {
+		f.Close()
+		t.Fatalf("WriteString() error = %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	select {
+	case got := <-logCh:
+		if got != message {
+			t.Fatalf("got %q, want %q", got, message)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("complete line was not streamed")
+	}
+	close(closed)
+	select {
+	case _, ok := <-logCh:
+		if ok {
+			t.Fatal("stream remained open after logger close")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("stream did not close")
+	}
+}
+
+func TestFileLogManager_StreamLogs_LoggerCloseDrains(t *testing.T) {
+	tmpDir := t.TempDir()
+	execID := "test-exec-close-drain"
+	manager := NewFileLogManager(FileLogManagerCfg{LogDir: tmpDir, ScanInterval: time.Hour}).(*FileLogManager)
+	logger, err := manager.NewLogger(execID)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+
+	logCh, err := manager.StreamLogs(context.Background(), execID, nil)
+	if err != nil {
+		t.Fatalf("StreamLogs() error = %v", err)
+	}
+	if _, err := logger.Write([]byte("last buffered record\n")); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	if err := logger.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	assertStreamValue(t, logCh, "last buffered record\n")
+	select {
+	case _, ok := <-logCh:
+		if ok {
+			t.Fatal("stream emitted an unexpected extra message")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("stream hung after logger close")
+	}
+}
+
+func assertStreamValue(t *testing.T, logCh <-chan string, want string) {
+	t.Helper()
+	select {
+	case raw, ok := <-logCh:
+		if !ok {
+			t.Fatal("log stream closed before a message arrived")
+		}
+		var msg StreamMessage
+		if err := json.Unmarshal([]byte(raw), &msg); err != nil {
+			t.Fatalf("unmarshal stream message: %v", err)
+		}
+		if msg.Val != want {
+			t.Fatalf("stream value = %q, want %q", msg.Val, want)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for %q", want)
+	}
+}
+
 func TestFileLogManager_StreamLogs_MultipleRotatedFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 	execID := "test-exec-rotate"

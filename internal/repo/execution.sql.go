@@ -1103,6 +1103,29 @@ func (q *Queries) RequeueExecution(ctx context.Context, arg RequeueExecutionPara
 	return attempt, err
 }
 
+const requeueExecutionForReset = `-- name: RequeueExecutionForReset :one
+WITH namespace_lookup AS (
+    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+)
+UPDATE executions SET status = 'pending', updated_at = NOW()
+WHERE exec_id = $1
+  AND namespace_id = (SELECT id FROM namespace_lookup)
+  AND status IN ('completed', 'errored', 'cancelled')
+RETURNING attempt
+`
+
+type RequeueExecutionForResetParams struct {
+	ExecID string    `db:"exec_id" json:"exec_id"`
+	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
+}
+
+func (q *Queries) RequeueExecutionForReset(ctx context.Context, arg RequeueExecutionForResetParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, requeueExecutionForReset, arg.ExecID, arg.Uuid)
+	var attempt int32
+	err := row.Scan(&attempt)
+	return attempt, err
+}
+
 const searchExecutionsPaginated = `-- name: SearchExecutionsPaginated :many
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $1
