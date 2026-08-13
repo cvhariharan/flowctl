@@ -666,20 +666,23 @@ const (
 )
 
 type ExecutionSummary struct {
-	ID              string                 `json:"id"`
-	FlowName        string                 `json:"flow_name"`
-	FlowID          string                 `json:"flow_id"`
-	Status          ExecutionStatus        `json:"status"`
-	TriggerType     string                 `json:"trigger_type"`
-	Input           map[string]any         `json:"input,omitempty"`
-	TriggeredBy     string                 `json:"triggered_by"`
-	CurrentActionID string                 `json:"current_action_id"`
-	CreatedAt       string                 `json:"created_at"`
-	StartedAt       string                 `json:"started_at"`
-	CompletedAt     string                 `json:"completed_at"`
-	ScheduledAt     string                 `json:"scheduled_at,omitempty"`
-	ActionRetries   map[string]int         `json:"action_retries,omitempty"`
-	ActionStates    map[string]ActionState `json:"action_states,omitempty"`
+	ID              string          `json:"id"`
+	FlowName        string          `json:"flow_name"`
+	FlowID          string          `json:"flow_id"`
+	Status          ExecutionStatus `json:"status"`
+	TriggerType     string          `json:"trigger_type"`
+	Input           map[string]any  `json:"input,omitempty"`
+	TriggeredBy     string          `json:"triggered_by"`
+	CurrentActionID string          `json:"current_action_id"`
+	CreatedAt       string          `json:"created_at"`
+	// Omitted rather than sent as "" while an execution is pending or running. The spec
+	// types these as date-time, so an empty string fails to unmarshal in generated
+	// clients, which broke the flow executor's wait-for-child polling.
+	StartedAt     string                 `json:"started_at,omitempty"`
+	CompletedAt   string                 `json:"completed_at,omitempty"`
+	ScheduledAt   string                 `json:"scheduled_at,omitempty"`
+	ActionRetries map[string]int         `json:"action_retries,omitempty"`
+	ActionStates  map[string]ActionState `json:"action_states,omitempty"`
 }
 
 type ActionState struct {
