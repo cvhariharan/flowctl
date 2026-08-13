@@ -8,7 +8,7 @@
     import Tabs from "$lib/components/shared/Tabs.svelte";
     import Pagination from "$lib/components/shared/Pagination.svelte";
     import FlowHero from "$lib/components/flows/FlowHero.svelte";
-    import FlowActionsSummary from "$lib/components/flow-input/FlowActionsSummary.svelte";
+    import PipelineGraph from "$lib/components/flow-status/PipelineGraph.svelte";
     import FlowSchedulesList from "$lib/components/flows/FlowSchedulesList.svelte";
     import ScheduledExecutionsList from "$lib/components/flows/ScheduledExecutionsList.svelte";
     import { handleInlineError } from "$lib/utils/errorHandling";
@@ -17,6 +17,7 @@
     import { DEFAULT_PAGE_SIZE } from "$lib/constants";
     import { permissionChecker } from "$lib/utils/permissions";
     import { formatDateTime, formatDuration, getStartTime } from "$lib/utils";
+    import { actionStages } from "$lib/utils/dag";
     import { apiClient } from "$lib/apiClient";
     import { IconPencil, IconEye, IconInfoCircle, IconX } from "@tabler/icons-svelte";
     import LinkCell from "$lib/components/shared/cells/LinkCell.svelte";
@@ -26,7 +27,7 @@
 
     let { data }: { data: PageData } = $props();
 
-    let activeTab = $state<"run" | "schedules" | "history">("run");
+    let activeTab = $state<"run" | "pipeline" | "schedule" | "history">("run");
     let historyLoading = $state(false);
     let flowExecutions = $state<any[]>([]);
     let historyCurrentPage = $state(1);
@@ -44,6 +45,10 @@
     let encodedNamespace = $derived(encodeURIComponent(namespace));
     let flowId = $derived(page.params.flowId);
     let rerunFromExecId = $derived(data.rerunFromExecId);
+    let actions = $derived(data.flowMeta?.actions || []);
+    let isDAG = $derived(data.flowMeta?.meta?.execution_mode === "dag");
+    let maxParallel = $derived(data.flowMeta?.meta?.max_parallel);
+    let stageCount = $derived(actionStages(actions, isDAG ? "dag" : "sequential").length);
     let showRerunBanner = $state(!!rerunFromExecId);
 
     // Check update and view_config permissions on mount
@@ -168,11 +173,12 @@
     ];
 
     // Tab configuration
-    const tabs = [
+    let tabs = $derived([
         { id: "run", label: "Run" },
+        { id: "pipeline", label: "Pipeline" },
         { id: "schedule", label: "Schedule" },
         { id: "history", label: "History" },
-    ];
+    ]);
 </script>
 
 <svelte:head>
@@ -219,7 +225,7 @@
         description={data.flowMeta?.meta?.description || ""}
     />
     <div class="tab-bar">
-        <div class="tab-bar-inner">
+        <div class="container" style="--container-max: 72rem; --container-pad: 0">
             <Tabs {tabs} bind:activeTab />
         </div>
     </div>
@@ -228,47 +234,75 @@
 <!-- Tab Content -->
 <div class="tab-content">
     {#if activeTab === "run"}
-        <div class="run-layout">
-            <div class="run-main">
-                {#if showRerunBanner}
-                    <div class="mb-4">
-                        <div role="alert" class="hstack gap-2 items-start justify-between">
-                            <div class="hstack gap-2 flex-1 items-start">
-                                <IconInfoCircle size={20} style="color: var(--primary); margin-top: 0.125rem; flex-shrink: 0" />
-                                <div class="flex-1">
-                                    <h3 class="text-sm font-medium">Rerunning execution</h3>
-                                    <p class="text-sm text-light mt-2">
-                                        Inputs have been prepopulated from execution
-                                        <a href="/view/{encodedNamespace}/results/{flowId}/{rerunFromExecId}" class="font-mono">
-                                            {rerunFromExecId.substring(0, 8)}
-                                        </a>
-                                    </p>
-                                </div>
-                            </div>
-                            <button onclick={() => (showRerunBanner = false)} class="ghost icon small" aria-label="Dismiss">
-                                <IconX size={20} />
-                            </button>
+        <div class="container" style="--container-max: 52rem; --container-pad: 0">
+            {#if showRerunBanner}
+                <div role="alert" class="mb-4 hstack gap-2 items-start justify-between">
+                    <div class="hstack gap-2 flex-1 items-start">
+                        <IconInfoCircle size={20} style="color: var(--primary)" />
+                        <div class="flex-1">
+                            <h3 class="text-sm font-medium">Rerunning execution</h3>
+                            <p class="text-sm text-light mt-2">
+                                Inputs have been prepopulated from execution
+                                <a href="/view/{encodedNamespace}/results/{flowId}/{rerunFromExecId}" class="font-mono">
+                                    {rerunFromExecId.substring(0, 8)}
+                                </a>
+                            </p>
                         </div>
                     </div>
+                    <button onclick={() => (showRerunBanner = false)} class="ghost icon small" aria-label="Dismiss">
+                        <IconX size={20} />
+                    </button>
+                </div>
+            {/if}
+
+            <FlowInputForm
+                inputs={data.flowInputs || []}
+                namespace={namespace!}
+                flowId={flowId!}
+                executionInput={data.executionInput}
+                optionsRequestId={data.optionsRequestId}
+                onScheduled={refreshScheduledExecutions}
+            />
+        </div>
+    {/if}
+
+    <!-- Pipeline Tab -->
+    {#if activeTab === "pipeline"}
+        <div
+            role="tabpanel"
+            class="container"
+            style="--container-max: 72rem; --container-pad: 0"
+        >
+            <article class="card flush">
+                <header
+                    class="p-4 hstack justify-between"
+                    style="border-block-end: 1px solid var(--border)"
+                >
+                    <span class="badge primary">{isDAG ? "dag" : "sequential"}</span>
+                    <span class="text-lighter text-xs">
+                        {actions.length} {actions.length === 1 ? "action" : "actions"}
+                        {#if isDAG}
+                            · {stageCount} {stageCount === 1 ? "step" : "steps"}{#if maxParallel} · {maxParallel} at a time{/if}
+                        {:else}
+                            · one after another
+                        {/if}
+                    </span>
+                </header>
+                {#if actions.length > 0}
+                    <PipelineGraph
+                        {actions}
+                        executionMode={isDAG ? "dag" : "sequential"}
+                    />
+                {:else}
+                    <p class="p-4 text-light text-sm">This flow has no actions.</p>
                 {/if}
-                <FlowInputForm
-                    inputs={data.flowInputs || []}
-                    namespace={namespace!}
-                    flowId={flowId!}
-                    executionInput={data.executionInput}
-                    optionsRequestId={data.optionsRequestId}
-                    onScheduled={refreshScheduledExecutions}
-                />
-            </div>
-            <div class="run-aside">
-                <FlowActionsSummary actions={data.flowMeta?.actions || []} />
-            </div>
+            </article>
         </div>
     {/if}
 
     <!-- Schedules Tab -->
     {#if activeTab === "schedule"}
-        <div class="content-wide">
+        <div class="container" style="--container-max: 64rem; --container-pad: 0">
             <div class="vstack gap-4">
                 <ScheduledExecutionsList
                     schedules={scheduledExecutions}
@@ -295,7 +329,7 @@
 
     <!-- History Tab -->
     {#if activeTab === "history"}
-        <div class="content-max">
+        <div class="container" style="--container-max: 72rem; --container-pad: 0">
             <Table
                 columns={tableColumns}
                 data={flowExecutions}
@@ -338,46 +372,11 @@
         padding: 0 var(--space-6);
     }
 
-    .tab-bar-inner {
-        max-width: 72rem;
-        margin: 0 auto;
-    }
-
     .tab-content {
         padding: var(--space-6);
     }
 
-    .run-layout {
-        display: grid;
-        grid-template-columns: 1fr 20rem;
-        gap: var(--space-6);
-        max-width: 72rem;
-        margin: 0 auto;
-    }
-
-    .run-main {
-        min-width: 0;
-    }
-
-    .run-aside {
-        position: sticky;
-        top: var(--space-6);
-        align-self: start;
-    }
-
-    .content-wide {
-        max-width: 64rem;
-        margin: 0 auto;
-    }
-
-    .content-max {
-        max-width: 72rem;
-        margin: 0 auto;
-    }
-
-    @media (max-width: 768px) {
-        .run-layout {
-            grid-template-columns: 1fr;
-        }
+    .card.flush {
+        padding: 0;
     }
 </style>
