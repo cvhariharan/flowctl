@@ -88,11 +88,12 @@ func TestValidate_Dependencies(t *testing.T) {
 			}),
 		},
 		{
-			name: "duplicate needs entries are tolerated",
+			name: "duplicate needs entries are rejected",
 			flow: dagFlow(t, ExecutionModeDAG, []Action{
 				action("build"),
 				action("deploy", "build", "build"),
 			}),
+			wantErr: `lists "build" in needs more than once`,
 		},
 		{
 			name: "forward reference is valid",

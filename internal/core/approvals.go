@@ -37,6 +37,15 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 		return fmt.Errorf("request has already been processed")
 	}
 
+	exec, err := c.GetExecutionSummaryByExecID(ctx, areq.ExecID, namespaceID)
+	if err != nil {
+		return fmt.Errorf("could not get execution %s: %w", areq.ExecID, err)
+	}
+
+	if exec.Status == models.ExecutionStatusCancelled {
+		return fmt.Errorf("%w: execution has been cancelled", ErrInvalidExecutionState)
+	}
+
 	userid, err := uuid.Parse(decidedBy)
 	if err != nil {
 		return fmt.Errorf("decidedby UUID is not a UUID: %w", err)
@@ -69,6 +78,17 @@ func (c *Core) ApproveOrRejectAction(ctx context.Context, approvalUUID, decidedB
 		ActionID:    result.ActionID,
 		ExecID:      result.ExecID,
 		RequestedBy: result.RequestedBy,
+	}
+
+	if approval.Status == models.ApprovalStatusRejected {
+		note := fmt.Sprintf("Flow execution cancelled due to approval rejection by %s", user.Name)
+		if _, err := c.store.CancelExecutionTx(ctx, repo.CancelExecutionParams{
+			ExecID: result.ExecID,
+			Uuid:   namespaceUUID,
+		}, note); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("could not cancel execution %s: %w", result.ExecID, err)
+		}
+		return nil
 	}
 
 	// A dag execution can still be running other actions, in which case it is not resumable yet. The

@@ -119,7 +119,7 @@ export function pipelineLayout<T extends HasNeeds>(
     const to = position.get(action.id);
     if (!to) continue;
 
-    for (const dep of action.needs ?? []) {
+    for (const dep of new Set(action.needs ?? [])) {
       const from = position.get(dep);
       if (!from) continue;
 

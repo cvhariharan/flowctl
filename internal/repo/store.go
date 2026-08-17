@@ -111,7 +111,7 @@ type Store interface {
 	BeginExecutionAttempt(ctx context.Context, execID string) (int32, error)
 	AddExecutionTx(ctx context.Context, params AddExecutionParams, outputs map[string]any) (Execution, error)
 	QueueExecutionTx(ctx context.Context, params AddExecutionParams, outputs map[string]any, job ExecutionJob) (Execution, error)
-	CancelExecutionTx(ctx context.Context, params CancelExecutionParams) (Execution, error)
+	CancelExecutionTx(ctx context.Context, params CancelExecutionParams, note string) (Execution, error)
 	RequeueExecutionTx(ctx context.Context, params RequeueExecutionParams) (int32, error)
 	RequeueExecutionAndJobTx(ctx context.Context, params RequeueExecutionParams, job ExecutionJob) (int32, error)
 	ResetActionsAndRequeueTx(ctx context.Context, params RequeueExecutionParams, actionIDs []string, job ExecutionJob) (int32, error)
@@ -276,7 +276,7 @@ func (p *PostgresStore) BeginExecutionAttempt(ctx context.Context, execID string
 	return attempt, err
 }
 
-func (p *PostgresStore) CancelExecutionTx(ctx context.Context, params CancelExecutionParams) (Execution, error) {
+func (p *PostgresStore) CancelExecutionTx(ctx context.Context, params CancelExecutionParams, note string) (Execution, error) {
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
 		return Execution{}, err
@@ -287,7 +287,7 @@ func (p *PostgresStore) CancelExecutionTx(ctx context.Context, params CancelExec
 	if err != nil {
 		return Execution{}, err
 	}
-	if err := appendEvent(ctx, q, Event{ExecID: exec.ExecID, Attempt: exec.Attempt, Type: ExecutionEventTypeCancelled}); err != nil {
+	if err := appendEvent(ctx, q, Event{ExecID: exec.ExecID, Attempt: exec.Attempt, Type: ExecutionEventTypeCancelled, Error: note}); err != nil {
 		return Execution{}, err
 	}
 	return exec, tx.Commit()
@@ -379,11 +379,6 @@ func (p *PostgresStore) DeleteExpiredExecutionsTx(ctx context.Context, cutoff ti
 	})
 	if err != nil {
 		return 0, err
-	}
-	if len(ids) > 0 {
-		if err := q.DeleteExecutionEventsByExecIDs(ctx, ids); err != nil {
-			return 0, err
-		}
 	}
 	return len(ids), tx.Commit()
 }

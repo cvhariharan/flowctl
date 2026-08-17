@@ -72,7 +72,7 @@ func BuildGraph(actions []Action) (*Graph, error) {
 				return nil, fmt.Errorf("action %q needs unknown action %q", a.ID, dep)
 			}
 			if slices.Contains(deps, dep) {
-				continue
+				return nil, fmt.Errorf("action %q lists %q in needs more than once", a.ID, dep)
 			}
 			deps = append(deps, dep)
 			g.children[dep] = append(g.children[dep], a.ID)
@@ -149,6 +149,14 @@ func (r *dagRun) record(action Action, err error) {
 			r.firstErr = err
 		}
 	}
+}
+
+func (r *dagRun) undispatch(action Action) {
+	r.inflight--
+	state := r.states[action.ID]
+	state.Status = ActionStatusPending
+	state.StartedAt = nil
+	r.states[action.ID] = state
 }
 
 // halt stops further dispatch without touching action state. Actions already running are left to

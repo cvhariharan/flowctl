@@ -534,7 +534,7 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, execCtx models.Exec
 		if scheduledAt.Before(time.Now()) {
 			return "", fmt.Errorf("scheduled_at must be in the future")
 		}
-		job.ScheduledAt = scheduledAt.Truncate(time.Minute)
+		job.ScheduledAt = *scheduledAt
 	}
 
 	if resetActions != nil {
@@ -573,7 +573,7 @@ func (c *Core) CancelFlowExecution(ctx context.Context, execID, namespaceID stri
 	_, err = c.store.CancelExecutionTx(ctx, repo.CancelExecutionParams{
 		ExecID: execID,
 		Uuid:   namespaceUUID,
-	})
+	}, "")
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("%w: execution is not cancellable", ErrInvalidExecutionState)

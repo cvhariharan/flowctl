@@ -41,7 +41,7 @@ CREATE INDEX idx_executions_active ON executions (flow_id)
 
 CREATE TABLE execution_events (
     seq BIGSERIAL PRIMARY KEY,
-    exec_id VARCHAR(36) NOT NULL,
+    exec_id VARCHAR(36) NOT NULL REFERENCES executions(exec_id) ON DELETE CASCADE,
     attempt INTEGER NOT NULL,
     action_id VARCHAR(50),
     type execution_event_type NOT NULL,

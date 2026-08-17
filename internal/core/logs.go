@@ -226,6 +226,8 @@ func (c *Core) checkApprovalRequests(ctx context.Context, execID string, namespa
 			}
 		}
 
+		rejected := make(map[string]bool)
+
 		for {
 			approvals, err := c.GetApprovalRequestsForExec(ctx, execID, namespaceID)
 			if err != nil {
@@ -234,23 +236,21 @@ func (c *Core) checkApprovalRequests(ctx context.Context, execID string, namespa
 				return
 			}
 
-			var pending bool
 			for _, a := range approvals {
 				switch a.Status {
 				case models.ApprovalStatusPending:
-					pending = true
 					if !send(models.StreamMessage{MType: models.ApprovalMessageType, Val: a.UUID}) {
 						return
 					}
 				case models.ApprovalStatusRejected:
-					send(models.StreamMessage{MType: models.ErrMessageType, Val: "approval request has been rejected"})
-					return
+					if rejected[a.UUID] {
+						continue
+					}
+					rejected[a.UUID] = true
+					if !send(models.StreamMessage{MType: models.ErrMessageType, Val: "approval request has been rejected"}) {
+						return
+					}
 				}
-			}
-
-			// Every request has been decided and none were rejected
-			if len(approvals) > 0 && !pending {
-				return
 			}
 
 			// Wait for 5 seconds

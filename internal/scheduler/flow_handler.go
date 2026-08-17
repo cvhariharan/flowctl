@@ -332,14 +332,16 @@ func (h *FlowExecutionHandler) executeDAG(ctx context.Context, execID string, pa
 			}
 			if approvalErr := h.checkApproval(ctx, execID, action, payload.NamespaceID); approvalErr != nil {
 				if err := recorder.BlockAction(ctx, action.ID, approvalErr); err != nil {
-					run.record(action, err)
+					run.undispatch(action)
+					run.halt(err)
 					continue
 				}
 				run.record(action, approvalErr)
 				continue
 			}
 			if err := recorder.StartAction(ctx, action.ID); err != nil {
-				run.record(action, err)
+				run.undispatch(action)
+				run.halt(err)
 				continue
 			}
 
