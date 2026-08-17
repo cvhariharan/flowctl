@@ -436,7 +436,6 @@ type FlowMeta struct {
 	UserSchedulable bool       `json:"user_schedulable"`
 	MaxRetries      int        `json:"max_retries" validate:"omitempty,min=0,max=10"`
 	ExecutionMode   string     `json:"execution_mode" validate:"omitempty,oneof=sequential dag"`
-	MaxParallel     int        `json:"max_parallel" validate:"omitempty,min=0,max=64"`
 }
 
 func coreSchedulesToSchedules(schedules []models.Schedule) []Schedule {
@@ -463,7 +462,6 @@ func coreFlowMetatoFlowMeta(m models.Metadata, schedules []models.Schedule) Flow
 		UserSchedulable: m.UserSchedulable,
 		MaxRetries:      m.MaxRetries,
 		ExecutionMode:   string(m.ExecutionMode),
-		MaxParallel:     m.MaxParallel,
 	}
 }
 
@@ -814,7 +812,6 @@ type FlowUpdateReq struct {
 	MaxRetries      int             `json:"max_retries" validate:"omitempty,min=0,max=10"`
 	Description     string          `json:"description" validate:"max=255,no_html"`
 	ExecutionMode   string          `json:"execution_mode" validate:"omitempty,oneof=sequential dag"`
-	MaxParallel     int             `json:"max_parallel" validate:"omitempty,min=0,max=64"`
 	Inputs          []FlowInputReq  `json:"inputs" validate:"required,dive"`
 	Actions         []FlowActionReq `json:"actions" validate:"required,dive"`
 }

@@ -228,6 +228,7 @@ func initializeSharedComponents() *SharedComponents {
 		Logger:               logger.WithGroup("flow_handler"),
 		Metrics:              metricsManager,
 		FlowExecutionTimeout: appConfig.Scheduler.FlowExecutionTimeout,
+		MaxParallel:          appConfig.Scheduler.MaxParallel,
 		ExecutorKeys:         executorKeys,
 		APIBaseURL:           appConfig.App.RootURL,
 	})

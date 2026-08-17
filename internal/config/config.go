@@ -113,6 +113,7 @@ type SchedulerConfig struct {
 	Backend                    string        `koanf:"backend"`
 	CronSyncInterval           time.Duration `koanf:"cron_sync_interval" validate:"min=1s"`
 	FlowExecutionTimeout       time.Duration `koanf:"flow_execution_timeout" validate:"min=1s"`
+	MaxParallel                int           `koanf:"max_parallel" validate:"min=0"`
 	DefaultTimezone            string        `koanf:"default_timezone" validate:"required,timezone"`
 	ExecutionRetentionTime     time.Duration `koanf:"execution_retention_time" validate:"min=0"`
 	ExecutionRetentionInterval time.Duration `koanf:"execution_retention_interval" validate:"omitempty,min=1m"`
@@ -218,6 +219,9 @@ func Load(configPath string) (Config, error) {
 	if config.Scheduler.ExecutionRetentionInterval == 0 {
 		config.Scheduler.ExecutionRetentionInterval = time.Hour
 	}
+	if config.Scheduler.MaxParallel <= 0 {
+		config.Scheduler.MaxParallel = runtime.NumCPU()
+	}
 
 	if err := config.Validate(); err != nil {
 		return Config{}, fmt.Errorf("error validating config: %w", err)
@@ -268,6 +272,7 @@ func GetDefaultConfig() Config {
 			WorkerCount:                runtime.NumCPU(),
 			CronSyncInterval:           5 * time.Minute,
 			FlowExecutionTimeout:       time.Hour,
+			MaxParallel:                runtime.NumCPU(),
 			DefaultTimezone:            "UTC",
 			ExecutionRetentionTime:     0,
 			ExecutionRetentionInterval: time.Hour,

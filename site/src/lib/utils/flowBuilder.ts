@@ -184,8 +184,7 @@ export function emptyFlow(id = ''): BuilderFlow {
       allow_overlap: false,
       user_schedulable: false,
       max_retries: 0,
-      execution_mode: '',
-      max_parallel: 0
+      execution_mode: ''
     },
     inputs: [],
     actions: [],
@@ -206,8 +205,7 @@ export function toBuilderFlow(config: any, id = ''): BuilderFlow {
       allow_overlap: metadata.allow_overlap || false,
       user_schedulable: metadata.user_schedulable || false,
       max_retries: metadata.max_retries || 0,
-      execution_mode: metadata.execution_mode || '',
-      max_parallel: metadata.max_parallel || 0
+      execution_mode: metadata.execution_mode || ''
     },
     inputs: (config.inputs || []).map(toBuilderInput),
     actions: (config.actions || []).map(toBuilderAction),
@@ -267,8 +265,7 @@ export function toFlowRequest(flow: BuilderFlow): FlowCreateReq {
       allow_overlap: metadata.allow_overlap,
       user_schedulable: metadata.user_schedulable,
       max_retries: metadata.max_retries || 0,
-      execution_mode: metadata.execution_mode || undefined,
-      max_parallel: metadata.execution_mode === 'dag' ? metadata.max_parallel || 0 : undefined
+      execution_mode: metadata.execution_mode || undefined
     },
     inputs: flow.inputs.filter((i) => i.name).map(toInputRequest),
     actions: flow.actions

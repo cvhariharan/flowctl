@@ -162,7 +162,6 @@ export interface FlowMeta {
   user_schedulable: boolean;
   max_retries: number;
   execution_mode?: ExecutionMode;
-  max_parallel?: number;
 }
 
 export type ExecutionMode = "sequential" | "dag";
@@ -565,7 +564,6 @@ export interface FlowMetaReq {
   user_schedulable?: boolean;
   max_retries?: number;
   execution_mode?: ExecutionMode;
-  max_parallel?: number;
 }
 
 export interface RemoteOptionsReq {
@@ -622,7 +620,6 @@ export interface FlowUpdateReq {
   max_retries?: number;
   description?: string;
   execution_mode?: ExecutionMode;
-  max_parallel?: number;
   inputs: FlowInputReq[];
   actions: FlowActionReq[];
   outputs?: Record<string, any>[];
@@ -711,7 +708,6 @@ export interface BuilderMetadata {
   user_schedulable: boolean;
   max_retries: number;
   execution_mode: '' | ExecutionMode;
-  max_parallel: number;
 }
 
 export interface BuilderFlow {

@@ -182,7 +182,6 @@ type Metadata struct {
 	Namespace     string        `yaml:"namespace"`
 	MaxRetries    int           `yaml:"max_retries"`
 	ExecutionMode ExecutionMode `yaml:"execution_mode"`
-	MaxParallel   int           `yaml:"max_parallel"`
 }
 
 type Variable map[string]any

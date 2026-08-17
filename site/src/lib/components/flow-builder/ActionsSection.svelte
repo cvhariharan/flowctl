@@ -155,19 +155,6 @@
           <IconMaximize size={14} /> Fit
         </button>
       {/if}
-      {#if isDAG}
-        <span class="parallel hstack gap-2 text-xs text-lighter">
-          <label for="max-parallel">Parallel</label>
-          <input
-            id="max-parallel"
-            type="number"
-            min="0"
-            max="64"
-            {disabled}
-            bind:value={flow.metadata.max_parallel}
-          />
-        </span>
-      {/if}
     </div>
   </div>
 
@@ -251,13 +238,6 @@
     font-size: var(--text-8);
     padding-block: var(--space-1);
   }
-  .parallel {
-    white-space: nowrap;
-  }
-  .parallel input {
-    width: 4rem;
-  }
-
   .empty-pane {
     flex: 1;
     min-width: 0;

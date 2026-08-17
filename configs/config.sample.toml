@@ -105,6 +105,9 @@ cron_sync_interval = "5m0s"
 workers = 20
 # (required) Timeout for flow execution. A running flow will be terminated after this duration. Default - 1 hour
 flow_execution_timeout = "1h"
+# (optional) Maximum number of actions a flow in dag execution mode runs concurrently.
+# Applies to every flow on this instance. 0 or unset defaults to the number of CPU cores
+max_parallel = 0
 # (required) Default IANA timezone used as the UI pre-fill whenever a schedule timezone isn't set
 default_timezone = "UTC"
 # Terminal executions older than this are removed with their event history and approvals.

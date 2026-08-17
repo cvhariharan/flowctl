@@ -39,7 +39,7 @@ func TestMarshalFlow_SequentialAddsNoDAGKeys(t *testing.T) {
 		t.Fatalf("MarshalFlow() error = %v", err)
 	}
 
-	for _, key := range []string{"execution_mode", "max_parallel", "needs"} {
+	for _, key := range []string{"execution_mode", "needs"} {
 		if strings.Contains(string(out), key) {
 			t.Errorf("marshalled sequential flow contains %q:\n%s", key, out)
 		}

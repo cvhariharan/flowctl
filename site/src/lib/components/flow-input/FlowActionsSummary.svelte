@@ -5,12 +5,10 @@
   let {
     actions,
     executionMode = 'sequential',
-    maxParallel,
     title = 'Flow Actions'
   }: {
     actions: FlowAction[],
     executionMode?: ExecutionMode,
-    maxParallel?: number,
     title?: string
   } = $props();
 
@@ -31,7 +29,7 @@
       </h3>
       {#if isDAG}
         <p class="text-lighter mode-note">
-          {stages.length} {stages.length === 1 ? 'step' : 'steps'} · actions in a step run together{#if maxParallel}, {maxParallel} at a time{/if}
+          {stages.length} {stages.length === 1 ? 'step' : 'steps'} · actions in a step run together
         </p>
       {/if}
     </header>

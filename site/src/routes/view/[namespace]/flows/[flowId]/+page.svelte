@@ -47,7 +47,6 @@
     let rerunFromExecId = $derived(data.rerunFromExecId);
     let actions = $derived(data.flowMeta?.actions || []);
     let isDAG = $derived(data.flowMeta?.meta?.execution_mode === "dag");
-    let maxParallel = $derived(data.flowMeta?.meta?.max_parallel);
     let stageCount = $derived(actionStages(actions, isDAG ? "dag" : "sequential").length);
     let showRerunBanner = $state(!!rerunFromExecId);
 
@@ -282,7 +281,7 @@
                     <span class="text-lighter text-xs">
                         {actions.length} {actions.length === 1 ? "action" : "actions"}
                         {#if isDAG}
-                            · {stageCount} {stageCount === 1 ? "step" : "steps"}{#if maxParallel} · {maxParallel} at a time{/if}
+                            · {stageCount} {stageCount === 1 ? "step" : "steps"}
                         {:else}
                             · one after another
                         {/if}

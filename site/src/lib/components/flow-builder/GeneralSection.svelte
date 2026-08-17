@@ -112,21 +112,6 @@
           </label>
         </div>
 
-        {#if flow.metadata.execution_mode === 'dag'}
-          <div data-field>
-            <label for="max-parallel-actions">Maximum parallel actions</label>
-            <input
-              id="max-parallel-actions"
-              type="number"
-              min="0"
-              max="64"
-              {disabled}
-              bind:value={flow.metadata.max_parallel}
-            />
-            <span data-hint><code>0</code> means no limit.</span>
-          </div>
-        {/if}
-
         <div data-field>
           <label for="max-retries">Retries</label>
           <input

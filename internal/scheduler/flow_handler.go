@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -40,6 +41,7 @@ type FlowExecutionHandler struct {
 	logmanager       streamlogger.LogManager
 	logger           *slog.Logger
 	executionTimeout time.Duration
+	maxParallel      int
 	metrics          *metrics.Manager
 	taskQueuer       TaskQueuer
 	executorKeys     map[string]string // executor_name → API token
@@ -87,6 +89,7 @@ type FlowHandlerConfig struct {
 	Logger               *slog.Logger
 	Metrics              *metrics.Manager
 	FlowExecutionTimeout time.Duration
+	MaxParallel          int
 	ExecutorKeys         map[string]string // executor_name → API token
 	APIBaseURL           string
 }
@@ -97,6 +100,10 @@ func NewFlowExecutionHandler(cfg FlowHandlerConfig) *FlowExecutionHandler {
 		cfg.FlowExecutionTimeout = time.Hour
 	}
 
+	if cfg.MaxParallel <= 0 {
+		cfg.MaxParallel = runtime.NumCPU()
+	}
+
 	return &FlowExecutionHandler{
 		store:            cfg.Store,
 		secretsProvider:  cfg.SecretsProvider,
@@ -104,6 +111,7 @@ func NewFlowExecutionHandler(cfg FlowHandlerConfig) *FlowExecutionHandler {
 		logger:           cfg.Logger,
 		metrics:          cfg.Metrics,
 		executionTimeout: cfg.FlowExecutionTimeout,
+		maxParallel:      cfg.MaxParallel,
 		executorKeys:     cfg.ExecutorKeys,
 		apiBaseURL:       cfg.APIBaseURL,
 	}
@@ -304,16 +312,16 @@ type dagActionResult struct {
 	err     error
 }
 
-// executeDAG runs actions as their dependencies complete, up to max_parallel at a time. On failure
-// it stops dispatching but lets running actions finish, since killing a partially applied action is
-// usually worse than letting it complete.
+// executeDAG runs actions as their dependencies complete, up to the instance-wide max_parallel at a
+// time. On failure it stops dispatching but lets running actions finish, since killing a partially
+// applied action is usually worse than letting it complete.
 func (h *FlowExecutionHandler) executeDAG(ctx context.Context, execID string, payload FlowExecutionPayload, runCtx flowRunContext, states map[string]ActionState, recorder *coreexecstate.Recorder) error {
 	graph, err := BuildGraph(payload.Workflow.Actions)
 	if err != nil {
 		return fmt.Errorf("invalid action dependencies: %w", err)
 	}
 
-	run := newDAGRun(graph, states, payload.Workflow.Meta.MaxParallel)
+	run := newDAGRun(graph, states, h.maxParallel)
 	done := make(chan dagActionResult, len(payload.Workflow.Actions))
 
 	for {

@@ -569,7 +569,6 @@ func (h *Handler) HandleCreateFlow(c echo.Context) error {
 			AllowOverlap:  req.Meta.AllowOverlap,
 			MaxRetries:    req.Meta.MaxRetries,
 			ExecutionMode: models.ExecutionMode(req.Meta.ExecutionMode),
-			MaxParallel:   req.Meta.MaxParallel,
 		},
 		Inputs:    convertFlowInputsReqToInputs(req.Inputs),
 		Actions:   convertFlowActionsReqToActions(req.Actions),
@@ -623,7 +622,6 @@ func (h *Handler) HandleUpdateFlow(c echo.Context) error {
 	updatedMeta.MaxRetries = req.MaxRetries
 	updatedMeta.Description = req.Description
 	updatedMeta.ExecutionMode = models.ExecutionMode(req.ExecutionMode)
-	updatedMeta.MaxParallel = req.MaxParallel
 
 	flow := models.Flow{
 		Meta:      updatedMeta,
@@ -691,7 +689,6 @@ func (h *Handler) HandleGetFlowConfig(c echo.Context) error {
 			UserSchedulable: f.Meta.UserSchedulable,
 			MaxRetries:      f.Meta.MaxRetries,
 			ExecutionMode:   string(f.Meta.ExecutionMode),
-			MaxParallel:     f.Meta.MaxParallel,
 		},
 		Inputs:        convertFlowInputsToInputsReq(f.Inputs),
 		Actions:       convertFlowActionsToActionsReq(f.Actions),

@@ -126,7 +126,6 @@ type Metadata struct {
 	UserSchedulable bool          `yaml:"user_schedulable" huml:"user_schedulable"`
 	MaxRetries      int           `yaml:"max_retries" huml:"max_retries" validate:"omitempty,min=0,max=10"`
 	ExecutionMode   ExecutionMode `yaml:"execution_mode,omitempty" huml:"execution_mode" validate:"omitempty,oneof=sequential dag"`
-	MaxParallel     int           `yaml:"max_parallel,omitempty" huml:"max_parallel" validate:"omitempty,min=0,max=64"`
 }
 
 func (m Metadata) IsDAG() bool {
@@ -673,7 +672,6 @@ func ConvertToSchedulerFlow(ctx context.Context, f Flow, namespaceUUID uuid.UUID
 			Namespace:     f.Meta.Namespace,
 			MaxRetries:    f.Meta.MaxRetries,
 			ExecutionMode: f.Meta.ExecutionMode,
-			MaxParallel:   f.Meta.MaxParallel,
 		},
 		Inputs:    inputs,
 		Actions:   actions,
