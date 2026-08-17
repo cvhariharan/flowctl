@@ -38,11 +38,22 @@ export function needsForMode(
 }
 
 /**
- * Groups actions into topological levels. Every action in a level can run at the same time.
- * Actions in a cycle or with unknown dependencies are placed at the end so the editor can still
- * render a flow the server would reject.
+ * Sequential order is implicit — the actions carry no needs — so anything that walks the graph
+ * needs the edges the pipeline actually draws: every action waits for the one before it.
  */
-export function actionLevels<T extends HasNeeds>(actions: T[]): T[][] {
+export function withImplicitNeeds<T extends HasNeeds>(
+  actions: T[],
+  executionMode: ExecutionMode = 'dag'
+): T[] {
+  if (executionMode === 'dag') return actions;
+  return actions.map((action, i) => ({
+    ...action,
+    needs: i > 0 ? [actions[i - 1].id] : []
+  }));
+}
+
+/** Dependency depth per action. Actions on or behind a cycle get no entry. */
+function actionDepths<T extends HasNeeds>(actions: T[]): Map<string, number> {
   const known = new Set(actions.map((a) => a.id));
   const depth = new Map<string, number>();
   const remaining = new Map<string, string[]>();
@@ -66,6 +77,22 @@ export function actionLevels<T extends HasNeeds>(actions: T[]): T[][] {
     }
   }
 
+  return depth;
+}
+
+/** Actions the scheduler cannot order because they sit on or behind a dependency cycle. */
+export function cyclicActions<T extends HasNeeds>(actions: T[]): Set<string> {
+  const depth = actionDepths(actions);
+  return new Set(actions.filter((a) => !depth.has(a.id)).map((a) => a.id));
+}
+
+/**
+ * Groups actions into topological levels. Every action in a level can run at the same time.
+ * Actions in a cycle or with unknown dependencies are placed at the end so the editor can still
+ * render a flow the server would reject.
+ */
+export function actionLevels<T extends HasNeeds>(actions: T[]): T[][] {
+  const depth = actionDepths(actions);
   const unresolved = actions.filter((a) => !depth.has(a.id));
   const maxDepth = depth.size === 0 ? -1 : Math.max(...depth.values());
 

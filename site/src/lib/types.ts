@@ -104,7 +104,7 @@ export interface SchedulesPaginateResponse {
 
 export interface Notify {
   channel: string;
-  receivers: string[];
+  config: Record<string, any>;
   events: string[];
 }
 
@@ -562,6 +562,7 @@ export interface FlowMetaReq {
   prefix?: string;
   schedules?: Schedule[];
   allow_overlap?: boolean;
+  user_schedulable?: boolean;
   max_retries?: number;
   execution_mode?: ExecutionMode;
   max_parallel?: number;
@@ -603,7 +604,7 @@ export interface FlowActionReq {
   approval?: boolean;
   allow_node_override?: boolean;
   variables?: Record<string, any>[];
-  artifacts?: string[];
+  /** Accepted by the API but not acted on by the scheduler. */
   condition?: string;
   on?: string[];
   needs?: string[];
@@ -625,6 +626,7 @@ export interface FlowUpdateReq {
   inputs: FlowInputReq[];
   actions: FlowActionReq[];
   outputs?: Record<string, any>[];
+  notify?: Notify[];
 }
 
 // Table component types
@@ -665,4 +667,63 @@ export interface ApiToken {
 
 export interface ApiTokenCreated extends ApiToken {
   token: string;
+}
+
+// ── Flow builder (create / edit editor state) ──
+export type BuilderSection = 'general' | 'inputs' | 'actions' | 'notify' | 'secrets';
+
+export interface BuilderAction {
+  tempId: number;
+  id: string;
+  name: string;
+  executor: string;
+  with: Record<string, any>;
+  withByExecutor: Record<string, Record<string, any>>;
+  selectedNodes: string[];
+  variables: Array<{ name: string; value: string }>;
+  approval: boolean;
+  allow_node_override: boolean;
+  needs: string[];
+}
+
+export interface BuilderInput {
+  name: string;
+  type: FlowInputReq['type'];
+  label: string;
+  description: string;
+  required: boolean;
+  default: string;
+  validation: string;
+  options: string[];
+  multiple?: boolean;
+  useRemoteOptions?: boolean;
+  remote_options?: RemoteOptionsReq;
+  maxFileSizeMB?: number;
+}
+
+export interface BuilderMetadata {
+  id: string;
+  name: string;
+  description: string;
+  prefix: string;
+  schedules: Schedule[];
+  allow_overlap: boolean;
+  user_schedulable: boolean;
+  max_retries: number;
+  execution_mode: '' | ExecutionMode;
+  max_parallel: number;
+}
+
+export interface BuilderFlow {
+  metadata: BuilderMetadata;
+  inputs: BuilderInput[];
+  actions: BuilderAction[];
+  notifications: Notify[];
+}
+
+export interface FlowProblem {
+  severity: 'error' | 'warning';
+  message: string;
+  section: BuilderSection;
+  actionId?: string;
 }

@@ -1,4 +1,5 @@
 import { apiClient } from '$lib/apiClient.js';
+import { resolveSchema } from '$lib/utils/flowBuilder';
 import { permissionChecker } from '$lib/utils/permissions';
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
@@ -38,15 +39,9 @@ export const load: PageLoad = async ({ parent }) => {
       capabilities: info.capabilities,
     }));
 
-    // Resolve $defs/$ref in each messenger schema
     const messengerConfigs: Record<string, any> = {};
     for (const [name, schema] of Object.entries(messengerSchemas)) {
-      if (schema.$defs && schema.$ref) {
-        const refPath = schema.$ref.replace('#/$defs/', '');
-        messengerConfigs[name] = schema.$defs[refPath] || schema;
-      } else {
-        messengerConfigs[name] = schema;
-      }
+      messengerConfigs[name] = resolveSchema(schema);
     }
 
     return {

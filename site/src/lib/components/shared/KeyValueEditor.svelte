@@ -21,12 +21,14 @@
         onchange,
         keyPlaceholder = "KEY",
         valuePlaceholder = "value",
+        disabled = false,
     }: {
         pairs?: Array<{ name: string; value: string }>;
         initialValue?: string;
         onchange?: (json: string) => void;
         keyPlaceholder?: string;
         valuePlaceholder?: string;
+        disabled?: boolean;
     } = $props();
 
     function serialize() {
@@ -76,6 +78,7 @@
                 oninput={(e) => handleKeyInput(e, i)}
                 placeholder={keyPlaceholder}
                 class="kv-input font-mono"
+                {disabled}
             />
             <span class="text-lighter">=</span>
             <input
@@ -84,8 +87,9 @@
                 oninput={(e) => handleValueInput(e, i)}
                 placeholder={valuePlaceholder}
                 class="kv-input font-mono"
+                {disabled}
             />
-            {#if pairs.length > 1 || pair.name !== "" || pair.value !== ""}
+            {#if !disabled && (pairs.length > 1 || pair.name !== "" || pair.value !== "")}
                 <button
                     onclick={() => removePair(i)}
                     type="button"
@@ -102,14 +106,16 @@
             {/if}
         </div>
     {/each}
-    <button
-        onclick={addPair}
-        type="button"
-        data-variant="secondary"
-        class="add-btn"
-    >
-        + Add
-    </button>
+    {#if !disabled}
+        <button
+            onclick={addPair}
+            type="button"
+            data-variant="secondary"
+            class="add-btn"
+        >
+            + Add
+        </button>
+    {/if}
 </div>
 
 <style>

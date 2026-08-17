@@ -20,7 +20,7 @@
     required?: boolean;
     id?: string;
     name?: string;
-    onchange?: () => void;
+    onchange?: (value: string) => void;
   } = $props();
 
   const popoverId = id ? `oat-sel-${id}` : `oat-sel-${Math.random().toString(36).slice(2, 7)}`;
@@ -29,7 +29,7 @@
   function select(opt: Option) {
     value = opt.value;
     document.getElementById(popoverId)?.hidePopover();
-    onchange?.();
+    onchange?.(opt.value);
   }
 </script>
 

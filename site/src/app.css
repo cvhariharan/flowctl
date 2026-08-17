@@ -84,6 +84,35 @@ svg.icon-tabler {
 .shrink-0 { flex-shrink: 0; }
 .nowrap { flex-wrap: nowrap; }
 
+.req { color: var(--danger); }
+
+.overline {
+  font-size: var(--text-8);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge button {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  margin-inline-start: var(--space-1);
+}
+.badge button:hover { color: var(--danger); }
+
+/* ── Editor pane ── */
+.pane-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+.pane-inner {
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
 /* App shell: consistent main area styling */
 main.app-content {
   padding-block-start: 0;

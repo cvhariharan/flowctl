@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { dependencyPath, type StepStatus } from '$lib/utils/dag';
+  import { dependencyPath, withImplicitNeeds, type StepStatus } from '$lib/utils/dag';
   import type { ExecutionMode } from '$lib/types';
   import { IconRefresh } from '@tabler/icons-svelte';
-  import {
-    pipelineLayout,
-    NODE_WIDTH,
-    NODE_HEIGHT,
-    STAGE_HEADER,
-  } from '$lib/utils/pipelineLayout';
+  import { pipelineLayout, DEFAULT_GEOMETRY } from '$lib/utils/pipelineLayout';
+
+  const {
+    nodeWidth: NODE_WIDTH,
+    nodeHeight: NODE_HEIGHT,
+    stageHeader: STAGE_HEADER,
+  } = DEFAULT_GEOMETRY;
 
   type GraphAction = {
     id: string;
@@ -44,14 +45,7 @@
 
   // Dim everything outside the hovered action's dependency path, the way a pipeline view narrows
   // down to the chain you are pointing at.
-  const pathActions = $derived(
-    executionMode === 'dag'
-      ? actions
-      : actions.map((action, index) => ({
-          ...action,
-          needs: index > 0 ? [actions[index - 1].id] : [],
-        }))
-  );
+  const pathActions = $derived(withImplicitNeeds(actions, executionMode));
   const highlighted = $derived(
     hoveredId ? dependencyPath(pathActions, hoveredId) : null
   );
@@ -107,7 +101,7 @@
 
       {#each layout.stages as stage (stage.index)}
         <div
-          class="stage-label text-lighter"
+          class="stage-label overline text-lighter"
           style="left: {stage.x}px; width: {NODE_WIDTH}px; height: {STAGE_HEADER}px;"
         >
           Step {stage.index + 1}
@@ -217,9 +211,6 @@
     display: flex;
     align-items: center;
     gap: 0.375rem;
-    font-size: var(--text-8);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
   }
   .stage-count {
     background: var(--faint);

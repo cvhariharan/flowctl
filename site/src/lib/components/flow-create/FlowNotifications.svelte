@@ -1,20 +1,23 @@
 <script lang="ts">
     import MultiReceiverSelector from "$lib/components/shared/MultiReceiverSelector.svelte";
     import OatSelect from "$lib/components/shared/OatSelect.svelte";
+    import type { Notify } from "$lib/types";
 
     let {
         notifications = $bindable(),
-        addNotification,
         availableMessengers,
         messengerConfigs,
         disabled = false,
     }: {
-        notifications: any[];
-        addNotification: () => void;
+        notifications: Notify[];
         availableMessengers: string[];
         messengerConfigs: Record<string, any>;
         disabled?: boolean;
     } = $props();
+
+    function addNotification() {
+        notifications.push({ channel: "", events: [], config: {} });
+    }
 
     function removeNotification(index: number) {
         notifications.splice(index, 1);
@@ -136,7 +139,7 @@
                                 {#if property.widget === "userselector"}
                                     <label>
                                         {label}
-                                        {#if isRequired}<span class="required">*</span>{/if}
+                                        {#if isRequired}<span class="req">*</span>{/if}
                                     </label>
                                     <MultiReceiverSelector
                                         bind:selectedReceivers={notification.config[key]}
@@ -144,7 +147,7 @@
                                 {:else}
                                     <label>
                                         {label}
-                                        {#if isRequired}<span class="required">*</span>{/if}
+                                        {#if isRequired}<span class="req">*</span>{/if}
                                     </label>
                                     <input
                                         type="text"
@@ -153,7 +156,7 @@
                                     />
                                 {/if}
                                 {#if description}
-                                    <p class="text-lighter field-hint">{description}</p>
+                                    <span data-hint>{description}</span>
                                 {/if}
                             </div>
                         {/each}
@@ -200,13 +203,6 @@
     .checkbox-label {
         cursor: pointer;
         font-size: 0.875rem;
-    }
-    .required {
-        color: var(--danger);
-    }
-    .field-hint {
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
     }
     .empty-state {
         text-align: center;
