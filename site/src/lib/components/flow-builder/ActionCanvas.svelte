@@ -250,7 +250,7 @@
   .pane {
     flex: 1;
     min-height: 0;
-    min-width: 0;
+    min-width: 16rem;
     display: flex;
     flex-direction: column;
     position: relative;

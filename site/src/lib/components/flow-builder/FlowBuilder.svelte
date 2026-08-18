@@ -194,6 +194,7 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
     background: var(--card);
   }
   /* The workspace fills the frame, so the shell's footer is dead weight here. */

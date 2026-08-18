@@ -279,7 +279,8 @@
 <style>
   .inspector {
     position: relative;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 20rem;
     min-height: 0;
     display: flex;
     flex-direction: column;
