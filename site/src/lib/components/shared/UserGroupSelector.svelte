@@ -2,7 +2,8 @@
   import { apiClient } from '$lib/apiClient';
   import { handleInlineError } from '$lib/utils/errorHandling';
   import type { User, Group } from '$lib/types';
-  import { IconUsers, IconUser } from '@tabler/icons-svelte';
+  import IconUsers from '@tabler/icons-svelte/icons/users';
+  import IconUser from '@tabler/icons-svelte/icons/user';
 
   let {
     type = $bindable('user'),

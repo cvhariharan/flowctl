@@ -1,13 +1,11 @@
-import {
-  IconLetterCase,
-  IconNumbers,
-  IconToggleLeft,
-  IconLock,
-  IconFile,
-  IconCalendar,
-  IconList,
-  IconServer
-} from '@tabler/icons-svelte';
+import IconLetterCase from '@tabler/icons-svelte/icons/letter-case';
+import IconNumbers from '@tabler/icons-svelte/icons/numbers';
+import IconToggleLeft from '@tabler/icons-svelte/icons/toggle-left';
+import IconLock from '@tabler/icons-svelte/icons/lock';
+import IconFile from '@tabler/icons-svelte/icons/file';
+import IconCalendar from '@tabler/icons-svelte/icons/calendar';
+import IconList from '@tabler/icons-svelte/icons/list';
+import IconServer from '@tabler/icons-svelte/icons/server';
 import type { BuilderAction, BuilderInput, FlowInputReq } from '$lib/types';
 
 /** The input types the API accepts, in the order the picker shows them. */

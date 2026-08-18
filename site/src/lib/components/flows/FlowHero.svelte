@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IconLayoutGrid } from '@tabler/icons-svelte';
+  import IconLayoutGrid from '@tabler/icons-svelte/icons/layout-grid';
   import type { ComponentType } from 'svelte';
 
   let {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IconSearch } from '@tabler/icons-svelte';
+  import IconSearch from '@tabler/icons-svelte/icons/search';
 
   let {
     value = $bindable(''),

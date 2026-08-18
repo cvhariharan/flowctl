@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IconKey } from '@tabler/icons-svelte';
+  import IconKey from '@tabler/icons-svelte/icons/key';
   import { onMount } from 'svelte';
   import { apiClient } from '$lib/apiClient';
   import type { SSOProvider } from '$lib/types';

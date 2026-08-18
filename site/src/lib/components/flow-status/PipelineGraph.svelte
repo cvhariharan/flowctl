@@ -1,7 +1,7 @@
 <script lang="ts">
   import { dependencyPath, withImplicitNeeds, type StepStatus } from '$lib/utils/dag';
   import type { ExecutionMode } from '$lib/types';
-  import { IconRefresh } from '@tabler/icons-svelte';
+  import IconRefresh from '@tabler/icons-svelte/icons/refresh';
   import { pipelineLayout, DEFAULT_GEOMETRY } from '$lib/utils/pipelineLayout';
 
   const {

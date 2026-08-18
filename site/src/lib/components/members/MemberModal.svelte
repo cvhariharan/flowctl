@@ -6,7 +6,10 @@
   import FlowGroupSelector from '$lib/components/flow-create/FlowGroupSelector.svelte';
   import type { NamespaceMemberReq, NamespaceMemberResp, FlowGroupResp, User, Group } from '$lib/types';
   import { apiClient } from '$lib/apiClient';
-  import { IconUsers, IconUser, IconX, IconFolder } from '@tabler/icons-svelte';
+  import IconUsers from '@tabler/icons-svelte/icons/users';
+  import IconUser from '@tabler/icons-svelte/icons/user';
+  import IconX from '@tabler/icons-svelte/icons/x';
+  import IconFolder from '@tabler/icons-svelte/icons/folder';
 
   interface Props {
     isEditMode?: boolean;

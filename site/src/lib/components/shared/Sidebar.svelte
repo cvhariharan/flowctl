@@ -13,19 +13,17 @@
         clearPermissionCache,
         type ResourcePermissions,
     } from "$lib/utils/permissions";
-    import {
-        IconChevronDown,
-        IconGridDots,
-        IconServer,
-        IconKey,
-        IconLock,
-        IconUsers,
-        IconCircleCheck,
-        IconClock,
-        IconSettings,
-        IconChevronsLeft,
-        IconChevronsRight,
-    } from "@tabler/icons-svelte";
+    import IconChevronDown from "@tabler/icons-svelte/icons/chevron-down";
+    import IconGridDots from "@tabler/icons-svelte/icons/grid-dots";
+    import IconServer from "@tabler/icons-svelte/icons/server";
+    import IconKey from "@tabler/icons-svelte/icons/key";
+    import IconLock from "@tabler/icons-svelte/icons/lock";
+    import IconUsers from "@tabler/icons-svelte/icons/users";
+    import IconCircleCheck from "@tabler/icons-svelte/icons/circle-check";
+    import IconClock from "@tabler/icons-svelte/icons/clock";
+    import IconSettings from "@tabler/icons-svelte/icons/settings";
+    import IconChevronsLeft from "@tabler/icons-svelte/icons/chevrons-left";
+    import IconChevronsRight from "@tabler/icons-svelte/icons/chevrons-right";
     import UserDropdown from "./UserDropdown.svelte";
     import ThemeToggle from "./ThemeToggle.svelte";
     import Logo from "./Logo.svelte";

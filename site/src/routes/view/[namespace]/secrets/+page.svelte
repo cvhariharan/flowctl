@@ -11,7 +11,8 @@
 	import type { NamespaceSecretReq, NamespaceSecretUpdateReq, NamespaceSecretResp, TableColumn, TableAction } from '$lib/types';
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 	import { formatDateTime } from '$lib/utils';
-	import { IconPlus, IconLock } from '@tabler/icons-svelte';
+	import IconPlus from '@tabler/icons-svelte/icons/plus';
+	import IconLock from '@tabler/icons-svelte/icons/lock';
 	import MutedTextCell from '$lib/components/shared/cells/MutedTextCell.svelte';
 
 	let { data }: { data: PageData } = $props();

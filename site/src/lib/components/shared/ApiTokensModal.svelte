@@ -3,7 +3,9 @@
   import { handleInlineError } from '$lib/utils/errorHandling';
   import { autofocus } from '$lib/utils/autofocus';
   import DeleteModal from './DeleteModal.svelte';
-  import { IconCopy, IconCheck, IconTrash } from '@tabler/icons-svelte';
+  import IconCopy from '@tabler/icons-svelte/icons/copy';
+  import IconCheck from '@tabler/icons-svelte/icons/check';
+  import IconTrash from '@tabler/icons-svelte/icons/trash';
   import type { ApiToken, ApiTokenCreated } from '$lib/types';
 
   let { onClose }: { onClose: () => void } = $props();

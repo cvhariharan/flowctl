@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { handleInlineError } from '$lib/utils/errorHandling';
 	import { autofocus } from '$lib/utils/autofocus';
-	import { IconAlertTriangle } from '@tabler/icons-svelte';
+	import IconAlertTriangle from '@tabler/icons-svelte/icons/alert-triangle';
 
 	let {
 		title,

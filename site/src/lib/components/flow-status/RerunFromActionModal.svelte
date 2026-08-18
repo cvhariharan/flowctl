@@ -1,6 +1,7 @@
 <script lang="ts">
   import { autofocus } from '$lib/utils/autofocus';
-  import { IconRefresh, IconCircleCheck } from '@tabler/icons-svelte';
+  import IconRefresh from '@tabler/icons-svelte/icons/refresh';
+  import IconCircleCheck from '@tabler/icons-svelte/icons/circle-check';
 
   type Action = {
     id: string;

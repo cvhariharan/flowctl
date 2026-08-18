@@ -2,7 +2,7 @@
     import { onMount, tick } from "svelte";
     import { formatTime } from "$lib/utils";
     import Convert from 'ansi-to-html';
-    import { IconDownload } from '@tabler/icons-svelte';
+    import IconDownload from '@tabler/icons-svelte/icons/download';
 
     const convert = new Convert({ escapeXML: true });
     const containsAnsi = (text: string) => text.includes('\x1b[');

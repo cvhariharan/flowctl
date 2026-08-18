@@ -1,16 +1,14 @@
 <script lang="ts">
-  import {
-    IconX,
-    IconCheck,
-    IconPlayerPlay,
-    IconClockPause,
-    IconMinus,
-    IconPlayerSkipForward,
-    IconSearch,
-    IconCircle,
-    IconCircleCheck,
-    IconRefresh,
-  } from '@tabler/icons-svelte';
+  import IconX from '@tabler/icons-svelte/icons/x';
+  import IconCheck from '@tabler/icons-svelte/icons/check';
+  import IconPlayerPlay from '@tabler/icons-svelte/icons/player-play';
+  import IconClockPause from '@tabler/icons-svelte/icons/clock-pause';
+  import IconMinus from '@tabler/icons-svelte/icons/minus';
+  import IconPlayerSkipForward from '@tabler/icons-svelte/icons/player-skip-forward';
+  import IconSearch from '@tabler/icons-svelte/icons/search';
+  import IconCircle from '@tabler/icons-svelte/icons/circle';
+  import IconCircleCheck from '@tabler/icons-svelte/icons/circle-check';
+  import IconRefresh from '@tabler/icons-svelte/icons/refresh';
   import type { StepStatus } from '$lib/utils/dag';
 
   type Action = {

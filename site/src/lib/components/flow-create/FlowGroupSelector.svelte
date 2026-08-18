@@ -2,7 +2,9 @@
     import { apiClient } from "$lib/apiClient";
     import { handleInlineError } from "$lib/utils/errorHandling";
     import type { FlowGroupResp } from "$lib/types";
-    import { IconFolder, IconX, IconPlus } from "@tabler/icons-svelte";
+    import IconFolder from "@tabler/icons-svelte/icons/folder";
+    import IconX from "@tabler/icons-svelte/icons/x";
+    import IconPlus from "@tabler/icons-svelte/icons/plus";
 
     let {
         namespace,

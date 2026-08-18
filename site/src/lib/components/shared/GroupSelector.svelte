@@ -2,7 +2,9 @@
   import { apiClient } from '$lib/apiClient';
   import { handleInlineError } from '$lib/utils/errorHandling';
   import type { Group } from '$lib/types';
-  import { IconChevronDown, IconUsersGroup, IconX } from '@tabler/icons-svelte';
+  import IconChevronDown from '@tabler/icons-svelte/icons/chevron-down';
+  import IconUsersGroup from '@tabler/icons-svelte/icons/users-group';
+  import IconX from '@tabler/icons-svelte/icons/x';
 
   let {
     selectedGroups = $bindable([]),

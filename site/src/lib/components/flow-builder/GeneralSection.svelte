@@ -1,6 +1,7 @@
 <script lang="ts">
   import { get } from 'svelte/store';
-  import { IconPlus, IconX } from '@tabler/icons-svelte';
+  import IconPlus from '@tabler/icons-svelte/icons/plus';
+  import IconX from '@tabler/icons-svelte/icons/x';
   import FlowGroupSelector from '$lib/components/flow-create/FlowGroupSelector.svelte';
   import { appInfo } from '$lib/stores/auth';
   import { createSlug, isValidCronExpression } from '$lib/utils';

@@ -17,7 +17,7 @@
 	import Header from '$lib/components/shared/Header.svelte';
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 	import { formatDateTime, formatDuration, getStartTime } from '$lib/utils';
-	import { IconHistory } from '@tabler/icons-svelte';
+	import IconHistory from '@tabler/icons-svelte/icons/history';
 
 	let { data }: { data: PageData } = $props();
 	const namespace = $derived(page.params.namespace!);

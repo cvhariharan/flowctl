@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IconPlus } from '@tabler/icons-svelte';
+  import IconPlus from '@tabler/icons-svelte/icons/plus';
   import type { BuilderAction, BuilderInput, FlowInputReq } from '$lib/types';
   import { newInput } from '$lib/utils/flowBuilder';
   import InputCard from './InputCard.svelte';

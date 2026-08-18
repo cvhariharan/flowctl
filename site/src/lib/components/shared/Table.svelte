@@ -1,7 +1,9 @@
 <script lang="ts" generics="T">
     import type { TableColumn, TableAction } from "$lib/types";
     import type { ComponentType } from "svelte";
-    import { IconClipboardList, IconChevronUp, IconChevronDown } from "@tabler/icons-svelte";
+    import IconClipboardList from "@tabler/icons-svelte/icons/clipboard-list";
+    import IconChevronUp from "@tabler/icons-svelte/icons/chevron-up";
+    import IconChevronDown from "@tabler/icons-svelte/icons/chevron-down";
 
     type SortDirection = "asc" | "desc" | null;
 

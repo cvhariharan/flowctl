@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IconX } from '@tabler/icons-svelte';
+  import IconX from '@tabler/icons-svelte/icons/x';
   import type { FlowProblem } from '$lib/types';
 
   let {

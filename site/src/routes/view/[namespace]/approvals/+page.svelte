@@ -17,7 +17,10 @@
 	import Header from '$lib/components/shared/Header.svelte';
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 	import { formatDateTime } from '$lib/utils';
-	import { IconCircleCheck, IconClock, IconCheck, IconX } from '@tabler/icons-svelte';
+	import IconCircleCheck from '@tabler/icons-svelte/icons/circle-check';
+	import IconClock from '@tabler/icons-svelte/icons/clock';
+	import IconCheck from '@tabler/icons-svelte/icons/check';
+	import IconX from '@tabler/icons-svelte/icons/x';
 
 	let { data }: { data: PageData } = $props();
 	const namespace = $derived(page.params.namespace!);

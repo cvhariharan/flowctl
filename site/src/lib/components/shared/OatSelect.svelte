@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IconChevronDown } from '@tabler/icons-svelte';
+  import IconChevronDown from '@tabler/icons-svelte/icons/chevron-down';
 
   type Option = { label: string; value: string };
 

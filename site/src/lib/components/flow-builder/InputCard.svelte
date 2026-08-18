@@ -1,6 +1,8 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { IconGripVertical, IconPlus, IconX } from '@tabler/icons-svelte';
+  import IconGripVertical from '@tabler/icons-svelte/icons/grip-vertical';
+  import IconPlus from '@tabler/icons-svelte/icons/plus';
+  import IconX from '@tabler/icons-svelte/icons/x';
   import KeyValueEditor from '$lib/components/shared/KeyValueEditor.svelte';
   import OatSelect from '$lib/components/shared/OatSelect.svelte';
   import type { BuilderInput } from '$lib/types';

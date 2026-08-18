@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IconUser } from '@tabler/icons-svelte';
+  import IconUser from '@tabler/icons-svelte/icons/user';
 
   let { value }: { row: any; value: any } = $props();
 

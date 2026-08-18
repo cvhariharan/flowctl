@@ -1,12 +1,10 @@
 <script lang="ts">
-  import {
-    IconAlertTriangle,
-    IconBell,
-    IconBolt,
-    IconLock,
-    IconPlus,
-    IconList
-  } from '@tabler/icons-svelte';
+  import IconAlertTriangle from '@tabler/icons-svelte/icons/alert-triangle';
+  import IconBell from '@tabler/icons-svelte/icons/bell';
+  import IconBolt from '@tabler/icons-svelte/icons/bolt';
+  import IconLock from '@tabler/icons-svelte/icons/lock';
+  import IconPlus from '@tabler/icons-svelte/icons/plus';
+  import IconList from '@tabler/icons-svelte/icons/list';
   import FlowNotifications from '$lib/components/flow-create/FlowNotifications.svelte';
   import SecretsTab from '$lib/components/secrets/SecretsTab.svelte';
   import { onMount } from 'svelte';

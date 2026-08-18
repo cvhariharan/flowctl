@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { IconPlus, IconCopy, IconX, IconLock, IconGitBranch, IconServer } from '@tabler/icons-svelte';
+  import IconPlus from '@tabler/icons-svelte/icons/plus';
+  import IconCopy from '@tabler/icons-svelte/icons/copy';
+  import IconX from '@tabler/icons-svelte/icons/x';
+  import IconLock from '@tabler/icons-svelte/icons/lock';
+  import IconGitBranch from '@tabler/icons-svelte/icons/git-branch';
+  import IconServer from '@tabler/icons-svelte/icons/server';
   import type { BuilderAction, ExecutionMode } from '$lib/types';
   import { ancestors, cyclicActions, dependencyPath, withImplicitNeeds } from '$lib/utils/dag';
   import { linkActions, nameLookup, unlinkActions } from '$lib/utils/flowBuilder';

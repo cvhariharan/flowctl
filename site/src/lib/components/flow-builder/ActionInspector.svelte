@@ -1,11 +1,9 @@
 <script lang="ts">
-  import {
-    IconX,
-    IconCopy,
-    IconTrash,
-    IconChevronsLeft,
-    IconChevronsRight
-  } from '@tabler/icons-svelte';
+  import IconX from '@tabler/icons-svelte/icons/x';
+  import IconCopy from '@tabler/icons-svelte/icons/copy';
+  import IconTrash from '@tabler/icons-svelte/icons/trash';
+  import IconChevronsLeft from '@tabler/icons-svelte/icons/chevrons-left';
+  import IconChevronsRight from '@tabler/icons-svelte/icons/chevrons-right';
   import OatSelect from '$lib/components/shared/OatSelect.svelte';
   import NodeSelector from '$lib/components/shared/NodeSelector.svelte';
   import KeyValueEditor from '$lib/components/shared/KeyValueEditor.svelte';

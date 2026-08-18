@@ -10,10 +10,6 @@ export default defineConfig({
     cssCodeSplit: true,
     minify: true,
   },
-  optimizeDeps: {
-    force: false,
-    include: ['@tabler/icons-svelte']
-  },
   server: {
     proxy: {
       "/api": {

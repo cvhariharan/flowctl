@@ -3,7 +3,10 @@
   import { apiClient } from '$lib/apiClient';
   import { handleInlineError } from '$lib/utils/errorHandling';
   import type { NodeResp } from '$lib/types';
-  import { IconChevronDown, IconServer, IconTag, IconX } from '@tabler/icons-svelte';
+  import IconChevronDown from '@tabler/icons-svelte/icons/chevron-down';
+  import IconServer from '@tabler/icons-svelte/icons/server';
+  import IconTag from '@tabler/icons-svelte/icons/tag';
+  import IconX from '@tabler/icons-svelte/icons/x';
 
   let {
     namespace,

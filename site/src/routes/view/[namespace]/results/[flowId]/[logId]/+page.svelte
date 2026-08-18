@@ -34,14 +34,12 @@
         type LogMessage,
         type LogStream,
     } from "$lib/logStream";
-    import {
-        IconPlayerStop,
-        IconRefresh,
-        IconRepeat,
-        IconCopy,
-        IconAlertTriangle,
-        IconDownload,
-    } from "@tabler/icons-svelte";
+    import IconPlayerStop from "@tabler/icons-svelte/icons/player-stop";
+    import IconRefresh from "@tabler/icons-svelte/icons/refresh";
+    import IconRepeat from "@tabler/icons-svelte/icons/repeat";
+    import IconCopy from "@tabler/icons-svelte/icons/copy";
+    import IconAlertTriangle from "@tabler/icons-svelte/icons/alert-triangle";
+    import IconDownload from "@tabler/icons-svelte/icons/download";
 
     let {
         data,

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { IconPlus, IconMaximize } from '@tabler/icons-svelte';
+  import IconPlus from '@tabler/icons-svelte/icons/plus';
+  import IconMaximize from '@tabler/icons-svelte/icons/maximize';
   import { apiClient } from '$lib/apiClient';
   import { handleInlineError } from '$lib/utils/errorHandling';
   import type { BuilderAction, BuilderFlow, ExecutionMode } from '$lib/types';

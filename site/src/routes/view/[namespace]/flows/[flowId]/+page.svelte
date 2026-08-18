@@ -19,7 +19,10 @@
     import { formatDateTime, formatDuration, getStartTime } from "$lib/utils";
     import { actionStages } from "$lib/utils/dag";
     import { apiClient } from "$lib/apiClient";
-    import { IconPencil, IconEye, IconInfoCircle, IconX } from "@tabler/icons-svelte";
+    import IconPencil from "@tabler/icons-svelte/icons/pencil";
+    import IconEye from "@tabler/icons-svelte/icons/eye";
+    import IconInfoCircle from "@tabler/icons-svelte/icons/info-circle";
+    import IconX from "@tabler/icons-svelte/icons/x";
     import LinkCell from "$lib/components/shared/cells/LinkCell.svelte";
     import MutedTextCell from "$lib/components/shared/cells/MutedTextCell.svelte";
     import UserAvatarCell from "$lib/components/shared/cells/UserAvatarCell.svelte";

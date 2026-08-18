@@ -4,7 +4,9 @@
   import ScheduleModal from './ScheduleModal.svelte';
   import ViewScheduleModal from './ViewScheduleModal.svelte';
   import DeleteModal from '$lib/components/shared/DeleteModal.svelte';
-  import { IconClock, IconPlus, IconDotsVertical } from '@tabler/icons-svelte';
+  import IconClock from '@tabler/icons-svelte/icons/clock';
+  import IconPlus from '@tabler/icons-svelte/icons/plus';
+  import IconDotsVertical from '@tabler/icons-svelte/icons/dots-vertical';
   import type { UserSchedule, FlowInput, ScheduleCreateReq, ScheduleUpdateReq } from '$lib/types';
 
   let {

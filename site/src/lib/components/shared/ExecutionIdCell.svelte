@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IconBolt } from '@tabler/icons-svelte';
+  import IconBolt from '@tabler/icons-svelte/icons/bolt';
 
   let { value }: { value: string } = $props();
 </script>

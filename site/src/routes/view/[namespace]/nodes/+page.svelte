@@ -13,7 +13,8 @@
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
 	import Header from '$lib/components/shared/Header.svelte';
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
-	import { IconPlus, IconServer } from '@tabler/icons-svelte';
+	import IconPlus from '@tabler/icons-svelte/icons/plus';
+	import IconServer from '@tabler/icons-svelte/icons/server';
 	import NameLinkCell from '$lib/components/shared/cells/NameLinkCell.svelte';
 	import BadgeCell from '$lib/components/shared/cells/BadgeCell.svelte';
 	import TagsCell from '$lib/components/shared/cells/TagsCell.svelte';

@@ -9,7 +9,7 @@
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 	import type { User, Group, UserWithGroups } from '$lib/types';
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
-	import { IconPlus } from '@tabler/icons-svelte';
+	import IconPlus from '@tabler/icons-svelte/icons/plus';
 
 	let {
 		users: initialUsers,

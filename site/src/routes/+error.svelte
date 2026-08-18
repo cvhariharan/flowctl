@@ -4,14 +4,12 @@
   import { isAuthenticated } from '$lib/stores/auth';
   import { appInfo } from '$lib/stores/auth';
   import { getDefaultNamespace } from '$lib/utils/navigation';
-  import {
-    IconLock,
-    IconShieldX,
-    IconFileX,
-    IconAlertTriangle,
-    IconLogin,
-    IconHome
-  } from '@tabler/icons-svelte';
+  import IconLock from '@tabler/icons-svelte/icons/lock';
+  import IconShieldX from '@tabler/icons-svelte/icons/shield-x';
+  import IconFileX from '@tabler/icons-svelte/icons/file-x';
+  import IconAlertTriangle from '@tabler/icons-svelte/icons/alert-triangle';
+  import IconLogin from '@tabler/icons-svelte/icons/login';
+  import IconHome from '@tabler/icons-svelte/icons/home';
 
   const error = page.error;
   const status = page.status;

@@ -5,7 +5,8 @@
   import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
   import { getTimezones } from '$lib/utils/timezone';
   import { DateTime } from 'luxon';
-  import { IconClock, IconPlayerPlay } from '@tabler/icons-svelte';
+  import IconClock from '@tabler/icons-svelte/icons/clock';
+  import IconPlayerPlay from '@tabler/icons-svelte/icons/player-play';
   import { get } from 'svelte/store';
   import { appInfo } from '$lib/stores/auth';
   import FlowInputFields from '$lib/components/shared/FlowInputFields.svelte';

@@ -23,7 +23,11 @@
     } from "$lib/utils/permissions";
     import DeleteModal from "$lib/components/shared/DeleteModal.svelte";
     import GroupEditModal from "$lib/components/shared/GroupEditModal.svelte";
-    import { IconPlus, IconBolt, IconFolder, IconChevronLeft, IconChevronDown } from "@tabler/icons-svelte";
+    import IconPlus from "@tabler/icons-svelte/icons/plus";
+    import IconBolt from "@tabler/icons-svelte/icons/bolt";
+    import IconFolder from "@tabler/icons-svelte/icons/folder";
+    import IconChevronLeft from "@tabler/icons-svelte/icons/chevron-left";
+    import IconChevronDown from "@tabler/icons-svelte/icons/chevron-down";
     import NameLinkCell from "$lib/components/shared/cells/NameLinkCell.svelte";
     import MutedTextCell from "$lib/components/shared/cells/MutedTextCell.svelte";
 

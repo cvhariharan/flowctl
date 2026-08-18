@@ -16,7 +16,9 @@
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 	import type { TableAction } from '$lib/types';
 	import { formatDateTime } from '$lib/utils';
-	import { IconUsers, IconUser, IconPlus } from '@tabler/icons-svelte';
+	import IconUsers from '@tabler/icons-svelte/icons/users';
+	import IconUser from '@tabler/icons-svelte/icons/user';
+	import IconPlus from '@tabler/icons-svelte/icons/plus';
 
 	let { data }: { data: PageData } = $props();
 	const namespace = $derived(page.params.namespace!);

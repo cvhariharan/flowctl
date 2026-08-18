@@ -12,7 +12,7 @@
         toFlowRequest,
     } from "$lib/utils/flowBuilder";
     import { handleInlineError, showSuccess } from "$lib/utils/errorHandling";
-    import { IconInfoCircle } from "@tabler/icons-svelte";
+    import IconInfoCircle from "@tabler/icons-svelte/icons/info-circle";
 
     let { data } = $props();
     const namespace = $page.params.namespace as string;

@@ -1,6 +1,8 @@
 <script lang="ts">
     import { resolvedTheme, theme, type Theme } from '$lib/stores/theme';
-    import { IconSun, IconMoon, IconDeviceDesktop } from '@tabler/icons-svelte';
+    import IconSun from '@tabler/icons-svelte/icons/sun';
+    import IconMoon from '@tabler/icons-svelte/icons/moon';
+    import IconDeviceDesktop from '@tabler/icons-svelte/icons/device-desktop';
 
     let { collapsed = false }: { collapsed?: boolean } = $props();
 

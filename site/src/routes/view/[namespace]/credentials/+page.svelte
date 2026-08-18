@@ -14,7 +14,10 @@
     import { DEFAULT_PAGE_SIZE } from "$lib/constants";
     import Header from "$lib/components/shared/Header.svelte";
     import { handleInlineError, showSuccess } from "$lib/utils/errorHandling";
-    import { IconPlus, IconKey, IconShieldCheck, IconLock } from "@tabler/icons-svelte";
+    import IconPlus from "@tabler/icons-svelte/icons/plus";
+    import IconKey from "@tabler/icons-svelte/icons/key";
+    import IconShieldCheck from "@tabler/icons-svelte/icons/shield-check";
+    import IconLock from "@tabler/icons-svelte/icons/lock";
     import { formatDateTime } from "$lib/utils";
     import NameLinkCell from "$lib/components/shared/cells/NameLinkCell.svelte";
     import BadgeCell from "$lib/components/shared/cells/BadgeCell.svelte";
