@@ -1,0 +1,9 @@
+FROM debian:stable
+WORKDIR /app
+RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
+
+ARG TARGETARCH
+COPY dist/linux_${TARGETARCH}/flowctl /app/flowctl
+
+ENTRYPOINT [ "/app/flowctl" ]
+CMD [ "start" ]
