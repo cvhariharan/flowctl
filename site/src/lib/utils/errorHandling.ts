@@ -59,7 +59,7 @@ export function handleError(err: unknown, options: ErrorHandlingOptions = {}) {
   if (showNotification) {
     notifications.error(
       customTitle || 'Unexpected Error',
-      'An unexpected error occurred'
+      err instanceof Error && err.message ? err.message : 'An unexpected error occurred'
     );
   }
 

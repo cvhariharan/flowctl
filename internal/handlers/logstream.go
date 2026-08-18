@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/coder/websocket"
@@ -103,12 +104,22 @@ func (h *Handler) HandleLogStream(c echo.Context) error {
 
 type logStreamSource func(context.Context) (<-chan models.StreamMessage, <-chan core.LogStreamEndReason, error)
 
+func (h *Handler) originPatterns() []string {
+	u, err := url.Parse(h.config.App.RootURL)
+	if err != nil || u.Host == "" {
+		return nil
+	}
+	return []string{u.Host}
+}
+
 func (h *Handler) serveLogStream(c echo.Context, execID string, source logStreamSource) error {
 	conn, err := websocket.Accept(c.Response(), c.Request(), &websocket.AcceptOptions{
 		CompressionMode:    websocket.CompressionDisabled,
 		InsecureSkipVerify: false,
+		OriginPatterns:     h.originPatterns(),
 	})
 	if err != nil {
+		h.logger.Warn("WebSocket upgrade rejected", "execID", execID, "origin", c.Request().Header.Get("Origin"), "host", c.Request().Host, "error", err)
 		return err
 	}
 	defer conn.CloseNow()
