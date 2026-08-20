@@ -2,6 +2,7 @@
   import { dependencyPath, withImplicitNeeds, type StepStatus } from '$lib/utils/dag';
   import type { ExecutionMode } from '$lib/types';
   import IconRefresh from '@tabler/icons-svelte/icons/refresh';
+  import MutedTextCell from '$lib/components/shared/cells/MutedTextCell.svelte';
   import { pipelineLayout, DEFAULT_GEOMETRY } from '$lib/utils/pipelineLayout';
 
   const {
@@ -124,12 +125,17 @@
             onmouseleave={() => (hoveredId = null)}
             onfocus={() => (hoveredId = node.action.id)}
             onblur={() => (hoveredId = null)}
-            title="{node.action.name}{node.action.needs?.length
-              ? ` — needs ${node.action.needs.join(', ')}`
-              : ''}"
+            title={node.action.name}
           >
             <span class="node-text">
-              <span class="node-name">{node.action.name}</span>
+              <MutedTextCell
+                row={node.action}
+                value={node.action.name}
+                truncate={24}
+                maxWidth="100%"
+                plain
+                class="node-name"
+              />
               <span class="node-meta text-lighter">
                 {node.action.executor || 'no executor'}
                 {#if durations[node.action.id]}
@@ -273,20 +279,17 @@
   }
 
   .node-text {
+    width: 100%;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    text-align: center;
     line-height: 1.25;
   }
-  .node-name {
+  .node-text :global(.node-name) {
     font-size: var(--text-7);
     font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .node-meta {
+    display: block;
     font-size: var(--text-8);
     overflow: hidden;
     text-overflow: ellipsis;

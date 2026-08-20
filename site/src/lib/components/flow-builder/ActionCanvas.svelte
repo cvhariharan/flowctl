@@ -5,6 +5,7 @@
   import IconLock from '@tabler/icons-svelte/icons/lock';
   import IconGitBranch from '@tabler/icons-svelte/icons/git-branch';
   import IconServer from '@tabler/icons-svelte/icons/server';
+  import MutedTextCell from '$lib/components/shared/cells/MutedTextCell.svelte';
   import type { BuilderAction, ExecutionMode } from '$lib/types';
   import { ancestors, cyclicActions, dependencyPath, withImplicitNeeds } from '$lib/utils/dag';
   import { linkActions, nameLookup, unlinkActions } from '$lib/utils/flowBuilder';
@@ -180,10 +181,16 @@
                 class:invalid={isInvalid(action)}
                 class:dimmed={isDimmed(action.id)}
                 onclick={() => pickNode(action.id)}
+                title={action.name || 'Untitled action'}
               >
-                <span class="node-name" class:untitled={!action.name}>
-                  {action.name || 'Untitled action'}
-                </span>
+                <MutedTextCell
+                  row={action}
+                  value={action.name || 'Untitled action'}
+                  truncate={28}
+                  maxWidth="100%"
+                  plain
+                  class={action.name ? 'node-name' : 'node-name untitled'}
+                />
                 <span class="node-meta">
                   {#if action.executor}
                     <span class="badge outline small">{action.executor}</span>
@@ -368,14 +375,11 @@
     opacity: 0.4;
   }
 
-  .node-name {
+  .node :global(.node-name) {
     font-size: var(--text-7);
     font-weight: var(--font-medium);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
-  .node-name.untitled {
+  .node :global(.node-name.untitled) {
     color: var(--muted-foreground);
     font-style: italic;
   }
