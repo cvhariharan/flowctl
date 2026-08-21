@@ -76,11 +76,8 @@ func initDB(db *sqlx.DB) error {
 		return fmt.Errorf("failed to get migration version: %w", err)
 	}
 
-	// If database is in a dirty state, force the version
 	if dirty {
-		if err := m.Force(int(version)); err != nil {
-			return fmt.Errorf("failed to force migration version: %w", err)
-		}
+		return fmt.Errorf("database is dirty at migration version %d: that migration failed partway and was rolled back. Inspect the schema, resolve it manually, then clear the dirty flag in schema_migrations before retrying", version)
 	}
 
 	// Attempt to migrate to the latest version

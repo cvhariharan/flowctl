@@ -43,7 +43,7 @@ CREATE TABLE execution_events (
     seq BIGSERIAL PRIMARY KEY,
     exec_id VARCHAR(36) NOT NULL REFERENCES executions(exec_id) ON DELETE CASCADE,
     attempt INTEGER NOT NULL,
-    action_id VARCHAR(50),
+    action_id TEXT,
     type execution_event_type NOT NULL,
     error TEXT,
     outputs JSONB,
@@ -134,6 +134,45 @@ SELECT exec_id, attempt, action_id,
        NULLIF(state ->> 'error', ''), finished_at
 FROM states
 WHERE state ->> 'status' IN ('completed', 'failed', 'blocked', 'skipped', 'cancelled');
+
+-- Executions created before action_states was introduced have an empty state map, but
+-- action_retries was initialized with every action ID. A completed execution guarantees that all
+-- of those actions completed successfully, so synthesize the missing action history before the
+-- legacy table (and its action_retries map) is dropped. Keep any real action_states entries above
+-- authoritative by filling only IDs that are absent from that map.
+WITH latest AS (
+    SELECT DISTINCT ON (el.exec_id) el.*
+    FROM execution_log el
+    ORDER BY el.exec_id, el.version DESC
+), missing_completed AS (
+    SELECT l.exec_id, e.attempt, retry.key AS action_id,
+           COALESCE(e.started_at, e.created_at) AS started_at
+    FROM latest l
+    JOIN executions e ON e.exec_id = l.exec_id
+    CROSS JOIN LATERAL jsonb_each(COALESCE(l.action_retries, '{}'::jsonb)) retry
+    WHERE e.status = 'completed'
+      AND NOT (COALESCE(l.action_states, '{}'::jsonb) ? retry.key)
+)
+INSERT INTO execution_events (exec_id, attempt, action_id, type, created_at)
+SELECT exec_id, attempt, action_id, 'action_started', started_at
+FROM missing_completed;
+
+WITH latest AS (
+    SELECT DISTINCT ON (el.exec_id) el.*
+    FROM execution_log el
+    ORDER BY el.exec_id, el.version DESC
+), missing_completed AS (
+    SELECT l.exec_id, e.attempt, retry.key AS action_id,
+           COALESCE(e.completed_at, e.updated_at) AS finished_at
+    FROM latest l
+    JOIN executions e ON e.exec_id = l.exec_id
+    CROSS JOIN LATERAL jsonb_each(COALESCE(l.action_retries, '{}'::jsonb)) retry
+    WHERE e.status = 'completed'
+      AND NOT (COALESCE(l.action_states, '{}'::jsonb) ? retry.key)
+)
+INSERT INTO execution_events (exec_id, attempt, action_id, type, created_at)
+SELECT exec_id, attempt, action_id, 'action_completed', finished_at
+FROM missing_completed;
 
 ALTER TABLE approvals ADD COLUMN exec_id VARCHAR(36);
 UPDATE approvals a SET exec_id = el.exec_id FROM execution_log el WHERE a.exec_log_id = el.id;
