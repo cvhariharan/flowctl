@@ -64,7 +64,10 @@
           index={i}
           {disabled}
           open={openIndex === i}
-          onToggle={(isOpen) => (openIndex = isOpen ? i : -1)}
+          onToggle={(isOpen) => {
+            if (isOpen) openIndex = i;
+            else if (openIndex === i) openIndex = -1;
+          }}
           onRemove={() => {
             inputs.splice(i, 1);
             openIndex = -1;

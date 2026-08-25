@@ -122,11 +122,6 @@
           oninput={(e) => (input.name = e.currentTarget.value.replace(/[^a-zA-Z0-9_]/g, ''))}
           placeholder="deploy_tag"
         />
-        {#if input.name}
-          <span data-hint>
-            {usedBy.length > 0 ? `Used by ${usedBy.join(', ')}` : 'Not referenced by any action'}
-          </span>
-        {/if}
       </div>
       <div class="col-6" data-field>
         <label for="input-{index}-label">Label</label>
@@ -314,7 +309,6 @@
           <input type="checkbox" role="switch" {disabled} bind:checked={input.multiple} />
           <span>Let the operator pick more than one node</span>
         </label>
-        <span data-hint>Only one input of type node is allowed per flow.</span>
       </div>
     {/if}
 
@@ -328,7 +322,6 @@
         <div class="col-6" data-field>
           <label for="input-{index}-default">Default value</label>
           <input id="input-{index}-default" type="text" {disabled} bind:value={input.default} />
-          <span data-hint>Scheduled runs need one.</span>
         </div>
       {/if}
       <div class="col-6" data-field>
