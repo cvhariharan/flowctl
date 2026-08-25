@@ -1,6 +1,8 @@
 import type { ExecutionMode } from '$lib/types';
 import { actionStages, withImplicitNeeds } from './dag';
 
+export const NODE_NAME_LIMIT = 24;
+
 export type Geometry = {
   nodeWidth: number;
   nodeHeight: number;
@@ -17,12 +19,11 @@ export const DEFAULT_GEOMETRY: Geometry = {
   stageHeader: 30
 };
 
-/** Editor nodes carry ports and hover tools, so they need more room than the read-only graph. */
 export const EDITOR_GEOMETRY: Geometry = {
-  nodeWidth: 220,
-  nodeHeight: 78,
+  nodeWidth: DEFAULT_GEOMETRY.nodeWidth,
+  nodeHeight: DEFAULT_GEOMETRY.nodeHeight,
   gapX: 88,
-  gapY: 22,
+  gapY: 26,
   stageHeader: 36
 };
 

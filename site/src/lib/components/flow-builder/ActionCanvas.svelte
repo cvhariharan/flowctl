@@ -9,7 +9,11 @@
   import type { BuilderAction, ExecutionMode } from '$lib/types';
   import { ancestors, cyclicActions, dependencyPath, withImplicitNeeds } from '$lib/utils/dag';
   import { linkActions, nameLookup, unlinkActions } from '$lib/utils/flowBuilder';
-  import { EDITOR_GEOMETRY as GEO, type PipelineLayout } from '$lib/utils/pipelineLayout';
+  import {
+    EDITOR_GEOMETRY as GEO,
+    NODE_NAME_LIMIT,
+    type PipelineLayout
+  } from '$lib/utils/pipelineLayout';
 
   let {
     actions,
@@ -68,6 +72,8 @@
   );
 
   const nameOf = $derived(nameLookup(actions));
+
+  const hasInbound = $derived(new Set(layout.edges.map((edge) => edge.to)));
 
   const isDimmed = (id: string) => !!blocked?.has(id) || !!filteredOut?.has(id);
   const isInvalid = (a: BuilderAction) => !a.name?.trim() || !a.executor || cyclic.has(a.id);
@@ -164,12 +170,13 @@
           >
             {isDAG ? 'Stage' : 'Step'}
             {stage.index + 1}
-            {#if stage.nodes.length > 1}<span class="badge secondary small">{stage.nodes.length}</span>{/if}
+            {#if stage.nodes.length > 1}<span class="stage-count">{stage.nodes.length}</span>{/if}
           </div>
 
           <!-- Keyed by tempId: the id changes on every keystroke of a rename. -->
-          {#each stage.nodes as node (node.action.tempId)}
+          {#each stage.nodes as node, row (node.action.tempId)}
             {@const action = node.action}
+            {@const label = action.name || 'Untitled action'}
             <div
               class="node-wrap"
               style="left: {node.x}px; top: {node.y}px; width: {GEO.nodeWidth}px; height: {GEO.nodeHeight}px"
@@ -177,36 +184,41 @@
               <button
                 type="button"
                 class="node"
+                class:tip-below={row === 0}
                 class:selected={selectedId === action.id}
                 class:invalid={isInvalid(action)}
                 class:dimmed={isDimmed(action.id)}
                 onclick={() => pickNode(action.id)}
-                title={action.name || 'Untitled action'}
+                aria-label={label}
+                data-tooltip={label.length > NODE_NAME_LIMIT ? label : null}
               >
-                <MutedTextCell
-                  row={action}
-                  value={action.name || 'Untitled action'}
-                  truncate={28}
-                  maxWidth="100%"
-                  plain
-                  class={action.name ? 'node-name' : 'node-name untitled'}
-                />
-                <span class="node-meta">
-                  {#if action.executor}
-                    <span class="badge outline small">{action.executor}</span>
-                  {:else}
-                    <span class="badge danger small">no executor</span>
-                  {/if}
-                  {#if action.approval}
-                    <span title="Requires approval"><IconLock size={14} /></span>
-                  {/if}
-                  {#if action.selectedNodes.length > 0}
-                    <span title="{action.selectedNodes.length} node(s)"><IconServer size={14} /></span>
-                  {/if}
+                <span class="node-text">
+                  <MutedTextCell
+                    row={action}
+                    value={label}
+                    truncate={NODE_NAME_LIMIT}
+                    maxWidth="100%"
+                    plain
+                    titled={false}
+                    class={action.name ? 'node-name' : 'node-name untitled'}
+                  />
+                  <span class="node-meta text-lighter">
+                    {action.executor || 'no executor'}
+                    {#if action.approval}
+                      <span role="img" aria-label="Requires approval"><IconLock size={13} /></span>
+                    {/if}
+                    {#if action.selectedNodes.length > 0}
+                      <span role="img" aria-label="{action.selectedNodes.length} node(s)">
+                        <IconServer size={13} />
+                      </span>
+                    {/if}
+                  </span>
                 </span>
               </button>
 
-              <span class="port in"></span>
+              {#if hasInbound.has(action.id)}
+                <span class="port in"></span>
+              {/if}
               {#if isDAG && !disabled}
                 <button
                   type="button"
@@ -282,7 +294,8 @@
 
   .fit {
     position: relative;
-    overflow: hidden;
+    overflow: clip;
+    overflow-clip-margin: 8rem;
   }
 
   .canvas {
@@ -329,7 +342,13 @@
     inset-block-start: 0;
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 0.375rem;
+  }
+  .stage-count {
+    background: var(--faint);
+    border-radius: var(--radius-full);
+    padding: 0 0.35rem;
+    letter-spacing: 0;
   }
 
   .node-wrap {
@@ -342,10 +361,9 @@
     inset: 0;
     box-sizing: border-box;
     display: flex;
-    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    gap: var(--space-1);
-    padding: var(--space-3);
+    padding: 0 var(--space-3);
     border: 2px solid var(--border);
     border-radius: var(--radius-medium);
     background: var(--card);
@@ -375,21 +393,50 @@
     opacity: 0.4;
   }
 
-  .node :global(.node-name) {
+  .node[data-tooltip]::after {
+    inset-block-end: calc(100% + 28px);
+    width: max-content;
+    max-width: 100%;
+    white-space: normal;
+  }
+  .node[data-tooltip]::before {
+    inset-block-end: calc(100% + 13px);
+  }
+
+  .node.tip-below[data-tooltip]::after {
+    inset-block-end: auto;
+    inset-block-start: calc(100% + 10px);
+  }
+  .node.tip-below[data-tooltip]::before {
+    inset-block-end: auto;
+    inset-block-start: calc(100% - 5px);
+    border-block-start-color: transparent;
+    border-block-end-color: var(--foreground);
+  }
+
+  .node-text {
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+    line-height: 1.25;
+  }
+  .node-text :global(.node-name) {
     font-size: var(--text-7);
     font-weight: var(--font-medium);
   }
-  .node :global(.node-name.untitled) {
+  .node-text :global(.node-name.untitled) {
     color: var(--muted-foreground);
     font-style: italic;
   }
   .node-meta {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    justify-content: center;
+    gap: var(--space-1);
     font-size: var(--text-8);
-    color: var(--muted-foreground);
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .port {
@@ -397,7 +444,7 @@
     inset-block-start: 50%;
     width: 0.875rem;
     height: 0.875rem;
-    margin: -0.4375rem 0 0 -0.4375rem;
+    margin-block-start: -0.4375rem;
     box-sizing: border-box;
     padding: 0;
     border: 2px solid var(--border);
@@ -408,7 +455,7 @@
       border-color var(--transition-fast);
   }
   .port.in {
-    inset-inline-start: 0;
+    inset-inline-end: 100%;
     pointer-events: none;
   }
   .port.out {

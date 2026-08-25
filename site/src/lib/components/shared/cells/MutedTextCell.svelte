@@ -9,7 +9,8 @@
     truncate = 0,
     maxWidth = '20rem',
     class: className = '',
-    tooltip
+    tooltip,
+    titled = true
   }: {
     row: any;
     value: any;
@@ -21,6 +22,7 @@
     maxWidth?: string;
     class?: string;
     tooltip?: string | ((value: any, row: any) => string | undefined);
+    titled?: boolean;
   } = $props();
 
   const formatted = $derived(format ? format(value, row) : (value ?? ''));
@@ -33,7 +35,7 @@
   <span
     class="{toneClass} {mono ? 'font-mono' : ''} {className}"
     style="max-width:{maxWidth};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block"
-    title={tooltipText || (isTruncated ? formatted : undefined)}
+    title={tooltipText || (isTruncated && titled ? formatted : undefined)}
   >{formatted}</span>
 {:else}
   <span

@@ -3,7 +3,7 @@
   import type { ExecutionMode } from '$lib/types';
   import IconRefresh from '@tabler/icons-svelte/icons/refresh';
   import MutedTextCell from '$lib/components/shared/cells/MutedTextCell.svelte';
-  import { pipelineLayout, DEFAULT_GEOMETRY } from '$lib/utils/pipelineLayout';
+  import { pipelineLayout, DEFAULT_GEOMETRY, NODE_NAME_LIMIT } from '$lib/utils/pipelineLayout';
 
   const {
     nodeWidth: NODE_WIDTH,
@@ -105,18 +105,20 @@
           class="stage-label overline text-lighter"
           style="left: {stage.x}px; width: {NODE_WIDTH}px; height: {STAGE_HEADER}px;"
         >
-          Step {stage.index + 1}
+          {executionMode === 'dag' ? 'Stage' : 'Step'} {stage.index + 1}
           {#if stage.nodes.length > 1}
             <span class="stage-count">{stage.nodes.length}</span>
           {/if}
         </div>
 
-        {#each stage.nodes as node (node.action.id)}
+        {#each stage.nodes as node, row (node.action.id)}
           {@const status = statusOf(node.action.id)}
           {@const attempts = retries[node.action.id] ?? 0}
+          {@const label = node.action.name ?? ''}
           <button
             type="button"
             class="node {getStatusClass(status)}"
+            class:tip-below={row === 0}
             class:selected={selectedActionId === node.action.id}
             class:dimmed={isDimmed(node.action.id)}
             style="left: {node.x}px; top: {node.y}px; width: {NODE_WIDTH}px; height: {NODE_HEIGHT}px;"
@@ -125,15 +127,17 @@
             onmouseleave={() => (hoveredId = null)}
             onfocus={() => (hoveredId = node.action.id)}
             onblur={() => (hoveredId = null)}
-            title={node.action.name}
+            aria-label={label}
+            data-tooltip={label.length > NODE_NAME_LIMIT ? label : null}
           >
             <span class="node-text">
               <MutedTextCell
                 row={node.action}
-                value={node.action.name}
-                truncate={24}
+                value={label}
+                truncate={NODE_NAME_LIMIT}
                 maxWidth="100%"
                 plain
+                titled={false}
                 class="node-name"
               />
               <span class="node-meta text-lighter">
@@ -255,6 +259,22 @@
   }
   .node.dimmed {
     opacity: 0.35;
+  }
+
+  .node[data-tooltip]::after {
+    width: max-content;
+    max-width: 100%;
+    white-space: normal;
+  }
+  .node.tip-below[data-tooltip]::after {
+    inset-block-end: auto;
+    inset-block-start: calc(100% + 10px);
+  }
+  .node.tip-below[data-tooltip]::before {
+    inset-block-end: auto;
+    inset-block-start: calc(100% - 5px);
+    border-block-start-color: transparent;
+    border-block-end-color: var(--foreground);
   }
   .rerun-node {
     all: unset;
