@@ -72,7 +72,7 @@ const (
 )
 
 type Notify struct {
-	Channel string         `yaml:"channel" huml:"channel" json:"channel" validate:"required,oneof=email webhook"`
+	Channel string         `yaml:"channel" huml:"channel" json:"channel" validate:"required,oneof=email webhook chat"`
 	Config  map[string]any `yaml:"config" huml:"config" json:"config" validate:"required"`
 	Events  []NotifyEvent  `yaml:"events" huml:"events" json:"events" validate:"required,dive,min=1,oneof=on_success on_failure on_waiting on_cancelled"`
 }

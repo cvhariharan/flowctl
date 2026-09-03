@@ -1109,6 +1109,8 @@ func (h *FlowExecutionHandler) enqueueNotifications(ctx context.Context, execID 
 			Config:      notify.Config,
 			NamespaceID: payload.NamespaceID,
 			Channel:     notify.Channel,
+			TriggerType: string(payload.TriggerType),
+			UserUUID:    payload.UserUUID,
 		}
 
 		// Generate a unique exec ID for the notification job

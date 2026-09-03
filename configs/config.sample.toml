@@ -177,3 +177,11 @@ enabled = false
 signing_key = ""
 # (optional) HTTP request timeout (default: 30s)
 timeout = "30s"
+
+# Chat notifications for Slack and Mattermost
+# The incoming webhook URL is configured per flow in its notify block
+[messengers.chat]
+# (required) Enable or disable chat notifications
+enabled = false
+# (optional) HTTP request timeout (default: 30s)
+timeout = "30s"

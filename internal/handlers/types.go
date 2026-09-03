@@ -338,7 +338,7 @@ type Schedule struct {
 
 // Notify represents notification configuration for flow events
 type Notify struct {
-	Channel string         `json:"channel" validate:"required,oneof=email webhook"`
+	Channel string         `json:"channel" validate:"required,oneof=email webhook chat"`
 	Config  map[string]any `json:"config" validate:"required"`
 	Events  []string       `json:"events" validate:"required,dive,min=1,oneof=on_success on_failure on_waiting on_cancelled"`
 }

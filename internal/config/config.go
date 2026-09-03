@@ -169,12 +169,18 @@ type OIDCConfig struct {
 type MessengersConfig struct {
 	Email   SMTPConfig    `koanf:"email"`
 	Webhook WebhookConfig `koanf:"webhook"`
+	Chat    ChatConfig    `koanf:"chat"`
 }
 
 type WebhookConfig struct {
 	Enabled    bool          `koanf:"enabled"`
 	SigningKey string        `koanf:"signing_key" validate:"required_if=Enabled true"`
 	Timeout    time.Duration `koanf:"timeout"`
+}
+
+type ChatConfig struct {
+	Enabled bool          `koanf:"enabled"`
+	Timeout time.Duration `koanf:"timeout"`
 }
 
 type SMTPConfig struct {
@@ -292,6 +298,10 @@ func GetDefaultConfig() Config {
 				SSL:      "none",
 			},
 			Webhook: WebhookConfig{
+				Enabled: false,
+				Timeout: 30 * time.Second,
+			},
+			Chat: ChatConfig{
 				Enabled: false,
 				Timeout: 30 * time.Second,
 			},

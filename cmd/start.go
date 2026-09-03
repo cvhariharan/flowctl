@@ -121,6 +121,17 @@ func initMessengers(cfg config.MessengersConfig, groupResolver messengers.GroupR
 		}
 	}
 
+	if cfg.Chat.Enabled {
+		chatMessenger, err := messengers.NewChatMessenger(cfg.Chat, logger.WithGroup("chat_messenger"), appConfig.App.RootURL)
+		if err != nil {
+			logger.Error("failed to create chat messenger", "error", err)
+		} else {
+			m["chat"] = chatMessenger
+			messengers.RegisterSchema("chat", messengers.GetChatNotifySchema())
+			logger.Info("chat messenger initialized")
+		}
+	}
+
 	return m
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/cvhariharan/flowctl/internal/messengers"
 	"github.com/cvhariharan/flowctl/internal/repo"
@@ -22,6 +23,8 @@ type NotificationPayload struct {
 	Config      map[string]any `json:"config"`
 	NamespaceID string         `json:"namespace_id"`
 	Channel     string         `json:"channel"`
+	TriggerType string         `json:"trigger_type,omitempty"`
+	UserUUID    string         `json:"user_uuid,omitempty"`
 }
 
 // NotificationHandler processes notification jobs
@@ -70,12 +73,15 @@ func (h *NotificationHandler) Handle(ctx context.Context, job Job) error {
 	msg := messengers.Message{
 		Event: messengers.EventFlowExecution,
 		Data: messengers.FlowExecutionEvent{
-			FlowID:    payload.FlowID,
-			FlowName:  payload.FlowName,
-			ExecID:    payload.ExecID,
-			Status:    payload.Status,
-			Error:     payload.Error,
-			Namespace: namespace.Name,
+			FlowID:      payload.FlowID,
+			FlowName:    payload.FlowName,
+			ExecID:      payload.ExecID,
+			Status:      payload.Status,
+			Error:       payload.Error,
+			Namespace:   namespace.Name,
+			TriggerType: payload.TriggerType,
+			TriggeredBy: h.resolveUserName(ctx, payload.UserUUID),
+			StartedAt:   h.executionStartedAt(ctx, payload.ExecID),
 		},
 		Config: payload.Config,
 	}
@@ -87,4 +93,39 @@ func (h *NotificationHandler) Handle(ctx context.Context, job Job) error {
 	h.logger.Info("notification sent", "flow_id", payload.FlowID, "exec_id", payload.ExecID, "channel", payload.Channel)
 
 	return nil
+}
+
+func (h *NotificationHandler) resolveUserName(ctx context.Context, userUUID string) string {
+	if userUUID == "" {
+		return ""
+	}
+
+	parsed, err := uuid.Parse(userUUID)
+	if err != nil {
+		return ""
+	}
+
+	user, err := h.store.GetUserByUUID(ctx, parsed)
+	if err != nil {
+		h.logger.Warn("could not resolve notification user", "user_uuid", userUUID, "error", err)
+		return ""
+	}
+
+	if user.Name != "" {
+		return user.Name
+	}
+	return user.Username
+}
+
+func (h *NotificationHandler) executionStartedAt(ctx context.Context, execID string) *time.Time {
+	exec, err := h.store.GetExecutionProjection(ctx, execID)
+	if err != nil {
+		h.logger.Warn("could not load execution for notification", "exec_id", execID, "error", err)
+		return nil
+	}
+
+	if !exec.StartedAt.Valid {
+		return nil
+	}
+	return &exec.StartedAt.Time
 }
