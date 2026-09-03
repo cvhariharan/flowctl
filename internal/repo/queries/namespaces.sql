@@ -24,6 +24,7 @@ total AS (
 ),
 paged AS (
     SELECT * FROM filtered
+    ORDER BY name
     LIMIT $2 OFFSET $3
 ),
 page_count AS (
@@ -33,7 +34,8 @@ SELECT
     p.*,
     pc.page_count,
     t.total_count
-FROM paged p, page_count pc, total t;
+FROM paged p, page_count pc, total t
+ORDER BY p.name;
 
 -- name: UpdateNamespace :one
 UPDATE namespaces

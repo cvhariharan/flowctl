@@ -450,6 +450,7 @@ total AS (
 ),
 paged AS (
     SELECT id, uuid, name, created_at, updated_at FROM filtered
+    ORDER BY name
     LIMIT $2 OFFSET $3
 ),
 page_count AS (
@@ -460,6 +461,7 @@ SELECT
     pc.page_count,
     t.total_count
 FROM paged p, page_count pc, total t
+ORDER BY p.name
 `
 
 type ListNamespacesParams struct {
