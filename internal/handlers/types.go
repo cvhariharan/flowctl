@@ -759,7 +759,7 @@ type RemoteOptionsReq struct {
 
 type FlowInputReq struct {
 	Name          string            `json:"name" validate:"required,alphanum_underscore,min=1,max=150"`
-	Type          string            `json:"type" validate:"required,oneof=string number password file datetime checkbox select"`
+	Type          string            `json:"type" validate:"required,oneof=string number password file datetime checkbox select node"`
 	Label         string            `json:"label" validate:"omitempty,max=255"`
 	Description   string            `json:"description" validate:"max=255"`
 	Validation    string            `json:"validation"`
