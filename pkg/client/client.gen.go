@@ -24,6 +24,39 @@ const (
 	ExecutorBearerAuthScopes executorBearerAuthContextKey = "executorBearerAuth.Scopes"
 )
 
+// Defines values for ActionStateStatus.
+const (
+	ActionStateStatusBlocked   ActionStateStatus = "blocked"
+	ActionStateStatusCancelled ActionStateStatus = "cancelled"
+	ActionStateStatusCompleted ActionStateStatus = "completed"
+	ActionStateStatusFailed    ActionStateStatus = "failed"
+	ActionStateStatusPending   ActionStateStatus = "pending"
+	ActionStateStatusRunning   ActionStateStatus = "running"
+	ActionStateStatusSkipped   ActionStateStatus = "skipped"
+)
+
+// Valid indicates whether the value is a known member of the ActionStateStatus enum.
+func (e ActionStateStatus) Valid() bool {
+	switch e {
+	case ActionStateStatusBlocked:
+		return true
+	case ActionStateStatusCancelled:
+		return true
+	case ActionStateStatusCompleted:
+		return true
+	case ActionStateStatusFailed:
+		return true
+	case ActionStateStatusPending:
+		return true
+	case ActionStateStatusRunning:
+		return true
+	case ActionStateStatusSkipped:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ApprovalActionRespStatus.
 const (
 	ApprovalActionRespStatusApproved ApprovalActionRespStatus = "approved"
@@ -218,6 +251,7 @@ const (
 	FlowInputTypeCheckbox FlowInputType = "checkbox"
 	FlowInputTypeDatetime FlowInputType = "datetime"
 	FlowInputTypeFile     FlowInputType = "file"
+	FlowInputTypeNode     FlowInputType = "node"
 	FlowInputTypeNumber   FlowInputType = "number"
 	FlowInputTypePassword FlowInputType = "password"
 	FlowInputTypeSelect   FlowInputType = "select"
@@ -232,6 +266,8 @@ func (e FlowInputType) Valid() bool {
 	case FlowInputTypeDatetime:
 		return true
 	case FlowInputTypeFile:
+		return true
+	case FlowInputTypeNode:
 		return true
 	case FlowInputTypeNumber:
 		return true
@@ -269,6 +305,7 @@ const (
 	FlowInputReqTypeCheckbox FlowInputReqType = "checkbox"
 	FlowInputReqTypeDatetime FlowInputReqType = "datetime"
 	FlowInputReqTypeFile     FlowInputReqType = "file"
+	FlowInputReqTypeNode     FlowInputReqType = "node"
 	FlowInputReqTypeNumber   FlowInputReqType = "number"
 	FlowInputReqTypePassword FlowInputReqType = "password"
 	FlowInputReqTypeSelect   FlowInputReqType = "select"
@@ -284,6 +321,8 @@ func (e FlowInputReqType) Valid() bool {
 		return true
 	case FlowInputReqTypeFile:
 		return true
+	case FlowInputReqTypeNode:
+		return true
 	case FlowInputReqTypeNumber:
 		return true
 	case FlowInputReqTypePassword:
@@ -291,6 +330,42 @@ func (e FlowInputReqType) Valid() bool {
 	case FlowInputReqTypeSelect:
 		return true
 	case FlowInputReqTypeString:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FlowMetaExecutionMode.
+const (
+	FlowMetaExecutionModeDag        FlowMetaExecutionMode = "dag"
+	FlowMetaExecutionModeSequential FlowMetaExecutionMode = "sequential"
+)
+
+// Valid indicates whether the value is a known member of the FlowMetaExecutionMode enum.
+func (e FlowMetaExecutionMode) Valid() bool {
+	switch e {
+	case FlowMetaExecutionModeDag:
+		return true
+	case FlowMetaExecutionModeSequential:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FlowUpdateReqExecutionMode.
+const (
+	FlowUpdateReqExecutionModeDag        FlowUpdateReqExecutionMode = "dag"
+	FlowUpdateReqExecutionModeSequential FlowUpdateReqExecutionMode = "sequential"
+)
+
+// Valid indicates whether the value is a known member of the FlowUpdateReqExecutionMode enum.
+func (e FlowUpdateReqExecutionMode) Valid() bool {
+	switch e {
+	case FlowUpdateReqExecutionModeDag:
+		return true
+	case FlowUpdateReqExecutionModeSequential:
 		return true
 	default:
 		return false
@@ -533,22 +608,22 @@ func (e UserWithGroupsRole) Valid() bool {
 
 // Defines values for ListApprovalsParamsStatus.
 const (
-	Approved ListApprovalsParamsStatus = "approved"
-	Empty    ListApprovalsParamsStatus = ""
-	Pending  ListApprovalsParamsStatus = "pending"
-	Rejected ListApprovalsParamsStatus = "rejected"
+	ListApprovalsParamsStatusApproved ListApprovalsParamsStatus = "approved"
+	ListApprovalsParamsStatusEmpty    ListApprovalsParamsStatus = ""
+	ListApprovalsParamsStatusPending  ListApprovalsParamsStatus = "pending"
+	ListApprovalsParamsStatusRejected ListApprovalsParamsStatus = "rejected"
 )
 
 // Valid indicates whether the value is a known member of the ListApprovalsParamsStatus enum.
 func (e ListApprovalsParamsStatus) Valid() bool {
 	switch e {
-	case Approved:
+	case ListApprovalsParamsStatusApproved:
 		return true
-	case Empty:
+	case ListApprovalsParamsStatusEmpty:
 		return true
-	case Pending:
+	case ListApprovalsParamsStatusPending:
 		return true
-	case Rejected:
+	case ListApprovalsParamsStatusRejected:
 		return true
 	default:
 		return false
@@ -591,6 +666,19 @@ type APITokenCreated struct {
 	Token string             `json:"token"`
 	UUID  openapi_types.UUID `json:"uuid"`
 }
+
+// ActionState defines model for ActionState.
+type ActionState struct {
+	// Attempt Retry attempt this state belongs to.
+	Attempt    *int               `json:"attempt,omitempty"`
+	Error      *string            `json:"error,omitempty"`
+	FinishedAt *string            `json:"finished_at,omitempty"`
+	StartedAt  *string            `json:"started_at,omitempty"`
+	Status     *ActionStateStatus `json:"status,omitempty"`
+}
+
+// ActionStateStatus defines model for ActionState.Status.
+type ActionStateStatus string
 
 // AppInfoResponse defines model for AppInfoResponse.
 type AppInfoResponse struct {
@@ -707,13 +795,16 @@ type ExecutionStatus string
 
 // ExecutionSummary defines model for ExecutionSummary.
 type ExecutionSummary struct {
-	ActionRetries   *map[string]int     `json:"action_retries,omitempty"`
-	CompletedAt     *time.Time          `json:"completed_at,omitempty"`
-	CreatedAt       *time.Time          `json:"created_at,omitempty"`
-	CurrentActionID *string             `json:"current_action_id,omitempty"`
-	FlowID          *string             `json:"flow_id,omitempty"`
-	FlowName        *string             `json:"flow_name,omitempty"`
-	ID              *openapi_types.UUID `json:"id,omitempty"`
+	ActionRetries *map[string]int `json:"action_retries,omitempty"`
+
+	// ActionStates Per-action state, keyed by action ID. Absent for executions that never started.
+	ActionStates    *map[string]ActionState `json:"action_states,omitempty"`
+	CompletedAt     *time.Time              `json:"completed_at,omitempty"`
+	CreatedAt       *time.Time              `json:"created_at,omitempty"`
+	CurrentActionID *string                 `json:"current_action_id,omitempty"`
+	FlowID          *string                 `json:"flow_id,omitempty"`
+	FlowName        *string                 `json:"flow_name,omitempty"`
+	ID              *openapi_types.UUID     `json:"id,omitempty"`
 
 	// Input Original trigger inputs.
 	Input       interface{}                  `json:"input,omitempty"`
@@ -747,24 +838,30 @@ type ExecutorsListResponse struct {
 
 // FlowAction defines model for FlowAction.
 type FlowAction struct {
-	AllowNodeOverride *bool     `json:"allow_node_override,omitempty"`
-	Approval          *bool     `json:"approval,omitempty"`
-	Executor          *string   `json:"executor,omitempty"`
-	ID                *string   `json:"id,omitempty"`
-	Name              *string   `json:"name,omitempty"`
-	On                *[]string `json:"on,omitempty"`
+	AllowNodeOverride *bool   `json:"allow_node_override,omitempty"`
+	Approval          *bool   `json:"approval,omitempty"`
+	Executor          *string `json:"executor,omitempty"`
+	ID                *string `json:"id,omitempty"`
+	Name              *string `json:"name,omitempty"`
+
+	// Needs IDs of the actions this action waits for. Only valid when the flow's execution_mode is dag; must reference actions in the same flow and must not form a cycle.
+	Needs *[]string `json:"needs,omitempty"`
+	On    *[]string `json:"on,omitempty"`
 }
 
 // FlowActionReq defines model for FlowActionReq.
 type FlowActionReq struct {
-	AllowNodeOverride *bool                     `json:"allow_node_override,omitempty"`
-	Approval          *bool                     `json:"approval,omitempty"`
-	Condition         *string                   `json:"condition,omitempty"`
-	Executor          *string                   `json:"executor,omitempty"`
-	Name              string                    `json:"name"`
-	On                *[]string                 `json:"on,omitempty"`
-	Variables         *[]map[string]interface{} `json:"variables,omitempty"`
-	With              map[string]interface{}    `json:"with"`
+	AllowNodeOverride *bool   `json:"allow_node_override,omitempty"`
+	Approval          *bool   `json:"approval,omitempty"`
+	Condition         *string `json:"condition,omitempty"`
+	Executor          *string `json:"executor,omitempty"`
+	Name              string  `json:"name"`
+
+	// Needs IDs of the actions this action waits for. Rejected unless the flow's execution_mode is dag.
+	Needs     *[]string                 `json:"needs,omitempty"`
+	On        *[]string                 `json:"on,omitempty"`
+	Variables *[]map[string]interface{} `json:"variables,omitempty"`
+	With      map[string]interface{}    `json:"with"`
 }
 
 // FlowCancellationResp defines model for FlowCancellationResp.
@@ -881,16 +978,22 @@ type FlowListResponse struct {
 
 // FlowMeta defines model for FlowMeta.
 type FlowMeta struct {
-	AllowOverlap    *bool       `json:"allow_overlap,omitempty"`
-	Description     *string     `json:"description,omitempty"`
-	ID              *string     `json:"id,omitempty"`
-	MaxRetries      *int        `json:"max_retries,omitempty"`
-	Name            *string     `json:"name,omitempty"`
-	Namespace       *string     `json:"namespace,omitempty"`
-	Prefix          *string     `json:"prefix,omitempty"`
-	Schedules       *[]Schedule `json:"schedules,omitempty"`
-	UserSchedulable *bool       `json:"user_schedulable,omitempty"`
+	AllowOverlap *bool   `json:"allow_overlap,omitempty"`
+	Description  *string `json:"description,omitempty"`
+
+	// ExecutionMode How actions are scheduled. Defaults to sequential when absent.
+	ExecutionMode   *FlowMetaExecutionMode `json:"execution_mode,omitempty"`
+	ID              *string                `json:"id,omitempty"`
+	MaxRetries      *int                   `json:"max_retries,omitempty"`
+	Name            *string                `json:"name,omitempty"`
+	Namespace       *string                `json:"namespace,omitempty"`
+	Prefix          *string                `json:"prefix,omitempty"`
+	Schedules       *[]Schedule            `json:"schedules,omitempty"`
+	UserSchedulable *bool                  `json:"user_schedulable,omitempty"`
 }
+
+// FlowMetaExecutionMode How actions are scheduled. Defaults to sequential when absent.
+type FlowMetaExecutionMode string
 
 // FlowMetaResp defines model for FlowMetaResp.
 type FlowMetaResp struct {
@@ -932,16 +1035,20 @@ type FlowTriggerResp struct {
 
 // FlowUpdateReq defines model for FlowUpdateReq.
 type FlowUpdateReq struct {
-	Actions         []FlowActionReq `json:"actions"`
-	AllowOverlap    *bool           `json:"allow_overlap,omitempty"`
-	Description     *string         `json:"description,omitempty"`
-	Inputs          []FlowInputReq  `json:"inputs"`
-	MaxRetries      *int            `json:"max_retries,omitempty"`
-	Notify          *[]Notify       `json:"notify,omitempty"`
-	Prefix          *string         `json:"prefix,omitempty"`
-	Schedules       *[]Schedule     `json:"schedules,omitempty"`
-	UserSchedulable *bool           `json:"user_schedulable,omitempty"`
+	Actions         []FlowActionReq             `json:"actions"`
+	AllowOverlap    *bool                       `json:"allow_overlap,omitempty"`
+	Description     *string                     `json:"description,omitempty"`
+	ExecutionMode   *FlowUpdateReqExecutionMode `json:"execution_mode,omitempty"`
+	Inputs          []FlowInputReq              `json:"inputs"`
+	MaxRetries      *int                        `json:"max_retries,omitempty"`
+	Notify          *[]Notify                   `json:"notify,omitempty"`
+	Prefix          *string                     `json:"prefix,omitempty"`
+	Schedules       *[]Schedule                 `json:"schedules,omitempty"`
+	UserSchedulable *bool                       `json:"user_schedulable,omitempty"`
 }
+
+// FlowUpdateReqExecutionMode defines model for FlowUpdateReq.ExecutionMode.
+type FlowUpdateReqExecutionMode string
 
 // FlowsPaginateResponse defines model for FlowsPaginateResponse.
 type FlowsPaginateResponse struct {
@@ -983,6 +1090,20 @@ type GroupsPaginateResponse struct {
 type KVEntry struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+// LogMessage A single line from an execution's log stream.
+type LogMessage struct {
+	ActionID    *string `json:"action_id,omitempty"`
+	MessageType *string `json:"message_type,omitempty"`
+
+	// NodeID Node the line came from. Empty for local execution.
+	NodeID *string `json:"node_id,omitempty"`
+
+	// Results Output variables, present on the frames that carry an action's results.
+	Results   *map[string]string `json:"results,omitempty"`
+	Timestamp *string            `json:"timestamp,omitempty"`
+	Value     *string            `json:"value,omitempty"`
 }
 
 // Namespace defines model for Namespace.
@@ -1122,6 +1243,12 @@ type NotifyChannel string
 
 // NotifyEvents defines model for Notify.Events.
 type NotifyEvents string
+
+// RetryExecutionReq defines model for RetryExecutionReq.
+type RetryExecutionReq struct {
+	// FromAction Action ID to re-run from. That action and everything downstream of it run again; downstream means later in the file for sequential flows, and every dependent action for dag flows. Omit to re-queue the whole execution.
+	FromAction *string `json:"from_action,omitempty"`
+}
 
 // SSOProvider defines model for SSOProvider.
 type SSOProvider struct {
@@ -1468,6 +1595,9 @@ type UpdateCredentialJSONRequestBody = CredentialReq
 // CreateFlowJSONRequestBody defines body for CreateFlow for application/json ContentType.
 type CreateFlowJSONRequestBody = FlowCreateReq
 
+// RetryExecutionJSONRequestBody defines body for RetryExecution for application/json ContentType.
+type RetryExecutionJSONRequestBody = RetryExecutionReq
+
 // CreateFlowGroupJSONRequestBody defines body for CreateFlowGroup for application/json ContentType.
 type CreateFlowGroupJSONRequestBody = FlowGroupReq
 
@@ -1741,8 +1871,10 @@ type ClientInterface interface {
 	// CancelExecution request
 	CancelExecution(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// RetryExecution request
-	RetryExecution(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// RetryExecutionWithBody request with any body
+	RetryExecutionWithBody(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RetryExecution(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, body RetryExecutionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListFlowGroups request
 	ListFlowGroups(ctx context.Context, namespace NamespacePath, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1830,11 +1962,11 @@ type ClientInterface interface {
 
 	UpdateFlowSecret(ctx context.Context, namespace NamespacePath, flowID string, secretID openapi_types.UUID, body UpdateFlowSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// StreamExecutionLogs request
-	StreamExecutionLogs(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// DownloadExecutionLog request
 	DownloadExecutionLog(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StreamExecutionLogs request
+	StreamExecutionLogs(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListNamespaceMembers request
 	ListNamespaceMembers(ctx context.Context, namespace NamespacePath, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2581,8 +2713,20 @@ func (c *Client) CancelExecution(ctx context.Context, namespace NamespacePath, e
 	return c.Client.Do(req)
 }
 
-func (c *Client) RetryExecution(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRetryExecutionRequest(c.Server, namespace, execID)
+func (c *Client) RetryExecutionWithBody(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRetryExecutionRequestWithBody(c.Server, namespace, execID, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RetryExecution(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, body RetryExecutionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRetryExecutionRequest(c.Server, namespace, execID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2965,8 +3109,8 @@ func (c *Client) UpdateFlowSecret(ctx context.Context, namespace NamespacePath, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) StreamExecutionLogs(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStreamExecutionLogsRequest(c.Server, namespace, logID)
+func (c *Client) DownloadExecutionLog(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDownloadExecutionLogRequest(c.Server, namespace, logID)
 	if err != nil {
 		return nil, err
 	}
@@ -2977,8 +3121,8 @@ func (c *Client) StreamExecutionLogs(ctx context.Context, namespace NamespacePat
 	return c.Client.Do(req)
 }
 
-func (c *Client) DownloadExecutionLog(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDownloadExecutionLogRequest(c.Server, namespace, logID)
+func (c *Client) StreamExecutionLogs(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStreamExecutionLogsRequest(c.Server, namespace, logID)
 	if err != nil {
 		return nil, err
 	}
@@ -5313,8 +5457,19 @@ func NewCancelExecutionRequest(server string, namespace NamespacePath, execID op
 	return req, nil
 }
 
-// NewRetryExecutionRequest generates requests for RetryExecution
-func NewRetryExecutionRequest(server string, namespace NamespacePath, execID openapi_types.UUID) (*http.Request, error) {
+// NewRetryExecutionRequest calls the generic RetryExecution builder with application/json body
+func NewRetryExecutionRequest(server string, namespace NamespacePath, execID openapi_types.UUID, body RetryExecutionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRetryExecutionRequestWithBody(server, namespace, execID, "application/json", bodyReader)
+}
+
+// NewRetryExecutionRequestWithBody generates requests for RetryExecution with any type of body
+func NewRetryExecutionRequestWithBody(server string, namespace NamespacePath, execID openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5346,10 +5501,12 @@ func NewRetryExecutionRequest(server string, namespace NamespacePath, execID ope
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -6603,47 +6760,6 @@ func NewUpdateFlowSecretRequestWithBody(server string, namespace NamespacePath, 
 	return req, nil
 }
 
-// NewStreamExecutionLogsRequest generates requests for StreamExecutionLogs
-func NewStreamExecutionLogsRequest(server string, namespace NamespacePath, logID openapi_types.UUID) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "namespace", namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "logID", logID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/%s/logs/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewDownloadExecutionLogRequest generates requests for DownloadExecutionLog
 func NewDownloadExecutionLogRequest(server string, namespace NamespacePath, logID openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -6668,6 +6784,47 @@ func NewDownloadExecutionLogRequest(server string, namespace NamespacePath, logI
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/%s/logs/%s/download", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStreamExecutionLogsRequest generates requests for StreamExecutionLogs
+func NewStreamExecutionLogsRequest(server string, namespace NamespacePath, logID openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "namespace", namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "logID", logID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/%s/logs/%s/stream", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8059,8 +8216,10 @@ type ClientWithResponsesInterface interface {
 	// CancelExecutionWithResponse request
 	CancelExecutionWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*CancelExecutionResponse, error)
 
-	// RetryExecutionWithResponse request
-	RetryExecutionWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*RetryExecutionResponse, error)
+	// RetryExecutionWithBodyWithResponse request with any body
+	RetryExecutionWithBodyWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RetryExecutionResponse, error)
+
+	RetryExecutionWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, body RetryExecutionJSONRequestBody, reqEditors ...RequestEditorFn) (*RetryExecutionResponse, error)
 
 	// ListFlowGroupsWithResponse request
 	ListFlowGroupsWithResponse(ctx context.Context, namespace NamespacePath, reqEditors ...RequestEditorFn) (*ListFlowGroupsResponse, error)
@@ -8148,11 +8307,11 @@ type ClientWithResponsesInterface interface {
 
 	UpdateFlowSecretWithResponse(ctx context.Context, namespace NamespacePath, flowID string, secretID openapi_types.UUID, body UpdateFlowSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateFlowSecretResponse, error)
 
-	// StreamExecutionLogsWithResponse request
-	StreamExecutionLogsWithResponse(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*StreamExecutionLogsResponse, error)
-
 	// DownloadExecutionLogWithResponse request
 	DownloadExecutionLogWithResponse(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*DownloadExecutionLogResponse, error)
+
+	// StreamExecutionLogsWithResponse request
+	StreamExecutionLogsWithResponse(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*StreamExecutionLogsResponse, error)
 
 	// ListNamespaceMembersWithResponse request
 	ListNamespaceMembersWithResponse(ctx context.Context, namespace NamespacePath, reqEditors ...RequestEditorFn) (*ListNamespaceMembersResponse, error)
@@ -9499,8 +9658,10 @@ func (r CancelExecutionResponse) ContentType() string {
 type RetryExecutionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON400      *BadRequest
 	JSON403      *Forbidden
 	JSON404      *NotFound
+	JSON409      *Conflict
 }
 
 // Status returns HTTPResponse.Status
@@ -10248,35 +10409,6 @@ func (r UpdateFlowSecretResponse) ContentType() string {
 	return ""
 }
 
-type StreamExecutionLogsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-}
-
-// Status returns HTTPResponse.Status
-func (r StreamExecutionLogsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r StreamExecutionLogsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r StreamExecutionLogsResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type DownloadExecutionLogResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -10300,6 +10432,37 @@ func (r DownloadExecutionLogResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DownloadExecutionLogResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StreamExecutionLogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON403      *Forbidden
+	JSON404      *NotFound
+}
+
+// Status returns HTTPResponse.Status
+func (r StreamExecutionLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StreamExecutionLogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StreamExecutionLogsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -11550,9 +11713,17 @@ func (c *ClientWithResponses) CancelExecutionWithResponse(ctx context.Context, n
 	return ParseCancelExecutionResponse(rsp)
 }
 
-// RetryExecutionWithResponse request returning *RetryExecutionResponse
-func (c *ClientWithResponses) RetryExecutionWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, reqEditors ...RequestEditorFn) (*RetryExecutionResponse, error) {
-	rsp, err := c.RetryExecution(ctx, namespace, execID, reqEditors...)
+// RetryExecutionWithBodyWithResponse request with arbitrary body returning *RetryExecutionResponse
+func (c *ClientWithResponses) RetryExecutionWithBodyWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RetryExecutionResponse, error) {
+	rsp, err := c.RetryExecutionWithBody(ctx, namespace, execID, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRetryExecutionResponse(rsp)
+}
+
+func (c *ClientWithResponses) RetryExecutionWithResponse(ctx context.Context, namespace NamespacePath, execID openapi_types.UUID, body RetryExecutionJSONRequestBody, reqEditors ...RequestEditorFn) (*RetryExecutionResponse, error) {
+	rsp, err := c.RetryExecution(ctx, namespace, execID, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -11831,15 +12002,6 @@ func (c *ClientWithResponses) UpdateFlowSecretWithResponse(ctx context.Context, 
 	return ParseUpdateFlowSecretResponse(rsp)
 }
 
-// StreamExecutionLogsWithResponse request returning *StreamExecutionLogsResponse
-func (c *ClientWithResponses) StreamExecutionLogsWithResponse(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*StreamExecutionLogsResponse, error) {
-	rsp, err := c.StreamExecutionLogs(ctx, namespace, logID, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseStreamExecutionLogsResponse(rsp)
-}
-
 // DownloadExecutionLogWithResponse request returning *DownloadExecutionLogResponse
 func (c *ClientWithResponses) DownloadExecutionLogWithResponse(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*DownloadExecutionLogResponse, error) {
 	rsp, err := c.DownloadExecutionLog(ctx, namespace, logID, reqEditors...)
@@ -11847,6 +12009,15 @@ func (c *ClientWithResponses) DownloadExecutionLogWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseDownloadExecutionLogResponse(rsp)
+}
+
+// StreamExecutionLogsWithResponse request returning *StreamExecutionLogsResponse
+func (c *ClientWithResponses) StreamExecutionLogsWithResponse(ctx context.Context, namespace NamespacePath, logID openapi_types.UUID, reqEditors ...RequestEditorFn) (*StreamExecutionLogsResponse, error) {
+	rsp, err := c.StreamExecutionLogs(ctx, namespace, logID, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStreamExecutionLogsResponse(rsp)
 }
 
 // ListNamespaceMembersWithResponse request returning *ListNamespaceMembersResponse
@@ -13328,6 +13499,13 @@ func ParseRetryExecutionResponse(rsp *http.Response) (*RetryExecutionResponse, e
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest Forbidden
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -13341,6 +13519,13 @@ func ParseRetryExecutionResponse(rsp *http.Response) (*RetryExecutionResponse, e
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
@@ -13966,6 +14151,22 @@ func ParseUpdateFlowSecretResponse(rsp *http.Response) (*UpdateFlowSecretRespons
 	return response, nil
 }
 
+// ParseDownloadExecutionLogResponse parses an HTTP response from a DownloadExecutionLogWithResponse call
+func ParseDownloadExecutionLogResponse(rsp *http.Response) (*DownloadExecutionLogResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DownloadExecutionLogResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParseStreamExecutionLogsResponse parses an HTTP response from a StreamExecutionLogsWithResponse call
 func ParseStreamExecutionLogsResponse(rsp *http.Response) (*StreamExecutionLogsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -13979,20 +14180,21 @@ func ParseStreamExecutionLogsResponse(rsp *http.Response) (*StreamExecutionLogsR
 		HTTPResponse: rsp,
 	}
 
-	return response, nil
-}
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
-// ParseDownloadExecutionLogResponse parses an HTTP response from a DownloadExecutionLogWithResponse call
-func ParseDownloadExecutionLogResponse(rsp *http.Response) (*DownloadExecutionLogResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
-	response := &DownloadExecutionLogResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
 	}
 
 	return response, nil

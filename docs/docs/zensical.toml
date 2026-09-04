@@ -12,6 +12,7 @@ nav = [
       { "Overview" = "general/flows.md" },
       { "Inputs" = "general/flow-inputs.md" },
       { "Actions" = "general/flow-actions.md" },
+      { "Execution Modes" = "general/flow-execution-modes.md" },
       { "Notifications" = "general/flow-notifications.md" },
     ] },
     { "Flow Groups" = "general/flow-groups.md" },

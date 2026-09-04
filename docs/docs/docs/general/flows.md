@@ -5,7 +5,7 @@ description: Learn how to create and configure workflows in flowctl
 
 ## What are Flows?
 
-Flows are the core automation units in flowctl. A flow is a sequence of actions that execute in order, with support for inputs, variables, approvals. Flows are defined using YAML/[HUML](https://huml.io) files and can run locally or on remote nodes.
+Flows are the core automation units in flowctl. A flow is a set of actions that execute in order, or as a dependency graph, with support for inputs, variables, approvals. Flows are defined using YAML/[HUML](https://huml.io) files and can run locally or on remote nodes.
 
 ## Flow Structure
 
@@ -60,11 +60,16 @@ metadata:
   description: Flow description
   namespace: default # Namespace for organization
   allow_overlap: true # Allow executions to overlap
+  execution_mode: sequential # sequential (default) or dag
 ```
 
 ### Execution Overlap
 
 If `allow_overlap` is set to true in a flow, executions for that flow can overlap. This is `false` by default which prevents executions from running if there is already an execution in running / pending state.
+
+### Execution Mode
+
+Actions run one after another by default. Setting `execution_mode: dag` lets each action declare what it waits for, so independent branches run in parallel. See [Execution Modes](/docs/general/flow-execution-modes).
 
 ### Scheduling Flows
 
@@ -79,7 +84,11 @@ inputs:
 schedules:
   - cron: "0 2 * * *" # Run daily at 2 AM
     timezone: Asia/Kolkata
+    name: Nightly run # Optional label
 ```
+
+The name is optional. It is worth setting on a flow with several schedules, since it is what the flow
+list shows next to the upcoming run.
 
 !!! note
       Only flows where all inputs have default values can be scheduled. Flows with
@@ -114,6 +123,28 @@ When triggering a flow manually you can defer execution by enabling the **Run La
 
 The timezone selector defaults to your browser's local timezone. You can search for any IANA timezone (e.g. `America/New_York`, `Europe/Berlin`).
 
+## Re-running an Execution
+
+A finished execution can be run again with the same inputs from the **Retry** button on the execution
+page. This queues a fresh execution; the original is left as it is.
+
+### Re-running from an Action
+
+If only part of a flow needs to run again, pick the action to start from instead of re-running the
+whole thing. On the execution page, use the re-run button on an action, either in the action list on
+the left or on the **Pipeline** tab. The selected action and everything downstream of it run again,
+while the actions before it keep their existing results and outputs.
+
+What counts as downstream depends on the [execution mode](/docs/general/flow-execution-modes). In a
+sequential flow it is every action listed after the one you picked. In a dag flow it is every action
+that depends on it, directly or transitively.
+
+Before anything starts, the confirmation dialog lists which actions will run.
+
+!!! note
+      The execution has to be finished (completed, errored, or cancelled) before it can be re-run.
+      Approval-gated actions in the re-run set will ask for approval again.
+
 ## Log Download
 
 Execution logs can be downloaded as a raw `.log` file once an execution has completed, errored, or been cancelled. The download button is available on the execution detail page.
@@ -130,6 +161,7 @@ To create a copy of an existing flow, open the flow list, click the **...** menu
 
 - Define [Inputs](/docs/general/flow-inputs)
 - Configure [Actions](/docs/general/flow-actions)
+- Run actions in parallel with [Execution Modes](/docs/general/flow-execution-modes)
 - Set up [Notifications](/docs/general/flow-notifications)
 - Configure [Remote Nodes](/docs/general/nodes-and-executors#remote-nodes)
 - Learn about [Executors](/docs/general/nodes-and-executors)

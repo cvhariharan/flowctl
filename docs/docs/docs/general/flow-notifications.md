@@ -1,6 +1,6 @@
 ---
 title: Flow Notifications
-description: Alert users or groups over email and webhooks on flow execution events
+description: Alert users or groups over email, chat, and webhooks on flow execution events
 ---
 
 Configure notifications to alert users or groups when specific flow events occur.
@@ -38,6 +38,7 @@ notify:
 Flowctl supports the following notification channels:
 
 - **email** - Send notifications via email to individual users or groups
+- **chat** - Post to a Slack or Mattermost channel using an incoming webhook
 - **webhook** - Send notifications via HTTP POST requests using the [Standard Webhooks](https://www.standardwebhooks.com/) format
 
 ## Notification Events
@@ -71,6 +72,25 @@ Email notifications use `config.receivers` to specify who should be notified. Re
        - group:devops
        - group:tech
    ```
+
+## Chat Notifications
+
+Chat notifications post a message to a Slack or Mattermost channel.
+
+```yaml
+notify:
+  - channel: chat
+    config:
+      url: "https://mattermost.example.com/hooks/xxxxxxxxxx"
+    events:
+      - on_failure
+      - on_waiting
+```
+
+!!! note
+      Chat notifications require the chat messenger to be enabled in the server's `config.toml`.
+      See [chat configuration](/docs/#chat-notifications) for setup details. The execution link uses
+      `root_url`, so set that correctly if flowctl runs behind a proxy.
 
 ## Webhook Notifications
 
@@ -135,6 +155,13 @@ notify:
         - group:reviewers
     events:
       - on_waiting
+
+  # Post failures to the on-call channel
+  - channel: chat
+    config:
+      url: "https://mattermost.example.com/hooks/xxxxxxxxxx"
+    events:
+      - on_failure
 
   # Send to an external service
   - channel: webhook

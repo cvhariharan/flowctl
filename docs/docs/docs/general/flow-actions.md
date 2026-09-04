@@ -3,7 +3,7 @@ title: Flow Actions
 description: Configure executors, variables, secrets, approvals, artifacts, and remote execution for flow actions
 ---
 
-Actions are the executable steps in a flow. Each action runs sequentially unless it fails.
+Actions are the executable steps in a flow. Each action runs sequentially unless it fails, or as part of a dependency graph if the flow uses [dag execution mode](/docs/general/flow-execution-modes).
 
 ![Action Editor](../assets/images/actions.png)
 
@@ -17,6 +17,8 @@ actions:
     on: # Optional: remote nodes to run on
       - NodeName1
       - NodeName2
+    needs: # Optional: actions this one waits for (dag mode only)
+      - other_action_id
     variables: # Variables available to the script
       - var_name: "{{ expression }}"
     with: # Executor-specific configuration
@@ -25,6 +27,10 @@ actions:
         echo "Script here"
     approval: false # Require manual approval
 ```
+
+The `needs` field only applies when the flow's `execution_mode` is `dag`. Using it in a sequential
+flow is a validation error. See [Execution Modes](/docs/general/flow-execution-modes) for how
+dependencies are scheduled.
 
 ## Executors
 
@@ -154,6 +160,13 @@ Require manual approval before an action executes:
 When a flow reaches an approval action, it pauses and waits for a user to approve or reject it through the UI.
 Only users with **Admin** or **Reviewer** role can approve requests.
 
+Approving resumes the execution from that action. Rejecting cancels the whole execution and records
+who rejected it in the cancellation note. Once an execution has been cancelled, its pending approvals
+can no longer be decided.
+
+In a dag flow an approval only blocks its own branch, and the execution can be waiting on several
+approvals at once. See [Approvals in a Graph](/docs/general/flow-execution-modes#approvals-in-a-graph).
+
 ## Artifacts
 
 Preserve files generated during action execution:
@@ -263,6 +276,7 @@ If multiple nodes write the same key to `$FC_OUTPUT_GLOBAL`, the last one to fin
 ## Next Steps
 
 - Reference [Inputs](/docs/general/flow-inputs) in action variables
+- Declare dependencies between actions with [Execution Modes](/docs/general/flow-execution-modes)
 - Set up [Notifications](/docs/general/flow-notifications) for action outcomes
 - Configure [Remote Nodes](/docs/general/nodes-and-executors#remote-nodes)
 - Back to [Flows overview](/docs/general/flows)

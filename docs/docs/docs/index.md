@@ -119,11 +119,23 @@ The `config.toml` file controls all aspects of flowctl's behavior. Here's a comp
   workers = 20
   cron_sync_interval = "5m0s"
   flow_execution_timeout = "1h"
+  max_parallel = 0
+  default_timezone = "UTC"
+  execution_retention_time = "0s"
+  execution_retention_interval = "1h"
 ```
 
 - **`workers`** (required): Number of concurrent workers for executing flows (default: number of CPU threads).
 - **`cron_sync_interval`** (required): How often to sync scheduled flows from the database (default: `5m0s`).
 - **`flow_execution_timeout`** (required): Maximum duration for flow execution before termination (default: `1h`).
+- **`max_parallel`** (optional): Maximum number of actions a single flow in [dag execution mode](/docs/general/flow-execution-modes) runs concurrently. Applies to every flow on the instance. `0` or unset uses the number of CPU cores.
+- **`default_timezone`** (required): Default IANA timezone used to pre-fill the timezone field in the UI when a schedule doesn't set one (default: `UTC`).
+- **`execution_retention_time`** (optional): How long to keep finished executions. Executions in a terminal state older than this are deleted along with their event history and approval records. `0s` keeps them forever.
+- **`execution_retention_interval`** (optional): How often the retention sweep runs (default: `1h`, minimum `1m`).
+
+!!! note
+      `execution_retention_time` only removes rows from the database. Log files are managed
+      separately by `logger.retention_time`, so set both if you want them to expire together.
 
 ### Logger Configuration
 
@@ -173,6 +185,27 @@ Configure SMTP settings to enable email notifications for flow events. Email not
       SMTP configuration is required for email notifications to work. See the [Flow
       Notifications documentation](/docs/general/flow-notifications) for how to
       configure notifications in your flows.
+
+### Chat Notifications
+
+```toml
+[messengers.chat]
+  enabled = true
+  timeout = "30s"
+```
+
+Enable chat notifications to post flow events to Slack or Mattermost. There is nothing to configure
+per instance beyond enabling the messenger. The incoming webhook URL lives in each flow's `notify`
+block, so different flows can post to different channels.
+
+- **`enabled`** (optional): Enable or disable chat notifications (default: `false`).
+- **`timeout`** (optional): HTTP request timeout for delivery (default: `30s`).
+
+!!! note
+      Messages link back to the execution page using `app.root_url`. Set that to the URL users
+      actually reach flowctl on, or the links in chat will be wrong. See the [Chat Notifications
+      documentation](/docs/general/flow-notifications#chat-notifications) for how to configure them
+      in your flows.
 
 ### Webhook Notifications
 

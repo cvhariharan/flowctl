@@ -785,11 +785,21 @@ paths:
       description: >
         Requires execute access to the execution's own flow, which for prefixed flows means an
         explicit prefix grant. Namespace-wide execution update permission alone is not sufficient.
+        With an empty body the whole execution is re-queued. Send `from_action` to re-run only that
+        action and everything downstream of it, keeping the results of the actions before it; the
+        execution must already be in a terminal state.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RetryExecutionReq" }
       responses:
         "201":
           description: Queued
+        "400": { $ref: "#/components/responses/BadRequest" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/v1/{namespace}/flows/{flowID}/executions:
     parameters:
@@ -810,21 +820,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ExecutionsPaginateResponse" }
 
-  /api/v1/{namespace}/logs/{logID}:
+  /api/v1/{namespace}/logs/{logID}/stream:
     parameters:
       - $ref: "#/components/parameters/NamespacePath"
       - { name: logID, in: path, required: true, schema: { type: string, format: uuid } }
     get:
       operationId: StreamExecutionLogs
       tags: [Flows]
-      summary: Stream live execution logs (Server-Sent Events / chunked stream)
+      summary: Stream live execution logs (WebSocket)
+      description: >
+        Upgrades to a WebSocket and streams the execution's log lines, replaying what has already
+        been written before following new output. The `Origin` header must match the host in
+        `app.root_url`. Frames are JSON objects discriminated by `type`:
+        `open` (`{type, protocol, exec_id, replay}`, sent once on connect),
+        `batch` (`{type, messages}`, an array of `LogMessage` flushed every 50ms, up to 256 per frame),
+        `ping` (keepalive, every 20s) and
+        `end` (`{type, reason}` where reason is `complete` or `timeout`).
+        Client frames are ignored. The current protocol version is `1`.
       responses:
-        "200":
-          description: A long-lived response that streams log lines as they arrive.
-          content:
-            text/event-stream:
-              schema:
-                type: string
+        "101":
+          description: Switching protocols; the log stream continues over the WebSocket.
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/{namespace}/logs/{logID}/download:
     parameters:
@@ -1842,6 +1859,10 @@ components:
         allow_overlap: { type: boolean }
         user_schedulable: { type: boolean }
         max_retries: { type: integer, minimum: 0, maximum: 10 }
+        execution_mode:
+          type: string
+          enum: [sequential, dag]
+          description: How actions are scheduled. Defaults to sequential when absent.
     FlowAction:
       type: object
       properties:
@@ -1853,6 +1874,12 @@ components:
         on:
           type: array
           items: { type: string }
+        needs:
+          type: array
+          description: >
+            IDs of the actions this action waits for. Only valid when the flow's execution_mode is
+            dag; must reference actions in the same flow and must not form a cycle.
+          items: { type: string }
     FlowInput:
       type: object
       properties:
@@ -1862,7 +1889,7 @@ components:
         required: { type: boolean }
         type:
           type: string
-          enum: [string, number, password, file, datetime, checkbox, select]
+          enum: [string, number, password, file, datetime, checkbox, select, node]
         options:
           type: array
           items: { type: string }
@@ -1932,7 +1959,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 150 }
         type:
           type: string
-          enum: [string, number, password, file, datetime, checkbox, select]
+          enum: [string, number, password, file, datetime, checkbox, select, node]
         label: { type: string, maxLength: 255 }
         description: { type: string, maxLength: 255 }
         validation: { type: string }
@@ -1971,6 +1998,12 @@ components:
         on:
           type: array
           items: { type: string }
+        needs:
+          type: array
+          description: >
+            IDs of the actions this action waits for. Rejected unless the flow's execution_mode is
+            dag.
+          items: { type: string }
     FlowCreateReq:
       type: object
       required: [metadata, inputs, actions]
@@ -2003,6 +2036,7 @@ components:
         allow_overlap: { type: boolean }
         user_schedulable: { type: boolean }
         max_retries: { type: integer, minimum: 0, maximum: 10 }
+        execution_mode: { type: string, enum: [sequential, dag] }
         description: { type: string, maxLength: 255 }
         inputs:
           type: array
@@ -2010,6 +2044,15 @@ components:
         actions:
           type: array
           items: { $ref: "#/components/schemas/FlowActionReq" }
+    RetryExecutionReq:
+      type: object
+      properties:
+        from_action:
+          type: string
+          description: >
+            Action ID to re-run from. That action and everything downstream of it run again;
+            downstream means later in the file for sequential flows, and every dependent action for
+            dag flows. Omit to re-queue the whole execution.
     FlowTriggerResp:
       type: object
       properties:
@@ -2070,6 +2113,33 @@ components:
         action_retries:
           type: object
           additionalProperties: { type: integer }
+        action_states:
+          type: object
+          description: Per-action state, keyed by action ID. Absent for executions that never started.
+          additionalProperties: { $ref: "#/components/schemas/ActionState" }
+    ActionState:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, running, completed, failed, skipped, blocked, cancelled]
+        attempt: { type: integer, description: Retry attempt this state belongs to. }
+        started_at: { type: string }
+        finished_at: { type: string }
+        error: { type: string }
+    LogMessage:
+      type: object
+      description: A single line from an execution's log stream.
+      properties:
+        action_id: { type: string }
+        message_type: { type: string }
+        node_id: { type: string, description: Node the line came from. Empty for local execution. }
+        value: { type: string }
+        timestamp: { type: string }
+        results:
+          type: object
+          description: Output variables, present on the frames that carry an action's results.
+          additionalProperties: { type: string }
     ExecutionsPaginateResponse:
       type: object
       properties:
