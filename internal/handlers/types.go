@@ -669,6 +669,7 @@ type ExecutionSummary struct {
 	FlowID          string          `json:"flow_id"`
 	Status          ExecutionStatus `json:"status"`
 	TriggerType     string          `json:"trigger_type"`
+	ScheduleName    string          `json:"schedule_name,omitempty"`
 	Input           map[string]any  `json:"input,omitempty"`
 	TriggeredBy     string          `json:"triggered_by"`
 	CurrentActionID string          `json:"current_action_id"`
@@ -733,6 +734,7 @@ func coreExecutionSummaryToExecutionSummary(e models.ExecutionSummary) Execution
 		Status:          ExecutionStatus(e.Status),
 		Input:           e.Inputs,
 		TriggerType:     e.TriggerType,
+		ScheduleName:    e.ScheduleName,
 		TriggeredBy:     e.TriggeredByName,
 		CurrentActionID: e.CurrentActionID,
 		CreatedAt:       e.CreatedAt.Format(TimeFormat),

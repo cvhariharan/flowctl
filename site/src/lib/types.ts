@@ -343,6 +343,7 @@ export interface ExecutionSummary {
   flow_id: string;
   status: ExecutionStatus;
   trigger_type: string;
+  schedule_name?: string;
   input?: any;
   triggered_by: string;
   current_action_id: string;

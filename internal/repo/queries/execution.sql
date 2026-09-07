@@ -5,9 +5,9 @@ WITH user_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $5
 )
 INSERT INTO executions (
-    exec_id, flow_id, inputs, trigger_type, triggered_by, namespace_id, scheduled_at
+    exec_id, flow_id, inputs, trigger_type, triggered_by, namespace_id, scheduled_at, schedule_name
 ) VALUES (
-    $1, $2, $3, $6, (SELECT id FROM user_lookup), (SELECT id FROM namespace_lookup), $7
+    $1, $2, $3, $6, (SELECT id FROM user_lookup), (SELECT id FROM namespace_lookup), $7, $8
 ) RETURNING *;
 
 -- name: InsertExecutionEvent :execrows

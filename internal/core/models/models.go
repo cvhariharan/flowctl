@@ -177,6 +177,7 @@ type ExecutionSummary struct {
 	Status          ExecutionStatus
 	Inputs          map[string]any
 	TriggerType     string
+	ScheduleName    string
 	TriggeredByName string
 	TriggeredByID   string
 	CurrentActionID string

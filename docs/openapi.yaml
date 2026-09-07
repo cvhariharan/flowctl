@@ -2103,6 +2103,9 @@ components:
         flow_id: { type: string }
         status: { $ref: "#/components/schemas/ExecutionStatus" }
         trigger_type: { type: string, enum: [manual, scheduled] }
+        schedule_name:
+          type: string
+          description: Name of the cron schedule that fired this execution. Absent for manual runs, one-off scheduled runs, and unnamed schedules.
         input: { description: Original trigger inputs. }
         triggered_by: { type: string }
         current_action_id: { type: string }

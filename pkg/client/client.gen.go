@@ -807,12 +807,15 @@ type ExecutionSummary struct {
 	ID              *openapi_types.UUID     `json:"id,omitempty"`
 
 	// Input Original trigger inputs.
-	Input       interface{}                  `json:"input,omitempty"`
-	ScheduledAt *time.Time                   `json:"scheduled_at,omitempty"`
-	StartedAt   *time.Time                   `json:"started_at,omitempty"`
-	Status      *ExecutionStatus             `json:"status,omitempty"`
-	TriggerType *ExecutionSummaryTriggerType `json:"trigger_type,omitempty"`
-	TriggeredBy *string                      `json:"triggered_by,omitempty"`
+	Input interface{} `json:"input,omitempty"`
+
+	// ScheduleName Name of the cron schedule that fired this execution. Absent for manual runs, one-off scheduled runs, and unnamed schedules.
+	ScheduleName *string                      `json:"schedule_name,omitempty"`
+	ScheduledAt  *time.Time                   `json:"scheduled_at,omitempty"`
+	StartedAt    *time.Time                   `json:"started_at,omitempty"`
+	Status       *ExecutionStatus             `json:"status,omitempty"`
+	TriggerType  *ExecutionSummaryTriggerType `json:"trigger_type,omitempty"`
+	TriggeredBy  *string                      `json:"triggered_by,omitempty"`
 }
 
 // ExecutionSummaryTriggerType defines model for ExecutionSummary.TriggerType.

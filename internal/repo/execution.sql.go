@@ -23,20 +23,21 @@ WITH user_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $5
 )
 INSERT INTO executions (
-    exec_id, flow_id, inputs, trigger_type, triggered_by, namespace_id, scheduled_at
+    exec_id, flow_id, inputs, trigger_type, triggered_by, namespace_id, scheduled_at, schedule_name
 ) VALUES (
-    $1, $2, $3, $6, (SELECT id FROM user_lookup), (SELECT id FROM namespace_lookup), $7
-) RETURNING id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at
+    $1, $2, $3, $6, (SELECT id FROM user_lookup), (SELECT id FROM namespace_lookup), $7, $8
+) RETURNING id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at, schedule_name
 `
 
 type AddExecutionParams struct {
-	ExecID      string          `db:"exec_id" json:"exec_id"`
-	FlowID      int32           `db:"flow_id" json:"flow_id"`
-	Inputs      json.RawMessage `db:"inputs" json:"inputs"`
-	Uuid        uuid.UUID       `db:"uuid" json:"uuid"`
-	Uuid_2      uuid.UUID       `db:"uuid_2" json:"uuid_2"`
-	TriggerType TriggerType     `db:"trigger_type" json:"trigger_type"`
-	ScheduledAt sql.NullTime    `db:"scheduled_at" json:"scheduled_at"`
+	ExecID       string          `db:"exec_id" json:"exec_id"`
+	FlowID       int32           `db:"flow_id" json:"flow_id"`
+	Inputs       json.RawMessage `db:"inputs" json:"inputs"`
+	Uuid         uuid.UUID       `db:"uuid" json:"uuid"`
+	Uuid_2       uuid.UUID       `db:"uuid_2" json:"uuid_2"`
+	TriggerType  TriggerType     `db:"trigger_type" json:"trigger_type"`
+	ScheduledAt  sql.NullTime    `db:"scheduled_at" json:"scheduled_at"`
+	ScheduleName string          `db:"schedule_name" json:"schedule_name"`
 }
 
 func (q *Queries) AddExecution(ctx context.Context, arg AddExecutionParams) (Execution, error) {
@@ -48,6 +49,7 @@ func (q *Queries) AddExecution(ctx context.Context, arg AddExecutionParams) (Exe
 		arg.Uuid_2,
 		arg.TriggerType,
 		arg.ScheduledAt,
+		arg.ScheduleName,
 	)
 	var i Execution
 	err := row.Scan(
@@ -67,6 +69,7 @@ func (q *Queries) AddExecution(ctx context.Context, arg AddExecutionParams) (Exe
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.UpdatedAt,
+		&i.ScheduleName,
 	)
 	return i, err
 }
@@ -93,7 +96,7 @@ UPDATE executions SET
 WHERE exec_id = $1
   AND namespace_id = (SELECT id FROM namespace_lookup)
   AND status IN ('pending', 'running', 'pending_approval')
-RETURNING id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at
+RETURNING id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at, schedule_name
 `
 
 type CancelExecutionParams struct {
@@ -121,6 +124,7 @@ func (q *Queries) CancelExecution(ctx context.Context, arg CancelExecutionParams
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.UpdatedAt,
+		&i.ScheduleName,
 	)
 	return i, err
 }
@@ -207,7 +211,7 @@ const getAllExecutionsPaginated = `-- name: GetAllExecutionsPaginated :many
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $1
 ), filtered AS (
-    SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, u.name, u.username, u.uuid AS triggered_by_uuid,
+    SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, el.schedule_name, u.name, u.username, u.uuid AS triggered_by_uuid,
            CONCAT(u.name, ' <', u.username, '>')::TEXT AS triggered_by_name,
            f.name AS flow_name, f.slug AS flow_slug
     FROM executions el
@@ -219,11 +223,11 @@ WITH namespace_lookup AS (
 ), total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ), paged AS (
-    SELECT id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at, name, username, triggered_by_uuid, triggered_by_name, flow_name, flow_slug FROM filtered ORDER BY created_at DESC LIMIT $2 OFFSET $3
+    SELECT id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at, schedule_name, name, username, triggered_by_uuid, triggered_by_name, flow_name, flow_slug FROM filtered ORDER BY created_at DESC LIMIT $2 OFFSET $3
 ), page_count AS (
     SELECT CEIL(total.total_count::numeric / $2::numeric)::bigint AS page_count FROM total
 )
-SELECT p.id, p.exec_id, p.flow_id, p.namespace_id, p.triggered_by, p.trigger_type, p.inputs, p.scheduled_at, p.created_at, p.attempt, p.status, p.error, p.outputs, p.started_at, p.completed_at, p.updated_at, p.name, p.username, p.triggered_by_uuid, p.triggered_by_name, p.flow_name, p.flow_slug, pc.page_count, t.total_count FROM paged p, page_count pc, total t
+SELECT p.id, p.exec_id, p.flow_id, p.namespace_id, p.triggered_by, p.trigger_type, p.inputs, p.scheduled_at, p.created_at, p.attempt, p.status, p.error, p.outputs, p.started_at, p.completed_at, p.updated_at, p.schedule_name, p.name, p.username, p.triggered_by_uuid, p.triggered_by_name, p.flow_name, p.flow_slug, pc.page_count, t.total_count FROM paged p, page_count pc, total t
 `
 
 type GetAllExecutionsPaginatedParams struct {
@@ -249,6 +253,7 @@ type GetAllExecutionsPaginatedRow struct {
 	StartedAt       sql.NullTime    `db:"started_at" json:"started_at"`
 	CompletedAt     sql.NullTime    `db:"completed_at" json:"completed_at"`
 	UpdatedAt       time.Time       `db:"updated_at" json:"updated_at"`
+	ScheduleName    string          `db:"schedule_name" json:"schedule_name"`
 	Name            string          `db:"name" json:"name"`
 	Username        string          `db:"username" json:"username"`
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
@@ -285,6 +290,7 @@ func (q *Queries) GetAllExecutionsPaginated(ctx context.Context, arg GetAllExecu
 			&i.StartedAt,
 			&i.CompletedAt,
 			&i.UpdatedAt,
+			&i.ScheduleName,
 			&i.Name,
 			&i.Username,
 			&i.TriggeredByUuid,
@@ -311,7 +317,7 @@ const getExecutionByExecID = `-- name: GetExecutionByExecID :one
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
 )
-SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, u.name, u.username, u.uuid AS triggered_by_uuid,
+SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, el.schedule_name, u.name, u.username, u.uuid AS triggered_by_uuid,
        CONCAT(u.name, ' <', u.username, '>')::TEXT AS triggered_by_name,
        f.name AS flow_name, f.slug AS flow_slug
 FROM executions el
@@ -344,6 +350,7 @@ type GetExecutionByExecIDRow struct {
 	StartedAt       sql.NullTime    `db:"started_at" json:"started_at"`
 	CompletedAt     sql.NullTime    `db:"completed_at" json:"completed_at"`
 	UpdatedAt       time.Time       `db:"updated_at" json:"updated_at"`
+	ScheduleName    string          `db:"schedule_name" json:"schedule_name"`
 	Name            string          `db:"name" json:"name"`
 	Username        string          `db:"username" json:"username"`
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
@@ -372,6 +379,7 @@ func (q *Queries) GetExecutionByExecID(ctx context.Context, arg GetExecutionByEx
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.UpdatedAt,
+		&i.ScheduleName,
 		&i.Name,
 		&i.Username,
 		&i.TriggeredByUuid,
@@ -386,7 +394,7 @@ const getExecutionByExecIDWithNamespace = `-- name: GetExecutionByExecIDWithName
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
 )
-SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, u.name, u.username, u.uuid AS triggered_by_uuid,
+SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, el.schedule_name, u.name, u.username, u.uuid AS triggered_by_uuid,
        CONCAT(u.name, ' <', u.username, '>')::TEXT AS triggered_by_name,
        f.name AS flow_name, f.slug AS flow_slug
 FROM executions el
@@ -419,6 +427,7 @@ type GetExecutionByExecIDWithNamespaceRow struct {
 	StartedAt       sql.NullTime    `db:"started_at" json:"started_at"`
 	CompletedAt     sql.NullTime    `db:"completed_at" json:"completed_at"`
 	UpdatedAt       time.Time       `db:"updated_at" json:"updated_at"`
+	ScheduleName    string          `db:"schedule_name" json:"schedule_name"`
 	Name            string          `db:"name" json:"name"`
 	Username        string          `db:"username" json:"username"`
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
@@ -447,6 +456,7 @@ func (q *Queries) GetExecutionByExecIDWithNamespace(ctx context.Context, arg Get
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.UpdatedAt,
+		&i.ScheduleName,
 		&i.Name,
 		&i.Username,
 		&i.TriggeredByUuid,
@@ -461,7 +471,7 @@ const getExecutionByID = `-- name: GetExecutionByID :one
 WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
 )
-SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, u.name, u.username, u.uuid AS triggered_by_uuid,
+SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, el.schedule_name, u.name, u.username, u.uuid AS triggered_by_uuid,
        CONCAT(u.name, ' <', u.username, '>')::TEXT AS triggered_by_name,
        f.name AS flow_name, f.slug AS flow_slug
 FROM executions el
@@ -494,6 +504,7 @@ type GetExecutionByIDRow struct {
 	StartedAt       sql.NullTime    `db:"started_at" json:"started_at"`
 	CompletedAt     sql.NullTime    `db:"completed_at" json:"completed_at"`
 	UpdatedAt       time.Time       `db:"updated_at" json:"updated_at"`
+	ScheduleName    string          `db:"schedule_name" json:"schedule_name"`
 	Name            string          `db:"name" json:"name"`
 	Username        string          `db:"username" json:"username"`
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
@@ -522,6 +533,7 @@ func (q *Queries) GetExecutionByID(ctx context.Context, arg GetExecutionByIDPara
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.UpdatedAt,
+		&i.ScheduleName,
 		&i.Name,
 		&i.Username,
 		&i.TriggeredByUuid,
@@ -554,7 +566,7 @@ func (q *Queries) GetExecutionContextByUUID(ctx context.Context, arg GetExecutio
 }
 
 const getExecutionProjection = `-- name: GetExecutionProjection :one
-SELECT id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at FROM executions WHERE exec_id = $1
+SELECT id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at, schedule_name FROM executions WHERE exec_id = $1
 `
 
 func (q *Queries) GetExecutionProjection(ctx context.Context, execID string) (Execution, error) {
@@ -577,6 +589,7 @@ func (q *Queries) GetExecutionProjection(ctx context.Context, execID string) (Ex
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.UpdatedAt,
+		&i.ScheduleName,
 	)
 	return i, err
 }
@@ -587,7 +600,7 @@ WITH user_lookup AS (
 ), namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $3
 )
-SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, u.name, u.username, u.uuid AS triggered_by_uuid,
+SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, el.schedule_name, u.name, u.username, u.uuid AS triggered_by_uuid,
        CONCAT(u.name, ' <', u.username, '>')::TEXT AS triggered_by_name,
        f.name AS flow_name, f.slug AS flow_slug
 FROM executions el
@@ -622,6 +635,7 @@ type GetExecutionsByFlowRow struct {
 	StartedAt       sql.NullTime    `db:"started_at" json:"started_at"`
 	CompletedAt     sql.NullTime    `db:"completed_at" json:"completed_at"`
 	UpdatedAt       time.Time       `db:"updated_at" json:"updated_at"`
+	ScheduleName    string          `db:"schedule_name" json:"schedule_name"`
 	Name            string          `db:"name" json:"name"`
 	Username        string          `db:"username" json:"username"`
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
@@ -656,6 +670,7 @@ func (q *Queries) GetExecutionsByFlow(ctx context.Context, arg GetExecutionsByFl
 			&i.StartedAt,
 			&i.CompletedAt,
 			&i.UpdatedAt,
+			&i.ScheduleName,
 			&i.Name,
 			&i.Username,
 			&i.TriggeredByUuid,
@@ -693,7 +708,7 @@ WITH namespace_lookup AS (
     JOIN group_memberships gm ON g.id = gm.group_id
     WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $5) AND n.uuid = $2
 ), filtered AS (
-    SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, u.name, u.username, u.uuid AS triggered_by_uuid,
+    SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, el.schedule_name, u.name, u.username, u.uuid AS triggered_by_uuid,
            CONCAT(u.name, ' <', u.username, '>')::TEXT AS triggered_by_name,
            f.name AS flow_name, f.slug AS flow_slug
     FROM executions el
@@ -711,11 +726,11 @@ WITH namespace_lookup AS (
 ), total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ), paged AS (
-    SELECT id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at, name, username, triggered_by_uuid, triggered_by_name, flow_name, flow_slug FROM filtered ORDER BY created_at DESC LIMIT $3 OFFSET $4
+    SELECT id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at, schedule_name, name, username, triggered_by_uuid, triggered_by_name, flow_name, flow_slug FROM filtered ORDER BY created_at DESC LIMIT $3 OFFSET $4
 ), page_count AS (
     SELECT CEIL(total.total_count::numeric / $3::numeric)::bigint AS page_count FROM total
 )
-SELECT p.id, p.exec_id, p.flow_id, p.namespace_id, p.triggered_by, p.trigger_type, p.inputs, p.scheduled_at, p.created_at, p.attempt, p.status, p.error, p.outputs, p.started_at, p.completed_at, p.updated_at, p.name, p.username, p.triggered_by_uuid, p.triggered_by_name, p.flow_name, p.flow_slug, pc.page_count, t.total_count FROM paged p, page_count pc, total t
+SELECT p.id, p.exec_id, p.flow_id, p.namespace_id, p.triggered_by, p.trigger_type, p.inputs, p.scheduled_at, p.created_at, p.attempt, p.status, p.error, p.outputs, p.started_at, p.completed_at, p.updated_at, p.schedule_name, p.name, p.username, p.triggered_by_uuid, p.triggered_by_name, p.flow_name, p.flow_slug, pc.page_count, t.total_count FROM paged p, page_count pc, total t
 `
 
 type GetExecutionsByFlowPaginatedParams struct {
@@ -743,6 +758,7 @@ type GetExecutionsByFlowPaginatedRow struct {
 	StartedAt       sql.NullTime    `db:"started_at" json:"started_at"`
 	CompletedAt     sql.NullTime    `db:"completed_at" json:"completed_at"`
 	UpdatedAt       time.Time       `db:"updated_at" json:"updated_at"`
+	ScheduleName    string          `db:"schedule_name" json:"schedule_name"`
 	Name            string          `db:"name" json:"name"`
 	Username        string          `db:"username" json:"username"`
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
@@ -785,6 +801,7 @@ func (q *Queries) GetExecutionsByFlowPaginated(ctx context.Context, arg GetExecu
 			&i.StartedAt,
 			&i.CompletedAt,
 			&i.UpdatedAt,
+			&i.ScheduleName,
 			&i.Name,
 			&i.Username,
 			&i.TriggeredByUuid,
@@ -1143,7 +1160,7 @@ WITH namespace_lookup AS (
     JOIN group_memberships gm ON g.id = gm.group_id
     WHERE gm.user_id = (SELECT id FROM users WHERE users.uuid = $5) AND n.uuid = $1
 ), filtered AS (
-    SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, u.name, u.username, u.uuid AS triggered_by_uuid,
+    SELECT el.id, el.exec_id, el.flow_id, el.namespace_id, el.triggered_by, el.trigger_type, el.inputs, el.scheduled_at, el.created_at, el.attempt, el.status, el.error, el.outputs, el.started_at, el.completed_at, el.updated_at, el.schedule_name, u.name, u.username, u.uuid AS triggered_by_uuid,
            CONCAT(u.name, ' <', u.username, '>')::TEXT AS triggered_by_name,
            f.name AS flow_name, f.slug AS flow_slug
     FROM executions el
@@ -1163,11 +1180,11 @@ WITH namespace_lookup AS (
 ), total AS (
     SELECT COUNT(*) AS total_count FROM filtered
 ), paged AS (
-    SELECT id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at, name, username, triggered_by_uuid, triggered_by_name, flow_name, flow_slug FROM filtered ORDER BY created_at DESC LIMIT $3 OFFSET $4
+    SELECT id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at, schedule_name, name, username, triggered_by_uuid, triggered_by_name, flow_name, flow_slug FROM filtered ORDER BY created_at DESC LIMIT $3 OFFSET $4
 ), page_count AS (
     SELECT CEIL(total.total_count::numeric / $3::numeric)::bigint AS page_count FROM total
 )
-SELECT p.id, p.exec_id, p.flow_id, p.namespace_id, p.triggered_by, p.trigger_type, p.inputs, p.scheduled_at, p.created_at, p.attempt, p.status, p.error, p.outputs, p.started_at, p.completed_at, p.updated_at, p.name, p.username, p.triggered_by_uuid, p.triggered_by_name, p.flow_name, p.flow_slug, pc.page_count, t.total_count FROM paged p, page_count pc, total t
+SELECT p.id, p.exec_id, p.flow_id, p.namespace_id, p.triggered_by, p.trigger_type, p.inputs, p.scheduled_at, p.created_at, p.attempt, p.status, p.error, p.outputs, p.started_at, p.completed_at, p.updated_at, p.schedule_name, p.name, p.username, p.triggered_by_uuid, p.triggered_by_name, p.flow_name, p.flow_slug, pc.page_count, t.total_count FROM paged p, page_count pc, total t
 `
 
 type SearchExecutionsPaginatedParams struct {
@@ -1195,6 +1212,7 @@ type SearchExecutionsPaginatedRow struct {
 	StartedAt       sql.NullTime    `db:"started_at" json:"started_at"`
 	CompletedAt     sql.NullTime    `db:"completed_at" json:"completed_at"`
 	UpdatedAt       time.Time       `db:"updated_at" json:"updated_at"`
+	ScheduleName    string          `db:"schedule_name" json:"schedule_name"`
 	Name            string          `db:"name" json:"name"`
 	Username        string          `db:"username" json:"username"`
 	TriggeredByUuid uuid.UUID       `db:"triggered_by_uuid" json:"triggered_by_uuid"`
@@ -1237,6 +1255,7 @@ func (q *Queries) SearchExecutionsPaginated(ctx context.Context, arg SearchExecu
 			&i.StartedAt,
 			&i.CompletedAt,
 			&i.UpdatedAt,
+			&i.ScheduleName,
 			&i.Name,
 			&i.Username,
 			&i.TriggeredByUuid,

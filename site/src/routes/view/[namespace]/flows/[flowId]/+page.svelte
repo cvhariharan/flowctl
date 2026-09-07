@@ -170,7 +170,11 @@
             key: "trigger_type",
             header: "Trigger Type",
             component: BadgeCell,
-            componentProps: { variant: (row: any) => row.trigger_type === "manual" ? "primary" : "success" }
+            componentProps: {
+                variant: (row: any) => row.trigger_type === "manual" ? "primary" : "success",
+                tooltip: (row: any) =>
+                    row.trigger_type === "scheduled" ? row.schedule_name || undefined : undefined
+            }
         },
     ];
 

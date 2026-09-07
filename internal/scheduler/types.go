@@ -246,6 +246,7 @@ type FlowExecutionPayload struct {
 	Outputs       map[string]any
 	NamespaceID   string
 	TriggerType   TriggerType
+	ScheduleName  string
 	UserUUID      string
 	FlowDirectory string
 	OverrideNodes []Node

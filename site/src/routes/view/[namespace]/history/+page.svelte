@@ -108,7 +108,11 @@
 			header: 'Trigger Type',
 			sortable: true,
 			component: BadgeCell,
-			componentProps: { variant: (row: ExecutionSummary) => row.trigger_type === 'manual' ? 'primary' : 'success' }
+			componentProps: {
+				variant: (row: ExecutionSummary) => row.trigger_type === 'manual' ? 'primary' : 'success',
+				tooltip: (row: ExecutionSummary) =>
+					row.trigger_type === 'scheduled' ? row.schedule_name || undefined : undefined
+			}
 		}
 	];
 
