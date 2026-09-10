@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +36,8 @@ var flowEvaluator = expreval.New()
 // globalOutputKey is the reserved outputs bucket for FC_OUTPUT_GLOBAL values.
 // Referenced from flows as outputs.global.<action_id>.<KEY>.
 const globalOutputKey = "global"
+
+const abandonedExecutionError = "execution abandoned: worker did not finish (crash or restart)"
 
 // FlowExecutionHandler handles flow execution jobs
 type FlowExecutionHandler struct {
@@ -165,6 +168,14 @@ func (h *FlowExecutionHandler) Handle(ctx context.Context, job Job) error {
 		}
 	}
 
+	abandoned, err := h.abandonIfCrashed(ctx, job, payload)
+	if err != nil {
+		return err
+	}
+	if abandoned {
+		return nil
+	}
+
 	recorder, err := coreexecstate.NewRecorder(ctx, h.store, job.ExecID)
 	if errors.Is(err, coreexecstate.ErrStaleJob) {
 		return nil
@@ -215,6 +226,21 @@ func (h *FlowExecutionHandler) Handle(ctx context.Context, job Job) error {
 
 	h.recordMetricsAndNotifications(ctx, job.ExecID, repo.ExecutionStatusCompleted, payload, nil)
 	return nil
+}
+
+func (h *FlowExecutionHandler) abandonIfCrashed(ctx context.Context, job Job, payload FlowExecutionPayload) (bool, error) {
+	if _, err := h.store.AbandonExecutionTx(ctx, job.ExecID, abandonedExecutionError); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("could not abandon crashed execution: %w", err)
+	}
+
+	h.logger.Warn("execution abandoned after worker crash",
+		"execID", job.ExecID, "flow", payload.Workflow.Meta.ID)
+	h.recordMetricsAndNotifications(ctx, job.ExecID, repo.ExecutionStatusErrored, payload,
+		errors.New(abandonedExecutionError))
+	return true, nil
 }
 
 // executeFlow executes a flow
@@ -726,6 +752,9 @@ func (h *FlowExecutionHandler) interpolateVariables(action Action, runCtx flowRu
 			inputVars[variable.Name()] = output
 		}
 	}
+
+	inputVars["FC_EXEC_ID"] = runCtx.execID
+	inputVars["FC_ATTEMPT"] = strconv.FormatInt(int64(runCtx.actionRetry), 10)
 
 	return inputVars, nil
 }

@@ -13,6 +13,7 @@ import (
 )
 
 type Querier interface {
+	AbandonExecution(ctx context.Context, arg AbandonExecutionParams) (Execution, error)
 	AccessCredential(ctx context.Context, arg AccessCredentialParams) (Credential, error)
 	AddApprovalRequest(ctx context.Context, arg AddApprovalRequestParams) (AddApprovalRequestRow, error)
 	AddExecution(ctx context.Context, arg AddExecutionParams) (Execution, error)
@@ -160,6 +161,7 @@ type Querier interface {
 	ListFlowsPaginatedFiltered(ctx context.Context, arg ListFlowsPaginatedFilteredParams) ([]ListFlowsPaginatedFilteredRow, error)
 	ListNamespaceSecrets(ctx context.Context, argUuid uuid.UUID) ([]ListNamespaceSecretsRow, error)
 	ListNamespaces(ctx context.Context, arg ListNamespacesParams) ([]ListNamespacesRow, error)
+	ListRunningActions(ctx context.Context, execID string) ([]string, error)
 	ListSchedules(ctx context.Context, arg ListSchedulesParams) ([]ListSchedulesRow, error)
 	LoadExecutionEvents(ctx context.Context, execID string) ([]ExecutionEvent, error)
 	MarkAllFlowsInactiveForNamespace(ctx context.Context, argUuid uuid.UUID) error

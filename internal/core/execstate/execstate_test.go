@@ -93,19 +93,37 @@ func TestRecorderRunnableAfterActionReset(t *testing.T) {
 	}
 }
 
-func TestRecorderCrashRecovery(t *testing.T) {
-	store := &fakeEventStore{
-		attempt: 1,
-		events: []Event{
-			{Type: EventQueued},
-			{Type: EventStarted},
-			{ActionID: "build", Type: EventActionStarted},
-			{ActionID: "build", Type: EventActionCompleted},
-			{ActionID: "test_unit", Type: EventActionStarted},
-			{ActionID: "test_integration", Type: EventActionStarted},
-			{ActionID: "test_integration", Type: EventActionCompleted},
-		},
+func TestRecorderResumeAfterAbandon(t *testing.T) {
+	const note = "execution abandoned: worker did not finish (crash or restart)"
+	abandoned := []Event{
+		{Type: EventQueued},
+		{Type: EventStarted},
+		{ActionID: "build", Type: EventActionStarted},
+		{ActionID: "build", Type: EventActionCompleted},
+		{ActionID: "test_unit", Type: EventActionStarted},
+		{ActionID: "test_integration", Type: EventActionStarted},
+		{ActionID: "test_integration", Type: EventActionCompleted},
+		{ActionID: "test_unit", Type: EventActionFailed, Error: note},
+		{Type: EventErrored, Error: note},
 	}
+
+	state := Fold(abandoned)
+	if state.Status != "errored" {
+		t.Errorf("status = %q, want errored", state.Status)
+	}
+	if state.CurrentActionID != "test_unit" {
+		t.Errorf("current action = %q, want test_unit", state.CurrentActionID)
+	}
+	if got := state.Actions["test_unit"]; got.Status != ActionStatusFailed || got.Error != note {
+		t.Errorf("interrupted action = %+v, want failed with the abandon note", got)
+	}
+	for _, id := range []string{"build", "test_integration"} {
+		if state.Actions[id].Status != ActionStatusCompleted {
+			t.Errorf("action %q = %q, want completed", id, state.Actions[id].Status)
+		}
+	}
+
+	store := &fakeEventStore{attempt: 2, events: abandoned}
 	recorder, err := newRecorder(context.Background(), store, "exec")
 	if err != nil {
 		t.Fatal(err)
@@ -117,8 +135,14 @@ func TestRecorderCrashRecovery(t *testing.T) {
 			t.Errorf("Runnable(%q) = %v, want %v", id, got, want)
 		}
 	}
-	if recorder.attempt != 2 {
-		t.Fatalf("attempt = %d, want 2", recorder.attempt)
+	if recorder.attempt != 3 {
+		t.Fatalf("attempt = %d, want 3", recorder.attempt)
+	}
+	if err := recorder.StartAction(context.Background(), "test_unit"); err != nil {
+		t.Fatal(err)
+	}
+	if got := recorder.Attempt("test_unit"); got != 2 {
+		t.Fatalf("action attempt = %d, want 2", got)
 	}
 }
 

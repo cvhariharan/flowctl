@@ -112,6 +112,7 @@ type Store interface {
 	AddExecutionTx(ctx context.Context, params AddExecutionParams, outputs map[string]any) (Execution, error)
 	QueueExecutionTx(ctx context.Context, params AddExecutionParams, outputs map[string]any, job ExecutionJob) (Execution, error)
 	CancelExecutionTx(ctx context.Context, params CancelExecutionParams, note string) (Execution, error)
+	AbandonExecutionTx(ctx context.Context, execID string, note string) (Execution, error)
 	RequeueExecutionTx(ctx context.Context, params RequeueExecutionParams) (int32, error)
 	RequeueExecutionAndJobTx(ctx context.Context, params RequeueExecutionParams, job ExecutionJob) (int32, error)
 	ResetActionsAndRequeueTx(ctx context.Context, params RequeueExecutionParams, actionIDs []string, job ExecutionJob) (int32, error)
@@ -288,6 +289,40 @@ func (p *PostgresStore) CancelExecutionTx(ctx context.Context, params CancelExec
 		return Execution{}, err
 	}
 	if err := appendEvent(ctx, q, Event{ExecID: exec.ExecID, Attempt: exec.Attempt, Type: ExecutionEventTypeCancelled, Error: note}); err != nil {
+		return Execution{}, err
+	}
+	return exec, tx.Commit()
+}
+
+func (p *PostgresStore) AbandonExecutionTx(ctx context.Context, execID string, note string) (Execution, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Execution{}, err
+	}
+	defer tx.Rollback()
+	q := &Queries{db: tx}
+	exec, err := q.AbandonExecution(ctx, AbandonExecutionParams{
+		ExecID: execID,
+		Error:  sql.NullString{String: note, Valid: note != ""},
+	})
+	if err != nil {
+		return Execution{}, err
+	}
+	running, err := q.ListRunningActions(ctx, execID)
+	if err != nil {
+		return Execution{}, err
+	}
+	for _, actionID := range running {
+		if err := appendEvent(ctx, q, Event{
+			ExecID: exec.ExecID, Attempt: exec.Attempt, ActionID: actionID,
+			Type: ExecutionEventTypeActionFailed, Error: note,
+		}); err != nil {
+			return Execution{}, err
+		}
+	}
+	if err := appendEvent(ctx, q, Event{
+		ExecID: exec.ExecID, Attempt: exec.Attempt, Type: ExecutionEventTypeErrored, Error: note,
+	}); err != nil {
 		return Execution{}, err
 	}
 	return exec, tx.Commit()

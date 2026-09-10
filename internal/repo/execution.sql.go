@@ -16,6 +16,44 @@ import (
 	"github.com/sqlc-dev/pqtype"
 )
 
+const abandonExecution = `-- name: AbandonExecution :one
+UPDATE executions SET
+    status = 'errored', error = $1, completed_at = NOW(), updated_at = NOW(),
+    attempt = attempt + 1
+WHERE exec_id = $2 AND status = 'running'
+RETURNING id, exec_id, flow_id, namespace_id, triggered_by, trigger_type, inputs, scheduled_at, created_at, attempt, status, error, outputs, started_at, completed_at, updated_at, schedule_name
+`
+
+type AbandonExecutionParams struct {
+	Error  sql.NullString `db:"error" json:"error"`
+	ExecID string         `db:"exec_id" json:"exec_id"`
+}
+
+func (q *Queries) AbandonExecution(ctx context.Context, arg AbandonExecutionParams) (Execution, error) {
+	row := q.db.QueryRowContext(ctx, abandonExecution, arg.Error, arg.ExecID)
+	var i Execution
+	err := row.Scan(
+		&i.ID,
+		&i.ExecID,
+		&i.FlowID,
+		&i.NamespaceID,
+		&i.TriggeredBy,
+		&i.TriggerType,
+		&i.Inputs,
+		&i.ScheduledAt,
+		&i.CreatedAt,
+		&i.Attempt,
+		&i.Status,
+		&i.Error,
+		&i.Outputs,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.UpdatedAt,
+		&i.ScheduleName,
+	)
+	return i, err
+}
+
 const addExecution = `-- name: AddExecution :one
 WITH user_lookup AS (
     SELECT id FROM users WHERE users.uuid = $4
@@ -76,7 +114,7 @@ func (q *Queries) AddExecution(ctx context.Context, arg AddExecutionParams) (Exe
 
 const beginAttempt = `-- name: BeginAttempt :one
 UPDATE executions SET attempt = attempt + 1, updated_at = NOW()
-WHERE exec_id = $1 AND status IN ('pending', 'running', 'errored')
+WHERE exec_id = $1 AND status IN ('pending', 'errored')
 RETURNING attempt
 `
 
@@ -1001,6 +1039,39 @@ func (q *Queries) ListExecutionIDs(ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 		items = append(items, exec_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRunningActions = `-- name: ListRunningActions :many
+SELECT latest.action_id::text AS action_id FROM (
+    SELECT DISTINCT ON (action_id) action_id, type
+    FROM execution_events
+    WHERE exec_id = $1 AND action_id IS NOT NULL
+    ORDER BY action_id, seq DESC
+) latest
+WHERE latest.type = 'action_started'
+`
+
+func (q *Queries) ListRunningActions(ctx context.Context, execID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listRunningActions, execID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var action_id string
+		if err := rows.Scan(&action_id); err != nil {
+			return nil, err
+		}
+		items = append(items, action_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

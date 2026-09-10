@@ -58,8 +58,24 @@ SELECT * FROM execution_events WHERE exec_id = $1 ORDER BY seq;
 
 -- name: BeginAttempt :one
 UPDATE executions SET attempt = attempt + 1, updated_at = NOW()
-WHERE exec_id = $1 AND status IN ('pending', 'running', 'errored')
+WHERE exec_id = $1 AND status IN ('pending', 'errored')
 RETURNING attempt;
+
+-- name: ListRunningActions :many
+SELECT latest.action_id::text AS action_id FROM (
+    SELECT DISTINCT ON (action_id) action_id, type
+    FROM execution_events
+    WHERE exec_id = $1 AND action_id IS NOT NULL
+    ORDER BY action_id, seq DESC
+) latest
+WHERE latest.type = 'action_started';
+
+-- name: AbandonExecution :one
+UPDATE executions SET
+    status = 'errored', error = sqlc.narg(error), completed_at = NOW(), updated_at = NOW(),
+    attempt = attempt + 1
+WHERE exec_id = sqlc.arg(exec_id) AND status = 'running'
+RETURNING *;
 
 -- name: RequeueExecution :one
 WITH namespace_lookup AS (
