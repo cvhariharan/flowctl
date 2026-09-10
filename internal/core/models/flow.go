@@ -9,12 +9,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cvhariharan/flowctl/internal/expreval"
 	"github.com/cvhariharan/flowctl/internal/scheduler"
-	"github.com/expr-lang/expr"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/huml-lang/go-huml"
 	"gopkg.in/yaml.v3"
+)
+
+var (
+	flowEvaluator         = expreval.New()
+	inputDefaultEvaluator = expreval.New(expreval.Strict())
 )
 
 type InputType string
@@ -347,21 +352,56 @@ func validateDefaultValue(input Input) error {
 		return nil
 	}
 
+	if input.HasDynamicDefault() {
+		if err := inputDefaultEvaluator.ValidateTemplate(input.Default, nil); err != nil {
+			return fmt.Errorf("invalid default expression: %w", err)
+		}
+		return nil
+	}
+
+	if strings.Contains(input.Default, "{{") {
+		return fmt.Errorf("invalid default expression: %q is not a closed {{ ... }} expression", input.Default)
+	}
+
+	return validateDefaultLiteral(input, input.Default)
+}
+
+func validateDefaultLiteral(input Input, value string) error {
 	switch input.Type {
 	case INPUT_TYPE_CHECKBOX:
-		if input.Default != "true" && input.Default != "false" {
+		if value != "true" && value != "false" {
 			return fmt.Errorf("default for checkbox must be 'true' or 'false'")
 		}
 	case INPUT_TYPE_NUMBER:
-		if _, err := strconv.ParseFloat(input.Default, 64); err != nil {
+		if _, err := strconv.ParseFloat(value, 64); err != nil {
 			return fmt.Errorf("default for number must be a valid number")
 		}
 	case INPUT_TYPE_SELECT:
-		if len(input.Options) > 0 && !slices.Contains(input.Options, input.Default) {
+		if len(input.Options) > 0 && !slices.Contains(input.Options, value) {
 			return fmt.Errorf("default for select must be one of the options")
 		}
 	}
 	return nil
+}
+
+func (i Input) HasDynamicDefault() bool {
+	return i.Default != "" && inputDefaultEvaluator.HasTemplate(i.Default)
+}
+
+func (i Input) ResolveDefault() (string, error) {
+	if !i.HasDynamicDefault() {
+		return i.Default, nil
+	}
+
+	value, err := inputDefaultEvaluator.Interpolate(i.Default, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if err := validateDefaultLiteral(i, value); err != nil {
+		return "", err
+	}
+	return value, nil
 }
 
 func (f Flow) ValidateInput(inputs map[string]interface{}) *FlowValidationError {
@@ -393,12 +433,7 @@ func (f Flow) ValidateInput(inputs map[string]interface{}) *FlowValidationError 
 			input.Name: value,
 		}
 
-		program, err := expr.Compile(input.Validation, expr.Env(env))
-		if err != nil {
-			return &FlowValidationError{FieldName: input.Name, Msg: "Failed running validation", Err: err}
-		}
-
-		output, err := expr.Run(program, env)
+		output, err := flowEvaluator.Eval(input.Validation, env)
 		if err != nil {
 			return &FlowValidationError{FieldName: input.Name, Msg: "Failed running validation", Err: err}
 		}
@@ -595,6 +630,11 @@ func ConvertToSchedulerFlow(ctx context.Context, f Flow, namespaceUUID uuid.UUID
 	// Convert inputs
 	var inputs []scheduler.Input
 	for _, inp := range f.Inputs {
+		defaultValue, err := inp.ResolveDefault()
+		if err != nil {
+			return scheduler.Flow{}, fmt.Errorf("failed to resolve default for input %s: %w", inp.Name, err)
+		}
+
 		inputs = append(inputs, scheduler.Input{
 			Name:        inp.Name,
 			Type:        scheduler.InputType(inp.Type),
@@ -602,7 +642,7 @@ func ConvertToSchedulerFlow(ctx context.Context, f Flow, namespaceUUID uuid.UUID
 			Description: inp.Description,
 			Validation:  inp.Validation,
 			Required:    inp.Required,
-			Default:     inp.Default,
+			Default:     defaultValue,
 			MaxFileSize: inp.MaxFileSize,
 		})
 	}

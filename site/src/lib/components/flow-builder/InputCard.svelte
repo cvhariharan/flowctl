@@ -321,7 +321,14 @@
       {#if input.type !== 'file' && input.type !== 'select'}
         <div class="col-6" data-field>
           <label for="input-{index}-default">Default value</label>
-          <input id="input-{index}-default" type="text" {disabled} bind:value={input.default} />
+          <input
+            id="input-{index}-default"
+            type="text"
+            {disabled}
+            bind:value={input.default}
+            placeholder={`{{ 2+2 }}`}
+          />
+          <span data-hint>Wrap an expr expression in {'{{ }}'} to compute the value.</span>
         </div>
       {/if}
       <div class="col-6" data-field>

@@ -19,16 +19,18 @@ import (
 	"time"
 
 	coreexecstate "github.com/cvhariharan/flowctl/internal/core/execstate"
+	"github.com/cvhariharan/flowctl/internal/expreval"
 	"github.com/cvhariharan/flowctl/internal/metrics"
 	"github.com/cvhariharan/flowctl/internal/repo"
 	"github.com/cvhariharan/flowctl/internal/streamlogger"
 	"github.com/cvhariharan/flowctl/sdk/executor"
-	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 )
 
 const PayloadTypeFlowExecution PayloadType = "flow_execution"
+
+var flowEvaluator = expreval.New()
 
 // globalOutputKey is the reserved outputs bucket for FC_OUTPUT_GLOBAL values.
 // Referenced from flows as outputs.global.<action_id>.<KEY>.
@@ -697,42 +699,31 @@ func prefixResultKeys(results map[string]string, nodeName string) map[string]str
 
 // interpolateVariables processes action variables and replaces templated values with evaluated expressions
 func (h *FlowExecutionHandler) interpolateVariables(action Action, runCtx flowRunContext) (map[string]any, error) {
-	// pattern to extract interpolated variables
-	pattern := `{{\s*([^}]+)\s*}}`
-	re := regexp.MustCompile(pattern)
-
 	h.logger.Debug("scheduler variables", "input", runCtx.input)
 
 	inputVars := make(map[string]any)
 	for _, variable := range action.Variables {
-		matches := re.FindAllStringSubmatch(variable.Value(), -1)
-		if len(matches) > 0 {
-			// Interpolated variable, needs evaluation
-			inputExpr := matches[0][1]
-			env := map[string]any{
-				"inputs":  runCtx.input,
-				"secrets": runCtx.secrets,
-				"outputs": runCtx.outputs,
-				"meta":    runCtx.variableMeta,
-			}
+		value := variable.Value()
+		if !flowEvaluator.HasTemplate(value) {
+			inputVars[variable.Name()] = value
+			continue
+		}
 
-			program, err := expr.Compile(inputExpr, expr.Env(env))
-			if err != nil {
-				return nil, fmt.Errorf("failed to compile expression: %w", err)
-			}
+		env := map[string]any{
+			"inputs":  runCtx.input,
+			"secrets": runCtx.secrets,
+			"outputs": runCtx.outputs,
+			"meta":    runCtx.variableMeta,
+		}
 
-			output, err := expr.Run(program, env)
-			if err != nil {
-				return nil, fmt.Errorf("failed to run expression: %w", err)
-			}
+		output, err := flowEvaluator.EvalTemplate(value, env)
+		if err != nil {
+			return nil, err
+		}
 
-			inputVars[variable.Name()] = ""
-			if output != nil {
-				inputVars[variable.Name()] = output
-			}
-		} else {
-			// Normal variable, no evaluation
-			inputVars[variable.Name()] = variable.Value()
+		inputVars[variable.Name()] = ""
+		if output != nil {
+			inputVars[variable.Name()] = output
 		}
 	}
 
@@ -1133,9 +1124,10 @@ func applyDefaultInputs(definitions []Input, inputs map[string]any) {
 			continue
 		}
 		v, exists := inputs[inp.Name]
-		if !exists || v == "" || v == nil {
-			inputs[inp.Name] = inp.Default
+		if exists && v != "" && v != nil {
+			continue
 		}
+		inputs[inp.Name] = inp.Default
 	}
 }
 

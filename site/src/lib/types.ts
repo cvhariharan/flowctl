@@ -142,6 +142,7 @@ export interface FlowInput {
     | "node";
   options: string[];
   default?: string;
+  default_dynamic?: boolean;
   multiple?: boolean;
   max_file_size?: number;
 }

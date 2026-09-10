@@ -485,6 +485,19 @@ func (h *Handler) HandleGetFlowInputs(c echo.Context) error {
 	}
 
 	inputs := coreFlowInputsToInputs(flow.Inputs)
+	for i, input := range flow.Inputs {
+		if !input.HasDynamicDefault() {
+			continue
+		}
+		value, err := input.ResolveDefault()
+		if err != nil {
+			h.logger.Warn("could not resolve input default", "flow", req.FlowID, "input", input.Name, "error", err)
+			value = ""
+		}
+		inputs[i].Default = value
+		inputs[i].DefaultDynamic = true
+	}
+
 	return c.JSON(http.StatusOK, FlowInputsResp{
 		Inputs:           inputs,
 		OptionsRequestID: optionsRequestID,

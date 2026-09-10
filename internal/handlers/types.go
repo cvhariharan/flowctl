@@ -389,14 +389,15 @@ type FlowListItem struct {
 }
 
 type FlowInput struct {
-	Name        string   `json:"name"`
-	Label       string   `json:"label"`
-	Description string   `json:"description"`
-	Required    bool     `json:"required"`
-	Type        string   `json:"type"`
-	Options     []string `json:"options"`
-	Default     string   `json:"default,omitempty"`
-	MaxFileSize int64    `json:"max_file_size,omitempty"`
+	Name           string   `json:"name"`
+	Label          string   `json:"label"`
+	Description    string   `json:"description"`
+	Required       bool     `json:"required"`
+	Type           string   `json:"type"`
+	Options        []string `json:"options"`
+	Default        string   `json:"default,omitempty"`
+	DefaultDynamic bool     `json:"default_dynamic,omitempty"`
+	MaxFileSize    int64    `json:"max_file_size,omitempty"`
 }
 
 type FlowInputsResp struct {

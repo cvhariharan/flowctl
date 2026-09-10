@@ -39,7 +39,7 @@
     }
     // Initialize inputs with defaults for create mode
     const initialInputs: Record<string, any> = {};
-    flowInputs.forEach(input => {
+    scheduleInputs.forEach(input => {
       if (input.default) {
         initialInputs[input.name] = input.default;
       }
@@ -52,6 +52,10 @@
       inputs: initialInputs
     };
   }
+
+  const scheduleInputs = flowInputs.map(input =>
+    input.default_dynamic ? { ...input, default: undefined } : input
+  );
 
   let formData = $state(getInitialFormData());
   let loading = $state(false);
@@ -173,7 +177,7 @@
       {#if flowInputs.length > 0}
         <div class="inputs-section">
           <h3 class="text-sm font-medium">Flow Inputs</h3>
-          <FlowInputFields inputs={flowInputs} bind:values={formData.inputs} {namespace} {flowId} />
+          <FlowInputFields inputs={scheduleInputs} bind:values={formData.inputs} {namespace} {flowId} />
         </div>
       {/if}
     </section>

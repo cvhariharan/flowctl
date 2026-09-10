@@ -15,15 +15,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/cvhariharan/flowctl/internal/core/execstate"
 	"github.com/cvhariharan/flowctl/internal/core/models"
+	"github.com/cvhariharan/flowctl/internal/expreval"
 	"github.com/cvhariharan/flowctl/internal/repo"
 	"github.com/cvhariharan/flowctl/internal/scheduler"
-	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 	"github.com/sqlc-dev/pqtype"
@@ -1684,11 +1683,11 @@ func (c *Core) ResolveRemoteOptions(ctx context.Context, ro models.RemoteOptions
 	return result.Options, nil
 }
 
+var headerEvaluator = expreval.New()
+
 // interpolateRemoteHeader evaluates {{ expression }} placeholders in a header
 // value using expr-lang. The available env keys are secrets, inputs, outputs.
 func interpolateRemoteHeader(value string, secrets map[string]string, inputs map[string]interface{}, outputs map[string]interface{}) (string, error) {
-	re := regexp.MustCompile(`{{\s*([^}]+)\s*}}`)
-
 	if inputs == nil {
 		inputs = make(map[string]interface{})
 	}
@@ -1696,45 +1695,11 @@ func interpolateRemoteHeader(value string, secrets map[string]string, inputs map
 		outputs = make(map[string]interface{})
 	}
 
-	var evalErr error
-	result := re.ReplaceAllStringFunc(value, func(match string) string {
-		if evalErr != nil {
-			return ""
-		}
-		sub := re.FindStringSubmatch(match)
-		if len(sub) < 2 {
-			return match
-		}
-		exprStr := strings.TrimSpace(sub[1])
-
-		env := map[string]interface{}{
-			"secrets": secrets,
-			"inputs":  inputs,
-			"outputs": outputs,
-		}
-
-		program, err := expr.Compile(exprStr, expr.Env(env))
-		if err != nil {
-			evalErr = fmt.Errorf("failed to compile header expression %q: %w", exprStr, err)
-			return ""
-		}
-
-		out, err := expr.Run(program, env)
-		if err != nil {
-			evalErr = fmt.Errorf("failed to evaluate header expression %q: %w", exprStr, err)
-			return ""
-		}
-
-		if out == nil {
-			return ""
-		}
-		return fmt.Sprintf("%v", out)
+	return headerEvaluator.Interpolate(value, map[string]any{
+		"secrets": secrets,
+		"inputs":  inputs,
+		"outputs": outputs,
 	})
-
-	if evalErr != nil {
-		return "", evalErr
-	}
-	return result, nil
 }
 
 type remoteOptionsCacheEntry struct {
