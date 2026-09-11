@@ -128,6 +128,21 @@ The timezone selector defaults to your browser's local timezone. You can search 
 A finished execution can be run again with the same inputs from the **Retry** button on the execution
 page. This queues a fresh execution; the original is left as it is.
 
+### Interrupted Executions
+
+If the server stops while an execution is running, whether from a crash, a restart or a deploy, that
+execution is marked **errored** with `execution abandoned: worker did not finish (crash or restart)`.
+It is not picked up and continued on its own. Resume it with the **Retry** button when you are ready:
+actions that already completed are skipped, and the interrupted one runs again from the start.
+
+The action that was in flight is marked **failed** with the same message, so the execution page shows
+exactly where the run stopped.
+
+!!! note
+      An action that was interrupted part way through always runs again from the start when the
+      execution is resumed. flowctl has no way to know how far it got, so an action with side
+      effects should either be safe to repeat or guard itself with `$FC_ATTEMPT`.
+
 ### Re-running from an Action
 
 If only part of a flow needs to run again, pick the action to start from instead of re-running the

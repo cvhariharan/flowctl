@@ -54,7 +54,7 @@
             value={flow.metadata.name}
             oninput={(e) => updateName(e.currentTarget.value)}
             disabled={nameLocked || disabled}
-            placeholder="Deploy kite"
+            placeholder="Deploy app"
           />
           <span data-hint>
             {#if nameLocked}

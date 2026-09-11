@@ -273,6 +273,32 @@ variables:
 
 If multiple nodes write the same key to `$FC_OUTPUT_GLOBAL`, the last one to finish wins. Since `global` is used for this namespace, it can't be used as a node name.
 
+## Execution Context
+
+Alongside its own `variables`, every action gets two variables describing the run it belongs to:
+
+| Variable | Description |
+| --- | --- |
+| `$FC_EXEC_ID` | ID of the execution. Stays the same across resumes and re-runs of that execution. |
+| `$FC_ATTEMPT` | How many times this action has been started, counting from 1. |
+
+`$FC_ATTEMPT` is `1` the first time an action runs and goes up every time it starts again, whether
+that is a `max_retries` retry, a resume, or a re-run from that action. Use it to make an action safe
+to repeat:
+
+```yaml
+- id: provision
+  name: Provision
+  executor: script
+  with:
+    script: |
+      if [ "$FC_ATTEMPT" -gt 1 ]; then
+        echo "cleaning up after attempt $((FC_ATTEMPT - 1))"
+        ./cleanup.sh
+      fi
+      ./provision.sh
+```
+
 ## Next Steps
 
 - Reference [Inputs](/docs/general/flow-inputs) in action variables
