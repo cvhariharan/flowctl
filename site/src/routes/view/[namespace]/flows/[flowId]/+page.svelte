@@ -43,6 +43,11 @@
         data.flowMeta?.scheduled_executions || [],
     );
     let userSchedules = $state<any[]>(data.userSchedules || []);
+    let allCronSchedules = $state<any[]>(data.allUserSchedules || []);
+    let scheduleCurrentPage = $state(1);
+    let schedulePageCount = $state(data.userSchedulesPageCount || 1);
+    let scheduleTotalCount = $state(data.userSchedulesTotalCount || 0);
+    let schedulesLoading = $state(false);
 
     let namespace = $derived(page.params.namespace!);
     let encodedNamespace = $derived(encodeURIComponent(namespace));
@@ -62,16 +67,27 @@
     );
 
     // Reload schedules after updates
-    const reloadSchedules = async () => {
+    const reloadSchedules = async (page = scheduleCurrentPage) => {
+        schedulesLoading = true;
         try {
-            const res = await apiClient.flows.schedules.list(
-                namespace!,
-                flowId!,
-            );
+            const [res, allRes] = await Promise.all([
+                apiClient.flows.schedules.list(namespace!, flowId!, { page, count_per_page: 10 }),
+                apiClient.flows.schedules.list(namespace!, flowId!, { count_per_page: 100 }),
+            ]);
             userSchedules = res.schedules || [];
+            schedulePageCount = res.page_count || 1;
+            scheduleTotalCount = res.total_count || 0;
+            scheduleCurrentPage = page;
+            allCronSchedules = allRes.schedules || [];
         } catch (error) {
             handleInlineError(error, "Failed to reload schedules");
+        } finally {
+            schedulesLoading = false;
         }
+    };
+
+    const handleSchedulePageChange = (event: CustomEvent<{ page: number }>) => {
+        reloadSchedules(event.detail.page);
     };
 
     const refreshScheduledExecutions = async () => {
@@ -312,7 +328,7 @@
             <div class="vstack gap-4">
                 <ScheduledExecutionsList
                     schedules={scheduledExecutions}
-                    cronSchedules={userSchedules}
+                    cronSchedules={allCronSchedules}
                     namespace={namespace!}
                     flowId={flowId!}
                 />
@@ -325,9 +341,24 @@
                         false}
                     user={data.user}
                     schedules={userSchedules}
+                    totalCount={scheduleTotalCount}
                     onUpdate={reloadSchedules}
                     {canUpdateFlow}
                 />
+
+                {#if schedulePageCount > 1}
+                    <div class="mt-6 hstack justify-between items-center">
+                        <div class="text-light text-sm">
+                            Showing {(scheduleCurrentPage - 1) * 10 + 1} to {(scheduleCurrentPage - 1) * 10 + userSchedules.length} of {scheduleTotalCount} schedules
+                        </div>
+                        <Pagination
+                            currentPage={scheduleCurrentPage}
+                            totalPages={schedulePageCount}
+                            loading={schedulesLoading}
+                            on:page-change={handleSchedulePageChange}
+                        />
+                    </div>
+                {/if}
 
             </div>
         </div>
