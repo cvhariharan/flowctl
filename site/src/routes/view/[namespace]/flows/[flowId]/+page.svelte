@@ -43,11 +43,14 @@
         data.flowMeta?.scheduled_executions || [],
     );
     let userSchedules = $state<any[]>(data.userSchedules || []);
-    let allCronSchedules = $state<any[]>(data.allUserSchedules || []);
     let scheduleCurrentPage = $state(1);
     let schedulePageCount = $state(data.userSchedulesPageCount || 1);
     let scheduleTotalCount = $state(data.userSchedulesTotalCount || 0);
     let schedulesLoading = $state(false);
+    let upcomingSchedules = $state<any[]>(data.upcomingSchedules || []);
+    let upcomingCurrentPage = $state(1);
+    let upcomingPageCount = $state(data.upcomingSchedulesPageCount || 1);
+    let upcomingLoading = $state(false);
 
     let namespace = $derived(page.params.namespace!);
     let encodedNamespace = $derived(encodeURIComponent(namespace));
@@ -70,15 +73,14 @@
     const reloadSchedules = async (page = scheduleCurrentPage) => {
         schedulesLoading = true;
         try {
-            const [res, allRes] = await Promise.all([
-                apiClient.flows.schedules.list(namespace!, flowId!, { page, count_per_page: 10 }),
-                apiClient.flows.schedules.list(namespace!, flowId!, { count_per_page: 100 }),
-            ]);
+            const res = await apiClient.flows.schedules.list(namespace!, flowId!, { page, count_per_page: 10 });
+            if (!res.schedules?.length && page > 1) {
+                return await reloadSchedules(page - 1);
+            }
             userSchedules = res.schedules || [];
             schedulePageCount = res.page_count || 1;
             scheduleTotalCount = res.total_count || 0;
             scheduleCurrentPage = page;
-            allCronSchedules = allRes.schedules || [];
         } catch (error) {
             handleInlineError(error, "Failed to reload schedules");
         } finally {
@@ -86,8 +88,25 @@
         }
     };
 
-    const handleSchedulePageChange = (event: CustomEvent<{ page: number }>) => {
-        reloadSchedules(event.detail.page);
+    const reloadUpcomingSchedules = async (page = upcomingCurrentPage) => {
+        upcomingLoading = true;
+        try {
+            const res = await apiClient.flows.schedules.list(namespace!, flowId!, { page, count_per_page: 5 });
+            if (!res.schedules?.length && page > 1) {
+                return await reloadUpcomingSchedules(page - 1);
+            }
+            upcomingSchedules = res.schedules || [];
+            upcomingPageCount = res.page_count || 1;
+            upcomingCurrentPage = page;
+        } catch (error) {
+            handleInlineError(error, "Failed to reload upcoming schedules");
+        } finally {
+            upcomingLoading = false;
+        }
+    };
+
+    const handleSchedulesUpdate = async () => {
+        await Promise.all([reloadSchedules(), reloadUpcomingSchedules()]);
     };
 
     const refreshScheduledExecutions = async () => {
@@ -327,10 +346,14 @@
         <div class="container" style="--container-max: 64rem; --container-pad: 0">
             <div class="vstack gap-4">
                 <ScheduledExecutionsList
-                    schedules={scheduledExecutions}
-                    cronSchedules={allCronSchedules}
+                    schedules={upcomingCurrentPage === 1 ? scheduledExecutions : []}
+                    cronSchedules={upcomingSchedules}
                     namespace={namespace!}
                     flowId={flowId!}
+                    currentPage={upcomingCurrentPage}
+                    totalPages={upcomingPageCount}
+                    loading={upcomingLoading}
+                    onPageChange={reloadUpcomingSchedules}
                 />
 
                 <FlowSchedulesList
@@ -342,24 +365,13 @@
                     user={data.user}
                     schedules={userSchedules}
                     totalCount={scheduleTotalCount}
-                    onUpdate={reloadSchedules}
+                    onUpdate={handleSchedulesUpdate}
                     {canUpdateFlow}
+                    currentPage={scheduleCurrentPage}
+                    totalPages={schedulePageCount}
+                    loading={schedulesLoading}
+                    onPageChange={reloadSchedules}
                 />
-
-                {#if schedulePageCount > 1}
-                    <div class="mt-6 hstack justify-between items-center">
-                        <div class="text-light text-sm">
-                            Showing {(scheduleCurrentPage - 1) * 10 + 1} to {(scheduleCurrentPage - 1) * 10 + userSchedules.length} of {scheduleTotalCount} schedules
-                        </div>
-                        <Pagination
-                            currentPage={scheduleCurrentPage}
-                            totalPages={schedulePageCount}
-                            loading={schedulesLoading}
-                            on:page-change={handleSchedulePageChange}
-                        />
-                    </div>
-                {/if}
-
             </div>
         </div>
     {/if}
