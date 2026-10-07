@@ -16,6 +16,7 @@
     userSchedulable = false,
     user,
     schedules = [],
+    totalCount,
     onUpdate,
     canUpdateFlow = false
   }: {
@@ -25,6 +26,7 @@
     userSchedulable: boolean;
     user: any;
     schedules?: UserSchedule[];
+    totalCount?: number;
     onUpdate?: () => Promise<void>;
     canUpdateFlow?: boolean;
   } = $props();
@@ -102,7 +104,7 @@
   <header class="hstack justify-between">
     <div>
       <h3>Schedules</h3>
-      <p class="text-lighter text-xs">{schedules.length} {schedules.length === 1 ? 'schedule' : 'schedules'}</p>
+      <p class="text-lighter text-xs">{totalCount ?? schedules.length} {(totalCount ?? schedules.length) === 1 ? 'schedule' : 'schedules'}</p>
     </div>
     {#if canCreateSchedule}
       <button
