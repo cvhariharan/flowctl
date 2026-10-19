@@ -14,8 +14,8 @@
   const logout = async () => {
     clearPermissionCache();
     try {
-      await apiClient.auth.logout();
-      window.location.href = '/login';
+      const { redirectUrl } = await apiClient.auth.logout();
+      window.location.href = redirectUrl || '/login';
     } catch (error) {
       handleInlineError(error, 'Unable to Log Out');
       window.location.href = '/login';

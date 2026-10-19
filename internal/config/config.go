@@ -157,8 +157,10 @@ type OIDCAutoCreateConfig struct {
 type OIDCConfig struct {
 	Name            string               `koanf:"name" validate:"required,alpha"`
 	Issuer          string               `koanf:"issuer" validate:"required,url"`
+	DiscoveryURL    string               `koanf:"discovery_url" validate:"omitempty,url"`
 	AuthURL         string               `koanf:"auth_url" validate:"omitempty,url"`
 	TokenURL        string               `koanf:"token_url" validate:"omitempty,url"`
+	LogoutURL       string               `koanf:"logout_url" validate:"omitempty,url"`
 	RedirectURL     string               `koanf:"redirect_url" validate:"omitempty,url"`
 	ClientID        string               `koanf:"client_id" validate:"required"`
 	ClientSecret    string               `koanf:"client_secret" validate:"required"`

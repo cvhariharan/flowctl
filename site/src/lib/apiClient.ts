@@ -138,10 +138,20 @@ export const apiClient = {
         method: 'POST',
         body: JSON.stringify(credentials),
       }),
-    logout: () =>
-      baseFetch<void>('/logout', {
+    logout: async (): Promise<{ redirectUrl: string | null }> => {
+      const response = await fetch('/logout', {
         method: 'POST',
-      }),
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': getCsrfToken(),
+        },
+      });
+      if (!response.ok) {
+        throw new ApiError(response.status, response.statusText);
+      }
+      return { redirectUrl: response.headers.get('x-redirect') };
+    },
     getSSOProviders: () => baseFetch<SSOProvider[]>('/sso-providers'),
   },
 

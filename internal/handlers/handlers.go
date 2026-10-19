@@ -27,9 +27,10 @@ const (
 )
 
 type OIDCAuthConfig struct {
-	provider     *oidc.Provider
-	verifier     *oidc.IDTokenVerifier
-	oauth2Config *oauth2.Config
+	provider           *oidc.Provider
+	verifier           *oidc.IDTokenVerifier
+	oauth2Config       *oauth2.Config
+	endSessionEndpoint string
 }
 
 type Handler struct {
