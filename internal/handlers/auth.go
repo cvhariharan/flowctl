@@ -90,19 +90,7 @@ func isSafeRedirect(u string) bool {
 
 func (h *Handler) initOIDC() error {
 	for _, oauthConfig := range h.config.OIDC {
-		ctx := context.Background()
-
-		if oauthConfig.DiscoveryURL != "" {
-			// Route all OIDC backend requests (discovery, JWKS) through an internal URL
-			// when the public issuer is not directly reachable from the backend (e.g. Docker).
-			issuerURL, _ := url.Parse(oauthConfig.Issuer)
-			discoveryURL, _ := url.Parse(oauthConfig.DiscoveryURL)
-			ctx = oidc.ClientContext(ctx, &http.Client{
-				Transport: &hostRewriteTransport{from: issuerURL.Host, to: discoveryURL.Host},
-			})
-		}
-
-		provider, err := oidc.NewProvider(ctx, oauthConfig.Issuer)
+		provider, err := oidc.NewProvider(context.Background(), oauthConfig.Issuer)
 		if err != nil {
 			h.logger.Warn("skipping oidc provider initialization",
 				"provider", oauthConfig.Name,
@@ -147,7 +135,11 @@ func (h *Handler) initOIDC() error {
 		var discoveryClaims struct {
 			EndSessionEndpoint string `json:"end_session_endpoint"`
 		}
-		_ = provider.Claims(&discoveryClaims)
+		if err := provider.Claims(&discoveryClaims); err != nil {
+			h.logger.Warn("could not read end_session_endpoint from provider discovery",
+				"provider", oauthConfig.Name,
+				"error", err)
+		}
 
 		endSessionEndpoint := discoveryClaims.EndSessionEndpoint
 		if oauthConfig.LogoutURL != "" {
@@ -444,6 +436,8 @@ func (h *Handler) HandleLogout(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	}
 
+	var endSessionURL string
+
 	method, _ := sess.Get("method")
 	if method == "oidc" {
 		td, err := sess.Get("id_token")
@@ -453,15 +447,15 @@ func (h *Handler) HandleLogout(c echo.Context) error {
 				authConfig, ok := h.authconfig[tokenData.Provider]
 				if ok && authConfig.endSessionEndpoint != "" {
 					postLogoutURI, _ := url.JoinPath(h.config.App.RootURL, LoginPath)
-					params := url.Values{}
-					params.Set("id_token_hint", tokenData.RawIDToken)
-					params.Set("post_logout_redirect_uri", postLogoutURI)
-					params.Set("client_id", authConfig.oauth2Config.ClientID)
-					endSessionURL := authConfig.endSessionEndpoint + "?" + params.Encode()
-
-					c.Response().Header().Set("x-redirect", endSessionURL)
-					sess.Destroy()
-					return c.NoContent(http.StatusOK)
+					u, err := url.Parse(authConfig.endSessionEndpoint)
+					if err == nil {
+						params := u.Query()
+						params.Set("id_token_hint", tokenData.RawIDToken)
+						params.Set("post_logout_redirect_uri", postLogoutURI)
+						params.Set("client_id", authConfig.oauth2Config.ClientID)
+						u.RawQuery = params.Encode()
+						endSessionURL = u.String()
+					}
 				}
 			}
 		}
@@ -469,6 +463,10 @@ func (h *Handler) HandleLogout(c echo.Context) error {
 
 	if err := sess.Destroy(); err != nil {
 		return wrapError(ErrInternalError, "could not destroy session", err, nil)
+	}
+
+	if endSessionURL != "" {
+		c.Response().Header().Set("x-redirect", endSessionURL)
 	}
 
 	return c.NoContent(http.StatusOK)
@@ -560,22 +558,4 @@ func (h *Handler) HandleGetSSOProviders(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, providers)
-}
-
-// hostRewriteTransport rewrites the Host of outgoing requests from one value to another.
-// Used to route OIDC discovery/JWKS requests through an internal URL when the public
-// issuer host is not reachable from inside the backend (e.g. Docker dev environments).
-type hostRewriteTransport struct {
-	from string
-	to   string
-}
-
-func (t *hostRewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if req.URL.Host == t.from {
-		newReq := req.Clone(req.Context())
-		newReq.URL.Host = t.to
-		newReq.Host = t.to
-		return http.DefaultTransport.RoundTrip(newReq)
-	}
-	return http.DefaultTransport.RoundTrip(req)
 }
