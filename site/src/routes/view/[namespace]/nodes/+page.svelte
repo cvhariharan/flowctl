@@ -7,13 +7,15 @@
 	import Table from '$lib/components/shared/Table.svelte';
 	import Pagination from '$lib/components/shared/Pagination.svelte';
 	import NodeModal from '$lib/components/nodes/NodeModal.svelte';
+	import NodeImportModal from '$lib/components/nodes/NodeImportModal.svelte';
 	import DeleteModal from '$lib/components/shared/DeleteModal.svelte';
 	import { apiClient } from '$lib/apiClient';
-	import type { NodeResp, NodeReq, NodeStatsResp, NodesPaginateResponse, CredentialResp, CredentialsPaginateResponse } from '$lib/types';
+	import type { NodeResp, NodeReq, NodeStatsResp, NodesPaginateResponse, CredentialResp, CredentialsPaginateResponse, NodeImportResp } from '$lib/types';
 	import { DEFAULT_PAGE_SIZE } from '$lib/constants';
 	import Header from '$lib/components/shared/Header.svelte';
 	import { handleInlineError, showSuccess } from '$lib/utils/errorHandling';
 	import IconPlus from '@tabler/icons-svelte/icons/plus';
+	import IconUpload from '@tabler/icons-svelte/icons/upload';
 	import IconServer from '@tabler/icons-svelte/icons/server';
 	import NameLinkCell from '$lib/components/shared/cells/NameLinkCell.svelte';
 	import BadgeCell from '$lib/components/shared/cells/BadgeCell.svelte';
@@ -33,6 +35,7 @@
 	let credentials = $state<CredentialResp[]>([]);
 	let loading = $state(true);
 	let showModal = $state(false);
+	let showImportModal = $state(false);
 
 	// Handle the async data from load function
 	$effect(() => {
@@ -193,6 +196,19 @@
 		showModal = true;
 	}
 
+	function handleImportOpen() {
+		showImportModal = true;
+	}
+
+	async function handleImportNodes(file: File, credentialId: string): Promise<NodeImportResp> {
+		const result = await apiClient.nodes.import(data.namespace, file, credentialId);
+		if (result.imported > 0) {
+			showSuccess('Nodes imported', `${result.imported} node${result.imported === 1 ? '' : 's'} imported successfully.`);
+			await Promise.all([fetchNodes(), fetchStats()]);
+		}
+		return result;
+	}
+
 	async function handleEdit(nodeId: string) {
 		try {
 			const node = await apiClient.nodes.getById(data.namespace, nodeId);
@@ -284,6 +300,13 @@
 		subtitle="Manage remote nodes that run flows"
 		actions={[
 			{
+				label: 'Import',
+				onClick: handleImportOpen,
+				variant: 'secondary',
+				IconComponent: IconUpload,
+				iconSize: 16
+			},
+			{
 				label: 'Add',
 				onClick: handleAdd,
 				variant: 'primary',
@@ -357,6 +380,15 @@
 		{credentials}
 		onSave={handleNodeSave}
 		onClose={handleModalClose}
+	/>
+{/if}
+
+<!-- Import Modal -->
+{#if showImportModal}
+	<NodeImportModal
+		{credentials}
+		onImport={handleImportNodes}
+		onClose={() => { showImportModal = false; }}
 	/>
 {/if}
 

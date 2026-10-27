@@ -227,6 +227,17 @@ type NodeStatsResp struct {
 	QSSHHosts  int64 `json:"qssh_hosts"`
 }
 
+type NodeImportError struct {
+	Row   int    `json:"row"`
+	Name  string `json:"name,omitempty"`
+	Error string `json:"error"`
+}
+
+type NodeImportResp struct {
+	Imported int               `json:"imported"`
+	Errors   []NodeImportError `json:"errors"`
+}
+
 func coreNodeToNodeResp(n models.Node) NodeResp {
 	return NodeResp{
 		ID:             n.ID,
