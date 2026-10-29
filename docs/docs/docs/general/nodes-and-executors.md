@@ -138,6 +138,36 @@ Before adding a node, create SSH credentials:
 - **Credential**: SSH authentication credential
 - **Tags**: Optional labels for organization
 
+#### Step 3: Bulk Import Nodes from CSV (Optional)
+
+To add multiple nodes at once, use the **Import** button on the Nodes page.
+
+1. Navigate to **Nodes**
+2. Click **Import**
+3. Select a CSV file and choose a credential to apply to all imported nodes
+4. Click **Import**
+
+Use **Download CSV Template** in the modal to get a ready-to-fill template.
+
+**CSV format:**
+
+```csv
+name,hostname,port,username,connection_type,tags
+web_server_01,192.168.1.10,22,ubuntu,ssh,"production,web"
+db_server_01,192.168.1.20,22,admin,ssh,"production,database"
+```
+
+**Column rules:**
+
+- **`name`**: Alphanumeric and underscores only, max 50 characters
+- **`hostname`**: Valid IP address or hostname
+- **`port`**: 1–65535
+- **`username`**: 2–50 characters
+- **`connection_type`**: `ssh` or `qssh`
+- **`tags`**: Comma-separated, wrap in quotes if multiple (e.g. `"web,prod"`)
+
+Rows that fail validation are reported individually — valid rows in the same file are still imported.
+
 ### Using Remote Nodes in Flows
 
 Execute actions on remote nodes using the `on` field. You can specify node names directly or use tags to target multiple nodes.
