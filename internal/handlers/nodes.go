@@ -1,18 +1,14 @@
 package handlers
 
 import (
-	"encoding/csv"
+	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"strconv"
-	"strings"
 
+	"github.com/cvhariharan/flowctl/internal/core"
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/labstack/echo/v4"
 )
-
-const maxCSVImportSize = 1 << 20 // 1MB
 
 func (h *Handler) HandleCreateNode(c echo.Context) error {
 	namespace, ok := c.Get("namespace").(string)
@@ -27,10 +23,6 @@ func (h *Handler) HandleCreateNode(c echo.Context) error {
 
 	if err := h.validate.Struct(req); err != nil {
 		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
-	}
-
-	if req.Name == "local" || req.Name == "uploads" {
-		return wrapError(ErrValidationFailed, fmt.Sprintf("node name cannot be %s", req.Name), fmt.Errorf("node name cannot be %s", req.Name), nil)
 	}
 
 	node := &models.Node{
@@ -210,11 +202,22 @@ func (h *Handler) HandleImportNodes(c echo.Context) error {
 		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
 	}
 
-	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, maxCSVImportSize+importBodyOverhead)
+	maxSize := h.config.App.MaxNodeImportSize
+	tooLargeMsg := fmt.Sprintf("csv file exceeds maximum size of %dKB", maxSize/1024)
+
+	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, maxSize+importBodyOverhead)
 
 	file, err := c.FormFile("file")
 	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			return wrapError(ErrInvalidInput, tooLargeMsg, err, nil)
+		}
 		return wrapError(ErrInvalidInput, "csv file is required", err, nil)
+	}
+
+	if file.Size > maxSize {
+		return wrapError(ErrInvalidInput, tooLargeMsg, nil, nil)
 	}
 
 	credentialID := c.FormValue("credential_id")
@@ -233,107 +236,43 @@ func (h *Handler) HandleImportNodes(c echo.Context) error {
 	}
 	defer src.Close()
 
-	reader := csv.NewReader(src)
-	reader.TrimLeadingSpace = true
+	rows, parseErrs := core.ParseNodesCSV(src, credentialID, credential.KeyType)
 
-	// read and validate header row
-	header, err := reader.Read()
-	if err != nil {
-		return wrapError(ErrInvalidInput, "could not read csv header", err, nil)
-	}
-	expected := []string{"name", "hostname", "port", "username", "connection_type", "tags"}
-	if len(header) < len(expected) {
-		return wrapError(ErrInvalidInput, fmt.Sprintf("csv must have columns: %s", strings.Join(expected, ",")), nil, nil)
-	}
-	for i, col := range expected {
-		if strings.TrimSpace(strings.ToLower(header[i])) != col {
-			return wrapError(ErrInvalidInput, fmt.Sprintf("expected column %d to be %q, got %q", i+1, col, header[i]), nil, nil)
-		}
+	importErrors := make([]NodeImportError, 0)
+	for _, e := range parseErrs {
+		importErrors = append(importErrors, NodeImportError{Row: e.Line, Name: e.Name, Error: e.Err.Error()})
 	}
 
-	var importErrors []NodeImportError
 	imported := 0
-	rowNum := 1
-
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		rowNum++
-		if err != nil {
-			importErrors = append(importErrors, NodeImportError{Row: rowNum, Error: fmt.Sprintf("could not parse row: %s", err.Error())})
-			continue
-		}
-		if len(record) < len(expected) {
-			importErrors = append(importErrors, NodeImportError{Row: rowNum, Error: "row has too few columns"})
-			continue
-		}
-
-		name := strings.TrimSpace(record[0])
-		hostname := strings.TrimSpace(record[1])
-		portStr := strings.TrimSpace(record[2])
-		username := strings.TrimSpace(record[3])
-		connType := strings.TrimSpace(record[4])
-		tagsRaw := strings.TrimSpace(record[5])
-
-		port, err := strconv.Atoi(portStr)
-		if err != nil || port < 1 || port > 65535 {
-			importErrors = append(importErrors, NodeImportError{Row: rowNum, Name: name, Error: fmt.Sprintf("invalid port %q", portStr)})
-			continue
-		}
-
-		var tags []string
-		if tagsRaw != "" {
-			for _, t := range strings.Split(tagsRaw, ",") {
-				if trimmed := strings.TrimSpace(t); trimmed != "" {
-					tags = append(tags, trimmed)
-				}
-			}
-		}
-
-		if name == "local" || name == "uploads" {
-			importErrors = append(importErrors, NodeImportError{Row: rowNum, Name: name, Error: fmt.Sprintf("node name cannot be %s", name)})
-			continue
-		}
-
-		req := NodeReq{
-			Name:           name,
-			Hostname:       hostname,
-			Port:           port,
-			Username:       username,
-			ConnectionType: connType,
-			Tags:           tags,
-			Auth: NodeAuth{
-				CredentialID: credentialID,
-				Method:       credential.KeyType,
-			},
-		}
-
-		if err := h.validate.Struct(req); err != nil {
-			importErrors = append(importErrors, NodeImportError{Row: rowNum, Name: name, Error: formatValidationErrors(err)})
-			continue
-		}
-
+	for _, row := range rows {
 		node := &models.Node{
-			Name:           req.Name,
-			Hostname:       req.Hostname,
-			Port:           req.Port,
-			Username:       req.Username,
+			Name:           row.Node.Name,
+			Hostname:       row.Node.Hostname,
+			Port:           row.Node.Port,
+			Username:       row.Node.Username,
 			OSFamily:       "linux",
-			ConnectionType: req.ConnectionType,
-			Tags:           req.Tags,
-			Auth: models.NodeAuth{
-				Method:       models.AuthMethod(req.Auth.Method),
-				CredentialID: req.Auth.CredentialID,
-			},
+			ConnectionType: row.Node.ConnectionType,
+			Tags:           row.Node.Tags,
+			Auth:           row.Node.Auth,
+		}
+
+		if err := h.validate.Struct(NodeReq{
+			Name:           node.Name,
+			Hostname:       node.Hostname,
+			Port:           node.Port,
+			Username:       node.Username,
+			ConnectionType: node.ConnectionType,
+			Tags:           node.Tags,
+			Auth:           NodeAuth{CredentialID: node.Auth.CredentialID, Method: string(node.Auth.Method)},
+		}); err != nil {
+			importErrors = append(importErrors, NodeImportError{Row: row.Line, Name: node.Name, Error: formatValidationErrors(err)})
+			continue
 		}
 
 		if _, err := h.co.CreateNode(c.Request().Context(), node, namespace); err != nil {
-			importErrors = append(importErrors, NodeImportError{Row: rowNum, Name: name, Error: err.Error()})
+			importErrors = append(importErrors, NodeImportError{Row: row.Line, Name: node.Name, Error: err.Error()})
 			continue
 		}
-
 		imported++
 	}
 

@@ -27,6 +27,9 @@ max_file_upload_size = 104857600
 # (optional) Maximum size of a flow definition uploaded via flow import, in bytes
 max_flow_import_size = 262144
 
+# (optional) Maximum size of a CSV file uploaded via node import, in bytes (default: 1048576 = 1MB)
+max_node_import_size = 1048576
+
 # (optional) Directory to load external executor plugins from
 # plugin_dir = ""
 

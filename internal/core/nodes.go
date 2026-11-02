@@ -3,9 +3,13 @@ package core
 import (
 	"context"
 	"database/sql"
+	"encoding/csv"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
+	"strconv"
+	"strings"
 
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/repo"
@@ -16,6 +20,12 @@ import (
 // used for FC_OUTPUT_GLOBAL values.
 const reservedGlobalNodeName = "global"
 
+var reservedNodeNames = map[string]struct{}{
+	"local":             {},
+	"uploads":           {},
+	reservedGlobalNodeName: {},
+}
+
 func (c *Core) CreateNode(ctx context.Context, node *models.Node, namespaceID string) (models.Node, error) {
 	namespaceUUID, err := uuid.Parse(namespaceID)
 	if err != nil {
@@ -25,8 +35,8 @@ func (c *Core) CreateNode(ctx context.Context, node *models.Node, namespaceID st
 	if node.Name == "" {
 		return models.Node{}, errors.New("node name is required")
 	}
-	if node.Name == reservedGlobalNodeName {
-		return models.Node{}, fmt.Errorf("node name %q is reserved", reservedGlobalNodeName)
+	if _, reserved := reservedNodeNames[node.Name]; reserved {
+		return models.Node{}, fmt.Errorf("node name %q is reserved", node.Name)
 	}
 	if node.Hostname == "" {
 		return models.Node{}, errors.New("hostname is required")
@@ -365,4 +375,99 @@ func (c *Core) GetNodesByTags(ctx context.Context, tags []string, namespaceUUID 
 	}
 
 	return nodes, nil
+}
+
+// NodeCSVRow holds a parsed node row from a CSV import along with its source line number.
+type NodeCSVRow struct {
+	Node models.Node
+	Line int
+}
+
+// NodeCSVError records a row that failed parsing or validation.
+type NodeCSVError struct {
+	Line int
+	Name string
+	Err  error
+}
+
+// ParseNodesCSV reads a CSV from r and returns the parsed rows and any per-row errors.
+// The first row must be the header: name,hostname,port,username,connection_type,tags
+func ParseNodesCSV(r io.Reader, credentialID, authMethod string) ([]NodeCSVRow, []NodeCSVError) {
+	reader := csv.NewReader(r)
+	reader.TrimLeadingSpace = true
+
+	expected := []string{"name", "hostname", "port", "username", "connection_type", "tags"}
+
+	header, err := reader.Read()
+	if err != nil {
+		return nil, []NodeCSVError{{Line: 1, Err: fmt.Errorf("could not read csv header: %w", err)}}
+	}
+	if len(header) < len(expected) {
+		return nil, []NodeCSVError{{Line: 1, Err: fmt.Errorf("csv must have columns: %s", strings.Join(expected, ","))}}
+	}
+	for i, col := range expected {
+		if strings.TrimSpace(strings.ToLower(header[i])) != col {
+			return nil, []NodeCSVError{{Line: 1, Err: fmt.Errorf("expected column %d to be %q, got %q", i+1, col, header[i])}}
+		}
+	}
+
+	var rows []NodeCSVRow
+	var errs []NodeCSVError
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		line, _ := reader.FieldPos(0)
+		if err != nil {
+			errs = append(errs, NodeCSVError{Line: line, Err: fmt.Errorf("could not parse row: %w", err)})
+			continue
+		}
+		if len(record) < len(expected) {
+			errs = append(errs, NodeCSVError{Line: line, Err: errors.New("row has too few columns")})
+			continue
+		}
+
+		name := strings.TrimSpace(record[0])
+		hostname := strings.TrimSpace(record[1])
+		portStr := strings.TrimSpace(record[2])
+		username := strings.TrimSpace(record[3])
+		connType := strings.TrimSpace(record[4])
+		tagsRaw := strings.TrimSpace(record[5])
+
+		port, err := strconv.Atoi(portStr)
+		if err != nil || port < 1 || port > 65535 {
+			errs = append(errs, NodeCSVError{Line: line, Name: name, Err: fmt.Errorf("invalid port %q", portStr)})
+			continue
+		}
+
+		var tags []string
+		if tagsRaw != "" {
+			for _, t := range strings.Split(tagsRaw, ",") {
+				if trimmed := strings.TrimSpace(t); trimmed != "" {
+					tags = append(tags, trimmed)
+				}
+			}
+		}
+
+		rows = append(rows, NodeCSVRow{
+			Line: line,
+			Node: models.Node{
+				Name:           name,
+				Hostname:       hostname,
+				Port:           port,
+				Username:       username,
+				ConnectionType: connType,
+				Tags:           tags,
+				OSFamily:       "linux",
+				Auth: models.NodeAuth{
+					CredentialID: credentialID,
+					Method:       models.AuthMethod(authMethod),
+				},
+			},
+		})
+	}
+
+	return rows, errs
 }

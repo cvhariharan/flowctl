@@ -104,7 +104,7 @@
                         <span class="text-sm font-medium">{result.imported} node{result.imported === 1 ? '' : 's'} imported successfully</span>
                     </div>
 
-                    {#if result.errors && result.errors.length > 0}
+                    {#if result.errors.length > 0}
                         <div class="vstack gap-1">
                             <p class="text-sm font-medium text-danger-600">{result.errors.length} row{result.errors.length === 1 ? '' : 's'} failed:</p>
                             <div class="import-errors">
