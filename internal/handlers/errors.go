@@ -108,6 +108,23 @@ func wrapError(errorCode string, msg string, err error, details interface{}) err
 	return he
 }
 
+func statusToErrorCode(code int) string {
+	switch {
+	case code == http.StatusNotFound:
+		return ErrResourceNotFound
+	case code == http.StatusUnauthorized:
+		return ErrAuthenticationFailed
+	case code == http.StatusForbidden:
+		return ErrForbidden
+	case code == http.StatusUnsupportedMediaType:
+		return ErrUnsupportedMediaType
+	case code >= http.StatusBadRequest && code < http.StatusInternalServerError:
+		return ErrInvalidInput
+	default:
+		return ErrInternalError
+	}
+}
+
 func (h *Handler) ErrorHandler(err error, c echo.Context) {
 	if c.Response().Committed {
 		return
@@ -128,6 +145,13 @@ func (h *Handler) ErrorHandler(err error, c echo.Context) {
 		line = he.line
 		errorCode = he.errorCode
 		details = he.details
+	} else if he, ok := err.(*echo.HTTPError); ok {
+		code = he.Code
+		msg = http.StatusText(code)
+		if m, ok := he.Message.(string); ok && code < http.StatusInternalServerError {
+			msg = m
+		}
+		errorCode = statusToErrorCode(code)
 	}
 
 	h.logger.Error("error processing request",

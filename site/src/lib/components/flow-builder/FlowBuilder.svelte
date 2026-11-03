@@ -21,6 +21,7 @@
     namespace,
     mode,
     flowId = '',
+    versionsUrl,
     saving = false,
     readonly = false,
     availableExecutors,
@@ -33,6 +34,7 @@
     namespace: string;
     mode: 'create' | 'edit';
     flowId?: string;
+    versionsUrl?: string;
     saving?: boolean;
     readonly?: boolean;
     availableExecutors: Array<{ name: string; capabilities: string[] }>;
@@ -84,7 +86,12 @@
 <div class="builder">
   <header class="bar hstack gap-4">
     <div class="title">
-      <h1>{flow.metadata.name || 'Untitled flow'}</h1>
+      <div class="hstack gap-3 items-center">
+        <h1>{flow.metadata.name || 'Untitled flow'}</h1>
+        {#if versionsUrl}
+          <a class="version-link badge outline" href={versionsUrl}>Version history</a>
+        {/if}
+      </div>
       <p class="text-lighter text-xs">
         <code>{flow.metadata.id || '…'}</code>
         · {flow.metadata.execution_mode === 'dag' ? 'dependency graph' : 'one after another'}
@@ -219,6 +226,10 @@
   }
   .title p {
     margin: 2px 0 0;
+  }
+  .version-link {
+    color: var(--muted-foreground);
+    text-decoration: none;
   }
   .bar-actions {
     margin-inline-start: auto;

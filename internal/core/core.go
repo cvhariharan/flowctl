@@ -26,8 +26,6 @@ type Core struct {
 	keeper     *secrets.Keeper
 	LogManager streamlogger.LogManager
 
-	// store the mapping between logID and flowID
-	logMap   map[string]string
 	enforcer *casbin.Enforcer
 
 	flowDirectory string
@@ -43,7 +41,6 @@ func NewCore(flowsDirectory string, s repo.Store, sch scheduler.TaskScheduler, k
 		scheduler:          sch,
 		flowDirectory:      flowsDirectory,
 		flows:              make(map[string]models.Flow),
-		logMap:             make(map[string]string),
 		keeper:             keeper,
 		enforcer:           enforcer,
 		httpClient:         &http.Client{Timeout: 10 * time.Second},
@@ -78,4 +75,3 @@ func (c *Core) ResolveGroupEmails(ctx context.Context, groupName string) ([]stri
 	}
 	return emails, nil
 }
-

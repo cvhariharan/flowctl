@@ -1,8 +1,11 @@
 package models
 
 import (
+	"context"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 const sequentialFlow = `metadata:
@@ -174,5 +177,33 @@ func TestValidate_Dependencies(t *testing.T) {
 				t.Errorf("Validate() error = %v, want it to contain %q", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestFlowVersionMetadata(t *testing.T) {
+	f, err := UnmarshalFlow([]byte(sequentialFlow), FlowFormatYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Meta.VersionDBID, f.Meta.Version = 42, 3
+	scheduled, err := ConvertToSchedulerFlow(context.Background(), f, uuid.Nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scheduled.Meta.VersionDBID != 42 {
+		t.Fatalf("scheduler version ID = %d, want 42", scheduled.Meta.VersionDBID)
+	}
+	for _, format := range []FlowFormat{FlowFormatYAML, FlowFormatHUML} {
+		data, err := MarshalFlow(f, format)
+		if err != nil {
+			t.Fatal(err)
+		}
+		back, err := UnmarshalFlow(data, format)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if back.Meta.VersionDBID != 0 || back.Meta.Version != 0 {
+			t.Fatalf("%s export contains version metadata", format)
+		}
 	}
 }

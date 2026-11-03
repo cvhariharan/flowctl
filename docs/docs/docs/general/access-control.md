@@ -194,6 +194,12 @@ client_secret = "your-client-secret"
 issuer = "https://your-oidc-provider.com/"
 ```
 
+In your SSO provider's application settings, register `<app.root_url>/auth/callback` as an allowed callback URL (also called a redirect URI). For example, if `app.root_url` is `https://flowctl.example.com`, register `https://flowctl.example.com/auth/callback`. If you set `redirect_url` in the provider's `[[oidc]]` section, register that exact URL instead.
+
+Configure the SSO application to use OpenID Connect with the authorization code flow. The token response must include an `id_token` containing a signed JWT. flowctl verifies this ID token and uses its `email` claim to identify the user, so ensure the provider includes that claim. flowctl requests the `openid`, `profile`, and `email` scopes.
+
+By default, logging out ends only the flowctl session. Set `logout_enabled = true` in a provider's `[[oidc]]` section to also log out of that SSO provider. This uses the provider's discovered logout endpoint; set `logout_url` to override it. If no logout endpoint is available, flowctl still ends the local session.
+
 ### Auto-Creating Users on Login
 
 By default, a user must already exist in flowctl before they can log in via OIDC. Enable `auto_create_users` on an OIDC provider to create accounts automatically on first login.

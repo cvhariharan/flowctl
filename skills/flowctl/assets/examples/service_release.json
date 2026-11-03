@@ -1,0 +1,142 @@
+{
+  "metadata": {
+    "name": "Service Release",
+    "description": "Roll a tagged build out to the web servers: preflight checks and build verification in parallel, an approval, then deploy, smoke test and announce.",
+    "execution_mode": "dag",
+    "allow_overlap": false,
+    "max_retries": 0
+  },
+  "inputs": [
+    {
+      "name": "version",
+      "type": "string",
+      "label": "Version",
+      "description": "Release tag, for example v1.4.2",
+      "required": true,
+      "validation": "version matches '^v[0-9]+[.][0-9]+[.][0-9]+$'"
+    },
+    {
+      "name": "hosts",
+      "type": "node",
+      "label": "Target hosts",
+      "description": "Nodes or a tag to release to. Leave empty for every node tagged web."
+    }
+  ],
+  "actions": [
+    {
+      "id": "preflight",
+      "name": "Preflight",
+      "executor": "script",
+      "on": [
+        "tag:web"
+      ],
+      "allow_node_override": true,
+      "variables": [
+        {
+          "VERSION": "{{ inputs.version }}"
+        }
+      ],
+      "with": {
+        "script": "set -euo pipefail\nfree_gb=$(df -BG --output=avail /opt | tail -1 | tr -dc '0-9')\necho \"$(hostname): ${free_gb}G free under /opt, current release $(readlink /opt/app/current || echo none)\"\nif [ \"$free_gb\" -lt 2 ]; then\n  echo \"need at least 2G free under /opt\" >&2\n  exit 1\nfi\necho \"FREE_GB=$free_gb\" >> \"$FC_OUTPUT\"\necho \"RELEASE_DIR=/opt/app/releases/$VERSION\" >> \"$FC_OUTPUT_GLOBAL\"\n"
+      }
+    },
+    {
+      "id": "fetch_build",
+      "name": "Fetch Build",
+      "executor": "docker",
+      "variables": [
+        {
+          "VERSION": "{{ inputs.version }}"
+        },
+        {
+          "BASE_URL": "{{ secrets.ARTIFACT_BASE_URL }}"
+        },
+        {
+          "TOKEN": "{{ secrets.ARTIFACT_TOKEN }}"
+        }
+      ],
+      "with": {
+        "image": "alpine:3.20",
+        "script": "set -eu\n: \"${TOKEN:?ARTIFACT_TOKEN secret is not set}\"\napk add --no-cache curl > /dev/null\ncd \"$FC_ARTIFACTS\"\ncurl -fsSL -H \"Authorization: Bearer $TOKEN\" -o app.tar.gz \"$BASE_URL/app-$VERSION.tar.gz\"\nexpected=$(curl -fsSL -H \"Authorization: Bearer $TOKEN\" \"$BASE_URL/app-$VERSION.tar.gz.sha256\" | cut -d\" \" -f1)\nactual=$(sha256sum app.tar.gz | cut -d\" \" -f1)\nif [ \"$expected\" != \"$actual\" ]; then\n  echo \"checksum mismatch: expected $expected, got $actual\" >&2\n  exit 1\nfi\necho \"BUILD_SHA256=$actual\" >> \"$FC_OUTPUT\"\n"
+      }
+    },
+    {
+      "id": "deploy",
+      "name": "Deploy",
+      "executor": "script",
+      "on": [
+        "tag:web"
+      ],
+      "allow_node_override": true,
+      "needs": [
+        "preflight",
+        "fetch_build"
+      ],
+      "approval": true,
+      "variables": [
+        {
+          "RELEASE_DIR": "{{ outputs.global.preflight.RELEASE_DIR }}"
+        },
+        {
+          "BUILD_SHA256": "{{ outputs.BUILD_SHA256 }}"
+        }
+      ],
+      "with": {
+        "script": "set -euo pipefail\necho \"$BUILD_SHA256  $FC_ARTIFACTS/local/app.tar.gz\" | sha256sum -c -\nmkdir -p \"$RELEASE_DIR\"\ntar -xzf \"$FC_ARTIFACTS/local/app.tar.gz\" -C \"$RELEASE_DIR\"\nln -sfn \"$RELEASE_DIR\" /opt/app/current\nsystemctl restart app\n"
+      }
+    },
+    {
+      "id": "smoke_test",
+      "name": "Smoke Test",
+      "executor": "script",
+      "on": [
+        "tag:web"
+      ],
+      "allow_node_override": true,
+      "needs": [
+        "deploy"
+      ],
+      "with": {
+        "script": "set -euo pipefail\nfor i in 1 2 3 4 5; do\n  if curl -fsS http://127.0.0.1:8080/healthz; then\n    exit 0\n  fi\n  sleep 3\ndone\necho \"app did not become healthy on $(hostname)\" >&2\nexit 1\n"
+      }
+    },
+    {
+      "id": "announce_release",
+      "name": "Announce Release",
+      "executor": "flow",
+      "needs": [
+        "smoke_test"
+      ],
+      "with": {
+        "flow_id": "post_release_announcement",
+        "params": "{\"channel\": \"releases\"}",
+        "wait": false
+      }
+    }
+  ],
+  "notify": [
+    {
+      "channel": "email",
+      "config": {
+        "receivers": [
+          "group:reviewers"
+        ]
+      },
+      "events": [
+        "on_waiting"
+      ]
+    },
+    {
+      "channel": "email",
+      "config": {
+        "receivers": [
+          "group:devops"
+        ]
+      },
+      "events": [
+        "on_failure",
+        "on_cancelled"
+      ]
+    }
+  ]
+}

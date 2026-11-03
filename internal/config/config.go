@@ -25,6 +25,7 @@ type Config struct {
 	Scheduler  SchedulerConfig  `koanf:"scheduler"`
 	Logger     Logger           `koanf:"logger"`
 	Metrics    Metrics          `koanf:"metrics"`
+	MCP        MCPConfig        `koanf:"mcp"`
 	Messengers MessengersConfig `koanf:"messengers"`
 }
 
@@ -45,9 +46,16 @@ func (c *Config) Validate() error {
 const DefaultMaxFlowImportSize = 256 * 1024
 const DefaultMaxNodeImportSize = 1 << 20 // 1MB
 
+const DefaultMCPMaxBodySize = 1024 * 1024
+
 type Metrics struct {
 	Enabled bool   `koanf:"enabled"`
 	Path    string `koanf:"path"`
+}
+
+type MCPConfig struct {
+	Enabled     bool  `koanf:"enabled"`
+	MaxBodySize int64 `koanf:"max_body_size" validate:"min=0"`
 }
 
 type BrandingConfig struct {
@@ -161,6 +169,8 @@ type OIDCConfig struct {
 	Issuer          string               `koanf:"issuer" validate:"required,url"`
 	AuthURL         string               `koanf:"auth_url" validate:"omitempty,url"`
 	TokenURL        string               `koanf:"token_url" validate:"omitempty,url"`
+	LogoutEnabled   bool                 `koanf:"logout_enabled"`
+	LogoutURL       string               `koanf:"logout_url" validate:"omitempty,url"`
 	RedirectURL     string               `koanf:"redirect_url" validate:"omitempty,url"`
 	ClientID        string               `koanf:"client_id" validate:"required"`
 	ClientSecret    string               `koanf:"client_secret" validate:"required"`
@@ -226,6 +236,9 @@ func Load(configPath string) (Config, error) {
 	}
 	if config.App.MaxNodeImportSize <= 0 {
 		config.App.MaxNodeImportSize = DefaultMaxNodeImportSize
+  }
+	if config.MCP.MaxBodySize <= 0 {
+		config.MCP.MaxBodySize = DefaultMCPMaxBodySize
 	}
 	if config.Scheduler.ExecutionRetentionInterval == 0 {
 		config.Scheduler.ExecutionRetentionInterval = time.Hour
@@ -294,6 +307,10 @@ func GetDefaultConfig() Config {
 			Directory:     "/var/log/flowctl",
 			RetentionTime: 0,
 			ScanInterval:  1 * time.Hour,
+		},
+		MCP: MCPConfig{
+			Enabled:     false,
+			MaxBodySize: DefaultMCPMaxBodySize,
 		},
 		Messengers: MessengersConfig{
 			Email: SMTPConfig{

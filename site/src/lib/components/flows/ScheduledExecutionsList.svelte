@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ScheduledExecution, UserSchedule } from '$lib/types';
   import { getNextCronRun } from '$lib/utils/cronParser';
+  import Pagination from '$lib/components/shared/Pagination.svelte';
 
   interface UpcomingRun {
     type: 'cron' | 'scheduled';
@@ -15,24 +16,37 @@
     cronSchedules = [],
     namespace,
     flowId,
-    title = 'Upcoming Scheduled Runs'
+    title = 'Upcoming Scheduled Runs',
+    currentPage = 1,
+    totalPages = 1,
+    loading = false,
+    onPageChange
   }: {
     schedules: ScheduledExecution[];
     cronSchedules?: UserSchedule[];
     namespace: string;
     flowId: string;
     title?: string;
+    currentPage?: number;
+    totalPages?: number;
+    loading?: boolean;
+    onPageChange?: (page: number) => void;
   } = $props();
+
+  let paginated = $derived(totalPages > 1);
+
+  const byTime = (a: UpcomingRun, b: UpcomingRun) => a.scheduledAt.getTime() - b.scheduledAt.getTime();
 
   // Compute combined list of upcoming runs
   let upcomingRuns = $derived.by(() => {
-    const runs: UpcomingRun[] = [];
+    const cronRuns: UpcomingRun[] = [];
+    const scheduledRuns: UpcomingRun[] = [];
 
     // Add cron-based runs (only active schedules)
     for (const cron of cronSchedules.filter(c => c.is_active)) {
       const nextRun = getNextCronRun(cron.cron, cron.timezone);
       if (nextRun) {
-        runs.push({
+        cronRuns.push({
           type: 'cron',
           name: cron.name,
           label: cron.cron,
@@ -43,7 +57,7 @@
 
     // Add manually scheduled runs
     for (const schedule of schedules) {
-      runs.push({
+      scheduledRuns.push({
         type: 'scheduled',
         label: 'Scheduled',
         scheduledAt: new Date(schedule.scheduled_at),
@@ -51,8 +65,7 @@
       });
     }
 
-    // Sort by scheduled time ascending
-    return runs.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+    return [...scheduledRuns.sort(byTime), ...cronRuns.sort(byTime)];
   });
 
   function formatScheduledTime(date: Date): string {
@@ -60,11 +73,13 @@
   }
 </script>
 
-{#if upcomingRuns.length > 0}
+{#if upcomingRuns.length > 0 || paginated}
   <article class="card">
     <header>
       <h3>{title}</h3>
-      <p class="text-lighter text-xs">{upcomingRuns.length} {upcomingRuns.length === 1 ? 'run' : 'runs'} scheduled</p>
+      {#if !paginated}
+        <p class="text-lighter text-xs">{upcomingRuns.length} {upcomingRuns.length === 1 ? 'run' : 'runs'} scheduled</p>
+      {/if}
     </header>
     <div class="table">
       <table>
@@ -102,10 +117,24 @@
                 {/if}
               </td>
             </tr>
+          {:else}
+            <tr>
+              <td colspan="4" class="text-lighter text-sm">No active schedules on this page</td>
+            </tr>
           {/each}
         </tbody>
       </table>
     </div>
+    {#if paginated}
+      <footer class="hstack justify-end">
+        <Pagination
+          {currentPage}
+          {totalPages}
+          {loading}
+          on:page-change={(e) => onPageChange?.(e.detail.page)}
+        />
+      </footer>
+    {/if}
   </article>
 {/if}
 

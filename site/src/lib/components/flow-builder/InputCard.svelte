@@ -171,11 +171,13 @@
         {#if input.useRemoteOptions && input.remote_options}
           <div data-field>
             <label for="input-{index}-url">URL <span class="req">*</span></label>
-            <fieldset class="group">
-              <select bind:value={input.remote_options.method} {disabled} aria-label="Method">
-                <option>GET</option>
-                <option>POST</option>
-              </select>
+            <div class="remote-options-url">
+              <OatSelect
+                id="input-{index}-method"
+                bind:value={input.remote_options.method}
+                options={['GET', 'POST'].map(method => ({ value: method, label: method }))}
+                {disabled}
+              />
               <input
                 id="input-{index}-url"
                 type="url"
@@ -184,7 +186,7 @@
                 bind:value={input.remote_options.url}
                 placeholder="https://api.example.com/options"
               />
-            </fieldset>
+            </div>
           </div>
 
           <div data-field>
@@ -347,6 +349,13 @@
 </details>
 
 <style>
+  .remote-options-url {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+    align-items: end;
+    gap: var(--space-2);
+  }
+
   .title {
     display: block;
   }

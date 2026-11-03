@@ -74,12 +74,13 @@ WITH namespace_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $2
 )
 SELECT a.*, el.inputs AS exec_inputs, f.name AS flow_name, f.slug AS flow_slug,
-       u.name AS requested_by, us.name AS decided_by_name
+       fv.version AS flow_version, u.name AS requested_by, us.name AS decided_by_name
 FROM approvals a
 JOIN executions el ON a.exec_id = el.exec_id
 JOIN flows f ON el.flow_id = f.id
 JOIN users u ON el.triggered_by = u.id
 LEFT JOIN users us ON a.decided_by = us.id
+LEFT JOIN flow_versions fv ON fv.id = el.flow_version_id
 WHERE a.uuid = $1 AND f.namespace_id = (SELECT id FROM namespace_lookup) AND f.is_active = TRUE;
 
 -- name: GetApprovalRequestForActionAndExec :one

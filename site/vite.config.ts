@@ -27,6 +27,12 @@ export default defineConfig({
         target: `http://${backendHost}`,
         changeOrigin: true,
         secure: false,
+        bypass: (req) => {
+          // GET /login is a SvelteKit page — only proxy POST and /login/oidc/* to backend
+          if (req.method === "GET" && !req.url?.startsWith("/login/oidc")) {
+            return req.url;
+          }
+        },
       },
       "/logout": {
         target: `http://${backendHost}`,

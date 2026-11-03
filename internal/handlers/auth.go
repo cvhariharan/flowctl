@@ -132,10 +132,28 @@ func (h *Handler) initOIDC() error {
 			ClientID: oauthConfig.ClientID,
 		})
 
+		var endSessionEndpoint string
+		if oauthConfig.LogoutEnabled {
+			var discoveryClaims struct {
+				EndSessionEndpoint string `json:"end_session_endpoint"`
+			}
+			if err := provider.Claims(&discoveryClaims); err != nil {
+				h.logger.Warn("could not read end_session_endpoint from provider discovery",
+					"provider", oauthConfig.Name,
+					"error", err)
+			}
+
+			endSessionEndpoint = discoveryClaims.EndSessionEndpoint
+			if oauthConfig.LogoutURL != "" {
+				endSessionEndpoint = oauthConfig.LogoutURL
+			}
+		}
+
 		h.authconfig[oauthConfig.Name] = OIDCAuthConfig{
-			provider:     provider,
-			verifier:     verifier,
-			oauth2Config: oauth2Config,
+			provider:           provider,
+			verifier:           verifier,
+			oauth2Config:       oauth2Config,
+			endSessionEndpoint: endSessionEndpoint,
 		}
 
 	}
@@ -421,9 +439,37 @@ func (h *Handler) HandleLogout(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	}
 
-	err = sess.Destroy()
-	if err != nil {
+	var endSessionURL string
+
+	method, _ := sess.Get("method")
+	if method == "oidc" {
+		td, err := sess.Get("id_token")
+		if err == nil && td != nil {
+			var tokenData TokenData
+			if err := tokenData.Decode(td.(string)); err == nil {
+				authConfig, ok := h.authconfig[tokenData.Provider]
+				if ok && authConfig.endSessionEndpoint != "" {
+					postLogoutURI, _ := url.JoinPath(h.config.App.RootURL, LoginPath)
+					u, err := url.Parse(authConfig.endSessionEndpoint)
+					if err == nil {
+						params := u.Query()
+						params.Set("id_token_hint", tokenData.RawIDToken)
+						params.Set("post_logout_redirect_uri", postLogoutURI)
+						params.Set("client_id", authConfig.oauth2Config.ClientID)
+						u.RawQuery = params.Encode()
+						endSessionURL = u.String()
+					}
+				}
+			}
+		}
+	}
+
+	if err := sess.Destroy(); err != nil {
 		return wrapError(ErrInternalError, "could not destroy session", err, nil)
+	}
+
+	if endSessionURL != "" {
+		c.Response().Header().Set("x-redirect", endSessionURL)
 	}
 
 	return c.NoContent(http.StatusOK)

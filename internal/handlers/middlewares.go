@@ -157,6 +157,16 @@ func (h *Handler) RequireSessionAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+func (h *Handler) RequirePATAuth(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		method, _ := c.Get("auth_method").(string)
+		if method != "pat" {
+			return wrapError(ErrForbidden, "this endpoint requires api token authentication", nil, nil)
+		}
+		return next(c)
+	}
+}
+
 // authenticateExecutor validates the executor API key from the Authorization header,
 // resolves the user from X-User-UUID, and sets the user in the context.
 // Returns the executor name if valid, or empty string if not an executor request.

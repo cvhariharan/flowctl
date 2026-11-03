@@ -27,13 +27,14 @@ export const load: PageLoad = async ({ params, parent, url }) => {
   const rerunFromExecId = url.searchParams.get('rerun_from');
 
   try {
-    const [flowInputs, flowMeta, executionData, schedules] = await Promise.all([
+    const [flowInputs, flowMeta, executionData, schedules, upcomingSchedules] = await Promise.all([
       apiClient.flows.getInputs(params.namespace, params.flowId),
       apiClient.flows.getMeta(params.namespace, params.flowId),
       rerunFromExecId
         ? apiClient.executions.getById(params.namespace, rerunFromExecId).catch(() => null)
         : Promise.resolve(null),
-      apiClient.flows.schedules.list(params.namespace, params.flowId)
+      apiClient.flows.schedules.list(params.namespace, params.flowId),
+      apiClient.flows.schedules.list(params.namespace, params.flowId, { count_per_page: 5 }),
     ]);
 
     return {
@@ -42,8 +43,13 @@ export const load: PageLoad = async ({ params, parent, url }) => {
       flowMeta,
       namespaceId,
       rerunFromExecId,
+      rerunVersion: executionData?.flow_version,
       executionInput: executionData?.input || null,
       userSchedules: schedules.schedules || [],
+      userSchedulesPageCount: schedules.page_count || 1,
+      userSchedulesTotalCount: schedules.total_count || 0,
+      upcomingSchedules: upcomingSchedules.schedules || [],
+      upcomingSchedulesPageCount: upcomingSchedules.page_count || 1,
     };
   } catch (err) {
     if (err instanceof ApiError) {

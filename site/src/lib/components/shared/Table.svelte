@@ -279,6 +279,8 @@
 </div>
 
 <style>
+    .actions-cell a { text-decoration: none; }
+
     .empty-state {
         display: flex;
         flex-direction: column;

@@ -43,6 +43,14 @@
         data.flowMeta?.scheduled_executions || [],
     );
     let userSchedules = $state<any[]>(data.userSchedules || []);
+    let scheduleCurrentPage = $state(1);
+    let schedulePageCount = $state(data.userSchedulesPageCount || 1);
+    let scheduleTotalCount = $state(data.userSchedulesTotalCount || 0);
+    let schedulesLoading = $state(false);
+    let upcomingSchedules = $state<any[]>(data.upcomingSchedules || []);
+    let upcomingCurrentPage = $state(1);
+    let upcomingPageCount = $state(data.upcomingSchedulesPageCount || 1);
+    let upcomingLoading = $state(false);
 
     let namespace = $derived(page.params.namespace!);
     let encodedNamespace = $derived(encodeURIComponent(namespace));
@@ -62,16 +70,43 @@
     );
 
     // Reload schedules after updates
-    const reloadSchedules = async () => {
+    const reloadSchedules = async (page = scheduleCurrentPage) => {
+        schedulesLoading = true;
         try {
-            const res = await apiClient.flows.schedules.list(
-                namespace!,
-                flowId!,
-            );
+            const res = await apiClient.flows.schedules.list(namespace!, flowId!, { page, count_per_page: 10 });
+            if (!res.schedules?.length && page > 1) {
+                return await reloadSchedules(page - 1);
+            }
             userSchedules = res.schedules || [];
+            schedulePageCount = res.page_count || 1;
+            scheduleTotalCount = res.total_count || 0;
+            scheduleCurrentPage = page;
         } catch (error) {
             handleInlineError(error, "Failed to reload schedules");
+        } finally {
+            schedulesLoading = false;
         }
+    };
+
+    const reloadUpcomingSchedules = async (page = upcomingCurrentPage) => {
+        upcomingLoading = true;
+        try {
+            const res = await apiClient.flows.schedules.list(namespace!, flowId!, { page, count_per_page: 5 });
+            if (!res.schedules?.length && page > 1) {
+                return await reloadUpcomingSchedules(page - 1);
+            }
+            upcomingSchedules = res.schedules || [];
+            upcomingPageCount = res.page_count || 1;
+            upcomingCurrentPage = page;
+        } catch (error) {
+            handleInlineError(error, "Failed to reload upcoming schedules");
+        } finally {
+            upcomingLoading = false;
+        }
+    };
+
+    const handleSchedulesUpdate = async () => {
+        await Promise.all([reloadSchedules(), reloadUpcomingSchedules()]);
     };
 
     const refreshScheduledExecutions = async () => {
@@ -227,6 +262,8 @@
 
 <div class="flow-header">
     <FlowHero
+        version={data.flowMeta?.meta?.version}
+        versionsUrl={canViewFlowConfig ? `/view/${encodedNamespace}/flows/${flowId}/versions` : undefined}
         name={data.flowMeta?.meta?.name || "Loading..."}
         description={data.flowMeta?.meta?.description || ""}
     />
@@ -241,7 +278,17 @@
 <div class="tab-content">
     {#if activeTab === "run"}
         <div class="container" style="--container-max: 52rem; --container-pad: 0">
-            {#if showRerunBanner}
+            {#if data.rerunVersion && data.flowMeta?.meta?.version && data.rerunVersion !== data.flowMeta.meta.version}
+                <div role="alert" data-variant="warning" class="mb-4">
+                    <div>
+                        <strong>Flow version changed.</strong>
+                        The previous execution used version {data.rerunVersion}.
+                        This run will use version {data.flowMeta.meta.version}.
+                    </div>
+                </div>
+            {/if}
+
+            {#if showRerunBanner && rerunFromExecId}
                 <div role="alert" class="mb-4 hstack gap-2 items-start justify-between">
                     <div class="hstack gap-2 flex-1 items-start">
                         <IconInfoCircle size={20} style="color: var(--primary)" />
@@ -311,10 +358,14 @@
         <div class="container" style="--container-max: 64rem; --container-pad: 0">
             <div class="vstack gap-4">
                 <ScheduledExecutionsList
-                    schedules={scheduledExecutions}
-                    cronSchedules={userSchedules}
+                    schedules={upcomingCurrentPage === 1 ? scheduledExecutions : []}
+                    cronSchedules={upcomingSchedules}
                     namespace={namespace!}
                     flowId={flowId!}
+                    currentPage={upcomingCurrentPage}
+                    totalPages={upcomingPageCount}
+                    loading={upcomingLoading}
+                    onPageChange={reloadUpcomingSchedules}
                 />
 
                 <FlowSchedulesList
@@ -325,10 +376,14 @@
                         false}
                     user={data.user}
                     schedules={userSchedules}
-                    onUpdate={reloadSchedules}
+                    totalCount={scheduleTotalCount}
+                    onUpdate={handleSchedulesUpdate}
                     {canUpdateFlow}
+                    currentPage={scheduleCurrentPage}
+                    totalPages={schedulePageCount}
+                    loading={schedulesLoading}
+                    onPageChange={reloadSchedules}
                 />
-
             </div>
         </div>
     {/if}

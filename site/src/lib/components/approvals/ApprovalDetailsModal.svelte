@@ -136,7 +136,12 @@
                             </div>
                             <div>
                                 <span class="info-label text-sm font-medium">Flow</span>
-                                <span class="text-sm">{approval.flow_name}</span>
+                                <div class="hstack gap-2">
+                                    <span class="text-sm">{approval.flow_name}</span>
+                                    {#if approval.flow_version}
+                                        <span class="badge outline text-light">Version {approval.flow_version}</span>
+                                    {/if}
+                                </div>
                             </div>
                             <div>
                                 <span class="info-label text-sm font-medium">Created</span>

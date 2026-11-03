@@ -251,12 +251,13 @@ func (c *Core) GetApprovalWithInputs(ctx context.Context, approvalUUID string, n
 			ExecID:      approval.ExecID,
 			RequestedBy: approval.RequestedBy,
 		},
-		DecidedBy: approval.DecidedByName.String,
-		Inputs:    approval.ExecInputs,
-		FlowName:  approval.FlowName,
-		FlowID:    approval.FlowSlug,
-		CreatedAt: approval.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: approval.UpdatedAt.Format(time.RFC3339),
+		DecidedBy:   approval.DecidedByName.String,
+		Inputs:      approval.ExecInputs,
+		FlowName:    approval.FlowName,
+		FlowID:      approval.FlowSlug,
+		FlowVersion: int(approval.FlowVersion.Int32),
+		CreatedAt:   approval.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   approval.UpdatedAt.Format(time.RFC3339),
 	}
 
 	return details, nil

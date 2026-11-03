@@ -9,6 +9,7 @@ export const load: PageLoad = async ({ parent }) => {
 
   // Check update and view_config permissions
   let readonly = false;
+  let canViewConfig = false;
   try {
     const permissions = await permissionChecker(user!, 'flow', namespaceId, ['update', 'view_config'], '_');
     if (!permissions.canUpdate && !permissions.canViewConfig) {
@@ -18,6 +19,7 @@ export const load: PageLoad = async ({ parent }) => {
       });
     }
     readonly = !permissions.canUpdate;
+    canViewConfig = permissions.canViewConfig;
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) {
       throw err; // Re-throw SvelteKit errors
@@ -49,6 +51,7 @@ export const load: PageLoad = async ({ parent }) => {
       availableMessengers: Object.keys(messengerSchemas),
       messengerConfigs,
       readonly,
+      canViewConfig,
     };
   } catch (loadError) {
     console.error('Error loading executors/messengers:', loadError);
@@ -57,6 +60,7 @@ export const load: PageLoad = async ({ parent }) => {
       availableMessengers: [],
       messengerConfigs: {},
       readonly,
+      canViewConfig,
     };
   }
 };

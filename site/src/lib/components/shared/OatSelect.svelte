@@ -36,6 +36,7 @@
 <ot-dropdown style="display: block; margin-block-start: var(--space-1)">
   <button
     type="button"
+    {id}
     popovertarget={popoverId}
     class="outline w-100 hstack justify-between"
     {disabled}

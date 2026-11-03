@@ -75,6 +75,7 @@ func (h *Handler) HandleGetApproval(c echo.Context) error {
 		DecidedBy:   approval.DecidedBy,
 		FlowName:    approval.FlowName,
 		FlowID:      approval.FlowID,
+		FlowVersion: approval.FlowVersion,
 		RequestedBy: approval.RequestedBy,
 		CreatedAt:   approval.CreatedAt,
 		UpdatedAt:   approval.UpdatedAt,
@@ -120,7 +121,7 @@ func (h *Handler) HandleListApprovals(c echo.Context) error {
 		approvalResponses[i] = ApprovalResp{
 			ID:          approval.UUID,
 			ActionID:    approval.ActionID,
-			FlowName: 	 approval.FlowName,
+			FlowName:    approval.FlowName,
 			Status:      string(approval.Status),
 			ExecID:      approval.ExecID,
 			RequestedBy: approval.RequestedBy,

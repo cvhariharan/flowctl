@@ -122,6 +122,8 @@ func SchedulerActionToAction(a scheduler.Action) Action {
 type Metadata struct {
 	ID              string        `yaml:"id" huml:"id" validate:"required,alphanum_underscore"`
 	DBID            int32         `yaml:"-" huml:"-"`
+	VersionDBID     int32         `yaml:"-" huml:"-"`
+	Version         int           `yaml:"-" huml:"-"`
 	Name            string        `yaml:"name" huml:"name" validate:"required,alphanum_whitespace,min=1,max=150"`
 	Description     string        `yaml:"description" huml:"description" validate:"max=255,no_html"`
 	SrcDir          string        `yaml:"-" huml:"-"`
@@ -706,6 +708,7 @@ func ConvertToSchedulerFlow(ctx context.Context, f Flow, namespaceUUID uuid.UUID
 		Meta: scheduler.Metadata{
 			ID:            f.Meta.ID,
 			DBID:          f.Meta.DBID,
+			VersionDBID:   f.Meta.VersionDBID,
 			Name:          f.Meta.Name,
 			Description:   f.Meta.Description,
 			SrcDir:        f.Meta.SrcDir,

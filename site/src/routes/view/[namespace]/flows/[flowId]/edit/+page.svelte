@@ -91,6 +91,7 @@
         bind:flow
         {namespace}
         {flowId}
+        versionsUrl={data.canViewConfig ? `/view/${encodeURIComponent(namespace)}/flows/${flowId}/versions` : undefined}
         mode="edit"
         {saving}
         {readonly}

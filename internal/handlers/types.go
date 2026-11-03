@@ -174,6 +174,7 @@ type ApprovalDetailsResp struct {
 	Inputs      json.RawMessage `json:"inputs,omitempty"`
 	FlowName    string          `json:"flow_name"`
 	FlowID      string          `json:"flow_id"`
+	FlowVersion int             `json:"flow_version,omitempty"`
 	DecidedBy   string          `json:"approved_by"`
 	RequestedBy string          `json:"requested_by"`
 	CreatedAt   string          `json:"created_at"`
@@ -439,6 +440,7 @@ func coreFlowInputsToInputs(inputs []models.Input) []FlowInput {
 
 type FlowMeta struct {
 	ID              string     `json:"id"`
+	Version         int        `json:"version"`
 	Name            string     `json:"name" validate:"required,min=1,max=150,alphanum_whitespace"`
 	Description     string     `json:"description" validate:"max=255,no_html"`
 	Prefix          string     `json:"prefix" validate:"omitempty,alphanum_underscore,max=100"`
@@ -465,6 +467,7 @@ func coreSchedulesToSchedules(schedules []models.Schedule) []Schedule {
 func coreFlowMetatoFlowMeta(m models.Metadata, schedules []models.Schedule) FlowMeta {
 	return FlowMeta{
 		ID:              m.ID,
+		Version:         m.Version,
 		Name:            m.Name,
 		Description:     m.Description,
 		Prefix:          m.Prefix,
@@ -679,6 +682,8 @@ type ExecutionSummary struct {
 	ID              string          `json:"id"`
 	FlowName        string          `json:"flow_name"`
 	FlowID          string          `json:"flow_id"`
+	FlowVersion     int             `json:"flow_version,omitempty"`   // Version pinned to this execution; omitted for legacy executions.
+	ActiveVersion   int             `json:"active_version,omitempty"` // Flow's currently active version, which may differ from the pinned version.
 	Status          ExecutionStatus `json:"status"`
 	TriggerType     string          `json:"trigger_type"`
 	ScheduleName    string          `json:"schedule_name,omitempty"`
@@ -741,6 +746,8 @@ func coreExecutionSummaryToExecutionSummary(e models.ExecutionSummary) Execution
 
 	return ExecutionSummary{
 		ID:              e.ExecID,
+		FlowVersion:     e.FlowVersion,
+		ActiveVersion:   e.ActiveVersion,
 		FlowName:        e.FlowName,
 		FlowID:          e.FlowID,
 		Status:          ExecutionStatus(e.Status),
@@ -1149,4 +1156,30 @@ type APITokenCreateReq struct {
 type APITokenCreateResp struct {
 	models.APIToken
 	Token string `json:"token"`
+}
+
+type FlowVersionListItem struct {
+	Version   int    `json:"version"`
+	Checksum  string `json:"checksum"`
+	CreatedAt string `json:"created_at"`
+	Active    bool   `json:"active"`
+}
+
+type FlowVersionsResp struct {
+	Versions   []FlowVersionListItem `json:"versions"`
+	PageCount  int64                 `json:"page_count"`
+	TotalCount int64                 `json:"total_count"`
+}
+
+type FlowVersionResp struct {
+	Version   int    `json:"version"`
+	Format    string `json:"format"`
+	Source    string `json:"source"`
+	CreatedAt string `json:"created_at"`
+	Active    bool   `json:"active"`
+}
+
+type FlowVersionActivateResp struct {
+	ID      string `json:"id"`
+	Version int    `json:"version"`
 }

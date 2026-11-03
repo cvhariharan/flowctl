@@ -720,6 +720,7 @@
         <section class="execution-bar" aria-label="Execution summary">
             <StatusBadge value={status === "awaiting_approval" ? "pending_approval" : status} />
             <h1>{flowName || "Loading..."}</h1>
+            {#if data.executionSummary?.flow_version}<span class="badge outline text-light">Version {data.executionSummary?.flow_version}</span>{/if}
 
             <div class="progress-ribbon" aria-label={`${completedCount} of ${actions.length} actions complete`}>
                 {#each actionsList as action (action.id)}

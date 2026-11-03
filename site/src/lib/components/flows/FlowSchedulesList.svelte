@@ -4,6 +4,7 @@
   import ScheduleModal from './ScheduleModal.svelte';
   import ViewScheduleModal from './ViewScheduleModal.svelte';
   import DeleteModal from '$lib/components/shared/DeleteModal.svelte';
+  import Pagination from '$lib/components/shared/Pagination.svelte';
   import IconClock from '@tabler/icons-svelte/icons/clock';
   import IconPlus from '@tabler/icons-svelte/icons/plus';
   import IconDotsVertical from '@tabler/icons-svelte/icons/dots-vertical';
@@ -16,8 +17,13 @@
     userSchedulable = false,
     user,
     schedules = [],
+    totalCount,
     onUpdate,
-    canUpdateFlow = false
+    canUpdateFlow = false,
+    currentPage = 1,
+    totalPages = 1,
+    loading = false,
+    onPageChange
   }: {
     namespace: string;
     flowId: string;
@@ -25,8 +31,13 @@
     userSchedulable: boolean;
     user: any;
     schedules?: UserSchedule[];
+    totalCount?: number;
     onUpdate?: () => Promise<void>;
     canUpdateFlow?: boolean;
+    currentPage?: number;
+    totalPages?: number;
+    loading?: boolean;
+    onPageChange?: (page: number) => void;
   } = $props();
 
   let showModal = $state(false);
@@ -102,7 +113,7 @@
   <header class="hstack justify-between">
     <div>
       <h3>Schedules</h3>
-      <p class="text-lighter text-xs">{schedules.length} {schedules.length === 1 ? 'schedule' : 'schedules'}</p>
+      <p class="text-lighter text-xs">{totalCount ?? schedules.length} {(totalCount ?? schedules.length) === 1 ? 'schedule' : 'schedules'}</p>
     </div>
     {#if canCreateSchedule}
       <button
@@ -196,6 +207,19 @@
         </tbody>
       </table>
     </div>
+    {#if totalPages > 1}
+      <footer class="hstack justify-between items-center">
+        <div class="text-light text-sm">
+          Showing {(currentPage - 1) * 10 + 1} to {(currentPage - 1) * 10 + schedules.length} of {totalCount} schedules
+        </div>
+        <Pagination
+          {currentPage}
+          {totalPages}
+          {loading}
+          on:page-change={(e) => onPageChange?.(e.detail.page)}
+        />
+      </footer>
+    {/if}
   {/if}
 </article>
 

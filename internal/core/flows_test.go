@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -56,4 +57,21 @@ func TestResetActionIDsUnknown(t *testing.T) {
 	if !errors.Is(err, ErrActionNotFound) {
 		t.Fatalf("error = %v, want ErrActionNotFound", err)
 	}
+}
+
+func TestMissingFlowReleasesLock(t *testing.T) {
+	c := &Core{flows: make(map[string]models.Flow)}
+	ctx := context.Background()
+
+	if err := c.UpdateFlow(ctx, models.Flow{Meta: models.Metadata{ID: "missing"}}, "ns"); err == nil {
+		t.Fatal("UpdateFlow on missing flow: expected error")
+	}
+	if err := c.DeleteFlow(ctx, "missing", "ns"); err == nil {
+		t.Fatal("DeleteFlow on missing flow: expected error")
+	}
+
+	if !c.rwf.TryLock() {
+		t.Fatal("flow map lock still held after not-found returns")
+	}
+	c.rwf.Unlock()
 }

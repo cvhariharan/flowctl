@@ -174,6 +174,8 @@ type ExecutionSummary struct {
 	ExecID          string
 	FlowName        string
 	FlowID          string
+	FlowVersion     int // Version pinned to this execution; 0 for legacy executions.
+	ActiveVersion   int // Flow's currently active version, which may differ from the pinned version.
 	Status          ExecutionStatus
 	Inputs          map[string]any
 	TriggerType     string

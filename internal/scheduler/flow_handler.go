@@ -1051,13 +1051,14 @@ func (h *FlowExecutionHandler) createExecution(ctx context.Context, execID strin
 	}
 
 	_, err = h.store.AddExecutionTx(ctx, repo.AddExecutionParams{
-		ExecID:       execID,
-		FlowID:       payload.Workflow.Meta.DBID,
-		Inputs:       inputsJSON,
-		TriggerType:  triggerType,
-		ScheduleName: payload.ScheduleName,
-		Uuid:         userUUID,
-		Uuid_2:       namespaceUUID,
+		ExecID:        execID,
+		FlowID:        payload.Workflow.Meta.DBID,
+		FlowVersionID: sql.NullInt32{Int32: payload.Workflow.Meta.VersionDBID, Valid: payload.Workflow.Meta.VersionDBID != 0},
+		Inputs:        inputsJSON,
+		TriggerType:   triggerType,
+		ScheduleName:  payload.ScheduleName,
+		Uuid:          userUUID,
+		Uuid_2:        namespaceUUID,
 	}, payload.Outputs)
 	if err != nil {
 		return fmt.Errorf("failed to add execution: %w", err)

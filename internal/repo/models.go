@@ -430,23 +430,24 @@ type CronSchedule struct {
 }
 
 type Execution struct {
-	ID           int32           `db:"id" json:"id"`
-	ExecID       string          `db:"exec_id" json:"exec_id"`
-	FlowID       int32           `db:"flow_id" json:"flow_id"`
-	NamespaceID  int32           `db:"namespace_id" json:"namespace_id"`
-	TriggeredBy  int32           `db:"triggered_by" json:"triggered_by"`
-	TriggerType  TriggerType     `db:"trigger_type" json:"trigger_type"`
-	Inputs       json.RawMessage `db:"inputs" json:"inputs"`
-	ScheduledAt  sql.NullTime    `db:"scheduled_at" json:"scheduled_at"`
-	CreatedAt    time.Time       `db:"created_at" json:"created_at"`
-	Attempt      int32           `db:"attempt" json:"attempt"`
-	Status       ExecutionStatus `db:"status" json:"status"`
-	Error        sql.NullString  `db:"error" json:"error"`
-	Outputs      json.RawMessage `db:"outputs" json:"outputs"`
-	StartedAt    sql.NullTime    `db:"started_at" json:"started_at"`
-	CompletedAt  sql.NullTime    `db:"completed_at" json:"completed_at"`
-	UpdatedAt    time.Time       `db:"updated_at" json:"updated_at"`
-	ScheduleName string          `db:"schedule_name" json:"schedule_name"`
+	ID            int32           `db:"id" json:"id"`
+	ExecID        string          `db:"exec_id" json:"exec_id"`
+	FlowID        int32           `db:"flow_id" json:"flow_id"`
+	NamespaceID   int32           `db:"namespace_id" json:"namespace_id"`
+	TriggeredBy   int32           `db:"triggered_by" json:"triggered_by"`
+	TriggerType   TriggerType     `db:"trigger_type" json:"trigger_type"`
+	Inputs        json.RawMessage `db:"inputs" json:"inputs"`
+	ScheduledAt   sql.NullTime    `db:"scheduled_at" json:"scheduled_at"`
+	CreatedAt     time.Time       `db:"created_at" json:"created_at"`
+	Attempt       int32           `db:"attempt" json:"attempt"`
+	Status        ExecutionStatus `db:"status" json:"status"`
+	Error         sql.NullString  `db:"error" json:"error"`
+	Outputs       json.RawMessage `db:"outputs" json:"outputs"`
+	StartedAt     sql.NullTime    `db:"started_at" json:"started_at"`
+	CompletedAt   sql.NullTime    `db:"completed_at" json:"completed_at"`
+	UpdatedAt     time.Time       `db:"updated_at" json:"updated_at"`
+	ScheduleName  string          `db:"schedule_name" json:"schedule_name"`
+	FlowVersionID sql.NullInt32   `db:"flow_version_id" json:"flow_version_id"`
 }
 
 type ExecutionEvent struct {
@@ -504,6 +505,16 @@ type FlowSecret struct {
 	NamespaceID    int32          `db:"namespace_id" json:"namespace_id"`
 	CreatedAt      time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt      time.Time      `db:"updated_at" json:"updated_at"`
+}
+
+type FlowVersion struct {
+	ID        int32     `db:"id" json:"id"`
+	FlowID    int32     `db:"flow_id" json:"flow_id"`
+	Version   int32     `db:"version" json:"version"`
+	Checksum  string    `db:"checksum" json:"checksum"`
+	Format    string    `db:"format" json:"format"`
+	Source    string    `db:"source" json:"source"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
 }
 
 type Group struct {

@@ -5,10 +5,14 @@
   let {
     name,
     description,
+    version,
+    versionsUrl,
     IconComponent = IconLayoutGrid
   }: {
     name: string,
     description?: string,
+    version?: number,
+    versionsUrl?: string,
     IconComponent?: ComponentType
   } = $props();
 </script>
@@ -19,7 +23,13 @@
       <IconComponent size={20} />
     </div>
     <div class="flex-1 min-w-0">
-      <h1 class="hero-title">{name}</h1>
+      <div class="hstack gap-3 items-center">
+        <h1 class="hero-title">{name}</h1>
+        {#if version}
+          {#if versionsUrl}<a class="badge outline" href={versionsUrl}>Version {version}</a>
+          {:else}<span class="badge outline">Version {version}</span>{/if}
+        {/if}
+      </div>
       {#if description}
         <p class="text-light hero-description">{description}</p>
       {/if}
@@ -28,6 +38,10 @@
 </div>
 
 <style>
+  .badge {
+    color: var(--muted-foreground);
+    text-decoration: none;
+  }
   .hero-section {
     background: var(--card);
     padding: var(--space-5) var(--space-6) var(--space-4);

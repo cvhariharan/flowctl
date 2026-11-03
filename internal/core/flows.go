@@ -301,23 +301,33 @@ func (c *Core) GetFlowsByPrefix(ctx context.Context, namespaceID, prefix string)
 }
 
 func (c *Core) GetFlowFromLogID(logID string, namespaceID string) (models.Flow, error) {
-	f, ok := c.logMap[logID]
-	if !ok {
-		namespaceUUID, err := uuid.Parse(namespaceID)
-		if err != nil {
-			return models.Flow{}, fmt.Errorf("invalid namespace UUID: %w", err)
-		}
-		df, err := c.store.GetFlowFromExecID(context.Background(), repo.GetFlowFromExecIDParams{
-			ExecID: logID,
-			Uuid:   namespaceUUID,
-		})
-		if err != nil {
-			return models.Flow{}, fmt.Errorf("could not get flow for exec id %s: %w", logID, err)
-		}
-		return c.GetFlowByID(df.Slug, namespaceID)
+	namespaceUUID, err := uuid.Parse(namespaceID)
+	if err != nil {
+		return models.Flow{}, fmt.Errorf("invalid namespace UUID: %w", err)
 	}
-
-	return c.GetFlowByID(f, namespaceID)
+	row, err := c.store.GetExecutionFlowSource(context.Background(), repo.GetExecutionFlowSourceParams{
+		ExecID: logID,
+		Uuid:   namespaceUUID,
+	})
+	if err != nil {
+		return models.Flow{}, fmt.Errorf("could not get flow for exec id %s: %w", logID, err)
+	}
+	current, err := c.GetFlowByID(row.Slug, namespaceID)
+	if err != nil {
+		return models.Flow{}, err
+	}
+	if !row.VersionID.Valid || row.VersionID.Int32 == current.Meta.VersionDBID {
+		return current, nil
+	}
+	// Load the pinned version without replacing c.flows so new runs keep using the active definition.
+	f, err := parseFlowSource([]byte(row.Source.String), models.FlowFormat(row.Format.String), row.NamespaceName, filepath.Base(filepath.Dir(row.FilePath)))
+	if err != nil {
+		return models.Flow{}, fmt.Errorf("flow %s version %d can no longer be loaded: %w", row.Slug, row.Version.Int32, err)
+	}
+	f.Meta.DBID = row.FlowID
+	f.Meta.VersionDBID = row.VersionID.Int32
+	f.Meta.Version = int(row.Version.Int32)
+	return f, nil
 }
 
 // QueueFlowExecution adds a flow in the execution queue. The ID returned is the execution queue ID.
@@ -554,6 +564,7 @@ func (c *Core) queueFlow(ctx context.Context, f models.Flow, execCtx models.Exec
 		_, err = c.store.QueueExecutionTx(ctx, repo.AddExecutionParams{
 			ExecID: execID, FlowID: f.Meta.DBID, Inputs: inputs, TriggerType: dbTriggerType,
 			Uuid: userID, Uuid_2: namespaceUUID, ScheduledAt: scheduledAtDB,
+			FlowVersionID: nullVersionDBID(f.Meta.VersionDBID),
 		}, execCtx.Outputs, job)
 		if err != nil {
 			return "", fmt.Errorf("could not add execution: %w", err)
@@ -703,7 +714,13 @@ func (c *Core) GetExecutionSummaryByExecID(ctx context.Context, execID string, n
 		actionRetries[id] = int(action.Attempt)
 	}
 
+	current, err := c.GetFlowByID(e.FlowSlug, namespaceID)
+	if err != nil {
+		return models.ExecutionSummary{}, err
+	}
 	return models.ExecutionSummary{
+		FlowVersion:     int(e.FlowVersion.Int32),
+		ActiveVersion:   current.Meta.Version,
 		ExecID:          execID,
 		Inputs:          inputs,
 		FlowName:        e.FlowName,
@@ -829,10 +846,11 @@ func (c *Core) CreateFlow(ctx context.Context, f models.Flow, namespaceID string
 
 func (c *Core) UpdateFlow(ctx context.Context, f models.Flow, namespaceID string) error {
 	c.rwf.RLock()
-	if _, exists := c.flows[fmt.Sprintf("%s:%s", f.Meta.ID, namespaceID)]; !exists {
+	_, exists := c.flows[fmt.Sprintf("%s:%s", f.Meta.ID, namespaceID)]
+	c.rwf.RUnlock()
+	if !exists {
 		return fmt.Errorf("flow with id %s does not exist", f.Meta.ID)
 	}
-	c.rwf.RUnlock()
 
 	// Remove duplicate schedules
 	f.Schedules = removeDuplicateSchedules(f.Schedules)
@@ -862,11 +880,6 @@ func (c *Core) UpdateFlow(ctx context.Context, f models.Flow, namespaceID string
 		return fmt.Errorf("flow file does not exist at %s: %w", flowFilePath, err)
 	}
 
-	isSub, err := isSubpath(c.flowDirectory, flowFilePath)
-	if err != nil || !isSub {
-		return fmt.Errorf("cannot write to file outside flows root: %s", flowFilePath)
-	}
-
 	// Detect the format of the existing file and use the same format
 	format := DetectFlowFormat(flowFilePath)
 	flowData, err := models.MarshalFlow(f, format)
@@ -874,27 +887,17 @@ func (c *Core) UpdateFlow(ctx context.Context, f models.Flow, namespaceID string
 		return fmt.Errorf("could not marshal flow to %s: %w", format, err)
 	}
 
-	if err := os.WriteFile(flowFilePath, flowData, 0644); err != nil {
-		return fmt.Errorf("could not write flow file: %w", err)
-	}
-
-	importedFlow, namespaceUUIDStr, err := c.importFlowFromFile(ctx, flowFilePath, n.Name)
-	if err != nil {
-		return fmt.Errorf("could not import flow after update: %w", err)
-	}
-
-	c.rwf.Lock()
-	defer c.rwf.Unlock()
-	c.flows[fmt.Sprintf("%s:%s", importedFlow.Meta.ID, namespaceUUIDStr)] = importedFlow
-	return nil
+	_, err = c.writeAndImportFlowFile(ctx, flowFilePath, n.Name, flowData)
+	return err
 }
 
 func (c *Core) DeleteFlow(ctx context.Context, flowID, namespaceID string) error {
 	c.rwf.RLock()
-	if _, exists := c.flows[fmt.Sprintf("%s:%s", flowID, namespaceID)]; !exists {
+	_, exists := c.flows[fmt.Sprintf("%s:%s", flowID, namespaceID)]
+	c.rwf.RUnlock()
+	if !exists {
 		return fmt.Errorf("flow with id %s does not exist", flowID)
 	}
-	c.rwf.RUnlock()
 
 	namespaceUUID, err := uuid.Parse(namespaceID)
 	if err != nil {
@@ -1032,22 +1035,9 @@ func (c *Core) importFlowFromFile(ctx context.Context, flowFilePath, namespaceNa
 
 	// Detect format based on file extension and unmarshal accordingly
 	format := DetectFlowFormat(flowFilePath)
-	f, err := models.UnmarshalFlow(data, format)
+	f, err := parseFlowSource(data, format, namespaceName, filepath.Base(filepath.Dir(flowFilePath)))
 	if err != nil {
 		return models.Flow{}, "", fmt.Errorf("error parsing flow file in %s: %w", flowFilePath, err)
-	}
-
-	if err := f.Validate(); err != nil {
-		return models.Flow{}, "", fmt.Errorf("validation error in %s: %w", flowFilePath, err)
-	}
-
-	f.Meta.SrcDir = filepath.Base(filepath.Dir(flowFilePath))
-	if f.Meta.Namespace == "" {
-		f.Meta.Namespace = namespaceName
-	}
-
-	if f.Meta.Namespace != namespaceName {
-		return models.Flow{}, "", fmt.Errorf("flow namespace %s does not match expected namespace %s", f.Meta.Namespace, namespaceName)
 	}
 
 	ns, err := c.store.GetNamespaceByName(context.Background(), f.Meta.Namespace)
@@ -1118,6 +1108,17 @@ func (c *Core) importFlowFromFile(ctx context.Context, flowFilePath, namespaceNa
 		return models.Flow{}, "", fmt.Errorf("failed to mark flow %s as active: %w", f.Meta.ID, err)
 	}
 
+	v, err := c.store.EnsureFlowVersion(ctx, repo.EnsureFlowVersionParams{
+		FlowID:   fd.ID,
+		Checksum: checksum,
+		Format:   string(format),
+		Source:   string(data),
+	})
+	if err != nil {
+		return models.Flow{}, "", fmt.Errorf("failed to record version for flow %s: %w", f.Meta.ID, err)
+	}
+	f.Meta.VersionDBID = v.ID
+	f.Meta.Version = int(v.Version)
 	f.Meta.DBID = fd.ID
 	return f, ns.Uuid.String(), nil
 }

@@ -1,0 +1,138 @@
+{
+  "metadata": {
+    "name": "Postgres Backup",
+    "description": "Dump a Postgres database, check that the dump can be restored, and upload it to S3.",
+    "execution_mode": "sequential",
+    "allow_overlap": false,
+    "user_schedulable": true,
+    "max_retries": 1,
+    "schedules": [
+      {
+        "name": "Nightly",
+        "cron": "0 2 * * *",
+        "timezone": "UTC"
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "name": "database",
+      "type": "select",
+      "label": "Database",
+      "description": "Database to back up",
+      "required": true,
+      "default": "orders",
+      "options": [
+        "orders",
+        "users",
+        "billing"
+      ]
+    },
+    {
+      "name": "backup_name",
+      "type": "string",
+      "label": "Backup name",
+      "description": "Suffix for the dump file. Defaults to today's date.",
+      "required": true,
+      "default": "{{ now().Format('2006-01-02') }}",
+      "validation": "backup_name matches '^[a-zA-Z0-9_.-]+$'"
+    },
+    {
+      "name": "verify_restore",
+      "type": "checkbox",
+      "label": "Verify the dump",
+      "description": "List the dump's contents with pg_restore before uploading",
+      "default": "true"
+    }
+  ],
+  "actions": [
+    {
+      "id": "dump_database",
+      "name": "Dump Database",
+      "executor": "docker",
+      "variables": [
+        {
+          "PGHOST": "{{ secrets.PG_HOST }}"
+        },
+        {
+          "PGUSER": "{{ secrets.PG_USER }}"
+        },
+        {
+          "PGPASSWORD": "{{ secrets.PG_PASSWORD }}"
+        },
+        {
+          "PGDATABASE": "{{ inputs.database }}"
+        },
+        {
+          "DUMP_FILE": "{{ inputs.database + '-' + inputs.backup_name + '.dump' }}"
+        }
+      ],
+      "with": {
+        "image": "postgres:16-alpine",
+        "script": "set -eu\n: \"${PGHOST:?PG_HOST secret is not set}\"\n: \"${PGPASSWORD:?PG_PASSWORD secret is not set}\"\npg_dump --format=custom --file \"$FC_ARTIFACTS/$DUMP_FILE\"\necho \"DUMP_FILE=$DUMP_FILE\" >> \"$FC_OUTPUT\"\necho \"DUMP_BYTES=$(wc -c < \"$FC_ARTIFACTS/$DUMP_FILE\")\" >> \"$FC_OUTPUT\"\n"
+      }
+    },
+    {
+      "id": "verify_dump",
+      "name": "Verify Dump",
+      "executor": "docker",
+      "variables": [
+        {
+          "DUMP_FILE": "{{ outputs.DUMP_FILE }}"
+        },
+        {
+          "VERIFY": "{{ inputs.verify_restore }}"
+        }
+      ],
+      "with": {
+        "image": "postgres:16-alpine",
+        "script": "set -eu\nif [ \"$VERIFY\" != \"true\" ]; then\n  echo \"verification skipped\"\n  exit 0\nfi\npg_restore --list \"$FC_ARTIFACTS/local/$DUMP_FILE\" > /dev/null\necho \"$DUMP_FILE is a readable dump\"\n"
+      }
+    },
+    {
+      "id": "upload_to_s3",
+      "name": "Upload To S3",
+      "executor": "docker",
+      "variables": [
+        {
+          "AWS_ACCESS_KEY_ID": "{{ secrets.AWS_ACCESS_KEY_ID }}"
+        },
+        {
+          "AWS_SECRET_ACCESS_KEY": "{{ secrets.AWS_SECRET_ACCESS_KEY }}"
+        },
+        {
+          "AWS_DEFAULT_REGION": "{{ secrets.AWS_REGION }}"
+        },
+        {
+          "BUCKET": "{{ secrets.BACKUP_BUCKET }}"
+        },
+        {
+          "DUMP_FILE": "{{ outputs.DUMP_FILE }}"
+        },
+        {
+          "DUMP_BYTES": "{{ outputs.DUMP_BYTES }}"
+        },
+        {
+          "OBJECT_KEY": "{{ meta.Namespace + '/' + outputs.DUMP_FILE }}"
+        }
+      ],
+      "with": {
+        "image": "alpine:3.20",
+        "script": "set -eu\n: \"${BUCKET:?BACKUP_BUCKET secret is not set}\"\napk add --no-cache aws-cli > /dev/null\necho \"uploading $DUMP_FILE ($DUMP_BYTES bytes)\"\naws s3 cp \"$FC_ARTIFACTS/local/$DUMP_FILE\" \"s3://$BUCKET/$OBJECT_KEY\"\necho \"S3_URI=s3://$BUCKET/$OBJECT_KEY\" >> \"$FC_OUTPUT\"\n"
+      }
+    }
+  ],
+  "notify": [
+    {
+      "channel": "email",
+      "config": {
+        "receivers": [
+          "group:dba"
+        ]
+      },
+      "events": [
+        "on_failure"
+      ]
+    }
+  ]
+}

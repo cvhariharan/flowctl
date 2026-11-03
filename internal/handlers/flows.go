@@ -520,6 +520,17 @@ func (h *Handler) HandleGetFlowMeta(c echo.Context) error {
 		return wrapError(ErrResourceNotFound, "flow not found", err, nil)
 	}
 
+	if value := c.QueryParam("version"); value != "" {
+		version, err := parseVersion(value)
+		if err != nil {
+			return err
+		}
+		flow, err = h.co.GetFlowVersion(c.Request().Context(), req.FlowID, namespace, version)
+		if err != nil {
+			return flowVersionError(err)
+		}
+	}
+
 	// Get scheduled executions for this flow
 	scheduledExecs, err := h.co.GetScheduledExecutionsByFlow(c.Request().Context(), flow.Meta.DBID, namespace)
 	if err != nil {
@@ -574,14 +585,15 @@ func (h *Handler) HandleCreateFlow(c echo.Context) error {
 
 	flow := models.Flow{
 		Meta: models.Metadata{
-			ID:            GenerateSlug(req.Meta.Name),
-			Name:          req.Meta.Name,
-			Description:   req.Meta.Description,
-			Prefix:        req.Meta.Prefix,
-			Namespace:     namespace,
-			AllowOverlap:  req.Meta.AllowOverlap,
-			MaxRetries:    req.Meta.MaxRetries,
-			ExecutionMode: models.ExecutionMode(req.Meta.ExecutionMode),
+			ID:              GenerateSlug(req.Meta.Name),
+			Name:            req.Meta.Name,
+			Description:     req.Meta.Description,
+			Prefix:          req.Meta.Prefix,
+			Namespace:       namespace,
+			AllowOverlap:    req.Meta.AllowOverlap,
+			UserSchedulable: req.Meta.UserSchedulable,
+			MaxRetries:      req.Meta.MaxRetries,
+			ExecutionMode:   models.ExecutionMode(req.Meta.ExecutionMode),
 		},
 		Inputs:    convertFlowInputsReqToInputs(req.Inputs),
 		Actions:   convertFlowActionsReqToActions(req.Actions),

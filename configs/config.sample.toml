@@ -72,6 +72,10 @@ issuer = ""
 redirect_url = ""
 # (optional) Token URL of the OIDC provider
 token_url = ""
+# (optional) Also log out of the SSO provider when logging out of flowctl (default: false)
+logout_enabled = false
+# (optional) Override the provider's discovered logout URL; requires logout_enabled = true
+logout_url = ""
 # (optional) Sign in label
 label = ""
 # (optional) Auto create users
@@ -147,6 +151,14 @@ dsn = ""
 [metrics]
 enabled = true
 path = "/metrics"
+
+# Model Context Protocol endpoint at <root_url>/mcp for AI agents.
+# Agents authenticate with a personal access token and act with that user's permissions.
+[mcp]
+enabled = false
+# (optional) Maximum size of an MCP request body in bytes. It must fit the largest
+# flow definition an agent sends to create_flow or update_flow (default: 1048576 = 1MB)
+max_body_size = 1048576
 
 # Email notifications via SMTP
 # Required for flow notifications to work

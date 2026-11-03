@@ -153,6 +153,7 @@ export interface FlowInputsResp {
 }
 
 export interface FlowMeta {
+  version?: number;
   id: string;
   name: string;
   description: string;
@@ -334,6 +335,7 @@ export interface ApprovalDetailsResp {
   inputs?: any;
   flow_name: string;
   flow_id: string;
+  flow_version?: number;
   requested_by: string;
   approved_by?: string;
   created_at: string;
@@ -350,6 +352,8 @@ export type ExecutionStatus =
   | "running";
 
 export interface ExecutionSummary {
+  flow_version?: number;
+  active_version?: number;
   id: string;
   flow_name: string;
   flow_id: string;
@@ -735,4 +739,38 @@ export interface FlowProblem {
   message: string;
   section: BuilderSection;
   actionId?: string;
+}
+
+export interface FlowVersionListItem {
+  version: number;
+  checksum: string;
+  created_at: string;
+  active: boolean;
+}
+
+export interface FlowVersionsResponse {
+  versions: FlowVersionListItem[];
+  page_count: number;
+  total_count: number;
+}
+
+export interface FlowVersionSource {
+  version: number;
+  format: string;
+  source: string;
+  created_at: string;
+  active: boolean;
+}
+
+export interface FlowDiffLine {
+  op: 'equal' | 'insert' | 'delete';
+  old?: number;
+  new?: number;
+  text: string;
+}
+
+export interface FlowVersionDiff {
+  from: number;
+  to: number;
+  lines: FlowDiffLine[];
 }

@@ -176,6 +176,7 @@ type Scheduling struct {
 type Metadata struct {
 	ID            string        `yaml:"id" validate:"required,alphanum_underscore"`
 	DBID          int32         `yaml:"-"`
+	VersionDBID   int32         `yaml:"-" json:"VersionID"`
 	Name          string        `yaml:"name" validate:"required"`
 	Description   string        `yaml:"description"`
 	SrcDir        string        `yaml:"-"`

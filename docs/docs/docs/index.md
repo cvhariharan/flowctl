@@ -235,6 +235,8 @@ Configure webhook settings to enable webhook notifications for flow events. Webh
   issuer = "https://your-oidc-provider.com/"
   auth_url = ""
   token_url = ""
+  logout_enabled = false
+  logout_url = ""
   redirect_url = ""
   label = "Sign in with OIDC"
   auto_create_users.enabled = false
@@ -248,7 +250,11 @@ Configure webhook settings to enable webhook notifications for flow events. Webh
       Currently only the default admin user can use a username and password to log
       into flowctl. All other users are expected to use OIDC.
 
-Configure OpenID Connect for single sign-on. Multiple OIDC providers can be configured by adding additional `[[oidc]]` sections:
+Configure OpenID Connect for single sign-on. Multiple OIDC providers can be configured by adding additional `[[oidc]]` sections.
+
+Register `<app.root_url>/auth/callback` as the callback URL in your SSO provider's application settings. If you configure `redirect_url`, register that exact URL instead.
+
+The provider must support the OpenID Connect authorization code flow and return an `id_token` as a signed JWT in its token response. Include the `email` claim in the ID token so flowctl can identify the user. flowctl requests the `openid`, `profile`, and `email` scopes. See [OIDC Authentication](/docs/general/access-control#oidc-authentication) for setup details.
 
 - **`name`** (required): Unique identifier for the OIDC provider.
 - **`client_id`** (required): OAuth2 client ID from your OIDC provider.
@@ -256,7 +262,9 @@ Configure OpenID Connect for single sign-on. Multiple OIDC providers can be conf
 - **`issuer`** (required): OIDC provider's issuer URL.
 - **`auth_url`** (optional): Authorization URL of the OIDC provider.
 - **`token_url`** (optional): Token URL of the OIDC provider.
-- **`redirect_url`** (optional): Callback URL for OIDC authentication.
+- **`logout_enabled`** (optional): Also end the SSO provider session when logging out of flowctl (default: `false`). Uses the provider's discovered logout endpoint or `logout_url`. If neither is available, only the flowctl session is ended.
+- **`logout_url`** (optional): Override the provider's discovered logout endpoint. Only used when `logout_enabled` is `true`.
+- **`redirect_url`** (optional): Callback URL for OIDC authentication (default: `<app.root_url>/auth/callback`).
 - **`label`** (optional): Label for the SSO button.
 - **`auto_create_users.enabled`** (optional): Automatically create a flowctl account for users logging in for the first time (default: `false`). See [Auto-Creating Users on Login](/docs/general/access-control#auto-creating-users-on-login).
 - **`auto_create_users.namespace`** (optional): Namespace to add new users to (default: `"default"`).

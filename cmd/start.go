@@ -18,6 +18,7 @@ import (
 	"github.com/cvhariharan/flowctl/internal/core"
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/cvhariharan/flowctl/internal/handlers"
+	"github.com/cvhariharan/flowctl/internal/mcpserver"
 	"github.com/cvhariharan/flowctl/internal/messengers"
 	"github.com/cvhariharan/flowctl/internal/metrics"
 	"github.com/cvhariharan/flowctl/internal/repo"
@@ -403,6 +404,10 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 	namespaceGroup.GET("/flows/:flowID/nodes", h.HandleListNodesForFlow, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionExecute))
 	namespaceGroup.GET("/flows/:flowID/meta", h.HandleGetFlowMeta, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionView))
 	namespaceGroup.GET("/flows/:flowID/config", h.HandleGetFlowConfig, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionViewConfig))
+	namespaceGroup.GET("/flows/:flowID/versions", h.HandleListFlowVersions, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionViewConfig))
+	namespaceGroup.GET("/flows/:flowID/versions/diff", h.HandleDiffFlowVersions, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionViewConfig))
+	namespaceGroup.GET("/flows/:flowID/versions/:version", h.HandleGetFlowVersion, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionViewConfig))
+	namespaceGroup.POST("/flows/:flowID/versions/:version/activate", h.HandleActivateFlowVersion, h.AuthorizeNamespaceAction(models.ResourceFlow, models.RBACActionUpdate))
 
 	namespaceGroup.GET("/flows/:flowID/secrets", h.HandleListFlowSecrets, h.AuthorizeNamespaceAction(models.ResourceFlowSecret, models.RBACActionView))
 	namespaceGroup.GET("/flows/:flowID/secrets/:secretID", h.HandleGetFlowSecret, h.AuthorizeNamespaceAction(models.ResourceFlowSecret, models.RBACActionView))
@@ -452,6 +457,15 @@ func startServer(db *sqlx.DB, co *core.Core, metricsManager *metrics.Manager, lo
 	namespaceGroup.POST("/secrets", h.HandleCreateNamespaceSecret, h.AuthorizeNamespaceAction(models.ResourceNamespaceSecret, models.RBACActionCreate))
 	namespaceGroup.PUT("/secrets/:secretID", h.HandleUpdateNamespaceSecret, h.AuthorizeNamespaceAction(models.ResourceNamespaceSecret, models.RBACActionUpdate))
 	namespaceGroup.DELETE("/secrets/:secretID", h.HandleDeleteNamespaceSecret, h.AuthorizeNamespaceAction(models.ResourceNamespaceSecret, models.RBACActionDelete))
+
+	if appConfig.MCP.Enabled {
+		e.Any("/mcp", mcpserver.NewHandler(e, mcpserver.Options{
+			RootURL:     appConfig.App.RootURL,
+			Version:     version,
+			Logger:      logger.WithGroup("mcp"),
+			MaxBodySize: appConfig.MCP.MaxBodySize,
+		}), h.Authenticate, h.RequirePATAuth)
+	}
 
 	buildFS, err := fs.Sub(StaticFiles, "site/build")
 	if err != nil {

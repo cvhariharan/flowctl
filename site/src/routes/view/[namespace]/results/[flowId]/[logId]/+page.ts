@@ -27,11 +27,8 @@ export const load: PageLoad = async ({ params, parent }) => {
   }
 
   try {
-    // Load flow metadata and execution summary in parallel
-    const [flowMeta, executionSummary] = await Promise.all([
-      apiClient.flows.getMeta(namespace, flowId),
-      apiClient.executions.getById(namespace, logId)
-    ]);
+    const executionSummary = await apiClient.executions.getById(namespace, logId);
+    const flowMeta = await apiClient.flows.getMeta(namespace, flowId, executionSummary.flow_version);
 
     return {
       namespace,

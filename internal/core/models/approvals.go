@@ -69,17 +69,18 @@ func (a *ApprovalRequest) UnmarshalBinary(data []byte) error {
 
 type ApprovalDetails struct {
 	ApprovalRequest
-	DecidedBy string
-	Inputs    json.RawMessage
-	FlowName  string
-	FlowID    string
-	CreatedAt string
-	UpdatedAt string
+	DecidedBy   string
+	Inputs      json.RawMessage
+	FlowName    string
+	FlowID      string
+	FlowVersion int
+	CreatedAt   string
+	UpdatedAt   string
 }
 
 type ApprovalPaginationDetails struct {
 	ApprovalRequest
-	FlowName string
+	FlowName  string
 	CreatedAt string
 	UpdatedAt string
 }

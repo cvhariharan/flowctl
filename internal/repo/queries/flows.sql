@@ -206,3 +206,35 @@ WHERE namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $1);
 -- name: MarkFlowActive :exec
 UPDATE flows SET is_active = TRUE, updated_at = NOW()
 WHERE slug = $1 AND namespace_id = (SELECT id FROM namespaces WHERE namespaces.uuid = $2);
+
+-- name: EnsureFlowVersion :one
+INSERT INTO flow_versions (flow_id, version, checksum, format, source)
+VALUES (
+    sqlc.arg(flow_id),
+    (SELECT COALESCE(MAX(version), 0) + 1 FROM flow_versions WHERE flow_id = sqlc.arg(flow_id)),
+    sqlc.arg(checksum), sqlc.arg(format), sqlc.arg(source)
+)
+ON CONFLICT (flow_id, checksum) DO UPDATE SET checksum = EXCLUDED.checksum
+RETURNING id, version;
+
+-- name: GetFlowVersion :one
+SELECT fv.*, f.file_path, n.name AS namespace_name
+FROM flow_versions fv
+JOIN flows f ON f.id = fv.flow_id
+JOIN namespaces n ON n.id = f.namespace_id
+WHERE f.slug = $1 AND n.uuid = $2 AND fv.version = $3;
+
+-- name: ListFlowVersions :many
+WITH filtered AS (
+    SELECT fv.version, fv.checksum, fv.created_at
+    FROM flow_versions fv
+    JOIN flows f ON f.id = fv.flow_id
+    JOIN namespaces n ON n.id = f.namespace_id
+    WHERE f.slug = $1 AND n.uuid = $2
+),
+total AS (SELECT COUNT(*) AS total_count FROM filtered),
+paged AS (SELECT * FROM filtered ORDER BY version DESC LIMIT $3 OFFSET $4),
+page_count AS (
+    SELECT CEIL(total.total_count::numeric / $3::numeric)::bigint AS page_count FROM total
+)
+SELECT p.*, pc.page_count, t.total_count FROM paged p, page_count pc, total t;

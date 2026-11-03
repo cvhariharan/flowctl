@@ -10,6 +10,9 @@ import type {
   FlowsPaginateResponse,
   FlowInputsResp,
   FlowMetaResp,
+  FlowVersionsResponse,
+  FlowVersionSource,
+  FlowVersionDiff,
   FlowTriggerResp,
   FlowCreateReq,
   FlowCreateResp,
@@ -77,7 +80,7 @@ export function getCsrfToken(): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-async function baseFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
+async function rawFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const method = (options.method ?? 'GET').toUpperCase();
   const csrfHeaders: Record<string, string> =
     method !== 'GET' && method !== 'HEAD'
@@ -103,6 +106,12 @@ async function baseFetch<T>(url: string, options: RequestInit = {}): Promise<T> 
     }
     throw new ApiError(response.status, response.statusText, errorData);
   }
+
+  return response;
+}
+
+async function baseFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const response = await rawFetch(url, options);
 
   // Handle empty responses (e.g., 204 No Content)
   if (response.status === 204) {
@@ -139,10 +148,10 @@ export const apiClient = {
         method: 'POST',
         body: JSON.stringify(credentials),
       }),
-    logout: () =>
-      baseFetch<void>('/logout', {
-        method: 'POST',
-      }),
+    logout: async (): Promise<{ redirectUrl: string | null }> => {
+      const response = await rawFetch('/logout', { method: 'POST' });
+      return { redirectUrl: response.headers.get('x-redirect') };
+    },
     getSSOProviders: () => baseFetch<SSOProvider[]>('/sso-providers'),
   },
 
@@ -309,8 +318,18 @@ export const apiClient = {
       }),
     getInputs: (namespace: string, flowId: string) =>
       baseFetch<FlowInputsResp>(`/api/v1/${encodeURIComponent(namespace)}/flows/${flowId}/inputs`),
-    getMeta: (namespace: string, flowId: string) =>
-      baseFetch<FlowMetaResp>(`/api/v1/${encodeURIComponent(namespace)}/flows/${flowId}/meta`),
+    getMeta: (namespace: string, flowId: string, version?: number) =>
+      baseFetch<FlowMetaResp>(`/api/v1/${encodeURIComponent(namespace)}/flows/${flowId}/meta${version ? `?version=${version}` : ''}`),
+    versions: {
+      list: (namespace: string, flowId: string, params: { page?: number; count?: number } = {}) =>
+        baseFetch<FlowVersionsResponse>(`/api/v1/${encodeURIComponent(namespace)}/flows/${flowId}/versions${buildQueryString(params)}`),
+      get: (namespace: string, flowId: string, version: number) =>
+        baseFetch<FlowVersionSource>(`/api/v1/${encodeURIComponent(namespace)}/flows/${flowId}/versions/${version}`),
+      activate: (namespace: string, flowId: string, version: number) =>
+        baseFetch<{ id: string; version: number }>(`/api/v1/${encodeURIComponent(namespace)}/flows/${flowId}/versions/${version}/activate`, { method: 'POST' }),
+      diff: (namespace: string, flowId: string, from: number, to?: number) =>
+        baseFetch<FlowVersionDiff>(`/api/v1/${encodeURIComponent(namespace)}/flows/${flowId}/versions/diff${buildQueryString({ from, to })}`),
+    },
     trigger: (namespace: string, flowId: string, inputs: Record<string, any>) => {
       const formData = new FormData();
       Object.entries(inputs).forEach(([key, value]) => {

@@ -5,9 +5,9 @@ WITH user_lookup AS (
     SELECT id FROM namespaces WHERE namespaces.uuid = $5
 )
 INSERT INTO executions (
-    exec_id, flow_id, inputs, trigger_type, triggered_by, namespace_id, scheduled_at, schedule_name
+    exec_id, flow_id, inputs, trigger_type, triggered_by, namespace_id, scheduled_at, schedule_name, flow_version_id
 ) VALUES (
-    $1, $2, $3, $6, (SELECT id FROM user_lookup), (SELECT id FROM namespace_lookup), $7, $8
+    $1, $2, $3, $6, (SELECT id FROM user_lookup), (SELECT id FROM namespace_lookup), $7, $8, sqlc.narg(flow_version_id)
 ) RETURNING *;
 
 -- name: InsertExecutionEvent :execrows
@@ -131,10 +131,11 @@ WITH namespace_lookup AS (
 )
 SELECT el.*, u.name, u.username, u.uuid AS triggered_by_uuid,
        CONCAT(u.name, ' <', u.username, '>')::TEXT AS triggered_by_name,
-       f.name AS flow_name, f.slug AS flow_slug
+       f.name AS flow_name, f.slug AS flow_slug, fv.version AS flow_version
 FROM executions el
 JOIN users u ON el.triggered_by = u.id
 JOIN flows f ON el.flow_id = f.id
+LEFT JOIN flow_versions fv ON fv.id = el.flow_version_id
 WHERE el.exec_id = $1
   AND el.namespace_id = (SELECT id FROM namespace_lookup)
   AND f.is_active = TRUE;
@@ -153,24 +154,18 @@ WHERE el.exec_id = $1
   AND f.namespace_id = (SELECT id FROM namespace_lookup)
   AND f.is_active = TRUE;
 
--- name: GetFlowFromExecID :one
+-- name: GetExecutionFlowSource :one
 WITH namespace_lookup AS (
-    SELECT id FROM namespaces WHERE namespaces.uuid = $2
+    SELECT id, name FROM namespaces WHERE namespaces.uuid = $2
 )
-SELECT f.* FROM flows f
-JOIN executions el ON el.flow_id = f.id
-WHERE el.exec_id = $1
-  AND f.namespace_id = (SELECT id FROM namespace_lookup)
-  AND f.is_active = TRUE;
-
--- name: GetFlowFromExecIDWithNamespace :one
-WITH namespace_lookup AS (
-    SELECT id FROM namespaces WHERE namespaces.uuid = $2
-)
-SELECT f.* FROM flows f
-JOIN executions el ON el.flow_id = f.id
-WHERE el.exec_id = $1
-  AND f.namespace_id = (SELECT id FROM namespace_lookup)
+SELECT f.id AS flow_id, f.slug, f.file_path,
+       (SELECT name FROM namespace_lookup)::text AS namespace_name,
+       fv.id AS version_id, fv.version, fv.format, fv.source
+FROM executions e
+JOIN flows f ON f.id = e.flow_id
+LEFT JOIN flow_versions fv ON fv.id = e.flow_version_id
+WHERE e.exec_id = $1
+  AND e.namespace_id = (SELECT id FROM namespace_lookup)
   AND f.is_active = TRUE;
 
 -- name: GetExecutionByID :one

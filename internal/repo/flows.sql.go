@@ -89,6 +89,41 @@ func (q *Queries) DeleteFlow(ctx context.Context, arg DeleteFlowParams) error {
 	return err
 }
 
+const ensureFlowVersion = `-- name: EnsureFlowVersion :one
+INSERT INTO flow_versions (flow_id, version, checksum, format, source)
+VALUES (
+    $1,
+    (SELECT COALESCE(MAX(version), 0) + 1 FROM flow_versions WHERE flow_id = $1),
+    $2, $3, $4
+)
+ON CONFLICT (flow_id, checksum) DO UPDATE SET checksum = EXCLUDED.checksum
+RETURNING id, version
+`
+
+type EnsureFlowVersionParams struct {
+	FlowID   int32  `db:"flow_id" json:"flow_id"`
+	Checksum string `db:"checksum" json:"checksum"`
+	Format   string `db:"format" json:"format"`
+	Source   string `db:"source" json:"source"`
+}
+
+type EnsureFlowVersionRow struct {
+	ID      int32 `db:"id" json:"id"`
+	Version int32 `db:"version" json:"version"`
+}
+
+func (q *Queries) EnsureFlowVersion(ctx context.Context, arg EnsureFlowVersionParams) (EnsureFlowVersionRow, error) {
+	row := q.db.QueryRowContext(ctx, ensureFlowVersion,
+		arg.FlowID,
+		arg.Checksum,
+		arg.Format,
+		arg.Source,
+	)
+	var i EnsureFlowVersionRow
+	err := row.Scan(&i.ID, &i.Version)
+	return i, err
+}
+
 const getDistinctPrefixes = `-- name: GetDistinctPrefixes :many
 SELECT DISTINCT fp.uuid, fp.name, fp.description FROM flow_prefixes fp
 JOIN flows f ON f.prefix_id = fp.id
@@ -167,6 +202,49 @@ func (q *Queries) GetFlowCountByPrefix(ctx context.Context, prefixID sql.NullInt
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const getFlowVersion = `-- name: GetFlowVersion :one
+SELECT fv.id, fv.flow_id, fv.version, fv.checksum, fv.format, fv.source, fv.created_at, f.file_path, n.name AS namespace_name
+FROM flow_versions fv
+JOIN flows f ON f.id = fv.flow_id
+JOIN namespaces n ON n.id = f.namespace_id
+WHERE f.slug = $1 AND n.uuid = $2 AND fv.version = $3
+`
+
+type GetFlowVersionParams struct {
+	Slug    string    `db:"slug" json:"slug"`
+	Uuid    uuid.UUID `db:"uuid" json:"uuid"`
+	Version int32     `db:"version" json:"version"`
+}
+
+type GetFlowVersionRow struct {
+	ID            int32     `db:"id" json:"id"`
+	FlowID        int32     `db:"flow_id" json:"flow_id"`
+	Version       int32     `db:"version" json:"version"`
+	Checksum      string    `db:"checksum" json:"checksum"`
+	Format        string    `db:"format" json:"format"`
+	Source        string    `db:"source" json:"source"`
+	CreatedAt     time.Time `db:"created_at" json:"created_at"`
+	FilePath      string    `db:"file_path" json:"file_path"`
+	NamespaceName string    `db:"namespace_name" json:"namespace_name"`
+}
+
+func (q *Queries) GetFlowVersion(ctx context.Context, arg GetFlowVersionParams) (GetFlowVersionRow, error) {
+	row := q.db.QueryRowContext(ctx, getFlowVersion, arg.Slug, arg.Uuid, arg.Version)
+	var i GetFlowVersionRow
+	err := row.Scan(
+		&i.ID,
+		&i.FlowID,
+		&i.Version,
+		&i.Checksum,
+		&i.Format,
+		&i.Source,
+		&i.CreatedAt,
+		&i.FilePath,
+		&i.NamespaceName,
+	)
+	return i, err
 }
 
 const getFlowsByNamespace = `-- name: GetFlowsByNamespace :many
@@ -349,6 +427,71 @@ func (q *Queries) GetScheduledFlows(ctx context.Context) ([]GetScheduledFlowsRow
 			&i.Inputs,
 			&i.CreatedBy,
 			&i.IsUserCreated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFlowVersions = `-- name: ListFlowVersions :many
+WITH filtered AS (
+    SELECT fv.version, fv.checksum, fv.created_at
+    FROM flow_versions fv
+    JOIN flows f ON f.id = fv.flow_id
+    JOIN namespaces n ON n.id = f.namespace_id
+    WHERE f.slug = $1 AND n.uuid = $2
+),
+total AS (SELECT COUNT(*) AS total_count FROM filtered),
+paged AS (SELECT version, checksum, created_at FROM filtered ORDER BY version DESC LIMIT $3 OFFSET $4),
+page_count AS (
+    SELECT CEIL(total.total_count::numeric / $3::numeric)::bigint AS page_count FROM total
+)
+SELECT p.version, p.checksum, p.created_at, pc.page_count, t.total_count FROM paged p, page_count pc, total t
+`
+
+type ListFlowVersionsParams struct {
+	Slug   string    `db:"slug" json:"slug"`
+	Uuid   uuid.UUID `db:"uuid" json:"uuid"`
+	Limit  int32     `db:"limit" json:"limit"`
+	Offset int32     `db:"offset" json:"offset"`
+}
+
+type ListFlowVersionsRow struct {
+	Version    int32     `db:"version" json:"version"`
+	Checksum   string    `db:"checksum" json:"checksum"`
+	CreatedAt  time.Time `db:"created_at" json:"created_at"`
+	PageCount  int64     `db:"page_count" json:"page_count"`
+	TotalCount int64     `db:"total_count" json:"total_count"`
+}
+
+func (q *Queries) ListFlowVersions(ctx context.Context, arg ListFlowVersionsParams) ([]ListFlowVersionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listFlowVersions,
+		arg.Slug,
+		arg.Uuid,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFlowVersionsRow
+	for rows.Next() {
+		var i ListFlowVersionsRow
+		if err := rows.Scan(
+			&i.Version,
+			&i.Checksum,
+			&i.CreatedAt,
+			&i.PageCount,
+			&i.TotalCount,
 		); err != nil {
 			return nil, err
 		}
