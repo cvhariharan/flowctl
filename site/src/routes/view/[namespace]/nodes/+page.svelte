@@ -200,8 +200,8 @@
 		showImportModal = true;
 	}
 
-	async function handleImportNodes(file: File, credentialId: string): Promise<NodeImportResp> {
-		const result = await apiClient.nodes.import(data.namespace, file, credentialId);
+	async function handleImportNodes(file: File): Promise<NodeImportResp> {
+		const result = await apiClient.nodes.import(data.namespace, file);
 		if (result.imported > 0) {
 			showSuccess('Nodes imported', `${result.imported} node${result.imported === 1 ? '' : 's'} imported successfully.`);
 			await Promise.all([fetchNodes(), fetchStats()]);
@@ -386,7 +386,6 @@
 <!-- Import Modal -->
 {#if showImportModal}
 	<NodeImportModal
-		{credentials}
 		onImport={handleImportNodes}
 		onClose={() => { showImportModal = false; }}
 	/>

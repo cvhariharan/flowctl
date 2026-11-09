@@ -1,17 +1,14 @@
 <script lang="ts">
     import { handleInlineError } from "$lib/utils/errorHandling";
-    import OatSelect from "$lib/components/shared/OatSelect.svelte";
-    import type { CredentialResp, NodeImportResp } from "$lib/types";
+    import type { NodeImportResp } from "$lib/types";
 
     interface Props {
-        credentials: CredentialResp[];
-        onImport: (file: File, credentialId: string) => Promise<NodeImportResp>;
+        onImport: (file: File) => Promise<NodeImportResp>;
         onClose: () => void;
     }
 
-    let { credentials, onImport, onClose }: Props = $props();
+    let { onImport, onClose }: Props = $props();
 
-    let selectedCredentialId = $state("");
     let selectedFile = $state<File | null>(null);
     let loading = $state(false);
     let result = $state<NodeImportResp | null>(null);
@@ -30,8 +27,8 @@
 
     function downloadTemplate() {
         const csvContent =
-            "name,hostname,port,username,connection_type,tags\n" +
-            "mynode,192.168.1.1,22,admin,ssh,\"production,web\"\n";
+            "name,hostname,port,username,connection_type,credential,tags\n" +
+            "mynode,192.168.1.1,22,admin,ssh,my_ssh_key,\"production,web\"\n";
         const blob = new Blob([csvContent], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -42,11 +39,11 @@
     }
 
     async function handleSubmit() {
-        if (!selectedFile || !selectedCredentialId) return;
+        if (!selectedFile) return;
         loading = true;
         result = null;
         try {
-            result = await onImport(selectedFile, selectedCredentialId);
+            result = await onImport(selectedFile);
         } catch (err) {
             handleInlineError(err, "Failed to import nodes");
         } finally {
@@ -69,20 +66,6 @@
                         type="file"
                         accept=".csv,text/csv"
                         onchange={onFileChange}
-                        required
-                        disabled={loading}
-                    />
-                    <p class="text-xs text-light mt-1">
-                        Required columns: <code>name, hostname, port, username, connection_type, tags</code>
-                    </p>
-                </div>
-
-                <div data-field>
-                    <label>Credential</label>
-                    <OatSelect
-                        bind:value={selectedCredentialId}
-                        options={credentials.map(c => ({ value: c.id, label: `${c.name} (${c.key_type})` }))}
-                        placeholder="Select credential for all imported nodes"
                         required
                         disabled={loading}
                     />
@@ -133,7 +116,7 @@
             {#if !result}
                 <button
                     type="submit"
-                    disabled={loading || !selectedFile || !selectedCredentialId}
+                    disabled={loading || !selectedFile}
                 >
                     <span class="hstack gap-2 justify-center" aria-busy={loading} data-spinner="small">
                         Import

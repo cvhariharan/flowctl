@@ -378,8 +378,9 @@ func (c *Core) GetNodesByTags(ctx context.Context, tags []string, namespaceUUID 
 
 // nodeCSVRow holds a parsed node row from a CSV import along with its source line number.
 type nodeCSVRow struct {
-	Node models.Node
-	Line int
+	Node           models.Node
+	Line           int
+	CredentialName string
 }
 
 // nodeCSVError records a row that failed parsing or validation.
@@ -390,12 +391,12 @@ type nodeCSVError struct {
 }
 
 // parseNodesCSV reads a CSV from r and returns the parsed rows and any per-row errors.
-// The first row must be the header: name,hostname,port,username,connection_type,tags
+// The first row must be the header: name,hostname,port,username,connection_type,credential,tags
 func parseNodesCSV(r io.Reader) ([]nodeCSVRow, []nodeCSVError, error) {
 	reader := csv.NewReader(r)
 	reader.TrimLeadingSpace = true
 
-	expected := []string{"name", "hostname", "port", "username", "connection_type", "tags"}
+	expected := []string{"name", "hostname", "port", "username", "connection_type", "credential", "tags"}
 
 	header, err := reader.Read()
 	if err != nil {
@@ -438,11 +439,17 @@ func parseNodesCSV(r io.Reader) ([]nodeCSVRow, []nodeCSVError, error) {
 		portStr := strings.TrimSpace(record[2])
 		username := strings.TrimSpace(record[3])
 		connType := strings.TrimSpace(record[4])
-		tagsRaw := strings.TrimSpace(record[5])
+		credentialName := strings.TrimSpace(record[5])
+		tagsRaw := strings.TrimSpace(record[6])
 
 		port, err := strconv.Atoi(portStr)
 		if err != nil {
 			errs = append(errs, nodeCSVError{Line: line, Name: name, Err: fmt.Errorf("invalid port %q", portStr)})
+			continue
+		}
+
+		if credentialName == "" {
+			errs = append(errs, nodeCSVError{Line: line, Name: name, Err: errors.New("credential is required")})
 			continue
 		}
 
@@ -456,7 +463,8 @@ func parseNodesCSV(r io.Reader) ([]nodeCSVRow, []nodeCSVError, error) {
 		}
 
 		rows = append(rows, nodeCSVRow{
-			Line: line,
+			Line:           line,
+			CredentialName: credentialName,
 			Node: models.Node{
 				Name:           name,
 				Hostname:       hostname,
@@ -477,22 +485,34 @@ func parseNodesCSV(r io.Reader) ([]nodeCSVRow, []nodeCSVError, error) {
 
 // ImportNodes parses a CSV, validates each row, and creates nodes in the given namespace.
 // It returns the number of successfully imported nodes, per-row errors, and any fatal error.
-func (c *Core) ImportNodes(ctx context.Context, r io.Reader, credentialID, namespace string) (int, []nodeCSVError, error) {
+func (c *Core) ImportNodes(ctx context.Context, r io.Reader, namespace string) (int, []nodeCSVError, error) {
 	rows, errs, err := parseNodesCSV(r)
 	if err != nil {
 		return 0, nil, err
 	}
 
-	credential, err := c.GetCredentialByID(ctx, credentialID, namespace)
+	namespaceUUID, err := uuid.Parse(namespace)
 	if err != nil {
-		return 0, nil, fmt.Errorf("%w: %v", ErrNodeCredentialNotFound, err)
+		return 0, nil, fmt.Errorf("invalid namespace UUID: %w", err)
 	}
 
 	imported := 0
 	for _, row := range rows {
+		credential, err := c.store.GetCredentialByName(ctx, repo.GetCredentialByNameParams{
+			Name: row.CredentialName,
+			Uuid: namespaceUUID,
+		})
+		if err != nil {
+			message := fmt.Errorf("could not look up credential %q", row.CredentialName)
+			if errors.Is(err, sql.ErrNoRows) {
+				message = fmt.Errorf("%w: %q", ErrNodeCredentialNotFound, row.CredentialName)
+			}
+			errs = append(errs, nodeCSVError{Line: row.Line, Name: row.Node.Name, Err: message})
+			continue
+		}
 		node := row.Node
 		node.Auth = models.NodeAuth{
-			CredentialID: credentialID,
+			CredentialID: credential.Uuid.String(),
 			Method:       models.AuthMethod(credential.KeyType),
 		}
 		if _, err := c.CreateNode(ctx, &node, namespace); err != nil {

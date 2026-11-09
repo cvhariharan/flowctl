@@ -144,7 +144,7 @@ To add multiple nodes at once, use the **Import** button on the Nodes page.
 
 1. Navigate to **Nodes**
 2. Click **Import**
-3. Select a CSV file and choose a credential to apply to all imported nodes
+3. Select a CSV file with a credential name for each node
 4. Click **Import**
 
 Use **Download CSV Template** in the modal to get a ready-to-fill template.
@@ -152,9 +152,9 @@ Use **Download CSV Template** in the modal to get a ready-to-fill template.
 **CSV format:**
 
 ```csv
-name,hostname,port,username,connection_type,tags
-web_server_01,192.168.1.10,22,ubuntu,ssh,"production,web"
-db_server_01,192.168.1.20,22,admin,ssh,"production,database"
+name,hostname,port,username,connection_type,credential,tags
+web_server_01,192.168.1.10,22,ubuntu,ssh,web_ssh_key,"production,web"
+db_server_01,192.168.1.20,22,admin,ssh,db_password,"production,database"
 ```
 
 **Column rules:**
@@ -164,9 +164,10 @@ db_server_01,192.168.1.20,22,admin,ssh,"production,database"
 - **`port`**: 1–65535
 - **`username`**: 2–50 characters
 - **`connection_type`**: `ssh` or `qssh`
+- **`credential`**: Required, exact name of an existing credential in the current namespace. Different rows can use different credentials; the authentication method is taken from the credential.
 - **`tags`**: Comma-separated; each tag may contain only alphanumeric characters and underscores. Wrap in quotes if multiple (e.g. `"web,prod"`).
 
-Rows that fail validation are reported individually — valid rows in the same file are still imported. Empty files, invalid headers, and files with no data rows are rejected. CSV UTF-8 files exported from Excel are supported.
+Rows with missing or unknown credentials, or other validation errors, are reported individually — valid rows in the same file are still imported. Empty files, invalid headers, and files with no data rows are rejected. CSV UTF-8 files exported from Excel are supported.
 
 ### Using Remote Nodes in Flows
 

@@ -68,8 +68,8 @@ func TestNodeMutationValidationStatus(t *testing.T) {
 func TestImportNodesInvalidFileStatus(t *testing.T) {
 	for _, tt := range []struct{ name, input, message string }{
 		{"empty", "", "could not read csv header"},
-		{"header only", "name,hostname,port,username,connection_type,tags\n", "no rows found"},
-		{"missing header", "web,localhost,22,admin,ssh,\n", "expected column 1"},
+		{"header only", "name,hostname,port,username,connection_type,credential,tags\n", "no rows found"},
+		{"missing header", "web,localhost,22,admin,ssh,my_ssh_key,\n", "expected column 1"},
 		{"short header", "name,hostname\n", "csv must have columns"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -80,9 +80,6 @@ func TestImportNodesInvalidFileStatus(t *testing.T) {
 				t.Fatal(err)
 			}
 			if _, err := part.Write([]byte(tt.input)); err != nil {
-				t.Fatal(err)
-			}
-			if err := writer.WriteField("credential_id", uuid.NewString()); err != nil {
 				t.Fatal(err)
 			}
 			if err := writer.Close(); err != nil {
@@ -104,5 +101,39 @@ func TestImportNodesInvalidFileStatus(t *testing.T) {
 				t.Fatalf("status=%d, response=%s", rec.Code, rec.Body.String())
 			}
 		})
+	}
+}
+
+func TestImportNodesMissingRowCredential(t *testing.T) {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("file", "nodes.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := "name,hostname,port,username,connection_type,credential,tags\n" +
+		"web,localhost,22,admin,ssh,,\n"
+	if _, err := part.Write([]byte(input)); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/nodes/import", &body)
+	req.Header.Set(echo.HeaderContentType, writer.FormDataContentType())
+	rec := httptest.NewRecorder()
+	ctx := echo.New().NewContext(req, rec)
+	ctx.Set("namespace", uuid.NewString())
+	h := newTestHandler(config.Config{App: config.AppConfig{MaxNodeImportSize: 1024}})
+	h.co = &core.Core{}
+	if err := h.HandleImportNodes(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var result NodeImportResp
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK || result.Imported != 0 || len(result.Errors) != 1 || result.Errors[0].Row != 2 || result.Errors[0].Name != "web" || result.Errors[0].Error != "credential is required" {
+		t.Fatalf("status=%d, response=%s", rec.Code, rec.Body.String())
 	}
 }

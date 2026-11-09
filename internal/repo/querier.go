@@ -85,6 +85,7 @@ type Querier interface {
 	GetApprovalWithInputsByUUID(ctx context.Context, arg GetApprovalWithInputsByUUIDParams) (GetApprovalWithInputsByUUIDRow, error)
 	GetApprovalsPaginated(ctx context.Context, arg GetApprovalsPaginatedParams) ([]GetApprovalsPaginatedRow, error)
 	GetCredentialByID(ctx context.Context, arg GetCredentialByIDParams) (GetCredentialByIDRow, error)
+	GetCredentialByName(ctx context.Context, arg GetCredentialByNameParams) (GetCredentialByNameRow, error)
 	GetCredentialByUUID(ctx context.Context, arg GetCredentialByUUIDParams) (GetCredentialByUUIDRow, error)
 	GetCronSchedulesByFlowID(ctx context.Context, flowID int32) ([]CronSchedule, error)
 	// Used internally for execution - returns all secrets for a namespace

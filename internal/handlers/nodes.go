@@ -233,24 +233,16 @@ func (h *Handler) HandleImportNodes(c echo.Context) error {
 		return wrapError(ErrInvalidInput, tooLargeMsg, nil, nil)
 	}
 
-	credentialID := c.FormValue("credential_id")
-	if credentialID == "" {
-		return wrapError(ErrInvalidInput, "credential_id is required", nil, nil)
-	}
-
 	src, err := file.Open()
 	if err != nil {
 		return wrapError(ErrInvalidInput, "could not open csv file", err, nil)
 	}
 	defer src.Close()
 
-	imported, csvErrs, err := h.co.ImportNodes(c.Request().Context(), src, credentialID, namespace)
+	imported, csvErrs, err := h.co.ImportNodes(c.Request().Context(), src, namespace)
 	if err != nil {
 		if errors.Is(err, core.ErrInvalidNodeCSV) {
 			return wrapError(ErrInvalidInput, err.Error(), err, nil)
-		}
-		if errors.Is(err, core.ErrNodeCredentialNotFound) {
-			return wrapError(ErrResourceNotFound, "credential not found", err, nil)
 		}
 		return wrapError(ErrOperationFailed, "could not import nodes", err, nil)
 	}

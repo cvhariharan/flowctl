@@ -133,6 +133,48 @@ func (q *Queries) GetCredentialByID(ctx context.Context, arg GetCredentialByIDPa
 	return i, err
 }
 
+const getCredentialByName = `-- name: GetCredentialByName :one
+SELECT c.id, c.uuid, c.name, c.key_type, c.key_data, c.namespace_id, c.last_accessed, c.created_at, c.updated_at, ns.uuid AS namespace_uuid FROM credentials c
+JOIN namespaces ns ON c.namespace_id = ns.id
+WHERE c.name = $1 AND ns.uuid = $2
+`
+
+type GetCredentialByNameParams struct {
+	Name string    `db:"name" json:"name"`
+	Uuid uuid.UUID `db:"uuid" json:"uuid"`
+}
+
+type GetCredentialByNameRow struct {
+	ID            int32        `db:"id" json:"id"`
+	Uuid          uuid.UUID    `db:"uuid" json:"uuid"`
+	Name          string       `db:"name" json:"name"`
+	KeyType       string       `db:"key_type" json:"key_type"`
+	KeyData       string       `db:"key_data" json:"key_data"`
+	NamespaceID   int32        `db:"namespace_id" json:"namespace_id"`
+	LastAccessed  sql.NullTime `db:"last_accessed" json:"last_accessed"`
+	CreatedAt     time.Time    `db:"created_at" json:"created_at"`
+	UpdatedAt     time.Time    `db:"updated_at" json:"updated_at"`
+	NamespaceUuid uuid.UUID    `db:"namespace_uuid" json:"namespace_uuid"`
+}
+
+func (q *Queries) GetCredentialByName(ctx context.Context, arg GetCredentialByNameParams) (GetCredentialByNameRow, error) {
+	row := q.db.QueryRowContext(ctx, getCredentialByName, arg.Name, arg.Uuid)
+	var i GetCredentialByNameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.Name,
+		&i.KeyType,
+		&i.KeyData,
+		&i.NamespaceID,
+		&i.LastAccessed,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.NamespaceUuid,
+	)
+	return i, err
+}
+
 const getCredentialByUUID = `-- name: GetCredentialByUUID :one
 SELECT c.id, c.uuid, c.name, c.key_type, c.key_data, c.namespace_id, c.last_accessed, c.created_at, c.updated_at, ns.uuid AS namespace_uuid FROM credentials c
 JOIN namespaces ns ON c.namespace_id = ns.id

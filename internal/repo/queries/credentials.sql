@@ -8,6 +8,11 @@ SELECT c.*, ns.uuid AS namespace_uuid FROM credentials c
 JOIN namespaces ns ON c.namespace_id = ns.id
 WHERE c.uuid = $1 AND ns.uuid = $2;
 
+-- name: GetCredentialByName :one
+SELECT c.*, ns.uuid AS namespace_uuid FROM credentials c
+JOIN namespaces ns ON c.namespace_id = ns.id
+WHERE c.name = $1 AND ns.uuid = $2;
+
 -- name: GetCredentialByID :one
 SELECT c.*, ns.uuid AS namespace_uuid FROM credentials c
 JOIN namespaces ns ON c.namespace_id = ns.id
