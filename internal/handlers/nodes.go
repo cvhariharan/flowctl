@@ -42,6 +42,9 @@ func (h *Handler) HandleCreateNode(c echo.Context) error {
 
 	created, err := h.co.CreateNode(c.Request().Context(), node, namespace)
 	if err != nil {
+		if errors.Is(err, core.ErrNodeNameReserved) {
+			return wrapError(ErrValidationFailed, err.Error(), err, nil)
+		}
 		return wrapError(ErrOperationFailed, "could not create node", err, nil)
 	}
 
@@ -236,44 +239,14 @@ func (h *Handler) HandleImportNodes(c echo.Context) error {
 	}
 	defer src.Close()
 
-	rows, parseErrs := core.ParseNodesCSV(src, credentialID, credential.KeyType)
-
-	importErrors := make([]NodeImportError, 0)
-	for _, e := range parseErrs {
-		importErrors = append(importErrors, NodeImportError{Row: e.Line, Name: e.Name, Error: e.Err.Error()})
+	imported, csvErrs, err := h.co.ImportNodes(c.Request().Context(), src, credentialID, credential.KeyType, namespace)
+	if err != nil {
+		return wrapError(ErrOperationFailed, "could not import nodes", err, nil)
 	}
 
-	imported := 0
-	for _, row := range rows {
-		node := &models.Node{
-			Name:           row.Node.Name,
-			Hostname:       row.Node.Hostname,
-			Port:           row.Node.Port,
-			Username:       row.Node.Username,
-			OSFamily:       "linux",
-			ConnectionType: row.Node.ConnectionType,
-			Tags:           row.Node.Tags,
-			Auth:           row.Node.Auth,
-		}
-
-		if err := h.validate.Struct(NodeReq{
-			Name:           node.Name,
-			Hostname:       node.Hostname,
-			Port:           node.Port,
-			Username:       node.Username,
-			ConnectionType: node.ConnectionType,
-			Tags:           node.Tags,
-			Auth:           NodeAuth{CredentialID: node.Auth.CredentialID, Method: string(node.Auth.Method)},
-		}); err != nil {
-			importErrors = append(importErrors, NodeImportError{Row: row.Line, Name: node.Name, Error: formatValidationErrors(err)})
-			continue
-		}
-
-		if _, err := h.co.CreateNode(c.Request().Context(), node, namespace); err != nil {
-			importErrors = append(importErrors, NodeImportError{Row: row.Line, Name: node.Name, Error: err.Error()})
-			continue
-		}
-		imported++
+	importErrors := make([]NodeImportError, 0, len(csvErrs))
+	for _, e := range csvErrs {
+		importErrors = append(importErrors, NodeImportError{Row: e.Line, Name: e.Name, Error: e.Err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, NodeImportResp{
