@@ -189,19 +189,18 @@ type ApprovalsPaginateResponse struct {
 
 // Node related types
 type NodeAuth struct {
-	Method       string `json:"method" validate:"required,oneof=private_key password"`
-	CredentialID string `json:"credential_id" validate:"required,uuid4"`
+	Method       string `json:"method"`
+	CredentialID string `json:"credential_id"`
 }
 
 type NodeReq struct {
-	Name           string   `json:"name" validate:"required,min=1,max=50,alphanum_underscore"`
-	Hostname       string   `json:"hostname" validate:"required,hostname|ip"`
-	Port           int      `json:"port" validate:"required,min=1,max=65535"`
-	Username       string   `json:"username" validate:"required,min=2,max=50"`
-	ConnectionType string   `json:"connection_type" validate:"required,oneof=ssh qssh"`
-	Tags           []string `json:"tags" validate:"omitempty,dive,alphanum_underscore"`
-	Auth           NodeAuth `json:"auth" validate:"required"`
-	// OSFamily       string   `json:"os_family" validate:"required,oneof=linux windows"`
+	Name           string   `json:"name"`
+	Hostname       string   `json:"hostname"`
+	Port           int      `json:"port"`
+	Username       string   `json:"username"`
+	ConnectionType string   `json:"connection_type"`
+	Tags           []string `json:"tags"`
+	Auth           NodeAuth `json:"auth"`
 }
 
 type NodeResp struct {

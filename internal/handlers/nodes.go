@@ -7,6 +7,7 @@ import (
 
 	"github.com/cvhariharan/flowctl/internal/core"
 	"github.com/cvhariharan/flowctl/internal/core/models"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 )
 
@@ -19,10 +20,6 @@ func (h *Handler) HandleCreateNode(c echo.Context) error {
 	var req NodeReq
 	if err := c.Bind(&req); err != nil {
 		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
-	}
-
-	if err := h.validate.Struct(req); err != nil {
-		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
 	node := &models.Node{
@@ -42,6 +39,13 @@ func (h *Handler) HandleCreateNode(c echo.Context) error {
 
 	created, err := h.co.CreateNode(c.Request().Context(), node, namespace)
 	if err != nil {
+		var validationErrors validator.ValidationErrors
+		if errors.As(err, &validationErrors) {
+			return wrapError(ErrValidationFailed, formatValidationErrors(validationErrors), err, nil)
+		}
+		if errors.Is(err, core.ErrNodeAlreadyExists) {
+			return wrapError(ErrResourceConflict, err.Error(), err, nil)
+		}
 		if errors.Is(err, core.ErrNodeNameReserved) {
 			return wrapError(ErrValidationFailed, err.Error(), err, nil)
 		}
@@ -135,10 +139,6 @@ func (h *Handler) HandleUpdateNode(c echo.Context) error {
 		return wrapError(ErrInvalidInput, "could not decode request", err, nil)
 	}
 
-	if err := h.validate.Struct(req); err != nil {
-		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
-	}
-
 	node := &models.Node{
 		Name:     req.Name,
 		Hostname: req.Hostname,
@@ -156,6 +156,16 @@ func (h *Handler) HandleUpdateNode(c echo.Context) error {
 
 	updated, err := h.co.UpdateNode(c.Request().Context(), nodeID, node, namespace)
 	if err != nil {
+		var validationErrors validator.ValidationErrors
+		if errors.As(err, &validationErrors) {
+			return wrapError(ErrValidationFailed, formatValidationErrors(validationErrors), err, nil)
+		}
+		if errors.Is(err, core.ErrNodeNameReserved) {
+			return wrapError(ErrValidationFailed, err.Error(), err, nil)
+		}
+		if errors.Is(err, core.ErrNodeAlreadyExists) {
+			return wrapError(ErrResourceConflict, err.Error(), err, nil)
+		}
 		return wrapError(ErrOperationFailed, "could not update node", err, nil)
 	}
 
@@ -228,19 +238,20 @@ func (h *Handler) HandleImportNodes(c echo.Context) error {
 		return wrapError(ErrInvalidInput, "credential_id is required", nil, nil)
 	}
 
-	credential, err := h.co.GetCredentialByID(c.Request().Context(), credentialID, namespace)
-	if err != nil {
-		return wrapError(ErrResourceNotFound, "credential not found", err, nil)
-	}
-
 	src, err := file.Open()
 	if err != nil {
 		return wrapError(ErrInvalidInput, "could not open csv file", err, nil)
 	}
 	defer src.Close()
 
-	imported, csvErrs, err := h.co.ImportNodes(c.Request().Context(), src, credentialID, credential.KeyType, namespace)
+	imported, csvErrs, err := h.co.ImportNodes(c.Request().Context(), src, credentialID, namespace)
 	if err != nil {
+		if errors.Is(err, core.ErrInvalidNodeCSV) {
+			return wrapError(ErrInvalidInput, err.Error(), err, nil)
+		}
+		if errors.Is(err, core.ErrNodeCredentialNotFound) {
+			return wrapError(ErrResourceNotFound, "credential not found", err, nil)
+		}
 		return wrapError(ErrOperationFailed, "could not import nodes", err, nil)
 	}
 

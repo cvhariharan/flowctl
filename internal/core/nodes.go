@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -21,11 +20,16 @@ import (
 // used for FC_OUTPUT_GLOBAL values.
 const reservedGlobalNodeName = "global"
 
-var ErrNodeNameReserved = errors.New("node name is reserved")
+var (
+	ErrNodeNameReserved       = errors.New("node name is reserved")
+	ErrNodeAlreadyExists      = errors.New("already exists")
+	ErrInvalidNodeCSV         = errors.New("invalid node csv")
+	ErrNodeCredentialNotFound = errors.New("credential not found")
+)
 
 var reservedNodeNames = map[string]struct{}{
-	"local":              {},
-	"uploads":            {},
+	"local":                {},
+	"uploads":              {},
 	reservedGlobalNodeName: {},
 }
 
@@ -35,14 +39,11 @@ func (c *Core) CreateNode(ctx context.Context, node *models.Node, namespaceID st
 		return models.Node{}, fmt.Errorf("invalid namespace UUID: %w", err)
 	}
 
-	if node.Name == "" {
-		return models.Node{}, errors.New("node name is required")
+	if err := node.Validate(); err != nil {
+		return models.Node{}, err
 	}
 	if _, reserved := reservedNodeNames[node.Name]; reserved {
 		return models.Node{}, fmt.Errorf("%w: %q", ErrNodeNameReserved, node.Name)
-	}
-	if node.Hostname == "" {
-		return models.Node{}, errors.New("hostname is required")
 	}
 
 	credID, err := uuid.Parse(node.Auth.CredentialID)
@@ -168,7 +169,6 @@ func (c *Core) SearchNodes(ctx context.Context, filter string, tags []string, li
 		totalCount = n.TotalCount
 	}
 
-
 	return results, pageCount, totalCount, nil
 }
 
@@ -178,14 +178,11 @@ func (c *Core) UpdateNode(ctx context.Context, id string, node *models.Node, nam
 		return models.Node{}, fmt.Errorf("invalid namespace UUID: %w", err)
 	}
 
-	if node.Name == "" {
-		return models.Node{}, errors.New("node name is required")
+	if err := node.Validate(); err != nil {
+		return models.Node{}, err
 	}
-	if node.Name == reservedGlobalNodeName {
-		return models.Node{}, fmt.Errorf("node name %q is reserved", reservedGlobalNodeName)
-	}
-	if node.Hostname == "" {
-		return models.Node{}, errors.New("hostname is required")
+	if _, reserved := reservedNodeNames[node.Name]; reserved {
+		return models.Node{}, fmt.Errorf("%w: %q", ErrNodeNameReserved, node.Name)
 	}
 
 	uuidID, err := uuid.Parse(id)
@@ -326,7 +323,6 @@ func (c *Core) GetNodesByNames(ctx context.Context, nodeNames []string, namespac
 	return nodes, nil
 }
 
-
 // GetNodesByTags retrieves nodes by the given tags. Nodes with any of the given tags will be returned
 func (c *Core) GetNodesByTags(ctx context.Context, tags []string, namespaceUUID uuid.UUID) ([]models.Node, error) {
 	if len(tags) == 0 {
@@ -380,22 +376,22 @@ func (c *Core) GetNodesByTags(ctx context.Context, tags []string, namespaceUUID 
 	return nodes, nil
 }
 
-// NodeCSVRow holds a parsed node row from a CSV import along with its source line number.
-type NodeCSVRow struct {
+// nodeCSVRow holds a parsed node row from a CSV import along with its source line number.
+type nodeCSVRow struct {
 	Node models.Node
 	Line int
 }
 
-// NodeCSVError records a row that failed parsing or validation.
-type NodeCSVError struct {
+// nodeCSVError records a row that failed parsing or validation.
+type nodeCSVError struct {
 	Line int
 	Name string
 	Err  error
 }
 
-// ParseNodesCSV reads a CSV from r and returns the parsed rows and any per-row errors.
+// parseNodesCSV reads a CSV from r and returns the parsed rows and any per-row errors.
 // The first row must be the header: name,hostname,port,username,connection_type,tags
-func ParseNodesCSV(r io.Reader, credentialID, authMethod string) ([]NodeCSVRow, []NodeCSVError) {
+func parseNodesCSV(r io.Reader) ([]nodeCSVRow, []nodeCSVError, error) {
 	reader := csv.NewReader(r)
 	reader.TrimLeadingSpace = true
 
@@ -403,19 +399,24 @@ func ParseNodesCSV(r io.Reader, credentialID, authMethod string) ([]NodeCSVRow, 
 
 	header, err := reader.Read()
 	if err != nil {
-		return nil, []NodeCSVError{{Line: 1, Err: fmt.Errorf("could not read csv header: %w", err)}}
+		var pe *csv.ParseError
+		if err != io.EOF && !errors.As(err, &pe) {
+			return nil, nil, fmt.Errorf("reading csv header: %w", err)
+		}
+		return nil, nil, fmt.Errorf("%w: could not read csv header: %v", ErrInvalidNodeCSV, err)
 	}
+	header[0] = strings.TrimPrefix(header[0], "\ufeff")
 	if len(header) < len(expected) {
-		return nil, []NodeCSVError{{Line: 1, Err: fmt.Errorf("csv must have columns: %s", strings.Join(expected, ","))}}
+		return nil, nil, fmt.Errorf("%w: csv must have columns: %s", ErrInvalidNodeCSV, strings.Join(expected, ","))
 	}
 	for i, col := range expected {
 		if strings.TrimSpace(strings.ToLower(header[i])) != col {
-			return nil, []NodeCSVError{{Line: 1, Err: fmt.Errorf("expected column %d to be %q, got %q", i+1, col, header[i])}}
+			return nil, nil, fmt.Errorf("%w: expected column %d to be %q, got %q", ErrInvalidNodeCSV, i+1, col, header[i])
 		}
 	}
 
-	var rows []NodeCSVRow
-	var errs []NodeCSVError
+	var rows []nodeCSVRow
+	var errs []nodeCSVError
 
 	for {
 		record, err := reader.Read()
@@ -423,14 +424,14 @@ func ParseNodesCSV(r io.Reader, credentialID, authMethod string) ([]NodeCSVRow, 
 			break
 		}
 		if err != nil {
-			errs = append(errs, NodeCSVError{Err: fmt.Errorf("could not parse row: %w", err)})
+			var pe *csv.ParseError
+			if !errors.As(err, &pe) {
+				return nil, nil, fmt.Errorf("reading csv: %w", err)
+			}
+			errs = append(errs, nodeCSVError{Line: pe.StartLine, Err: pe.Err})
 			continue
 		}
 		line, _ := reader.FieldPos(0)
-		if len(record) < len(expected) {
-			errs = append(errs, NodeCSVError{Line: line, Err: errors.New("row has too few columns")})
-			continue
-		}
 
 		name := strings.TrimSpace(record[0])
 		hostname := strings.TrimSpace(record[1])
@@ -440,8 +441,8 @@ func ParseNodesCSV(r io.Reader, credentialID, authMethod string) ([]NodeCSVRow, 
 		tagsRaw := strings.TrimSpace(record[5])
 
 		port, err := strconv.Atoi(portStr)
-		if err != nil || port < 1 || port > 65535 {
-			errs = append(errs, NodeCSVError{Line: line, Name: name, Err: fmt.Errorf("invalid port %q", portStr)})
+		if err != nil {
+			errs = append(errs, nodeCSVError{Line: line, Name: name, Err: fmt.Errorf("invalid port %q", portStr)})
 			continue
 		}
 
@@ -454,7 +455,7 @@ func ParseNodesCSV(r io.Reader, credentialID, authMethod string) ([]NodeCSVRow, 
 			}
 		}
 
-		rows = append(rows, NodeCSVRow{
+		rows = append(rows, nodeCSVRow{
 			Line: line,
 			Node: models.Node{
 				Name:           name,
@@ -464,57 +465,38 @@ func ParseNodesCSV(r io.Reader, credentialID, authMethod string) ([]NodeCSVRow, 
 				ConnectionType: connType,
 				Tags:           tags,
 				OSFamily:       "linux",
-				Auth: models.NodeAuth{
-					CredentialID: credentialID,
-					Method:       models.AuthMethod(authMethod),
-				},
 			},
 		})
 	}
 
-	return rows, errs
-}
-
-var alphanumUnderscoreRe = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
-
-func validateNodeRow(node models.Node) error {
-	if len(node.Name) == 0 || len(node.Name) > 50 {
-		return errors.New("name must be between 1 and 50 characters")
+	if len(rows) == 0 && len(errs) == 0 {
+		return nil, nil, fmt.Errorf("%w: no rows found", ErrInvalidNodeCSV)
 	}
-	if !alphanumUnderscoreRe.MatchString(node.Name) {
-		return errors.New("name must contain only alphanumeric characters and underscores")
-	}
-	if node.Hostname == "" {
-		return errors.New("hostname is required")
-	}
-	if len(node.Username) < 2 || len(node.Username) > 50 {
-		return errors.New("username must be between 2 and 50 characters")
-	}
-	if node.ConnectionType != "ssh" && node.ConnectionType != "qssh" {
-		return fmt.Errorf("connection_type must be ssh or qssh, got %q", node.ConnectionType)
-	}
-	for _, tag := range node.Tags {
-		if !alphanumUnderscoreRe.MatchString(tag) {
-			return fmt.Errorf("tag %q must contain only alphanumeric characters and underscores", tag)
-		}
-	}
-	return nil
+	return rows, errs, nil
 }
 
 // ImportNodes parses a CSV, validates each row, and creates nodes in the given namespace.
 // It returns the number of successfully imported nodes, per-row errors, and any fatal error.
-func (c *Core) ImportNodes(ctx context.Context, r io.Reader, credentialID, authMethod, namespace string) (int, []NodeCSVError, error) {
-	rows, errs := ParseNodesCSV(r, credentialID, authMethod)
+func (c *Core) ImportNodes(ctx context.Context, r io.Reader, credentialID, namespace string) (int, []nodeCSVError, error) {
+	rows, errs, err := parseNodesCSV(r)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	credential, err := c.GetCredentialByID(ctx, credentialID, namespace)
+	if err != nil {
+		return 0, nil, fmt.Errorf("%w: %v", ErrNodeCredentialNotFound, err)
+	}
 
 	imported := 0
 	for _, row := range rows {
-		if err := validateNodeRow(row.Node); err != nil {
-			errs = append(errs, NodeCSVError{Line: row.Line, Name: row.Node.Name, Err: err})
-			continue
-		}
 		node := row.Node
+		node.Auth = models.NodeAuth{
+			CredentialID: credentialID,
+			Method:       models.AuthMethod(credential.KeyType),
+		}
 		if _, err := c.CreateNode(ctx, &node, namespace); err != nil {
-			errs = append(errs, NodeCSVError{Line: row.Line, Name: row.Node.Name, Err: err})
+			errs = append(errs, nodeCSVError{Line: row.Line, Name: row.Node.Name, Err: err})
 			continue
 		}
 		imported++

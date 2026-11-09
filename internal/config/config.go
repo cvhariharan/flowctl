@@ -236,7 +236,7 @@ func Load(configPath string) (Config, error) {
 	}
 	if config.App.MaxNodeImportSize <= 0 {
 		config.App.MaxNodeImportSize = DefaultMaxNodeImportSize
-  }
+	}
 	if config.MCP.MaxBodySize <= 0 {
 		config.MCP.MaxBodySize = DefaultMCPMaxBodySize
 	}

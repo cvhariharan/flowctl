@@ -164,9 +164,9 @@ db_server_01,192.168.1.20,22,admin,ssh,"production,database"
 - **`port`**: 1–65535
 - **`username`**: 2–50 characters
 - **`connection_type`**: `ssh` or `qssh`
-- **`tags`**: Comma-separated, wrap in quotes if multiple (e.g. `"web,prod"`)
+- **`tags`**: Comma-separated; each tag may contain only alphanumeric characters and underscores. Wrap in quotes if multiple (e.g. `"web,prod"`).
 
-Rows that fail validation are reported individually — valid rows in the same file are still imported.
+Rows that fail validation are reported individually — valid rows in the same file are still imported. Empty files, invalid headers, and files with no data rows are rejected. CSV UTF-8 files exported from Excel are supported.
 
 ### Using Remote Nodes in Flows
 
