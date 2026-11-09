@@ -204,6 +204,17 @@ export interface FlowLogResp {
   results?: Record<string, string>;
 }
 
+export interface NodeImportError {
+  row: number;
+  name?: string;
+  error: string;
+}
+
+export interface NodeImportResp {
+  imported: number;
+  errors: NodeImportError[];
+}
+
 // Node types
 export interface NodeAuth {
   method: "private_key" | "password";

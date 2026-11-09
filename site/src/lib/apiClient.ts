@@ -25,6 +25,7 @@ import type {
   NodeResp,
   NodesPaginateResponse,
   NodeStatsResp,
+  NodeImportResp,
   CredentialReq,
   CredentialResp,
   CredentialsPaginateResponse,
@@ -412,6 +413,16 @@ export const apiClient = {
       baseFetch<void>(`/api/v1/${encodeURIComponent(namespace)}/nodes/${id}`, {
         method: 'DELETE',
       }),
+    import: (namespace: string, file: File, credentialId: string) => {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('credential_id', credentialId);
+      return baseFetch<NodeImportResp>(`/api/v1/${encodeURIComponent(namespace)}/nodes/import`, {
+        method: 'POST',
+        body: form,
+        headers: { 'X-CSRF-Token': getCsrfToken() },
+      });
+    },
   },
 
   // Credentials

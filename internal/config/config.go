@@ -44,6 +44,7 @@ func (c *Config) Validate() error {
 }
 
 const DefaultMaxFlowImportSize = 256 * 1024
+const DefaultMaxNodeImportSize = 1 << 20 // 1MB
 
 const DefaultMCPMaxBodySize = 1024 * 1024
 
@@ -146,6 +147,7 @@ type AppConfig struct {
 	FlowsDirectory    string         `koanf:"flows_directory" validate:"required"`
 	MaxFileUploadSize int64          `koanf:"max_file_upload_size" validate:"required,min=1"`
 	MaxFlowImportSize int64          `koanf:"max_flow_import_size" validate:"min=0"`
+	MaxNodeImportSize int64          `koanf:"max_node_import_size" validate:"min=0"`
 	PluginDir         string         `koanf:"plugin_dir"`
 	Branding          BrandingConfig `koanf:"branding"`
 }
@@ -232,6 +234,9 @@ func Load(configPath string) (Config, error) {
 	if config.App.MaxFlowImportSize <= 0 {
 		config.App.MaxFlowImportSize = DefaultMaxFlowImportSize
 	}
+	if config.App.MaxNodeImportSize <= 0 {
+		config.App.MaxNodeImportSize = DefaultMaxNodeImportSize
+  }
 	if config.MCP.MaxBodySize <= 0 {
 		config.MCP.MaxBodySize = DefaultMCPMaxBodySize
 	}
@@ -275,6 +280,7 @@ func GetDefaultConfig() Config {
 			FlowsDirectory:    "flows",
 			MaxFileUploadSize: 100 * 1024 * 1024, // 100MB
 			MaxFlowImportSize: DefaultMaxFlowImportSize,
+			MaxNodeImportSize: DefaultMaxNodeImportSize,
 			PluginDir:         "",
 		},
 		Keystore: KeystoreConfig{

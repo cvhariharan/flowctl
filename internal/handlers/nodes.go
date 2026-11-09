@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/cvhariharan/flowctl/internal/core"
 	"github.com/cvhariharan/flowctl/internal/core/models"
 	"github.com/labstack/echo/v4"
 )
@@ -23,10 +25,6 @@ func (h *Handler) HandleCreateNode(c echo.Context) error {
 		return wrapError(ErrValidationFailed, fmt.Sprintf("request validation failed: %s", formatValidationErrors(err)), err, nil)
 	}
 
-	if req.Name == "local" || req.Name == "uploads" {
-		return wrapError(ErrValidationFailed, fmt.Sprintf("node name cannot be %s", req.Name), fmt.Errorf("node name cannot be %s", req.Name), nil)
-	}
-
 	node := &models.Node{
 		Name:     req.Name,
 		Hostname: req.Hostname,
@@ -44,6 +42,9 @@ func (h *Handler) HandleCreateNode(c echo.Context) error {
 
 	created, err := h.co.CreateNode(c.Request().Context(), node, namespace)
 	if err != nil {
+		if errors.Is(err, core.ErrNodeNameReserved) {
+			return wrapError(ErrValidationFailed, err.Error(), err, nil)
+		}
 		return wrapError(ErrOperationFailed, "could not create node", err, nil)
 	}
 
@@ -195,5 +196,61 @@ func (h *Handler) HandleGetNodeStats(c echo.Context) error {
 		TotalHosts: stats.TotalHosts,
 		SSHHosts:   stats.SSHHosts,
 		QSSHHosts:  stats.QSSHHosts,
+	})
+}
+
+func (h *Handler) HandleImportNodes(c echo.Context) error {
+	namespace, ok := c.Get("namespace").(string)
+	if !ok {
+		return wrapError(ErrRequiredFieldMissing, "could not get namespace", nil, nil)
+	}
+
+	maxSize := h.config.App.MaxNodeImportSize
+	tooLargeMsg := fmt.Sprintf("csv file exceeds maximum size of %dKB", maxSize/1024)
+
+	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, maxSize+importBodyOverhead)
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			return wrapError(ErrInvalidInput, tooLargeMsg, err, nil)
+		}
+		return wrapError(ErrInvalidInput, "csv file is required", err, nil)
+	}
+
+	if file.Size > maxSize {
+		return wrapError(ErrInvalidInput, tooLargeMsg, nil, nil)
+	}
+
+	credentialID := c.FormValue("credential_id")
+	if credentialID == "" {
+		return wrapError(ErrInvalidInput, "credential_id is required", nil, nil)
+	}
+
+	credential, err := h.co.GetCredentialByID(c.Request().Context(), credentialID, namespace)
+	if err != nil {
+		return wrapError(ErrResourceNotFound, "credential not found", err, nil)
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return wrapError(ErrInvalidInput, "could not open csv file", err, nil)
+	}
+	defer src.Close()
+
+	imported, csvErrs, err := h.co.ImportNodes(c.Request().Context(), src, credentialID, credential.KeyType, namespace)
+	if err != nil {
+		return wrapError(ErrOperationFailed, "could not import nodes", err, nil)
+	}
+
+	importErrors := make([]NodeImportError, 0, len(csvErrs))
+	for _, e := range csvErrs {
+		importErrors = append(importErrors, NodeImportError{Row: e.Line, Name: e.Name, Error: e.Err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, NodeImportResp{
+		Imported: imported,
+		Errors:   importErrors,
 	})
 }
