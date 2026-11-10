@@ -10,6 +10,7 @@ nav = [
   { "General" = [
     { "Flows" = [
       { "Overview" = "general/flows.md" },
+      { "Versions" = "general/flow-versions.md" },
       { "Inputs" = "general/flow-inputs.md" },
       { "Actions" = "general/flow-actions.md" },
       { "Execution Modes" = "general/flow-execution-modes.md" },
@@ -18,6 +19,7 @@ nav = [
     { "Flow Groups" = "general/flow-groups.md" },
     { "Nodes and Executors" = "general/nodes-and-executors.md" },
     { "Access Control" = "general/access-control.md" },
+    { "MCP" = "general/mcp.md" },
     { "Custom Branding" = "general/branding.md" },
   ] },
   { "Development" = [

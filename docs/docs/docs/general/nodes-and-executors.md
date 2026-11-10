@@ -130,7 +130,8 @@ Before adding a node, create SSH credentials:
 
 **Fields:**
 
-- **Name**: Unique identifier used in flow definitions
+- **Name**: Unique identifier within the namespace, using alphanumeric characters and underscores
+  (up to 50 characters). `local`, `uploads`, and `global` are reserved.
 - **Hostname**: IP address or domain name
 - **Port**: SSH port (default: 22)
 - **Username**: SSH username
@@ -159,7 +160,8 @@ db_server_01,192.168.1.20,22,admin,ssh,db_password,"production,database"
 
 **Column rules:**
 
-- **`name`**: Alphanumeric and underscores only, max 50 characters
+- **`name`**: Unique within the namespace, alphanumeric and underscores only, max 50 characters.
+  `local`, `uploads`, and `global` are reserved.
 - **`hostname`**: Valid IP address or hostname
 - **`port`**: 1–65535
 - **`username`**: 2–50 characters
@@ -168,6 +170,12 @@ db_server_01,192.168.1.20,22,admin,ssh,db_password,"production,database"
 - **`tags`**: Comma-separated; each tag may contain only alphanumeric characters and underscores. Wrap in quotes if multiple (e.g. `"web,prod"`).
 
 Rows with missing or unknown credentials, or other validation errors, are reported individually — valid rows in the same file are still imported. Empty files, invalid headers, and files with no data rows are rejected. CSV UTF-8 files exported from Excel are supported.
+
+Existing nodes are not updated. A duplicate name is reported as a row error, so remove successfully
+imported rows before retrying a partially imported file.
+
+The default CSV size limit is 1 MiB (1048576 bytes). Change `app.max_node_import_size` in
+`config.toml` to adjust it.
 
 ### Using Remote Nodes in Flows
 

@@ -125,8 +125,12 @@ The timezone selector defaults to your browser's local timezone. You can search 
 
 ## Re-running an Execution
 
-A finished execution can be run again with the same inputs from the **Retry** button on the execution
-page. This queues a fresh execution; the original is left as it is.
+Use **Rerun** on the execution page to open a new run with the previous inputs pre-filled. This
+creates a fresh execution using the active flow version; the original execution is left as it is.
+
+For an errored or cancelled execution, **Retry** resumes the same execution from the failed or
+interrupted action, retaining completed actions and their outputs. Retries use the execution's
+original flow version. See [Flow Versions](/docs/general/flow-versions) for how updates affect runs.
 
 ### Interrupted Executions
 
@@ -175,6 +179,7 @@ To create a copy of an existing flow, open the flow list, click the **...** menu
 ## Next Steps
 
 - Define [Inputs](/docs/general/flow-inputs)
+- View, compare, and switch [Flow Versions](/docs/general/flow-versions)
 - Configure [Actions](/docs/general/flow-actions)
 - Run actions in parallel with [Execution Modes](/docs/general/flow-execution-modes)
 - Set up [Notifications](/docs/general/flow-notifications)

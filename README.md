@@ -32,6 +32,7 @@ Check out the [demo](https://demo.flowctl.net) to see it in action.
 - **Secure Secrets** - Store SSH keys, passwords, and secrets securely with encrypted storage
 - **Real-time Logs** - Track workflow executions with streaming logs
 - **Scheduling** - Automate workflows with cron-based scheduling
+- **AI Agents** - Author and run flows through the [MCP endpoint](https://flowctl.net/docs/general/mcp/)
 
 ## Quick Start
 

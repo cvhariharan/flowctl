@@ -83,6 +83,36 @@ Inputs define parameters that users provide when triggering a flow. Flowctl supp
         max_file_size: 10485760 # Optional: 10MB limit (default: 100MB)
     ```
 
+## Default Values
+
+Set `default` to pre-fill an input. Defaults can be literal values or [expr](https://expr-lang.org/)
+expressions wrapped in `{{ ... }}`:
+
+```yaml
+inputs:
+  - name: report_date
+    type: string
+    label: Report Date
+    default: "{{ now().Format('2006-01-02') }}"
+
+  - name: count
+    type: number
+    label: Count
+    default: "{{ 2 + 2 }}"
+
+  - name: enable_debug
+    type: checkbox
+    label: Enable Debug Mode
+    default: "{{ false }}"
+```
+
+Defaults have no access to `inputs`, `secrets`, `outputs`, or `meta`. Use expr built-ins such as
+`now()`, arithmetic, and string operations. Number defaults must resolve to a number, checkbox defaults to `true` or `false`, 
+and select defaults to one of the configured options when a static options list is present. File inputs cannot have defaults.
+
+Expression defaults are limited to 512 bytes of source and 4096 bytes of resolved text, with a
+500 ms evaluation timeout. Keep them short and use actions for expensive calculations.
+
 ## File Inputs
 
 File inputs allow users to upload files when triggering a flow. The uploaded file is made available to actions via the artifacts system.

@@ -60,6 +60,8 @@ The `config.toml` file controls all aspects of flowctl's behavior. Here's a comp
   http_tls_cert = "server_cert.pem"
   http_tls_key = "server_key.pem"
   max_file_upload_size = 104857600
+  max_flow_import_size = 262144
+  max_node_import_size = 1048576
   plugin_dir = "/opt/flowctl/plugins"
 ```
 
@@ -72,6 +74,8 @@ The `config.toml` file controls all aspects of flowctl's behavior. Here's a comp
 - **`http_tls_cert`** (required if `use_tls` is true): Path to TLS certificate file.
 - **`http_tls_key`** (required if `use_tls` is true): Path to TLS key file.
 - **`max_file_upload_size`** (required): Maximum file upload size in bytes (default: 104857600 = 100MB).
+- **`max_flow_import_size`** (optional): Maximum flow definition import size in bytes (default: 262144 = 256 KiB).
+- **`max_node_import_size`** (optional): Maximum CSV node import size in bytes (default: 1048576 = 1 MiB). See [Bulk Import Nodes](/docs/general/nodes-and-executors#step-3-bulk-import-nodes-from-csv-optional).
 - **`plugin_dir`** (optional): Directory to load external executor plugin binaries from. See [Writing Executor Plugins](/docs/advanced/executor-plugins).
 
 ### Database Settings
@@ -271,6 +275,20 @@ The provider must support the OpenID Connect authorization code flow and return 
 - **`auto_create_users.role`** (optional): Namespace role for new users: `user`, `operator`, `reviewer`, or `admin` (default: `"user"`).
 - **`auto_create_users.groups`** (optional): List of existing group names to add new users to.
 - **`auto_create_users.allowed_domains`** (optional): Restrict auto-creation to specific email domains. Leave empty to allow any domain.
+
+### MCP Server
+
+```toml
+[mcp]
+  enabled = false
+  max_body_size = 1048576
+```
+
+- **`enabled`** (optional): Serve the Model Context Protocol endpoint at `/mcp` (default: `false`).
+- **`max_body_size`** (optional): Maximum MCP request body size in bytes (default: 1048576 = 1 MiB).
+
+Clients connect over Streamable HTTP using a personal API token and act with that user's namespace
+permissions. See [AI Agents (MCP)](/docs/general/mcp) for setup, tools, and the flow authoring skill.
 
 ### Metrics
 

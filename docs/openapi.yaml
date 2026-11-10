@@ -24,9 +24,9 @@ info:
     - Timestamps are RFC 3339 (`2025-06-04T10:00:00Z`).
     - Errors use a uniform JSON envelope (see `Error` schema).
     - Pagination endpoints return `page_count` and `total_count` next to the page slice.
-    - Request bodies must be `application/json`, except for flow triggers and flow import
-      which take `multipart/form-data` or `application/x-www-form-urlencoded`. Any other
-      content type is rejected with `415`, on every endpoint and every method.
+    - Request bodies use `application/json` unless an endpoint specifies otherwise.
+      Flow triggers also accept `multipart/form-data` or `application/x-www-form-urlencoded`;
+      flow and node imports use `multipart/form-data`. Unsupported content types are rejected with `415`.
 
 servers:
   - url: https://flowctl.example.com
@@ -129,9 +129,16 @@ paths:
       operationId: Logout
       tags: [Auth]
       summary: Destroy the current session
+      description: |
+        Ends the local session. For OIDC sessions with provider logout enabled, returns
+        an `x-redirect` header that the browser should follow to end the provider session.
       responses:
         "200":
           description: Logged out
+          headers:
+            x-redirect:
+              description: OIDC end-session URL, present when provider logout is enabled and available.
+              schema: { type: string, format: uri }
 
   /sso-providers:
     get:
@@ -677,6 +684,110 @@ paths:
                 type: object
                 additionalProperties: true
 
+  /api/v1/{namespace}/flows/{flowID}/versions:
+    parameters:
+      - $ref: "#/components/parameters/NamespacePath"
+      - { name: flowID, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: ListFlowVersions
+      tags: [Flows]
+      summary: List saved flow versions (requires ViewConfig permission)
+      description: Returns versions newest first. Identical source reuses an existing version.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - name: count
+          in: query
+          schema: { type: integer, minimum: 0, maximum: 2147483647, default: 10 }
+          description: Items per page; 0 uses the default. This endpoint uses count, not count_per_page.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlowVersionsResp" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/{namespace}/flows/{flowID}/versions/diff:
+    parameters:
+      - $ref: "#/components/parameters/NamespacePath"
+      - { name: flowID, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: DiffFlowVersions
+      tags: [Flows]
+      summary: Compare two saved flow definitions (requires ViewConfig permission)
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+        - name: to
+          in: query
+          schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 }
+          description: Target version; omit or use 0 for the active version.
+      responses:
+        "200":
+          description: Line diff of saved source
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlowVersionDiff" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/{namespace}/flows/{flowID}/versions/{version}:
+    parameters:
+      - $ref: "#/components/parameters/NamespacePath"
+      - { name: flowID, in: path, required: true, schema: { type: string } }
+      - $ref: "#/components/parameters/FlowVersionPath"
+    get:
+      operationId: GetFlowVersion
+      tags: [Flows]
+      summary: Get saved source and format (requires ViewConfig permission)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlowVersionResp" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/{namespace}/flows/{flowID}/versions/{version}/activate:
+    parameters:
+      - $ref: "#/components/parameters/NamespacePath"
+      - { name: flowID, in: path, required: true, schema: { type: string } }
+      - $ref: "#/components/parameters/FlowVersionPath"
+    post:
+      operationId: ActivateFlowVersion
+      tags: [Flows]
+      summary: Switch to a saved version (requires Update permission)
+      description: |
+        Validates the saved definition, writes it back to the flow file, and activates
+        that version without allocating a new number. Existing executions keep their
+        pinned versions. Future recurring runs use the change after scheduler synchronization.
+      responses:
+        "200":
+          description: Active version
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlowVersionActivateResp" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Saved format differs from the current flow file's format
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Saved definition no longer passes validation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/{namespace}/trigger/{flow}:
     parameters:
       - $ref: "#/components/parameters/NamespacePath"
@@ -1207,6 +1318,43 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/NodeResp" }
 
+  /api/v1/{namespace}/nodes/import:
+    parameters:
+      - $ref: "#/components/parameters/NamespacePath"
+    post:
+      operationId: ImportNodes
+      tags: [Nodes]
+      summary: Import remote nodes from CSV (requires Create permission)
+      description: |
+        Upload a CSV with columns in this order:
+        `name,hostname,port,username,connection_type,credential,tags`.
+        Each credential must be the exact name of an existing credential in this namespace;
+        its key type determines the authentication method. Tags are comma-separated and
+        must be quoted when multiple tags appear in one field. The tags column may be empty.
+        Existing nodes are not updated. Valid rows are imported even if other rows fail.
+        The default file size limit is 1 MiB, configurable with app.max_node_import_size.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "200":
+          description: Import results, including row errors even if no nodes were imported
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NodeImportResp" }
+        "400":
+          description: Missing or oversized file, invalid CSV header, or no data rows
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /api/v1/{namespace}/nodes/stats:
     parameters:
       - $ref: "#/components/parameters/NamespacePath"
@@ -1586,6 +1734,12 @@ components:
         must also send `X-CSRF-Token` on state-changing requests.
 
   parameters:
+    FlowVersionPath:
+      name: version
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1, maximum: 2147483647 }
+      description: Saved version number from the flow's version history.
     NamespacePath:
       name: namespace
       in: path
@@ -1849,6 +2003,10 @@ components:
       type: object
       properties:
         id: { type: string }
+        version:
+          type: integer
+          readOnly: true
+          description: Active flow version, assigned by the server.
         name: { type: string, minLength: 1, maxLength: 150 }
         description: { type: string, maxLength: 255 }
         prefix: { type: string, maxLength: 100 }
@@ -1893,7 +2051,12 @@ components:
         options:
           type: array
           items: { type: string }
-        default: { type: string }
+        default:
+          type: string
+          description: Resolved default value; expression defaults are evaluated when inputs are requested.
+        default_dynamic:
+          type: boolean
+          description: Present and true when the saved default is an expression template.
         max_file_size:
           type: integer
           format: int64
@@ -1964,7 +2127,13 @@ components:
         description: { type: string, maxLength: 255 }
         validation: { type: string }
         required: { type: boolean }
-        default: { type: string }
+        default:
+          type: string
+          description: |
+            Literal default or expr template using {{ ... }}. Templates may include literal
+            text and have no access to inputs, secrets, outputs, or meta. File inputs cannot
+            have defaults. Expression templates are limited to 512 bytes of source.
+          example: "backup-{{ now().Format('20060102') }}.sql"
         options:
           type: array
           items: { type: string }
@@ -1978,6 +2147,61 @@ components:
             headers:
               type: object
               additionalProperties: { type: string }
+    FlowVersionListItem:
+      type: object
+      required: [version, checksum, created_at, active]
+      properties:
+        version: { type: integer, minimum: 1 }
+        checksum: { type: string }
+        created_at: { type: string, format: date-time }
+        active: { type: boolean }
+    FlowVersionsResp:
+      type: object
+      required: [versions, page_count, total_count]
+      properties:
+        versions:
+          type: array
+          items: { $ref: "#/components/schemas/FlowVersionListItem" }
+        page_count: { type: integer, format: int64 }
+        total_count: { type: integer, format: int64 }
+    FlowVersionResp:
+      type: object
+      required: [version, format, source, created_at, active]
+      properties:
+        version: { type: integer, minimum: 1 }
+        format: { type: string, enum: [yaml, huml] }
+        source: { type: string }
+        created_at: { type: string, format: date-time }
+        active: { type: boolean }
+    FlowVersionActivateResp:
+      type: object
+      required: [id, version]
+      properties:
+        id: { type: string, description: Flow slug. }
+        version: { type: integer, minimum: 1 }
+    FlowVersionDiff:
+      type: object
+      required: [from, to, lines]
+      properties:
+        from: { type: integer, minimum: 1 }
+        to: { type: integer, minimum: 1 }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/FlowVersionDiffLine" }
+    FlowVersionDiffLine:
+      type: object
+      required: [op, text]
+      properties:
+        op: { type: string, enum: [equal, insert, delete] }
+        old:
+          type: integer
+          minimum: 1
+          description: Line number in the old source; omitted for inserted lines.
+        new:
+          type: integer
+          minimum: 1
+          description: Line number in the new source; omitted for deleted lines.
+        text: { type: string }
     FlowActionReq:
       type: object
       required: [name, with]
@@ -2101,6 +2325,12 @@ components:
         id: { type: string, format: uuid }
         flow_name: { type: string }
         flow_id: { type: string }
+        flow_version:
+          type: integer
+          description: Version pinned to this execution; omitted for legacy executions.
+        active_version:
+          type: integer
+          description: Currently active version of the flow, which may differ from flow_version.
         status: { $ref: "#/components/schemas/ExecutionStatus" }
         trigger_type: { type: string, enum: [manual, scheduled] }
         schedule_name:
@@ -2258,15 +2488,35 @@ components:
       type: object
       required: [name, hostname, port, username, connection_type, auth]
       properties:
-        name: { type: string, minLength: 1, maxLength: 50 }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: '^[a-zA-Z0-9_]+$'
+          description: Unique within the namespace. The names local, uploads, and global are reserved.
         hostname: { type: string }
         port: { type: integer, minimum: 1, maximum: 65535 }
         username: { type: string, minLength: 2, maxLength: 50 }
         connection_type: { type: string, enum: [ssh, qssh] }
         tags:
           type: array
-          items: { type: string }
+          items: { type: string, pattern: '^[a-zA-Z0-9_]+$' }
         auth: { $ref: "#/components/schemas/NodeAuth" }
+    NodeImportResp:
+      type: object
+      required: [imported, errors]
+      properties:
+        imported: { type: integer, minimum: 0 }
+        errors:
+          type: array
+          items: { $ref: "#/components/schemas/NodeImportError" }
+    NodeImportError:
+      type: object
+      required: [row, error]
+      properties:
+        row: { type: integer, minimum: 1, description: Source line number in the CSV file. }
+        name: { type: string, description: Node name when available. }
+        error: { type: string }
     NodeResp:
       type: object
       properties:
@@ -2340,6 +2590,9 @@ components:
         - type: object
           properties:
             flow_id: { type: string }
+            flow_version:
+              type: integer
+              description: Version pinned to the execution; omitted for legacy executions.
             approved_by: { type: string }
             inputs:
               description: Original trigger inputs (JSON).

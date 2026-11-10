@@ -200,6 +200,20 @@ Configure the SSO application to use OpenID Connect with the authorization code 
 
 By default, logging out ends only the flowctl session. Set `logout_enabled = true` in a provider's `[[oidc]]` section to also log out of that SSO provider. This uses the provider's discovered logout endpoint; set `logout_url` to override it. If no logout endpoint is available, flowctl still ends the local session.
 
+```toml
+[[oidc]]
+name = "oidc"
+client_id = "your-client-id"
+client_secret = "your-client-secret"
+issuer = "https://your-oidc-provider.com/"
+logout_enabled = true
+# logout_url = "https://your-oidc-provider.com/logout"
+```
+
+If your provider requires registered post-logout redirect URIs, add `<app.root_url>/login` to its
+allowed list. flowctl sends this URI with `id_token_hint` and `client_id` when ending the provider
+session.
+
 ### Auto-Creating Users on Login
 
 By default, a user must already exist in flowctl before they can log in via OIDC. Enable `auto_create_users` on an OIDC provider to create accounts automatically on first login.
